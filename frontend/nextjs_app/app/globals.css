@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --och-midnight: #0A0A0C;
+  --defender-blue: #0648A8;
+  --cyber-mint: #33FFC1;
+  --signal-orange: #F55F28;
+  --steel-grey: #A8B0B8;
+  --sahara-gold: #C89C15;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--och-midnight);
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography */
+h1 {
+  @apply text-h1 font-bold tracking-tight;
+}
+
+h2 {
+  @apply text-h2 font-bold tracking-tight;
+}
+
+h3 {
+  @apply text-h3 font-semibold tracking-tight;
+}
+
+/* Buttons */
+.btn-primary {
+  @apply bg-defender-blue text-white px-6 py-3 rounded-card font-semibold 
+         transition-all duration-200 hover:bg-opacity-90 hover:shadow-blue-glow
+         active:scale-95;
+}
+
+.btn-secondary {
+  @apply border-2 border-white text-white px-6 py-3 rounded-card font-semibold
+         transition-all duration-200 hover:bg-white hover:text-och-midnight
+         active:scale-95;
+}
+
+.btn-mission {
+  @apply bg-defender-gradient text-white px-6 py-3 rounded-card font-semibold
+         transition-all duration-200 hover:shadow-blue-glow active:scale-95;
+}
+
+.btn-warning {
+  @apply bg-signal-orange text-white px-6 py-3 rounded-card font-semibold
+         transition-all duration-200 hover:bg-opacity-90 active:scale-95;
+}
+
+/* Cards */
+.card {
+  @apply bg-och-midnight border border-steel-grey rounded-card p-6
+         transition-all duration-200 hover:border-cyber-mint hover:shadow-mint-glow;
+}
+
+.card-mission {
+  @apply card border-defender-blue;
+}
+
+.card-leadership {
+  @apply card border-sahara-gold;
+}
+
+/* Badges */
+.badge-beginner {
+  @apply border border-cyber-mint text-cyber-mint px-3 py-1 rounded-full text-body-s font-semibold;
+}
+
+.badge-intermediate {
+  @apply bg-defender-blue text-white px-3 py-1 rounded-full text-body-s font-semibold;
+}
+
+.badge-advanced {
+  @apply border border-sahara-gold text-sahara-gold px-3 py-1 rounded-full text-body-s font-semibold;
+}
+
+.badge-mastery {
+  @apply bg-sahara-gold text-och-midnight px-3 py-1 rounded-full text-body-s font-semibold;
+}
+
+.badge-vip {
+  @apply bg-leadership-gradient text-white px-3 py-1 rounded-full text-body-s font-semibold shadow-gold-glow;
+}
+
+/* Progress Bars */
+.progress-bar {
+  @apply h-2 bg-steel-grey rounded-card overflow-hidden;
+}
+
+.progress-fill {
+  @apply h-full bg-defender-blue transition-all duration-300;
+}
+
+.progress-fill-mint {
+  @apply progress-fill bg-cyber-mint;
+}
+
+.progress-fill-gold {
+  @apply progress-fill bg-sahara-gold;
+}
+
+/* Pulse animation for active missions */
+.pulse-active {
+  animation: pulse-mint 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Radar sweep animation */
+.radar-sweep {
+  animation: radar-sweep 3s linear infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--och-midnight);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--defender-blue);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cyber-mint);
+}
+
+/* Focus states for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--cyber-mint);
+  outline-offset: 2px;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply animate-pulse bg-steel-grey rounded-card;
+}

@@ -1,0 +1,107 @@
+# Environment Variables Template
+
+Copy this file to `.env` in the project root and fill in your values.
+
+## Django Backend (.env in backend/django_app/)
+
+```env
+# Django Settings
+DEBUG=True
+DJANGO_SECRET_KEY=your-secret-key-here-change-in-production
+DJANGO_SETTINGS_MODULE=core.settings.development
+
+# Database Configuration
+DB_NAME=ongozacyberhub
+DB_USER=postgres
+DB_PASSWORD=your-db-password
+DB_HOST=localhost
+DB_PORT=5432
+
+# Email Configuration
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+EMAIL_HOST=smtp.mailtrap.io
+EMAIL_PORT=2525
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email-user
+EMAIL_HOST_PASSWORD=your-email-password
+DEFAULT_FROM_EMAIL=noreply@ongozacyberhub.com
+
+# Frontend URL
+FRONTEND_URL=http://localhost:3000
+
+# JWT Settings
+JWT_ACCESS_TOKEN_LIFETIME=900
+JWT_REFRESH_TOKEN_LIFETIME=2592000
+
+# CORS Settings
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+CORS_ALLOW_CREDENTIALS=True
+```
+
+## FastAPI Backend (.env in backend/fastapi_app/)
+
+```env
+FASTAPI_HOST=0.0.0.0
+FASTAPI_PORT=8001
+FASTAPI_RELOAD=True
+
+# Vector Database (PGVector)
+VECTOR_DB_HOST=localhost
+VECTOR_DB_PORT=5433
+VECTOR_DB_NAME=ongozacyberhub_vector
+VECTOR_DB_USER=postgres
+VECTOR_DB_PASSWORD=your-vector-db-password
+
+# Vector Database (Pinecone - Alternative)
+PINECONE_API_KEY=your-pinecone-api-key
+PINECONE_ENVIRONMENT=us-west1-gcp
+PINECONE_INDEX_NAME=ongozacyberhub
+
+# AI/ML Services
+OPENAI_API_KEY=your-openai-api-key
+HUGGINGFACE_API_KEY=your-huggingface-api-key
+```
+
+## Next.js Frontend (.env.local in frontend/nextjs_app/)
+
+```env
+NEXT_PUBLIC_DJANGO_API_URL=http://localhost:8000
+NEXT_PUBLIC_FASTAPI_API_URL=http://localhost:8001
+NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000
+```
+
+## Node.js Landing Pages (.env in frontend/landing_pages/)
+
+```env
+PORT=3001
+NEXT_PUBLIC_DJANGO_API_URL=http://localhost:8000
+```
+
+## Docker Compose (.env in backend/)
+
+```env
+POSTGRES_DB=ongozacyberhub
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your-postgres-password
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+
+VECTOR_POSTGRES_DB=ongozacyberhub_vector
+VECTOR_POSTGRES_USER=postgres
+VECTOR_POSTGRES_PASSWORD=your-vector-postgres-password
+VECTOR_POSTGRES_HOST=postgres-vector
+VECTOR_POSTGRES_PORT=5433
+```
+
+## Production Settings
+
+For production, update these values:
+
+```env
+DEBUG=False
+ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+SECURE_SSL_REDIRECT=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+```
+
