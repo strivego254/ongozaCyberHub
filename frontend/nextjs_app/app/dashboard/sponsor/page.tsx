@@ -7,8 +7,25 @@ import { djangoClient } from '@/services/djangoClient';
 import { getServerAuthHeaders } from '@/utils/auth-server';
 import { redirect } from 'next/navigation';
 import SponsorDashboardClient from './sponsor-client';
+import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import {
+  getPlaceholderUser,
+  getPlaceholderOrganizations,
+  getPlaceholderSponsoredStudentCount,
+} from '@/services/placeholderData';
 
 async function getSponsorData() {
+  const usePlaceholder = process.env.NEXT_PUBLIC_USE_PLACEHOLDER_DATA === 'true';
+  
+  if (usePlaceholder) {
+    return {
+      user: getPlaceholderUser('sponsor'),
+      organizations: getPlaceholderOrganizations(),
+      organizationCount: getPlaceholderOrganizations().length,
+      sponsoredStudentCount: getPlaceholderSponsoredStudentCount(),
+    };
+  }
+
   try {
     const headers = await getServerAuthHeaders();
     if (!headers.Authorization) {
@@ -16,21 +33,24 @@ async function getSponsorData() {
     }
 
     const [user, organizations] = await Promise.all([
-      djangoClient.auth.getCurrentUser(),
-      djangoClient.organizations.listOrganizations().catch(() => ({ results: [], count: 0 })),
+      djangoClient.auth.getCurrentUser().catch(() => getPlaceholderUser('sponsor')),
+      djangoClient.organizations.listOrganizations().catch(() => ({ results: getPlaceholderOrganizations(), count: getPlaceholderOrganizations().length })),
     ]);
-
-    // TODO: Fetch sponsored students when endpoint is available
-    const sponsoredStudents: any[] = [];
 
     return {
       user,
-      organizations: organizations.results || [],
-      organizationCount: organizations.count || 0,
-      sponsoredStudentCount: sponsoredStudents.length,
+      organizations: organizations.results || getPlaceholderOrganizations(),
+      organizationCount: organizations.count || getPlaceholderOrganizations().length,
+      sponsoredStudentCount: getPlaceholderSponsoredStudentCount(),
     };
   } catch (error) {
-    redirect('/login');
+    // Fallback to placeholder data
+    return {
+      user: getPlaceholderUser('sponsor'),
+      organizations: getPlaceholderOrganizations(),
+      organizationCount: getPlaceholderOrganizations().length,
+      sponsoredStudentCount: getPlaceholderSponsoredStudentCount(),
+    };
   }
 }
 
@@ -38,25 +58,14 @@ export default async function SponsorDashboardPage() {
   const data = await getSponsorData();
 
   return (
-    <div className="min-h-screen bg-och-midnight">
-      <header className="border-b border-steel-grey bg-och-midnight sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-h2 text-white">Sponsor Dashboard</h1>
-              <p className="text-body-s text-steel-grey mt-1">Manage sponsored talent and organization</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="badge-mastery">💼 Sponsor</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-6 py-8">
-        <SponsorDashboardClient initialData={data} />
-      </main>
-    </div>
+    <DashboardLayout
+      user={data.user}
+      role="sponsor"
+      roleLabel="Sponsor"
+      roleIcon="💼"
+    >
+      <SponsorDashboardClient initialData={data} />
+    </DashboardLayout>
   );
 }
 

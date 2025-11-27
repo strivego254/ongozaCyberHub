@@ -85,6 +85,40 @@ class User(AbstractUser):
         )]
     )
     
+    # Mentee onboarding fields (for TalentScope baseline)
+    LEARNING_STYLE_CHOICES = [
+        ('visual', 'Visual'),
+        ('auditory', 'Auditory'),
+        ('kinesthetic', 'Kinesthetic'),
+        ('reading', 'Reading/Writing'),
+        ('mixed', 'Mixed'),
+    ]
+    preferred_learning_style = models.CharField(
+        max_length=20,
+        choices=LEARNING_STYLE_CHOICES,
+        blank=True,
+        null=True,
+        help_text='Preferred learning style for TalentScope calculations'
+    )
+    career_goals = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Career goals and aspirations for TalentScope baseline'
+    )
+    CYBER_EXPOSURE_CHOICES = [
+        ('none', 'No Experience'),
+        ('beginner', 'Beginner (Some Awareness)'),
+        ('intermediate', 'Intermediate (Some Training)'),
+        ('advanced', 'Advanced (Professional Experience)'),
+    ]
+    cyber_exposure_level = models.CharField(
+        max_length=20,
+        choices=CYBER_EXPOSURE_CHOICES,
+        blank=True,
+        null=True,
+        help_text='Current cyber security exposure level for TalentScope baseline'
+    )
+    
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -146,6 +180,7 @@ class Role(models.Model):
         ('admin', 'Admin'),
         ('program_director', 'Program Director'),
         ('mentor', 'Mentor'),
+        ('mentee', 'Mentee'),
         ('student', 'Student'),
         ('finance', 'Finance'),
         ('sponsor_admin', 'Sponsor/Employer Admin'),

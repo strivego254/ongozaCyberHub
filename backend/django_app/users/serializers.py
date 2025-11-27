@@ -7,6 +7,7 @@ from django.contrib.auth.password_validation import validate_password
 from .models import Role, UserRole, ConsentScope, Entitlement
 from .identity_models import UserIdentity
 from .auth_models import MFAMethod, UserSession
+from .audit_models import AuditLog
 
 User = get_user_model()
 
@@ -46,6 +47,10 @@ class UserSerializer(serializers.ModelSerializer):
             'roles',
             'consent_scopes',
             'entitlements',
+            # Mentee onboarding fields
+            'preferred_learning_style',
+            'career_goals',
+            'cyber_exposure_level',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'account_status', 'email_verified']
     
@@ -86,11 +91,11 @@ class RoleSerializer(serializers.ModelSerializer):
             'name',
             'display_name',
             'description',
-            'role_type',
-            'is_system',
+            'is_system_role',
             'created_at',
+            'updated_at',
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -129,6 +134,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class SignupSerializer(serializers.Serializer):
     """
     Signup serializer for email/password or passwordless.
+    Supports Mentee onboarding with profile fields.
     """
     email = serializers.EmailField()
     password = serializers.CharField(required=False, validators=[validate_password])
@@ -141,6 +147,19 @@ class SignupSerializer(serializers.Serializer):
     invite_token = serializers.CharField(required=False)  # For invite flow
     cohort_id = serializers.CharField(required=False)
     track_key = serializers.CharField(required=False)
+    
+    # Mentee onboarding profile fields (optional during signup, can be completed later)
+    preferred_learning_style = serializers.ChoiceField(
+        choices=User.LEARNING_STYLE_CHOICES,
+        required=False,
+        allow_null=True
+    )
+    career_goals = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    cyber_exposure_level = serializers.ChoiceField(
+        choices=User.CYBER_EXPOSURE_CHOICES,
+        required=False,
+        allow_null=True
+    )
 
 
 class LoginSerializer(serializers.Serializer):
@@ -209,7 +228,7 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'timestamp',
             'ip_address',
             'user_agent',
-            'meta',
+            'metadata',
             'result',
         ]
         read_only_fields = fields

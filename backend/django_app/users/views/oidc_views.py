@@ -103,3 +103,59 @@ def oauth_userinfo(request):
         'detail': 'OIDC userinfo endpoint not yet implemented'
     }, status=501)
 
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def oauth_introspect(request):
+    """
+    POST /api/v1/oauth/introspect
+    OAuth2 token introspection endpoint (RFC 7662).
+    Service-to-service token validation.
+    """
+    from rest_framework_simplejwt.tokens import UntypedToken
+    from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+    from django.conf import settings
+    import jwt
+    
+    token = request.data.get('token')
+    token_type_hint = request.data.get('token_type_hint', 'access_token')
+    
+    if not token:
+        return Response({
+            'active': False,
+            'error': 'invalid_request'
+        }, status=400)
+    
+    try:
+        # Decode and verify token using simplejwt
+        untyped_token = UntypedToken(token)
+        decoded = untyped_token.token
+        
+        # Check if token is expired
+        from django.utils import timezone
+        exp = decoded.get('exp')
+        if exp:
+            exp_timestamp = exp if isinstance(exp, (int, float)) else exp.timestamp()
+            if exp_timestamp < timezone.now().timestamp():
+                return Response({
+                    'active': False
+                })
+        
+        # Return token information
+        return Response({
+            'active': True,
+            'scope': decoded.get('scope', ''),
+            'client_id': decoded.get('client_id', ''),
+            'username': decoded.get('username', ''),
+            'exp': exp,
+            'iat': decoded.get('iat'),
+            'sub': str(decoded.get('user_id', '')),
+            'aud': decoded.get('aud', settings.SIMPLE_JWT.get('AUDIENCE', '')),
+            'iss': decoded.get('iss', settings.SIMPLE_JWT.get('ISSUER', '')),
+        })
+    except (InvalidToken, TokenError, jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return Response({
+            'active': False,
+            'error': 'invalid_token'
+        })
+

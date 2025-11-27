@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import type { LoginRequest } from '@/services/types';
+import SSOButtons from '@/components/SSOButtons';
 
 const PERSONAS = {
   student: { name: 'Student', icon: '🎓', color: 'defender-blue' },
@@ -113,6 +114,15 @@ export default function LoginPage() {
               {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          {/* SSO Buttons */}
+          <div className="mt-6">
+            <SSOButtons
+              mode="login"
+              onSuccess={() => router.push('/dashboard')}
+              onError={(error) => setError(error)}
+            />
+          </div>
 
           <div className="mt-6 pt-6 border-t border-steel-grey">
             <p className="text-body-s text-steel-grey text-center mb-4">Don't have an account?</p>

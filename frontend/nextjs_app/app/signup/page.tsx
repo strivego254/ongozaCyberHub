@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { djangoClient } from '@/services/djangoClient';
 import type { SignupRequest } from '@/services/types';
+import SSOButtons from '@/components/SSOButtons';
 
 const PERSONAS = {
   student: { name: 'Student', icon: '🎓', description: 'Begin your cyber defense journey' },
@@ -168,6 +169,15 @@ export default function SignupPage() {
               {isLoading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
+
+          {/* SSO Buttons */}
+          <div className="mt-6">
+            <SSOButtons
+              mode="signup"
+              onSuccess={() => router.push('/dashboard')}
+              onError={(error) => setError(error)}
+            />
+          </div>
 
           <div className="mt-6 pt-6 border-t border-steel-grey">
             <p className="text-body-s text-steel-grey text-center mb-4">Already have an account?</p>

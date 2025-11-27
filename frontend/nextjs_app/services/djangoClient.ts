@@ -92,6 +92,22 @@ export const djangoClient = {
     async confirmPasswordReset(data: PasswordResetConfirm): Promise<{ detail: string }> {
       return apiGateway.post('/auth/password/reset/confirm', data, { skipAuth: true });
     },
+
+    /**
+     * SSO login (Google, Microsoft, Apple, Okta)
+     */
+    async ssoLogin(
+      provider: 'google' | 'microsoft' | 'apple' | 'okta',
+      data: {
+        id_token?: string;
+        access_token?: string;
+        code?: string;
+        device_fingerprint: string;
+        device_name: string;
+      }
+    ): Promise<LoginResponse> {
+      return apiGateway.post(`/auth/sso/${provider}`, data, { skipAuth: true });
+    },
   },
 
   /**

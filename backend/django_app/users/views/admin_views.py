@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from organizations.models import Organization, OrganizationMember
+from organizations.serializers import OrganizationSerializer
 from users.models import Role, UserRole
 from users.api_models import APIKey
 from django.utils import timezone
@@ -14,14 +15,28 @@ from users.serializers import UserSerializer, RoleSerializer
 User = get_user_model()
 
 
-class RoleViewSet(viewsets.ReadOnlyModelViewSet):
+class RoleViewSet(viewsets.ModelViewSet):
     """
-    GET /api/v1/roles
-    List roles (read-only for most users).
+    GET /api/v1/roles - List roles
+    POST /api/v1/roles - Create role (admin only)
     """
     queryset = Role.objects.all()
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = RoleSerializer
+    
+    def create(self, request):
+        """Create a new role (admin only)."""
+        if not request.user.is_staff:
+            return Response(
+                {'detail': 'Only administrators can create roles'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        role = serializer.save()
+        
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class UserRoleAssignmentView(viewsets.ViewSet):
@@ -99,6 +114,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     Organization management.
     """
     queryset = Organization.objects.all()
+    serializer_class = OrganizationSerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'slug'
     

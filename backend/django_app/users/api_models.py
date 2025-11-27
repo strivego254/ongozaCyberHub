@@ -7,29 +7,44 @@ from django.utils import timezone
 import secrets
 import hashlib
 import hmac
+import uuid
+from argon2 import PasswordHasher
 
 User = get_user_model()
+ph = PasswordHasher()
 
 
 class APIKey(models.Model):
     """
     API Keys for service/partner integrations.
+    Per specification: Service accounts (machine-to-machine) with scoped API keys.
     """
+    OWNER_TYPES = [
+        ('user', 'User'),
+        ('org', 'Organization'),
+        ('service', 'Service Account'),
+    ]
+    
     KEY_TYPES = [
         ('service', 'Service Key'),
         ('partner', 'Partner Key'),
         ('webhook', 'Webhook Key'),
     ]
     
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     key_type = models.CharField(max_length=20, choices=KEY_TYPES)
     
-    # Key management
+    # Key management (per spec: stored hashed with Argon2id)
     key_prefix = models.CharField(max_length=20, db_index=True)  # First 8 chars for identification
-    key_hash = models.CharField(max_length=64, unique=True, db_index=True)  # SHA-256 hash
+    key_hash = models.CharField(max_length=128, unique=True, db_index=True)  # Argon2id hash
     key_value = models.CharField(max_length=255, null=True, blank=True)  # Encrypted, only shown once
     
-    # Ownership and scopes
+    # Ownership (per spec: owner_type enum)
+    owner_type = models.CharField(max_length=20, choices=OWNER_TYPES, default='user')
+    owner_id = models.UUIDField(null=True, blank=True, db_index=True)  # Generic owner ID
+    
+    # Legacy ownership fields (for backward compatibility)
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -45,10 +60,10 @@ class APIKey(models.Model):
         related_name='api_keys'
     )
     
-    # Permissions
+    # Permissions (per spec: scoped API keys with least privilege)
     scopes = models.JSONField(default=list, blank=True)  # List of permission scopes
     allowed_ips = models.JSONField(default=list, blank=True)  # IP whitelist
-    rate_limit = models.IntegerField(default=1000)  # Requests per hour
+    rate_limit_per_min = models.IntegerField(default=60)  # Per spec: rate_limit_per_min INT
     
     # Lifecycle
     created_at = models.DateTimeField(auto_now_add=True)
@@ -76,20 +91,24 @@ class APIKey(models.Model):
     
     @classmethod
     def generate_key(cls):
-        """Generate a new API key."""
+        """Generate a new API key (per spec: stored hashed with Argon2id)."""
         key_value = f"och_{secrets.token_urlsafe(32)}"
         key_prefix = key_value[:8]
-        key_hash = hashlib.sha256(key_value.encode()).hexdigest()
+        # Use Argon2id for hashing (per spec)
+        key_hash = ph.hash(key_value)
         return key_value, key_prefix, key_hash
     
     def verify_key(self, provided_key):
-        """Verify if provided key matches this API key."""
+        """Verify if provided key matches this API key (using Argon2id)."""
         if not self.is_active or self.revoked_at:
             return False
         if self.expires_at and timezone.now() > self.expires_at:
             return False
-        provided_hash = hashlib.sha256(provided_key.encode()).hexdigest()
-        return hmac.compare_digest(self.key_hash, provided_hash)
+        try:
+            ph.verify(self.key_hash, provided_key)
+            return True
+        except Exception:
+            return False
 
 
 class WebhookEndpoint(models.Model):

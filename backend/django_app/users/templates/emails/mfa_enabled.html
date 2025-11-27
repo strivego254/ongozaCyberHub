@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFA Enabled - Ongoza CyberHub</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #0a0e27;
+        }
+        .container {
+            background-color: #1a1f3a;
+            border-radius: 8px;
+            padding: 40px;
+            border: 1px solid #2d3748;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        h1 {
+            color: #00d9ff;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            color: #cbd5e0;
+            margin-bottom: 30px;
+        }
+        .success {
+            background-color: #10b981;
+            color: #0a0e27;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        .method-badge {
+            display: inline-block;
+            background-color: #2d3748;
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: #00d9ff;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #2d3748;
+            text-align: center;
+            color: #718096;
+            font-size: 12px;
+        }
+        .warning {
+            background-color: #f59e0b;
+            color: #0a0e27;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🛡️</div>
+            <h1>Ongoza CyberHub</h1>
+        </div>
+        
+        <div class="content">
+            <p>Hello {{ user.first_name|default:user.email }},</p>
+            
+            <div class="success">
+                ✓ Multi-Factor Authentication (MFA) has been enabled on your account
+            </div>
+            
+            <p>Your account is now protected with an additional layer of security using:</p>
+            
+            <div class="method-badge">
+                {% if method == 'totp' %}TOTP (Authenticator App)
+                {% elif method == 'sms' %}SMS Verification
+                {% elif method == 'email' %}Email Verification
+                {% else %}{{ method|upper }}{% endif %}
+            </div>
+            
+            <p>You will now be required to provide a second authentication factor when signing in to your account.</p>
+            
+            <div class="warning">
+                ⚠️ If you didn't enable MFA on your account, please contact support immediately.
+            </div>
+            
+            <p>Thank you for helping keep your account secure!</p>
+        </div>
+        
+        <div class="footer">
+            <p>© {% now "Y" %} Ongoza CyberHub. All rights reserved.</p>
+            <p>This is an automated message, please do not reply.</p>
+        </div>
+    </div>
+</body>
+</html>
+

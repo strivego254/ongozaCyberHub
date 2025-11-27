@@ -17,7 +17,7 @@ async function getUserRole() {
     const user = await djangoClient.auth.getCurrentUser();
     const roles = user.roles || [];
     
-    // Determine primary role
+    // Determine primary role (mentee is default for new users)
     if (roles.some((r: any) => r.role === 'admin')) {
       return 'admin';
     } else if (roles.some((r: any) => r.role === 'program_director')) {
@@ -28,8 +28,11 @@ async function getUserRole() {
       return 'analyst';
     } else if (roles.some((r: any) => r.role === 'sponsor_admin' || r.role === 'sponsor')) {
       return 'sponsor';
+    } else if (roles.some((r: any) => r.role === 'mentee')) {
+      return 'mentee';
     } else {
-      return 'student';
+      // Default to mentee for new users
+      return 'mentee';
     }
   } catch (error) {
     redirect('/login');

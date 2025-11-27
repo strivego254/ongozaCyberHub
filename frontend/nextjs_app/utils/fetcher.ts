@@ -27,13 +27,25 @@ function getAuthToken(): string | null {
     // SSR: Token should be passed via headers from server
     return null;
   }
-  // CSR: Get from cookie (preferred) or localStorage (fallback)
+  // CSR: Try localStorage first (most reliable), then cookie
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    return token;
+  }
+  
+  // Fallback to cookie (if set by server)
   const cookies = document.cookie.split(';');
   const tokenCookie = cookies.find(c => c.trim().startsWith('access_token='));
   if (tokenCookie) {
-    return tokenCookie.split('=')[1];
+    const tokenValue = tokenCookie.split('=')[1];
+    // Also store in localStorage for consistency
+    if (tokenValue) {
+      localStorage.setItem('access_token', tokenValue);
+    }
+    return tokenValue;
   }
-  return localStorage.getItem('access_token');
+  
+  return null;
 }
 
 /**

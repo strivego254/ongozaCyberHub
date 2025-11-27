@@ -61,7 +61,12 @@ export function useAuth() {
         throw new Error(errorData.detail || errorData.error || 'Login failed');
       }
 
-      const { user } = await response.json();
+      const { user, access_token, refresh_token } = await response.json();
+      
+      // Store tokens in localStorage (access_token) and cookies (refresh_token)
+      if (access_token && refresh_token) {
+        setAuthTokens(access_token, refresh_token);
+      }
       
       setState({
         user,
@@ -91,9 +96,8 @@ export function useAuth() {
     } finally {
       clearAuthTokens();
       setState({ user: null, isLoading: false, isAuthenticated: false });
-      router.push('/login');
     }
-  }, [router]);
+  }, []);
 
   /**
    * Refresh access token

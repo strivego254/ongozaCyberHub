@@ -33,13 +33,17 @@ export async function POST(request: NextRequest) {
 
     const data: LoginResponse = await response.json();
 
-    // Set tokens in HttpOnly cookies (server-side)
+    // Set tokens in HttpOnly cookies (server-side) for refresh token
+    // Access token will be stored in localStorage by client (short-lived, 15 min)
     await setServerAuthTokens(data.access_token, data.refresh_token);
 
-    // Return response without tokens (security best practice)
+    // Return tokens so client can store access_token in localStorage
+    // Refresh token is in HttpOnly cookie, access_token goes to localStorage
     return NextResponse.json({
       user: data.user,
-      // Don't expose tokens in response body
+      access_token: data.access_token, // Client will store in localStorage
+      refresh_token: data.refresh_token, // Also return for client (backup, but cookie is primary)
+      consent_scopes: data.consent_scopes,
     });
   } catch (error: any) {
     return NextResponse.json(

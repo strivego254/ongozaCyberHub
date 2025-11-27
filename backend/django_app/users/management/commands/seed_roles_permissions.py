@@ -145,6 +145,21 @@ class Command(BaseCommand):
                 ],
             },
             {
+                'name': 'mentee',
+                'display_name': 'Mentee',
+                'description': 'Primary user role for mentees in the OCH ecosystem (Tier 0 and Tier 1)',
+                'permissions': [
+                    'read_user',  # Own profile
+                    'update_user',  # Own profile
+                    'read_portfolio',  # Own portfolio
+                    'create_portfolio', 'update_portfolio',
+                    'read_profiling',  # Own profiling
+                    'create_profiling', 'update_profiling',
+                    'read_mentorship',  # Own mentorship
+                    'read_analytics',  # Own analytics
+                ],
+            },
+            {
                 'name': 'student',
                 'display_name': 'Student',
                 'description': 'Access personal modules (profiling, learning, portfolio, mentorship)',

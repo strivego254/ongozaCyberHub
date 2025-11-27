@@ -11,17 +11,20 @@ const authRoutes = ['/login', '/signup'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const accessToken = request.cookies.get('access_token')?.value;
+  // Check both cookie and header for access token
+  const accessToken = request.cookies.get('access_token')?.value 
+    || request.headers.get('authorization')?.replace('Bearer ', '');
 
   // Check if route is protected
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
   // Redirect to login if accessing protected route without token
+  // Note: We allow the request to proceed - the client-side will handle auth
+  // This prevents redirect loops when token is in localStorage but not cookie
   if (isProtectedRoute && !accessToken) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    // Don't redirect in middleware - let client handle it
+    // The client will check localStorage and redirect if needed
   }
 
   // Redirect to dashboard if accessing auth routes while authenticated

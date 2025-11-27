@@ -55,6 +55,32 @@ def _get_client_ip(request):
     return ip
 
 
+def _assign_default_mentee_role(user):
+    """
+    Assign default 'Mentee' role to new user during onboarding.
+    """
+    from users.models import Role, UserRole
+    
+    try:
+        mentee_role = Role.objects.get(name='mentee')
+    except Role.DoesNotExist:
+        # Create mentee role if it doesn't exist
+        mentee_role = Role.objects.create(
+            name='mentee',
+            display_name='Mentee',
+            description='Primary user role for mentees in the OCH ecosystem',
+            is_system_role=True
+        )
+    
+    # Assign role with global scope
+    UserRole.objects.get_or_create(
+        user=user,
+        role=mentee_role,
+        scope='global',
+        defaults={'is_active': True}
+    )
+
+
 def _log_audit_event(user, action, resource_type, result='success', metadata=None):
     """Log audit event."""
     AuditLog.objects.create(
@@ -104,10 +130,17 @@ class SignupView(APIView):
                 cohort_id=data.get('cohort_id'),
                 track_key=data.get('track_key'),
                 password=None,  # No password for passwordless
+                # Mentee onboarding fields
+                preferred_learning_style=data.get('preferred_learning_style'),
+                career_goals=data.get('career_goals'),
+                cyber_exposure_level=data.get('cyber_exposure_level'),
             )
             user.set_unusable_password()
             user.account_status = 'pending_verification'
             user.save()
+            
+            # Assign default "Mentee" role
+            _assign_default_mentee_role(user)
             
             # Send magic link
             code, mfa_code = create_mfa_code(user, method='magic_link', expires_minutes=10)
@@ -138,13 +171,20 @@ class SignupView(APIView):
                 language=data.get('language', 'en'),
                 cohort_id=data.get('cohort_id'),
                 track_key=data.get('track_key'),
+                # Mentee onboarding fields
+                preferred_learning_style=data.get('preferred_learning_style'),
+                career_goals=data.get('career_goals'),
+                cyber_exposure_level=data.get('cyber_exposure_level'),
             )
+            
+            # Assign default "Mentee" role
+            _assign_default_mentee_role(user)
             
             # If invited (has cohort_id/track_key), activate immediately
             if data.get('cohort_id') or data.get('track_key'):
                 user.activate()
             else:
-                # Send verification email
+                # Send verification email with OTP
                 code, mfa_code = create_mfa_code(user, method='email', expires_minutes=60)
                 from users.utils.email_utils import send_verification_email
                 from django.conf import settings
@@ -495,6 +535,40 @@ class MFAVerifyView(APIView):
             )
 
 
+class MFADisableView(APIView):
+    """
+    POST /api/v1/auth/mfa/disable
+    Disable MFA for user.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        user = request.user
+        
+        if not user.mfa_enabled:
+            return Response(
+                {'detail': 'MFA is not enabled for this account'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Disable all MFA methods
+        from users.auth_models import MFAMethod
+        MFAMethod.objects.filter(user=user, enabled=True).update(
+            enabled=False,
+            is_primary=False
+        )
+        
+        user.mfa_enabled = False
+        user.mfa_method = None
+        user.save()
+        
+        _log_audit_event(user, 'mfa_disable', 'mfa', 'success')
+        
+        return Response({
+            'detail': 'MFA disabled successfully'
+        }, status=status.HTTP_200_OK)
+
+
 class RefreshTokenView(APIView):
     """
     POST /api/v1/auth/token/refresh
@@ -604,10 +678,24 @@ class MeView(APIView):
             .values_list('feature', flat=True)
         )
         
+        # Format response to match spec
+        # Example: { "user": {"id":"UUID","email":"martin@och.africa","name":"Martin"}, ... }
+        user_data = serializer.data
+        user_response = {
+            'id': str(user_data.get('id', '')),
+            'email': user_data.get('email', ''),
+            'name': f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip(),
+        }
+        
+        # Format consent scopes as list of strings (e.g., ["share_with_mentor","public_portfolio:false"])
+        formatted_consents = []
+        for scope in consent_scopes:
+            formatted_consents.append(scope)
+        
         return Response({
-            'user': serializer.data,
+            'user': user_response,
             'roles': roles,
-            'consent_scopes': consent_scopes,
+            'consent_scopes': formatted_consents,
             'entitlements': entitlements,
         }, status=status.HTTP_200_OK)
 

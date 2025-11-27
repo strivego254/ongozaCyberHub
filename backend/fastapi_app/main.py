@@ -43,6 +43,15 @@ async def health_check():
     })
 
 
+@app.get("/metrics")
+async def metrics():
+    """
+    Prometheus metrics endpoint.
+    """
+    from utils.metrics import metrics_endpoint
+    return await metrics_endpoint()
+
+
 @app.get("/")
 async def root():
     """
