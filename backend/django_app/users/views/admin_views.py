@@ -6,7 +6,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from organizations.models import Organization, OrganizationMember
-from organizations.serializers import OrganizationSerializer
 from users.models import Role, UserRole
 from users.api_models import APIKey
 from django.utils import timezone
@@ -114,7 +113,6 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     Organization management.
     """
     queryset = Organization.objects.all()
-    serializer_class = OrganizationSerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'slug'
     

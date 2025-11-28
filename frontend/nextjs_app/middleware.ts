@@ -11,26 +11,22 @@ const authRoutes = ['/login', '/signup'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  // Check both cookie and header for access token
-  const accessToken = request.cookies.get('access_token')?.value 
-    || request.headers.get('authorization')?.replace('Bearer ', '');
+  const accessToken = request.cookies.get('access_token')?.value;
+  const hasToken = !!accessToken;
 
   // Check if route is protected
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
   // Redirect to login if accessing protected route without token
-  // Note: We allow the request to proceed - the client-side will handle auth
-  // This prevents redirect loops when token is in localStorage but not cookie
-  if (isProtectedRoute && !accessToken) {
-    // Don't redirect in middleware - let client handle it
-    // The client will check localStorage and redirect if needed
+  if (isProtectedRoute && !hasToken) {
+    const loginUrl = new URL('/login/student', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect to dashboard if accessing auth routes while authenticated
-  if (isAuthRoute && accessToken) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
+  // Allow auth routes to be accessed even with token (client handles redirect)
+  // This prevents middleware from interfering with post-login redirects
 
   return NextResponse.next();
 }

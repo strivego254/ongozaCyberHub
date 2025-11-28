@@ -60,44 +60,18 @@ export default function SSOButtons({ mode = 'login', onSuccess, onError }: SSOBu
     setLoading(provider);
     
     try {
-      // Generate device fingerprint
-      const deviceFingerprint = `web-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      const deviceName = navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Browser';
-
-      // For production, you would:
-      // 1. Redirect to provider's OAuth authorization endpoint
-      // 2. Handle callback with authorization code
-      // 3. Exchange code for tokens
-      // 4. Call SSO endpoint with id_token
-      
-      // For now, this is a placeholder that shows the flow
-      // In production, implement OAuth2 flow with PKCE
-      const response = await djangoClient.auth.ssoLogin(provider, {
-        id_token: 'PLACEHOLDER_ID_TOKEN', // In production, get from OAuth flow
-        device_fingerprint: deviceFingerprint,
-        device_name: deviceName,
-      });
-
-      if (response.access_token) {
-        // Store tokens
-        localStorage.setItem('access_token', response.access_token);
-        localStorage.setItem('refresh_token', response.refresh_token);
-        
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          window.location.href = '/dashboard';
-        }
-      }
+      // SSO redirects to external provider
+      // The backend will handle the OAuth flow and redirect back
+      await djangoClient.auth.ssoLogin(provider as 'google' | 'microsoft' | 'apple' | 'okta');
+      // Note: ssoLogin redirects the page, so code below won't execute
     } catch (error: any) {
+      setLoading(null);
       const errorMessage = error.message || error.detail || `Failed to sign in with ${provider}`;
       if (onError) {
         onError(errorMessage);
       } else {
         alert(errorMessage);
       }
-    } finally {
-      setLoading(null);
     }
   };
 
@@ -155,6 +129,9 @@ export default function SSOButtons({ mode = 'login', onSuccess, onError }: SSOBu
     </div>
   );
 }
+
+
+
 
 
 

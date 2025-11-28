@@ -1,61 +1,150 @@
 /**
- * Organizations Client Component - CSR Example
+ * Organizations Client Component
  * Handles client-side mutations and real-time updates
  */
 
 'use client';
 
 import { useState } from 'react';
-import { djangoClient } from '@/services/djangoClient';
-import type { Organization, CreateOrganizationRequest } from '@/services/types';
+import { useOrganizations } from '@/hooks/useOrganizations';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import type { CreateOrganizationRequest } from '@/services/types';
 
-interface OrganizationsClientProps {
-  initialOrganizations: Organization[];
-}
+export default function OrganizationsClient() {
+  const { organizations, isLoading, error, createOrganization } = useOrganizations();
+  const [isCreating, setIsCreating] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState<CreateOrganizationRequest>({
+    name: '',
+    slug: '',
+    org_type: 'sponsor',
+    description: '',
+  });
 
-export default function OrganizationsClient({ initialOrganizations }: OrganizationsClientProps) {
-  const [organizations, setOrganizations] = useState(initialOrganizations);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleCreateOrganization = async (data: CreateOrganizationRequest) => {
-    setIsLoading(true);
-    setError(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
 
     try {
-      const newOrg = await djangoClient.organizations.createOrganization(data);
-      setOrganizations([...organizations, newOrg]);
-    } catch (err: any) {
-      setError(err.message || 'Failed to create organization');
+      await createOrganization(formData);
+      setShowForm(false);
+      setFormData({ name: '', slug: '', org_type: 'sponsor', description: '' });
+    } catch (err) {
+      // Error handled by hook
     } finally {
-      setIsLoading(false);
+      setIsCreating(false);
     }
   };
 
-  return (
-    <div>
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {organizations.map((org) => (
-          <div
-            key={org.id}
-            className="border rounded-lg p-4 hover:shadow-lg transition-shadow"
-          >
-            <h3 className="text-xl font-semibold">{org.name}</h3>
-            <p className="text-gray-600 text-sm">{org.description}</p>
-            <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-              {org.org_type}
-            </span>
-          </div>
-        ))}
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-och-midnight p-6">
+        <div className="text-och-steel">Loading organizations...</div>
       </div>
+    );
+  }
 
-      {/* Create organization form would go here */}
+  return (
+    <div className="min-h-screen bg-och-midnight p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold mb-2 text-och-mint">Organizations</h1>
+            <p className="text-och-steel">Manage organizations and members</p>
+          </div>
+          <Button onClick={() => setShowForm(!showForm)} variant="mint">
+            {showForm ? 'Cancel' : 'Create Organization'}
+          </Button>
+        </div>
+
+        {error && (
+          <Card className="mb-6 border-och-orange">
+            <div className="text-och-orange">{error}</div>
+          </Card>
+        )}
+
+        {showForm && (
+          <Card className="mb-6">
+            <h2 className="text-2xl font-bold mb-4 text-white">Create Organization</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-och-steel mb-2">Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-4 py-2 bg-och-midnight border border-och-steel rounded text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-och-steel mb-2">Slug</label>
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  className="w-full px-4 py-2 bg-och-midnight border border-och-steel rounded text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-och-steel mb-2">Type</label>
+                <select
+                  value={formData.org_type}
+                  onChange={(e) => setFormData({ ...formData, org_type: e.target.value as any })}
+                  className="w-full px-4 py-2 bg-och-midnight border border-och-steel rounded text-white"
+                >
+                  <option value="sponsor">Sponsor</option>
+                  <option value="employer">Employer</option>
+                  <option value="partner">Partner</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-och-steel mb-2">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-4 py-2 bg-och-midnight border border-och-steel rounded text-white"
+                  rows={3}
+                />
+              </div>
+              <Button type="submit" variant="mint" disabled={isCreating}>
+                {isCreating ? 'Creating...' : 'Create'}
+              </Button>
+            </form>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {organizations.map((org) => (
+            <Card key={org.id} gradient="defender">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-xl font-bold text-white">{org.name}</h3>
+                <Badge variant={org.org_type === 'sponsor' ? 'mint' : org.org_type === 'employer' ? 'defender' : 'gold'}>
+                  {org.org_type}
+                </Badge>
+              </div>
+              {org.description && (
+                <p className="text-och-steel text-sm mb-3">{org.description}</p>
+              )}
+              <div className="flex justify-between text-sm text-och-steel">
+                <span>Members: {org.member_count || 0}</span>
+                <span className={org.status === 'active' ? 'text-och-mint' : 'text-och-orange'}>
+                  {org.status}
+                </span>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {organizations.length === 0 && !isLoading && (
+          <Card className="text-center py-12">
+            <p className="text-och-steel">No organizations found. Create one to get started.</p>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

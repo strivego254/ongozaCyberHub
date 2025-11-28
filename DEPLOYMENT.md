@@ -356,3 +356,6 @@ docker-compose exec -T postgres-relational psql -U postgres ongozacyberhub < bac
 
 
 
+
+
+

@@ -91,11 +91,11 @@ class RoleSerializer(serializers.ModelSerializer):
             'name',
             'display_name',
             'description',
-            'is_system_role',
+            'role_type',
+            'is_system',
             'created_at',
-            'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at']
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

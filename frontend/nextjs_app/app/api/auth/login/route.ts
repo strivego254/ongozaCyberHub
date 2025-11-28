@@ -4,7 +4,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { apiGateway } from '@/services/apiGateway';
 import { setServerAuthTokens } from '@/utils/auth-server';
 import type { LoginRequest, LoginResponse } from '@/services/types';
 
@@ -33,18 +32,32 @@ export async function POST(request: NextRequest) {
 
     const data: LoginResponse = await response.json();
 
-    // Set tokens in HttpOnly cookies (server-side) for refresh token
-    // Access token will be stored in localStorage by client (short-lived, 15 min)
-    await setServerAuthTokens(data.access_token, data.refresh_token);
-
-    // Return tokens so client can store access_token in localStorage
-    // Refresh token is in HttpOnly cookie, access_token goes to localStorage
-    return NextResponse.json({
+    // Create response first
+    const nextResponse = NextResponse.json({
       user: data.user,
-      access_token: data.access_token, // Client will store in localStorage
-      refresh_token: data.refresh_token, // Also return for client (backup, but cookie is primary)
-      consent_scopes: data.consent_scopes,
+      access_token: data.access_token, // Return access token for localStorage
+      // Don't return refresh_token - it's HttpOnly only
     });
+
+    // Set cookies directly on the response object
+    // This ensures cookies are available on the next request
+    nextResponse.cookies.set('access_token', data.access_token, {
+      httpOnly: false, // Allow client-side access for Authorization header
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 15, // 15 minutes
+      path: '/',
+    });
+
+    nextResponse.cookies.set('refresh_token', data.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: '/',
+    });
+
+    return nextResponse;
   } catch (error: any) {
     return NextResponse.json(
       {

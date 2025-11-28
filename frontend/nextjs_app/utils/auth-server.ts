@@ -4,7 +4,6 @@
  */
 
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
@@ -35,17 +34,14 @@ export async function setServerAuthTokens(
 ): Promise<void> {
   const cookieStore = await cookies();
   
-  // Access token: Not HttpOnly so client can read it for API calls
-  // It's short-lived (15 min) so security risk is minimal
   cookieStore.set(ACCESS_TOKEN_COOKIE, accessToken, {
-    httpOnly: false, // Client needs to read this for Authorization header
+    httpOnly: false, // Allow client-side access for Authorization header
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 60 * 15, // 15 minutes (access token lifetime)
     path: '/',
   });
 
-  // Refresh token: HttpOnly for security (long-lived, 30 days)
   cookieStore.set(REFRESH_TOKEN_COOKIE, refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -62,14 +58,6 @@ export async function clearServerAuthTokens(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(ACCESS_TOKEN_COOKIE);
   cookieStore.delete(REFRESH_TOKEN_COOKIE);
-}
-
-/**
- * Clear auth tokens from NextResponse (for API routes)
- */
-export function clearServerAuthTokensResponse(response: NextResponse): void {
-  response.cookies.delete(ACCESS_TOKEN_COOKIE);
-  response.cookies.delete(REFRESH_TOKEN_COOKIE);
 }
 
 /**

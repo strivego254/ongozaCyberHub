@@ -1,47 +1,53 @@
-/**
- * Main Dashboard Page - Role-Based Redirect
- * Redirects to role-specific dashboard based on user roles
- */
+'use client'
 
-import { redirect } from 'next/navigation';
-import { djangoClient } from '@/services/djangoClient';
-import { getServerAuthHeaders } from '@/utils/auth-server';
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
 
-async function getUserRole() {
-  try {
-    const headers = await getServerAuthHeaders();
-    if (!headers.Authorization) {
-      redirect('/login');
+export default function DashboardPage() {
+  const router = useRouter()
+  const { user, isLoading, isAuthenticated } = useAuth()
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push('/login/student')
+        return
+      }
+
+      // Redirect based on user's primary role
+      if (user?.roles && user.roles.length > 0) {
+        const primaryRole = user.roles[0].role
+        
+        // Map backend role names to frontend routes
+        const roleRouteMap: Record<string, string> = {
+          'mentee': '/dashboard/student',
+          'student': '/dashboard/student',
+          'mentor': '/dashboard/mentor',
+          'admin': '/dashboard/admin',
+          'program_director': '/dashboard/director',
+          'sponsor_admin': '/dashboard/sponsor',
+          'analyst': '/dashboard/analyst',
+        }
+
+        const route = roleRouteMap[primaryRole] || '/dashboard/student'
+        router.push(route)
+      } else {
+        // Default to student dashboard if no roles assigned
+        router.push('/dashboard/student')
+      }
     }
+  }, [user, isLoading, isAuthenticated, router])
 
-    const user = await djangoClient.auth.getCurrentUser();
-    const roles = user.roles || [];
-    
-    // Determine primary role (mentee is default for new users)
-    if (roles.some((r: any) => r.role === 'admin')) {
-      return 'admin';
-    } else if (roles.some((r: any) => r.role === 'program_director')) {
-      return 'director';
-    } else if (roles.some((r: any) => r.role === 'mentor')) {
-      return 'mentor';
-    } else if (roles.some((r: any) => r.role === 'analyst')) {
-      return 'analyst';
-    } else if (roles.some((r: any) => r.role === 'sponsor_admin' || r.role === 'sponsor')) {
-      return 'sponsor';
-    } else if (roles.some((r: any) => r.role === 'mentee')) {
-      return 'mentee';
-    } else {
-      // Default to mentee for new users
-      return 'mentee';
-    }
-  } catch (error) {
-    redirect('/login');
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-och-midnight flex items-center justify-center">
+        <div className="text-och-steel">Loading...</div>
+      </div>
+    )
   }
+
+  return null
 }
 
-export default async function DashboardPage() {
-  const role = await getUserRole();
-  
-  // Redirect to role-specific dashboard
-  redirect(`/dashboard/${role}`);
-}

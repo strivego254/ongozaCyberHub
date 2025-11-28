@@ -1,141 +1,182 @@
-/**
- * Student Dashboard Client Component
- * Displays student analytics, progress, and recommendations
- */
+'use client'
 
-'use client';
+import Link from 'next/link'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { ProgressBar } from '@/components/ui/ProgressBar'
+import { useProgress } from '@/hooks/useProgress'
+import { useAuth } from '@/hooks/useAuth'
 
-import { useState } from 'react';
-import type { User, Progress, RecommendationItem } from '@/services/types';
+export default function StudentClient() {
+  const { user, isLoading: authLoading } = useAuth()
+  // Only fetch progress if user is loaded and has an ID
+  const { progress, isLoading: progressLoading, error: progressError } = useProgress(
+    user && !authLoading ? user.id : undefined
+  )
 
-interface StudentDashboardClientProps {
-  initialData: {
-    user: User;
-    progress: Progress[];
-    progressCount: number;
-    recommendations: RecommendationItem[];
-  };
-}
+  // Calculate KPIs from progress data
+  const completedCourses = progress.filter(p => p.status === 'completed').length
+  const inProgressCourses = progress.filter(p => p.status === 'in_progress').length
+  const totalProgress = progress.reduce((sum, p) => sum + p.completion_percentage, 0)
+  const avgProgress = progress.length > 0 ? Math.round(totalProgress / progress.length) : 0
+  const learningHours = Math.round(progress.reduce((sum, p) => {
+    if (p.metadata?.hours) return sum + p.metadata.hours
+    return sum
+  }, 0))
 
-export default function StudentDashboardClient({ initialData }: StudentDashboardClientProps) {
-  const { user, progress, progressCount, recommendations } = initialData;
+  const kpis = [
+    { label: 'Active Courses', value: inProgressCourses.toString(), change: `+${inProgressCourses}` },
+    { label: 'Completed Courses', value: completedCourses.toString(), change: `+${completedCourses}` },
+    { label: 'Learning Hours', value: learningHours.toString(), change: `+${learningHours}` },
+    { label: 'Avg Progress', value: `${avgProgress}%`, change: `${avgProgress}%` },
+  ]
 
-  // Calculate progress stats
-  const completedCount = progress.filter((p: Progress) => p.status === 'completed').length;
-  const inProgressCount = progress.filter((p: Progress) => p.status === 'in_progress').length;
-  const completionRate = progressCount > 0 ? (completedCount / progressCount) * 100 : 0;
+  const actions = [
+    { label: 'Find Mentor', href: '/dashboard/mentor', icon: '👥' },
+    { label: 'View Courses', href: '#', icon: '📚' },
+    { label: 'Track Progress', href: '/dashboard/analytics', icon: '📊' },
+    { label: 'Join Community', href: '#', icon: '💬' },
+  ]
+
+  // Transform progress data for display
+  const displayProgress = progress.slice(0, 3).map(p => ({
+    title: p.content_type || p.content_id || 'Course',
+    progress: p.completion_percentage,
+    color: p.status === 'completed' ? 'mint' : p.status === 'in_progress' ? 'defender' : 'steel',
+  }))
+
+  // Show loading state
+  if (authLoading || progressLoading) {
+    return (
+      <div className="min-h-screen bg-och-midnight p-6 flex items-center justify-center">
+        <div className="text-och-steel">Loading dashboard...</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Hero Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card border-defender-blue">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-h3 text-white">Total Missions</h3>
-            <span className="text-3xl">🎯</span>
-          </div>
-          <p className="text-4xl font-bold text-cyber-mint">{progressCount}</p>
-          <p className="text-body-s text-steel-grey mt-2">Active learning paths</p>
+    <div className="min-h-screen bg-och-midnight p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2 text-och-mint">Student Dashboard</h1>
+          <p className="text-och-steel">
+            Welcome back{user?.first_name ? `, ${user.first_name}` : ''}! Here's your learning overview.
+          </p>
         </div>
 
-        <div className="card border-cyber-mint">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-h3 text-white">Completed</h3>
-            <span className="text-3xl">✅</span>
+        {progressError && (
+          <div className="mb-6 p-4 bg-och-orange/20 border border-och-orange rounded-lg text-och-orange">
+            {progressError}
           </div>
-          <p className="text-4xl font-bold text-cyber-mint">{completedCount}</p>
-          <p className="text-body-s text-steel-grey mt-2">Missions completed</p>
-        </div>
+        )}
 
-        <div className="card border-sahara-gold">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-h3 text-white">Progress Rate</h3>
-            <span className="text-3xl">📈</span>
-          </div>
-          <p className="text-4xl font-bold text-sahara-gold">{completionRate.toFixed(0)}%</p>
-          <p className="text-body-s text-steel-grey mt-2">Overall completion</p>
-        </div>
-      </div>
-
-      {/* Progress Overview */}
-      <div className="card">
-        <h2 className="text-h2 text-white mb-6">Mission Progress</h2>
-        <div className="space-y-4">
-          {progress.length > 0 ? (
-            progress.slice(0, 5).map((item: Progress) => (
-              <div key={item.id} className="border border-steel-grey rounded-card p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h4 className="text-body-m font-semibold text-white">{item.content_type}</h4>
-                    <p className="text-body-s text-steel-grey">{item.content_id}</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-body-s font-semibold ${
-                    item.status === 'completed' ? 'badge-mastery' :
-                    item.status === 'in_progress' ? 'badge-intermediate' :
-                    'badge-beginner'
-                  }`}>
-                    {item.status}
-                  </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {kpis.map((kpi) => (
+            <Card key={kpi.label} gradient="defender">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-och-steel text-sm mb-1">{kpi.label}</p>
+                  <p className="text-3xl font-bold text-white">{kpi.value}</p>
                 </div>
-                {item.completion_percentage && (
-                  <div className="progress-bar mt-3">
-                    <div
-                      className="progress-fill-mint"
-                      style={{ width: `${item.completion_percentage}%` }}
-                    />
-                  </div>
-                )}
+                <Badge variant="mint">{kpi.change}</Badge>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-12 text-steel-grey">
-              <p className="text-body-m">No missions started yet</p>
-              <p className="text-body-s mt-2">Begin your first mission to see progress here</p>
+            </Card>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <Card className="lg:col-span-2">
+            <h2 className="text-2xl font-bold mb-4 text-white">Quick Actions</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {actions.map((action) => (
+                <Button
+                  key={action.label}
+                  variant="outline"
+                  className="flex items-center justify-center gap-2 h-20"
+                >
+                  <span className="text-2xl">{action.icon}</span>
+                  <span>{action.label}</span>
+                </Button>
+              ))}
             </div>
-          )}
-        </div>
-      </div>
+          </Card>
 
-      {/* Recommendations */}
-      {recommendations.length > 0 && (
-        <div className="card border-cyber-mint">
-          <h2 className="text-h2 text-white mb-6">AI Recommendations</h2>
-          <div className="space-y-4">
-            {recommendations.map((rec, index) => (
-              <div key={index} className="border border-cyber-mint border-opacity-30 rounded-card p-4 bg-cyber-mint bg-opacity-5">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h4 className="text-body-m font-semibold text-white">{rec.title}</h4>
-                    {rec.description && (
-                      <p className="text-body-s text-steel-grey mt-1">{rec.description}</p>
-                    )}
+          <Card>
+            <h2 className="text-2xl font-bold mb-4 text-white">Learning Progress</h2>
+            {progressLoading ? (
+              <div className="text-och-steel text-sm">Loading progress...</div>
+            ) : progress.length === 0 ? (
+              <div className="text-och-steel text-sm">
+                <p className="mb-2">No progress data available yet.</p>
+                <p className="text-xs">Start a course to track your progress here.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {displayProgress.map((item, idx) => (
+                  <div key={`${item.title}-${idx}`}>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-och-steel">{item.title}</span>
+                      <span className="text-sm text-och-steel">{item.progress}%</span>
+                    </div>
+                    <ProgressBar value={item.progress} variant={item.color as any} showLabel={false} />
                   </div>
-                  <span className="text-body-s text-cyber-mint font-semibold">
-                    {(rec.score * 100).toFixed(0)}% match
-                  </span>
-                </div>
-                {rec.reason && (
-                  <p className="text-body-s text-cyber-mint mt-2">💡 {rec.reason}</p>
+                ))}
+                {progress.length > 3 && (
+                  <Link href="/dashboard/analytics" className="text-sm text-och-mint hover:underline">
+                    View all progress →
+                  </Link>
                 )}
               </div>
-            ))}
-          </div>
+            )}
+          </Card>
         </div>
-      )}
 
-      {/* Quick Actions */}
-      <div className="card">
-        <h2 className="text-h2 text-white mb-6">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <a href="/dashboard/student/missions" className="btn-primary text-center block">
-            View All Missions
-          </a>
-          <a href="/dashboard/student/portfolio" className="btn-secondary text-center block">
-            My Portfolio
-          </a>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <h2 className="text-2xl font-bold mb-4 text-white">Recent Activity</h2>
+            {progress.length > 0 ? (
+              <div className="space-y-3">
+                {progress
+                  .filter(p => p.status === 'completed' || p.status === 'in_progress')
+                  .slice(0, 5)
+                  .map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 p-3 bg-och-midnight/50 rounded-lg">
+                      <div className={`w-2 h-2 rounded-full ${
+                        p.status === 'completed' ? 'bg-och-mint' : 'bg-och-defender'
+                      }`}></div>
+                      <span className="text-och-steel">
+                        {p.status === 'completed' ? 'Completed' : 'In Progress'}: {p.content_type || p.content_id}
+                        {p.completion_percentage > 0 && ` (${p.completion_percentage}%)`}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="text-och-steel text-sm">No recent activity</div>
+            )}
+          </Card>
+
+          <Card>
+            <h2 className="text-2xl font-bold mb-4 text-white">Upcoming Events</h2>
+            <div className="space-y-3">
+              {['Mentor Session - Tomorrow', 'Course Deadline - 3 days', 'Workshop - Next week'].map((event) => (
+                <div key={event} className="flex items-center gap-3 p-3 bg-och-midnight/50 rounded-lg">
+                  <div className="w-2 h-2 bg-och-gold rounded-full"></div>
+                  <span className="text-och-steel">{event}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        <div className="mt-8 flex justify-end">
+          <Link href="/dashboard/analytics">
+            <Button variant="mint">View Analytics</Button>
+          </Link>
         </div>
       </div>
     </div>
-  );
+  )
 }
 

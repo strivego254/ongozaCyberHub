@@ -1,83 +1,32 @@
-/**
- * Student Dashboard - OCH Brand Styled
- * Shows student-specific analytics and progress
- */
+'use client'
 
-import { djangoClient } from '@/services/djangoClient';
-import { fastapiClient } from '@/services/fastapiClient';
-import { getServerAuthHeaders } from '@/utils/auth-server';
-import { redirect } from 'next/navigation';
-import StudentDashboardClient from './student-client';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import {
-  getPlaceholderUser,
-  getPlaceholderProgress,
-  getPlaceholderRecommendations,
-} from '@/services/placeholderData';
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
+import StudentClient from './student-client'
 
-async function getStudentData() {
-  const usePlaceholder = process.env.NEXT_PUBLIC_USE_PLACEHOLDER_DATA === 'true';
-  
-  if (usePlaceholder) {
-    return {
-      user: getPlaceholderUser('student'),
-      progress: getPlaceholderProgress(),
-      progressCount: getPlaceholderProgress().length,
-      recommendations: getPlaceholderRecommendations(),
-    };
-  }
+export default function StudentDashboard() {
+  const router = useRouter()
+  const { user, isLoading, isAuthenticated } = useAuth()
 
-  try {
-    const headers = await getServerAuthHeaders();
-    if (!headers.Authorization) {
-      redirect('/login');
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login/student')
     }
+  }, [isLoading, isAuthenticated, router])
 
-    const [user, progress, recommendations] = await Promise.all([
-      djangoClient.auth.getCurrentUser().catch(() => getPlaceholderUser('student')),
-      djangoClient.progress.listProgress().catch(() => ({ results: getPlaceholderProgress(), count: getPlaceholderProgress().length })),
-      (async () => {
-        try {
-          const user = await djangoClient.auth.getCurrentUser();
-          return await fastapiClient.recommendations.getRecommendations({
-            user_id: user.id,
-            limit: 5,
-          });
-        } catch {
-          return { recommendations: getPlaceholderRecommendations() };
-        }
-      })(),
-    ]);
-
-    return {
-      user,
-      progress: progress.results || getPlaceholderProgress(),
-      progressCount: progress.count || getPlaceholderProgress().length,
-      recommendations: recommendations?.recommendations || getPlaceholderRecommendations(),
-    };
-  } catch (error) {
-    // Fallback to placeholder data
-    return {
-      user: getPlaceholderUser('student'),
-      progress: getPlaceholderProgress(),
-      progressCount: getPlaceholderProgress().length,
-      recommendations: getPlaceholderRecommendations(),
-    };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-och-midnight flex items-center justify-center">
+        <div className="text-och-steel">Loading...</div>
+      </div>
+    )
   }
-}
 
-export default async function StudentDashboardPage() {
-  const data = await getStudentData();
+  if (!isAuthenticated) {
+    return null
+  }
 
-  return (
-    <DashboardLayout
-      user={data.user}
-      role="student"
-      roleLabel="Student"
-      roleIcon="🎓"
-    >
-      <StudentDashboardClient initialData={data} />
-    </DashboardLayout>
-  );
+  return <StudentClient />
 }
 

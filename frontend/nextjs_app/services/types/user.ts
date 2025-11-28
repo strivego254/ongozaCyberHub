@@ -28,10 +28,9 @@ export interface User {
   roles?: UserRole[];
   consent_scopes?: string[];
   entitlements?: string[];
-  // Mentee onboarding fields (for TalentScope baseline)
-  preferred_learning_style?: 'visual' | 'auditory' | 'kinesthetic' | 'reading' | 'mixed';
+  preferred_learning_style?: string;
   career_goals?: string;
-  cyber_exposure_level?: 'none' | 'beginner' | 'intermediate' | 'advanced';
+  cyber_exposure_level?: string;
 }
 
 export interface UserRole {

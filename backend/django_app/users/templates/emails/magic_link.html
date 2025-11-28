@@ -8,70 +8,73 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #0a0e27;
+            color: #A8B0B8;
+            background-color: #0A0A0C;
+            margin: 0;
+            padding: 0;
         }
         .container {
-            background-color: #1a1f3a;
-            border-radius: 8px;
-            padding: 40px;
-            border: 1px solid #2d3748;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #0A0A0C;
         }
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
         .logo {
             font-size: 48px;
-            margin-bottom: 10px;
+            margin-bottom: 16px;
         }
-        h1 {
-            color: #00d9ff;
-            margin: 0;
+        .title {
+            color: #FFFFFF;
             font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
         }
         .content {
-            color: #cbd5e0;
-            margin-bottom: 30px;
+            background-color: #1A1A1C;
+            border: 1px solid #0648A8;
+            border-radius: 8px;
+            padding: 32px;
+            margin-bottom: 24px;
         }
         .button {
             display: inline-block;
-            padding: 12px 30px;
-            background-color: #00d9ff;
-            color: #0a0e27;
+            background: linear-gradient(135deg, #0648A8, #0A0A0C);
+            color: #FFFFFF;
             text-decoration: none;
+            padding: 14px 32px;
             border-radius: 6px;
             font-weight: 600;
-            margin: 20px 0;
+            margin: 24px 0;
+            border: 1px solid #33FFC1;
             text-align: center;
         }
         .button:hover {
-            background-color: #00b8d4;
+            background: linear-gradient(135deg, #0648A8, #33FFC1);
         }
         .code {
-            background-color: #2d3748;
-            padding: 15px;
+            background-color: #0A0A0C;
+            border: 1px solid #33FFC1;
             border-radius: 6px;
+            padding: 16px;
             text-align: center;
             font-size: 24px;
             font-weight: bold;
-            color: #00d9ff;
+            color: #33FFC1;
             letter-spacing: 4px;
-            margin: 20px 0;
+            margin: 24px 0;
         }
         .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #2d3748;
             text-align: center;
-            color: #718096;
+            color: #A8B0B8;
             font-size: 12px;
+            margin-top: 32px;
         }
         .link {
-            color: #00d9ff;
+            color: #33FFC1;
             word-break: break-all;
         }
     </style>
@@ -80,34 +83,34 @@
     <div class="container">
         <div class="header">
             <div class="logo">🛡️</div>
-            <h1>Ongoza CyberHub</h1>
+            <div class="title">Ongoza CyberHub</div>
         </div>
         
         <div class="content">
+            <h2 style="color: #FFFFFF; margin-top: 0;">Sign In to Your Account</h2>
+            
             <p>Hello {{ user.first_name|default:user.email }},</p>
             
-            <p>You requested a magic link to sign in to your Ongoza CyberHub account.</p>
-            
-            <p>Click the button below to sign in:</p>
+            <p>Click the button below to sign in to your Ongoza CyberHub account:</p>
             
             <div style="text-align: center;">
-                <a href="{{ magic_link_url }}" class="button">Sign In to Ongoza CyberHub</a>
+                <a href="{{ magic_link_url }}" class="button">Sign In</a>
             </div>
             
-            <p>Or use this verification code:</p>
+            <p style="font-size: 14px; color: #A8B0B8; margin-top: 24px;">Or use this verification code:</p>
             <div class="code">{{ code }}</div>
             
-            <p>Or copy and paste this link into your browser:</p>
-            <p><a href="{{ magic_link_url }}" class="link">{{ magic_link_url }}</a></p>
+            <p style="font-size: 14px; color: #A8B0B8;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="font-size: 12px;"><a href="{{ magic_link_url }}" class="link">{{ magic_link_url }}</a></p>
             
-            <p>This link will expire in 10 minutes.</p>
-            
-            <p>If you didn't request this sign-in link, you can safely ignore this email.</p>
+            <p style="margin-top: 24px; font-size: 14px; color: #A8B0B8;">
+                This magic link will expire in 10 minutes. If you didn't request this sign-in link, please ignore this email.
+            </p>
         </div>
         
         <div class="footer">
-            <p>© {% now "Y" %} Ongoza CyberHub. All rights reserved.</p>
-            <p>This is an automated message, please do not reply.</p>
+            <p>© 2024 Ongoza CyberHub. All rights reserved.</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
         </div>
     </div>
 </body>

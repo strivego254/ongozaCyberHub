@@ -6,6 +6,7 @@
 import { apiGateway } from './apiGateway';
 import type {
   User,
+  UserRole,
   SignupRequest,
   LoginRequest,
   LoginResponse,
@@ -53,9 +54,25 @@ export const djangoClient = {
 
     /**
      * Get current user profile
+     * Returns user with roles, consents, and entitlements
+     * Backend returns: { user: {...}, roles: [...], consent_scopes: [...], entitlements: [...] }
      */
-    async getCurrentUser(): Promise<User> {
-      return apiGateway.get('/auth/me');
+    async getCurrentUser(): Promise<User & { roles?: UserRole[]; consent_scopes?: string[]; entitlements?: string[] }> {
+      const response = await apiGateway.get<{ user: any; roles?: UserRole[]; consent_scopes?: string[]; entitlements?: string[] }>('/auth/me');
+      console.log('getCurrentUser response:', response);
+      
+      // Backend returns: { user: {...}, roles: [...], consent_scopes: [...], entitlements: [...] }
+      // We need to merge roles into the user object
+      const userData = response.user || response;
+      const mergedUser = {
+        ...userData,
+        roles: response.roles || userData.roles || [],
+        consent_scopes: response.consent_scopes || userData.consent_scopes || [],
+        entitlements: response.entitlements || userData.entitlements || [],
+      };
+      
+      console.log('Merged user with roles:', mergedUser);
+      return mergedUser as User & { roles?: UserRole[]; consent_scopes?: string[]; entitlements?: string[] };
     },
 
     /**
@@ -94,19 +111,39 @@ export const djangoClient = {
     },
 
     /**
-     * SSO login (Google, Microsoft, Apple, Okta)
+     * Enroll in MFA
      */
-    async ssoLogin(
-      provider: 'google' | 'microsoft' | 'apple' | 'okta',
-      data: {
-        id_token?: string;
-        access_token?: string;
-        code?: string;
-        device_fingerprint: string;
-        device_name: string;
-      }
-    ): Promise<LoginResponse> {
-      return apiGateway.post(`/auth/sso/${provider}`, data, { skipAuth: true });
+    async enrollMFA(data: { method: 'totp' | 'sms'; phone_number?: string }): Promise<{
+      mfa_method_id: string;
+      secret: string;
+      qr_code_uri: string;
+    }> {
+      return apiGateway.post('/auth/mfa/enroll', data);
+    },
+
+    /**
+     * Verify MFA code
+     */
+    async verifyMFA(data: { code: string; method: 'totp' | 'sms' }): Promise<{
+      detail: string;
+      backup_codes?: string[];
+    }> {
+      return apiGateway.post('/auth/mfa/verify', data);
+    },
+
+    /**
+     * Disable MFA
+     */
+    async disableMFA(): Promise<{ detail: string }> {
+      return apiGateway.post('/auth/mfa/disable', {});
+    },
+
+    /**
+     * SSO login (redirect to provider)
+     */
+    async ssoLogin(provider: 'google' | 'microsoft' | 'apple' | 'okta'): Promise<void> {
+      // SSO redirects to external provider, so we return the redirect URL
+      window.location.href = `${process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://localhost:8000'}/api/v1/auth/sso/${provider}`;
     },
   },
 
@@ -126,6 +163,13 @@ export const djangoClient = {
      */
     async listUsers(params?: { page?: number; page_size?: number }): Promise<{ results: User[]; count: number }> {
       return apiGateway.get('/users', { params });
+    },
+
+    /**
+     * Update user profile
+     */
+    async updateUser(id: number, data: Partial<User>): Promise<User> {
+      return apiGateway.patch(`/users/${id}`, data);
     },
   },
 

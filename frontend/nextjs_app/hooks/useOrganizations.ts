@@ -1,73 +1,71 @@
 /**
- * Organizations hook
- * Fetches and manages organization data
+ * Hook for fetching and managing organizations
  */
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { djangoClient } from '../services/djangoClient';
-import type { Organization } from '../services/types';
+import { useState, useEffect } from 'react';
+import { djangoClient } from '@/services/djangoClient';
+import type { Organization, CreateOrganizationRequest } from '@/services/types';
 
 export function useOrganizations() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchOrganizations = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await djangoClient.organizations.listOrganizations();
-      setOrganizations(response.results);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch organizations'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    async function fetchOrganizations() {
+      try {
+        setIsLoading(true);
+        const response = await djangoClient.organizations.listOrganizations();
+        setOrganizations(response.results);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load organizations');
+        setOrganizations([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
     fetchOrganizations();
-  }, [fetchOrganizations]);
+  }, []);
+
+  const createOrganization = async (data: CreateOrganizationRequest) => {
+    try {
+      const newOrg = await djangoClient.organizations.createOrganization(data);
+      setOrganizations([...organizations, newOrg]);
+      return newOrg;
+    } catch (err: any) {
+      setError(err.message || 'Failed to create organization');
+      throw err;
+    }
+  };
+
+  const addMember = async (slug: string, userId: number, roleId: number) => {
+    try {
+      await djangoClient.organizations.addMember(slug, { user_id: userId, role_id: roleId });
+      // Refetch to get updated member count
+      const response = await djangoClient.organizations.listOrganizations();
+      setOrganizations(response.results);
+    } catch (err: any) {
+      setError(err.message || 'Failed to add member');
+      throw err;
+    }
+  };
 
   return {
     organizations,
     isLoading,
     error,
-    refetch: fetchOrganizations,
+    createOrganization,
+    addMember,
+    refetch: () => {
+      setIsLoading(true);
+      return djangoClient.organizations.listOrganizations().then(response => {
+        setOrganizations(response.results);
+        setIsLoading(false);
+      });
+    },
   };
 }
-
-export function useOrganization(slug: string) {
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchOrganization = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const org = await djangoClient.organizations.getOrganization(slug);
-      setOrganization(org);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch organization'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [slug]);
-
-  useEffect(() => {
-    if (slug) {
-      fetchOrganization();
-    }
-  }, [slug, fetchOrganization]);
-
-  return {
-    organization,
-    isLoading,
-    error,
-    refetch: fetchOrganization,
-  };
-}
-

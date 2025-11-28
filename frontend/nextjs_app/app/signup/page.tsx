@@ -1,216 +1,207 @@
-/**
- * Signup Page - OCH Brand Styled
- * Handles registration with persona selection
- */
+'use client'
 
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { djangoClient } from '@/services/djangoClient';
-import type { SignupRequest } from '@/services/types';
-import SSOButtons from '@/components/SSOButtons';
-
-const PERSONAS = {
-  student: { name: 'Student', icon: '🎓', description: 'Begin your cyber defense journey' },
-  mentor: { name: 'Mentor', icon: '👨‍🏫', description: 'Guide the next generation' },
-  director: { name: 'Program Director', icon: '👔', description: 'Manage programs and operations' },
-  sponsor: { name: 'Sponsor/Employer', icon: '💼', description: 'Support talent development' },
-  analyst: { name: 'Analyst', icon: '📊', description: 'Access analytics and insights' },
-  admin: { name: 'Admin', icon: '⚡', description: 'Full platform access' },
-};
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { authService } from '@/lib/auth-mock'
 
 export default function SignupPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const persona = searchParams.get('persona') as keyof typeof PERSONAS || 'student';
-  
-  const [formData, setFormData] = useState<SignupRequest>({
-    email: '',
-    password: '',
-    first_name: '',
-    last_name: '',
-    country: '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    language: 'en',
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const currentPersona = PERSONAS[persona] || PERSONAS.student;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      const response = await djangoClient.auth.signup(formData);
-      // Redirect to login after successful signup
-      router.push(`/login?persona=${persona}&registered=true`);
-    } catch (err: any) {
-      setError(err.message || err.detail || 'Signup failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+  const handleEmailSignup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
     }
-  };
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const result = await authService.signupWithEmail(email, password)
+      if (result.success) {
+        // Redirect to OTP verification
+        router.push(`/verify-otp?email=${encodeURIComponent(email)}`)
+      } else {
+        setError(result.message || 'Signup failed')
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleSignup = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const result = await authService.signupWithGoogle()
+      if (result.success) {
+        // SSO users skip OTP, go to onboarding
+        router.push('/onboarding')
+      } else {
+        setError(result.message || 'Google signup failed')
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAppleSignup = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const result = await authService.signupWithApple()
+      if (result.success) {
+        // SSO users skip OTP, go to onboarding
+        router.push('/onboarding')
+      } else {
+        setError(result.message || 'Apple signup failed')
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-och-midnight flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
-          <div className="text-4xl mb-2">🛡️</div>
-          <h1 className="text-h1 text-white mb-2">Join the Mission</h1>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-card border border-sahara-gold bg-och-midnight">
-            <span className="text-xl">{currentPersona.icon}</span>
-            <span className="text-body-m text-steel-grey">{currentPersona.name}</span>
-          </div>
-          <p className="text-body-s text-steel-grey mt-2">{currentPersona.description}</p>
+          <h1 className="text-4xl font-bold mb-2 text-och-mint">Join OCH Platform</h1>
+          <p className="text-och-steel">Create your account (default role: Mentee)</p>
         </div>
 
-        {/* Signup Card */}
-        <div className="card">
-          <h2 className="text-h2 text-white mb-6 text-center">Create Account</h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-signal-orange bg-opacity-20 border border-signal-orange text-white px-4 py-3 rounded-card text-body-s">
-                {error}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="first_name" className="block text-body-s font-semibold text-steel-grey mb-2">
-                  First Name
-                </label>
-                <input
-                  id="first_name"
-                  name="first_name"
-                  type="text"
-                  required
-                  value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                  className="w-full px-4 py-3 bg-och-midnight border border-steel-grey rounded-card text-white placeholder-steel-grey focus:outline-none focus:border-cyber-mint focus:shadow-mint-glow transition-all"
-                  placeholder="John"
-                />
-              </div>
-              <div>
-                <label htmlFor="last_name" className="block text-body-s font-semibold text-steel-grey mb-2">
-                  Last Name
-                </label>
-                <input
-                  id="last_name"
-                  name="last_name"
-                  type="text"
-                  required
-                  value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                  className="w-full px-4 py-3 bg-och-midnight border border-steel-grey rounded-card text-white placeholder-steel-grey focus:outline-none focus:border-cyber-mint focus:shadow-mint-glow transition-all"
-                  placeholder="Doe"
-                />
-              </div>
+        <Card className="mb-6">
+          {error && (
+            <div className="mb-4 p-3 bg-och-orange/20 border border-och-orange/40 rounded-lg text-och-orange text-sm">
+              {error}
             </div>
+          )}
 
+          <div className="space-y-4 mb-6">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full flex items-center justify-center gap-2"
+              onClick={handleGoogleSignup}
+              disabled={loading}
+            >
+              <span>🔵</span>
+              Continue with Google
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full flex items-center justify-center gap-2"
+              onClick={handleAppleSignup}
+              disabled={loading}
+            >
+              <span>⚫</span>
+              Continue with Apple ID
+            </Button>
+          </div>
+
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-och-steel/20"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-och-midnight text-och-steel">Or continue with email</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleEmailSignup} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-body-s font-semibold text-steel-grey mb-2">
-                Email Address
+              <label htmlFor="email" className="block text-sm font-medium text-och-steel mb-1">
+                Email
               </label>
               <input
                 id="email"
-                name="email"
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+                placeholder="you@example.com"
                 required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 bg-och-midnight border border-steel-grey rounded-card text-white placeholder-steel-grey focus:outline-none focus:border-cyber-mint focus:shadow-mint-glow transition-all"
-                placeholder="defender@example.com"
+                disabled={loading}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-body-s font-semibold text-steel-grey mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-och-steel mb-1">
                 Password
               </label>
               <input
                 id="password"
-                name="password"
                 type="password"
-                required
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-3 bg-och-midnight border border-steel-grey rounded-card text-white placeholder-steel-grey focus:outline-none focus:border-cyber-mint focus:shadow-mint-glow transition-all"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
                 placeholder="••••••••"
+                required
+                disabled={loading}
+                minLength={8}
               />
+              <p className="mt-1 text-xs text-och-steel">Minimum 8 characters</p>
             </div>
 
             <div>
-              <label htmlFor="country" className="block text-body-s font-semibold text-steel-grey mb-2">
-                Country (Optional)
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-och-steel mb-1">
+                Confirm Password
               </label>
               <input
-                id="country"
-                name="country"
-                type="text"
-                value={formData.country}
-                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                className="w-full px-4 py-3 bg-och-midnight border border-steel-grey rounded-card text-white placeholder-steel-grey focus:outline-none focus:border-cyber-mint focus:shadow-mint-glow transition-all"
-                placeholder="BW"
-                maxLength={2}
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+                placeholder="••••••••"
+                required
+                disabled={loading}
               />
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={isLoading}
-              className="btn-primary w-full"
+              variant="defender"
+              className="w-full"
+              glow
+              disabled={loading}
             >
-              {isLoading ? 'Creating Account...' : 'Create Account'}
-            </button>
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </Button>
           </form>
+        </Card>
 
-          {/* SSO Buttons */}
-          <div className="mt-6">
-            <SSOButtons
-              mode="signup"
-              onSuccess={() => router.push('/dashboard')}
-              onError={(error) => setError(error)}
-            />
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-steel-grey">
-            <p className="text-body-s text-steel-grey text-center mb-4">Already have an account?</p>
-            <a
-              href={`/login${persona ? `?persona=${persona}` : ''}`}
-              className="btn-secondary w-full text-center block"
-            >
-              Sign In
-            </a>
-          </div>
-        </div>
-
-        {/* Persona Selection */}
-        <div className="mt-6">
-          <p className="text-body-s text-steel-grey text-center mb-3">Sign up as:</p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {Object.entries(PERSONAS).map(([key, { name, icon }]) => (
-              <a
-                key={key}
-                href={`/signup?persona=${key}`}
-                className={`px-3 py-1.5 text-body-s border rounded-card transition-all ${
-                  persona === key
-                    ? 'border-cyber-mint text-cyber-mint bg-cyber-mint bg-opacity-10'
-                    : 'border-steel-grey text-steel-grey hover:border-cyber-mint hover:text-cyber-mint'
-                }`}
-              >
-                {icon} {name}
-              </a>
-            ))}
-          </div>
+        <div className="text-center">
+          <p className="text-och-steel text-sm">
+            Already have an account?{' '}
+            <Link href="/login" className="text-och-defender hover:text-och-mint transition">
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
     </div>
-  );
+  )
 }
 

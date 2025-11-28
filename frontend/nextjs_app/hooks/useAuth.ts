@@ -61,20 +61,49 @@ export function useAuth() {
         throw new Error(errorData.detail || errorData.error || 'Login failed');
       }
 
-      const { user, access_token, refresh_token } = await response.json();
+      const { user, access_token } = await response.json();
       
-      // Store tokens in localStorage (access_token) and cookies (refresh_token)
-      if (access_token && refresh_token) {
-        setAuthTokens(access_token, refresh_token);
+      // Store access token in localStorage for client-side requests
+      // Refresh token is already in HttpOnly cookie
+      if (access_token) {
+        localStorage.setItem('access_token', access_token);
+      }
+      
+      // Fetch full user profile with roles from /auth/me
+      // Wait a bit to ensure token is stored and available
+      let fullUser = user;
+      if (access_token) {
+        try {
+          // Wait for localStorage to be updated and ensure token is available
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          // Verify token is in localStorage before making request
+          const storedToken = localStorage.getItem('access_token');
+          if (storedToken && storedToken === access_token) {
+            console.log('Fetching full user profile from /auth/me...');
+            fullUser = await djangoClient.auth.getCurrentUser();
+            console.log('Full user profile received:', fullUser);
+          } else {
+            console.warn('Token not available in localStorage yet, using login response user');
+            console.warn('Expected token:', access_token?.substring(0, 20) + '...');
+            console.warn('Stored token:', storedToken?.substring(0, 20) + '...');
+          }
+        } catch (err: any) {
+          // If /auth/me fails, use the user from login response
+          console.error('Failed to fetch full user profile:', err?.message || err);
+          console.error('Error details:', err);
+          // The user from login response should still work, but might not have roles
+        }
       }
       
       setState({
-        user,
+        user: fullUser,
         isLoading: false,
         isAuthenticated: true,
       });
       
-      return { user };
+      console.log('Login successful, returning user:', fullUser);
+      return { user: fullUser };
     } catch (error) {
       setState(prev => ({ ...prev, isLoading: false }));
       throw error;
@@ -96,8 +125,9 @@ export function useAuth() {
     } finally {
       clearAuthTokens();
       setState({ user: null, isLoading: false, isAuthenticated: false });
+      router.push('/login');
     }
-  }, []);
+  }, [router]);
 
   /**
    * Refresh access token

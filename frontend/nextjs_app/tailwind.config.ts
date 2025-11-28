@@ -9,55 +9,35 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Primary Palette (Cyber + Mission Tone)
-        'och-midnight': '#0A0A0C',
-        'defender-blue': '#0648A8',
-        'cyber-mint': '#33FFC1',
-        'signal-orange': '#F55F28',
-        'steel-grey': '#A8B0B8',
-        
-        // Secondary Palette (Africa-inspired)
-        'sahara-gold': '#C89C15',
-        'desert-clay': '#E36F46',
-        'savanna-green': '#4FAF47',
-        'night-sky-blue': '#213A7F',
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
-      fontSize: {
-        'h1': ['32px', { lineHeight: '1.2', fontWeight: '700' }],
-        'h2': ['26px', { lineHeight: '1.3', fontWeight: '700' }],
-        'h3': ['20px', { lineHeight: '1.4', fontWeight: '600' }],
-        'body-l': ['18px', { lineHeight: '1.6' }],
-        'body-m': ['16px', { lineHeight: '1.6' }],
-        'body-s': ['14px', { lineHeight: '1.5' }],
-      },
-      letterSpacing: {
-        'tight': '-0.02em',
-        'tighter': '-0.03em',
-      },
-      borderRadius: {
-        'card': '6px',
-        'card-soft': '8px',
+        och: {
+          midnight: '#0A0A0C',
+          defender: '#0648A8',
+          mint: '#33FFC1',
+          gold: '#C89C15',
+          orange: '#F55F28',
+          steel: '#A8B0B8',
+        },
       },
       backgroundImage: {
-        'defender-gradient': 'linear-gradient(135deg, #0648A8 0%, #0A0A0C 100%)',
-        'leadership-gradient': 'linear-gradient(135deg, #C89C15 0%, #0A0A0C 100%)',
+        'defender-gradient': 'linear-gradient(135deg, #0648A8, #0A0A0C)',
+        'leadership-gradient': 'linear-gradient(135deg, #C89C15, #0A0A0C)',
       },
-      boxShadow: {
-        'mint-glow': '0 0 20px rgba(51, 255, 193, 0.3)',
-        'blue-glow': '0 0 20px rgba(6, 72, 168, 0.3)',
-        'gold-glow': '0 0 20px rgba(200, 156, 21, 0.3)',
+      letterSpacing: {
+        tight: '-0.02em',
+        tighter: '-0.03em',
       },
       animation: {
-        'pulse-mint': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'radar-sweep': 'radar-sweep 3s linear infinite',
+        'glow': 'glow 2s ease-in-out infinite alternate',
+        'pulse-glow': 'pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
-        'radar-sweep': {
-          '0%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(360deg)' },
+        glow: {
+          '0%': { boxShadow: '0 0 5px rgba(3, 72, 168, 0.5)' },
+          '100%': { boxShadow: '0 0 20px rgba(3, 72, 168, 0.8), 0 0 30px rgba(51, 255, 193, 0.4)' },
+        },
+        'pulse-glow': {
+          '0%, 100%': { opacity: 1, boxShadow: '0 0 10px rgba(3, 72, 168, 0.5)' },
+          '50%': { opacity: 0.8, boxShadow: '0 0 20px rgba(3, 72, 168, 0.8)' },
         },
       },
     },
@@ -65,3 +45,4 @@ const config: Config = {
   plugins: [],
 }
 export default config
+

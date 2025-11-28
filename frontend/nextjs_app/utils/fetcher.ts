@@ -20,31 +20,25 @@ export class ApiError extends Error {
 }
 
 /**
- * Get auth token from cookies (for SSR) or localStorage (for CSR)
+ * Get auth token from localStorage (for CSR) or cookies (for SSR)
+ * Note: HttpOnly cookies cannot be read by JavaScript, so we prioritize localStorage
  */
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') {
     // SSR: Token should be passed via headers from server
     return null;
   }
-  // CSR: Try localStorage first (most reliable), then cookie
+  // CSR: Get from localStorage first (since HttpOnly cookies can't be read)
   const token = localStorage.getItem('access_token');
   if (token) {
     return token;
   }
-  
-  // Fallback to cookie (if set by server)
+  // Fallback to cookie (non-HttpOnly cookies only)
   const cookies = document.cookie.split(';');
   const tokenCookie = cookies.find(c => c.trim().startsWith('access_token='));
   if (tokenCookie) {
-    const tokenValue = tokenCookie.split('=')[1];
-    // Also store in localStorage for consistency
-    if (tokenValue) {
-      localStorage.setItem('access_token', tokenValue);
-    }
-    return tokenValue;
+    return tokenCookie.split('=')[1];
   }
-  
   return null;
 }
 
