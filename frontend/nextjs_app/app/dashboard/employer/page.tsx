@@ -1,12 +1,12 @@
 'use client'
 
 import { RouteGuard } from '@/components/auth/RouteGuard'
-import AdminClient from './admin-client'
+import EmployerClient from './employer-client'
 
-export default function AdminDashboard() {
+export default function EmployerDashboard() {
   return (
     <RouteGuard>
-      <AdminClient />
+      <EmployerClient />
     </RouteGuard>
   )
 }

@@ -24,8 +24,12 @@ export default function AdminClient() {
   const actions = [
     { label: 'User Management', href: '/dashboard/admin/users', icon: '👥' },
     { label: 'System Settings', href: '/dashboard/admin/settings', icon: '⚙️' },
-    { label: 'Reports', href: '/dashboard/analytics', icon: '📊' },
-    { label: 'Organizations', href: '/dashboard/organizations', icon: '🏢' },
+    { label: 'Subscription Rules', href: '/dashboard/admin/subscriptions', icon: '⭐' },
+    { label: 'Audit Logs', href: '/dashboard/admin/audit', icon: '📋' },
+    { label: 'Payment Settings', href: '/dashboard/admin/payments', icon: '💳' },
+    { label: 'Community Management', href: '/dashboard/admin/community', icon: '💬' },
+    { label: 'Curriculum', href: '/dashboard/admin/curriculum', icon: '📚' },
+    { label: 'Integrations', href: '/dashboard/admin/integrations', icon: '🔌' },
   ]
 
   const alerts = [
@@ -57,16 +61,17 @@ export default function AdminClient() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <Card className="lg:col-span-2">
             <h2 className="text-2xl font-bold mb-4 text-white">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {actions.map((action) => (
-                <Button
-                  key={action.label}
-                  variant="outline"
-                  className="flex items-center justify-center gap-2 h-20"
-                >
-                  <span className="text-2xl">{action.icon}</span>
-                  <span>{action.label}</span>
-                </Button>
+                <Link key={action.label} href={action.href}>
+                  <Button
+                    variant="outline"
+                    className="flex flex-col items-center justify-center gap-2 h-24 w-full"
+                  >
+                    <span className="text-2xl">{action.icon}</span>
+                    <span className="text-xs text-center">{action.label}</span>
+                  </Button>
+                </Link>
               ))}
             </div>
           </Card>

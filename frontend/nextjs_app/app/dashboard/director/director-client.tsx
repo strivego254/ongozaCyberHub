@@ -14,10 +14,13 @@ const mockKPIs = [
 ]
 
 const mockActions = [
-  { label: 'Program Overview', href: '#', icon: '📈' },
-  { label: 'Strategic Planning', href: '#', icon: '🎯' },
-  { label: 'Stakeholder Reports', href: '#', icon: '📋' },
-  { label: 'Resource Allocation', href: '#', icon: '💰' },
+  { label: 'Approve Tracks', href: '/dashboard/director/tracks', icon: '✅' },
+  { label: 'Modify Scoring', href: '/dashboard/director/scoring', icon: '📊' },
+  { label: 'Assign Mentors', href: '/dashboard/director/mentors', icon: '👥' },
+  { label: 'Override Placements', href: '/dashboard/director/placements', icon: '🔄' },
+  { label: 'Track Analytics', href: '/dashboard/director/analytics', icon: '📈' },
+  { label: 'Manage Reviews', href: '/dashboard/director/reviews', icon: '📝' },
+  { label: 'Publish Missions', href: '/dashboard/director/missions', icon: '🚀' },
 ]
 
 const mockPrograms = [
@@ -52,16 +55,17 @@ export default function DirectorClient() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <Card className="lg:col-span-2">
             <h2 className="text-2xl font-bold mb-4 text-white">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {mockActions.map((action) => (
-                <Button
-                  key={action.label}
-                  variant="outline"
-                  className="flex items-center justify-center gap-2 h-20"
-                >
-                  <span className="text-2xl">{action.icon}</span>
-                  <span>{action.label}</span>
-                </Button>
+                <Link key={action.label} href={action.href}>
+                  <Button
+                    variant="outline"
+                    className="flex flex-col items-center justify-center gap-2 h-24 w-full"
+                  >
+                    <span className="text-2xl">{action.icon}</span>
+                    <span className="text-xs text-center">{action.label}</span>
+                  </Button>
+                </Link>
               ))}
             </div>
           </Card>

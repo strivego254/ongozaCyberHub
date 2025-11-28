@@ -7,7 +7,7 @@
 import type { User, Organization } from '@/services/types';
 
 interface SponsorDashboardClientProps {
-  initialData: {
+  initialData?: {
     user: User;
     organizations: Organization[];
     organizationCount: number;
@@ -15,8 +15,11 @@ interface SponsorDashboardClientProps {
   };
 }
 
-export default function SponsorDashboardClient({ initialData }: SponsorDashboardClientProps) {
-  const { organizations, organizationCount, sponsoredStudentCount } = initialData;
+export default function SponsorDashboardClient({ initialData }: SponsorDashboardClientProps = {}) {
+  // Use initialData if provided, otherwise use defaults (data will be fetched client-side)
+  const organizations = initialData?.organizations || [];
+  const organizationCount = initialData?.organizationCount || 0;
+  const sponsoredStudentCount = initialData?.sponsoredStudentCount || 0;
 
   return (
     <div className="space-y-8">

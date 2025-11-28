@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { getRedirectRoute } from '@/utils/redirect'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -15,27 +16,25 @@ export default function DashboardPage() {
         return
       }
 
-      // Redirect based on user's primary role
-      if (user?.roles && user.roles.length > 0) {
-        const primaryRole = user.roles[0].role
-        
-        // Map backend role names to frontend routes
-        const roleRouteMap: Record<string, string> = {
-          'mentee': '/dashboard/student',
-          'student': '/dashboard/student',
-          'mentor': '/dashboard/mentor',
-          'admin': '/dashboard/admin',
-          'program_director': '/dashboard/director',
-          'sponsor_admin': '/dashboard/sponsor',
-          'analyst': '/dashboard/analyst',
-        }
-
-        const route = roleRouteMap[primaryRole] || '/dashboard/student'
-        router.push(route)
+      // CRITICAL: Check for admin role first
+      const userRoles = user?.roles || []
+      const isAdmin = userRoles.some((ur: any) => {
+        const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+        return roleName?.toLowerCase().trim() === 'admin'
+      })
+      
+      let dashboardRoute = '/dashboard/student'
+      
+      if (isAdmin) {
+        console.log('✅ Admin user detected - redirecting to /dashboard/admin')
+        dashboardRoute = '/dashboard/admin'
       } else {
-        // Default to student dashboard if no roles assigned
-        router.push('/dashboard/student')
+        // Use centralized redirect utility for other roles
+        dashboardRoute = getRedirectRoute(user)
+        console.log('📍 Dashboard redirect (non-admin):', dashboardRoute)
       }
+      
+      router.push(dashboardRoute)
     }
   }, [user, isLoading, isAuthenticated, router])
 

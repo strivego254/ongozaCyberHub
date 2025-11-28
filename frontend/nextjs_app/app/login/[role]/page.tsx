@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import SSOButtons from '@/components/SSOButtons';
+import { getPrimaryRole, getDashboardRoute, getUserRoles } from '@/utils/rbac';
+import { getRedirectRoute } from '@/utils/redirect';
 import type { LoginRequest } from '@/services/types';
 
 const PERSONAS = {
@@ -24,7 +26,7 @@ export default function RoleLoginPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const role = (params?.role as string) || 'student';
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user: authUser } = useAuth();
 
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',
@@ -49,72 +51,42 @@ export default function RoleLoginPage() {
 
     try {
       const result = await login(formData);
+      console.log('=== Login Success ===');
       console.log('Login result:', result);
 
+      // Determine redirect route based on user role
       let route = '/dashboard/student';
       const redirectTo = searchParams.get('redirect');
 
+      // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
       if (redirectTo && redirectTo.startsWith('/dashboard')) {
         route = redirectTo;
+        console.log('📍 Using redirect parameter:', route);
       } else if (result?.user) {
-        // Roles are in result.user.roles (from getCurrentUser merge)
-        const userRoles = (result.user as any).roles || [];
-        console.log('User object:', result.user);
-        console.log('User roles found:', userRoles);
-        console.log('User roles type:', typeof userRoles, Array.isArray(userRoles));
+        // Wait to ensure roles are fully loaded from /auth/me
+        await new Promise(resolve => setTimeout(resolve, 300));
         
-        if (userRoles && userRoles.length > 0) {
-          // Roles are objects with { role: string, scope: string, scope_ref?: string }
-          const firstRole = userRoles[0];
-          console.log('First role object:', firstRole);
-          console.log('First role keys:', Object.keys(firstRole || {}));
-          
-          // Extract role name - try multiple possible fields
-          let primaryRole: string | undefined;
-          if (typeof firstRole === 'string') {
-            primaryRole = firstRole;
-          } else if (firstRole) {
-            primaryRole = firstRole.role || firstRole.name || firstRole.role_name || String(firstRole);
-          }
-          
-          console.log('Extracted primary role:', primaryRole);
-          
-          if (!primaryRole) {
-            console.error('Could not extract role from:', firstRole);
-          } else {
-            const roleRouteMap: Record<string, string> = {
-              'mentee': '/dashboard/student',
-              'student': '/dashboard/student',
-              'mentor': '/dashboard/mentor',
-              'admin': '/dashboard/admin',
-              'program_director': '/dashboard/director',
-              'sponsor_admin': '/dashboard/sponsor',
-              'analyst': '/dashboard/analyst',
-            };
-            
-            const mappedRoute = roleRouteMap[primaryRole];
-            console.log('Mapped route for role', primaryRole, ':', mappedRoute);
-            
-            if (mappedRoute) {
-              route = mappedRoute;
-            } else {
-              console.warn('Unknown role:', primaryRole);
-              console.warn('Available role mappings:', Object.keys(roleRouteMap));
-              console.warn('All user roles:', userRoles.map((r: any) => typeof r === 'string' ? r : r.role || r.name));
-            }
-          }
+        // CRITICAL: Check for admin role first
+        const userRoles = result.user.roles || [];
+        const isAdmin = userRoles.some((ur: any) => {
+          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+          return roleName?.toLowerCase().trim() === 'admin'
+        })
+        
+        if (isAdmin) {
+          console.log('✅ Admin user detected - redirecting to /dashboard/admin')
+          route = '/dashboard/admin'
         } else {
-          console.warn('No roles found for user. User object:', result.user);
-          console.warn('Checking if roles are in different location...');
-          console.warn('result keys:', Object.keys(result));
-          console.warn('result.user keys:', result.user ? Object.keys(result.user) : 'no user');
-          console.warn('Defaulting to student dashboard');
+          // Use centralized redirect utility for other roles
+          route = getRedirectRoute(result.user);
+          console.log('✅ Login redirect route determined (non-admin):', route);
         }
       } else {
-        console.warn('No user in login result:', result);
+        console.error('❌ No user in login result, defaulting to student dashboard');
+        route = '/dashboard/student';
       }
 
-      console.log('Final redirect route:', route);
+      console.log('🚀 Final redirect route:', route);
       
       // Ensure token is in localStorage before redirecting
       const token = localStorage.getItem('access_token');
@@ -130,9 +102,9 @@ export default function RoleLoginPage() {
       
       // Small delay to ensure cookie is set, then redirect
       setTimeout(() => {
-        console.log('Redirecting to:', route);
+        console.log('🚀 Redirecting to:', route);
         window.location.href = route;
-      }, 150);
+      }, 200);
 
     } catch (err: any) {
       let message = 'Login failed. Please check your credentials.';
@@ -173,7 +145,7 @@ export default function RoleLoginPage() {
         </div>
 
         {/* Auth Card */}
-        <Card variant="blue" glow className="p-8 shadow-xl border border-defender-blue/40 rounded-2xl">
+        <Card gradient="defender" glow className="p-8 shadow-xl border border-defender-blue/40 rounded-2xl">
 
           <h2 className="text-h2 text-white mb-6 text-center">Sign In</h2>
 
@@ -237,7 +209,7 @@ export default function RoleLoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              variant="primary"
+              variant="defender"
               className="w-full py-3 text-base font-semibold rounded-md"
             >
               {isLoading ? 'Signing in...' : 'Sign In'}
@@ -260,7 +232,7 @@ export default function RoleLoginPage() {
             </p>
 
             <Button
-              variant="secondary"
+              variant="outline"
               className="w-full py-3 text-base rounded-md"
               onClick={() => router.push(`/signup/${role}`)}
             >

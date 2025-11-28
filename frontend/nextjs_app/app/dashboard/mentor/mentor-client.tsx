@@ -14,10 +14,10 @@ const mockKPIs = [
 ]
 
 const mockActions = [
-  { label: 'Schedule Session', href: '#', icon: '📅' },
-  { label: 'View Mentees', href: '#', icon: '👥' },
-  { label: 'Resources', href: '#', icon: '📖' },
-  { label: 'Community', href: '#', icon: '💬' },
+  { label: 'Group Sessions', href: '/dashboard/mentor/sessions', icon: '👥' },
+  { label: 'Review Missions', href: '/dashboard/mentor/missions', icon: '📝' },
+  { label: 'Score Capstones', href: '/dashboard/mentor/scoring', icon: '⭐' },
+  { label: 'TalentScope View', href: '/dashboard/mentor/talentscope', icon: '📊' },
 ]
 
 const mockMentees = [
@@ -54,20 +54,21 @@ export default function MentorClient() {
             <h2 className="text-2xl font-bold mb-4 text-white">Quick Actions</h2>
             <div className="grid grid-cols-2 gap-4">
               {mockActions.map((action) => (
-                <Button
-                  key={action.label}
-                  variant="outline"
-                  className="flex items-center justify-center gap-2 h-20"
-                >
-                  <span className="text-2xl">{action.icon}</span>
-                  <span>{action.label}</span>
-                </Button>
+                <Link key={action.label} href={action.href}>
+                  <Button
+                    variant="outline"
+                    className="flex flex-col items-center justify-center gap-2 h-24 w-full"
+                  >
+                    <span className="text-2xl">{action.icon}</span>
+                    <span className="text-xs text-center">{action.label}</span>
+                  </Button>
+                </Link>
               ))}
             </div>
           </Card>
 
           <Card>
-            <h2 className="text-2xl font-bold mb-4 text-white">Mentee Progress</h2>
+            <h2 className="text-2xl font-bold mb-4 text-white">Mentee Performance</h2>
             <div className="space-y-4">
               {mockMentees.map((mentee) => (
                 <div key={mentee.name}>
@@ -78,6 +79,13 @@ export default function MentorClient() {
                   <ProgressBar value={mentee.progress} variant="mint" showLabel={false} />
                 </div>
               ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-och-defender/20">
+              <Link href="/dashboard/mentor/talentscope">
+                <Button variant="outline" className="w-full text-sm">
+                  View TalentScope Dashboard →
+                </Button>
+              </Link>
             </div>
           </Card>
         </div>
@@ -96,14 +104,21 @@ export default function MentorClient() {
           </Card>
 
           <Card>
-            <h2 className="text-2xl font-bold mb-4 text-white">Recent Feedback</h2>
+            <h2 className="text-2xl font-bold mb-4 text-white">Mission Reviews</h2>
             <div className="space-y-3">
-              {['"Great session!" - Alex', '"Very helpful" - Sam', '"Thank you!" - Jordan'].map((feedback) => (
-                <div key={feedback} className="flex items-center gap-3 p-3 bg-och-midnight/50 rounded-lg">
+              {['Mission #42 - Pending Review', 'Capstone Project - Needs Scoring', 'Mission #38 - Feedback Given'].map((review) => (
+                <div key={review} className="flex items-center gap-3 p-3 bg-och-midnight/50 rounded-lg">
                   <div className="w-2 h-2 bg-och-gold rounded-full"></div>
-                  <span className="text-och-steel">{feedback}</span>
+                  <span className="text-och-steel text-sm">{review}</span>
                 </div>
               ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-och-defender/20">
+              <Link href="/dashboard/mentor/missions">
+                <Button variant="outline" className="w-full text-sm">
+                  Review All Missions →
+                </Button>
+              </Link>
             </div>
           </Card>
         </div>

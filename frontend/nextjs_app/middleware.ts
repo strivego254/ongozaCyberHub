@@ -1,6 +1,6 @@
 /**
  * Next.js Middleware
- * Handles authentication checks and token refresh for protected routes
+ * Handles authentication checks and RBAC-based route protection
  */
 
 import { NextResponse } from 'next/server';
@@ -24,6 +24,10 @@ export function middleware(request: NextRequest) {
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
+
+  // RBAC check is handled client-side after user data is fetched
+  // Middleware only checks for authentication token presence
+  // Full role-based access control happens in page components
 
   // Allow auth routes to be accessed even with token (client handles redirect)
   // This prevents middleware from interfering with post-login redirects
