@@ -641,6 +641,20 @@ curl -X POST http://localhost:8000/api/v1/auth/logout \
   -H "Content-Type: application/json" \
   -d "{\"refresh_token\": \"$REFRESH_TOKEN\"}"
 ```
+## Test all roles
+`./scripts/test_endpoints.sh all`
+
+### Test specific role
+`./scripts/test_endpoints.sh admin`
+`./scripts/test_endpoints.sh student`
+`./scripts/test_endpoints.sh mentor`
+`./scripts/test_endpoints.sh director`
+
+#### Test only common endpoints
+`./scripts/test_endpoints.sh common`
+
+# Custom base URL
+./scripts/test_endpoints.sh admin http://localhost:8000/api/v1
 
 ---
 
