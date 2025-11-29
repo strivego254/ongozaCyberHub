@@ -106,18 +106,88 @@ app.get('/api/public/*', async (req, res) => {
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).render('404', {
-    title: 'Page Not Found - Ongoza CyberHub',
-  });
+  res.status(404).send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Page Not Found - Ongoza CyberHub</title>
+      <style>
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: #0A0A0C;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          margin: 0;
+          text-align: center;
+        }
+        h1 { color: #33FFC1; font-size: 2rem; margin-bottom: 1rem; }
+        p { color: #A8B0B8; }
+        a { color: #0648A8; text-decoration: none; }
+        a:hover { color: #33FFC1; }
+      </style>
+    </head>
+    <body>
+      <div>
+        <h1>404 - Page Not Found</h1>
+        <p>The page you're looking for doesn't exist.</p>
+        <a href="/">← Go Home</a>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).render('500', {
-    title: 'Server Error - Ongoza CyberHub',
-    error: process.env.NODE_ENV === 'development' ? err : {},
-  });
+  res.status(500).send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Server Error - Ongoza CyberHub</title>
+      <style>
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: #0A0A0C;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          margin: 0;
+          text-align: center;
+        }
+        h1 { color: #F55F28; font-size: 2rem; margin-bottom: 1rem; }
+        p { color: #A8B0B8; }
+        a { color: #0648A8; text-decoration: none; }
+        a:hover { color: #33FFC1; }
+        pre { 
+          background: rgba(168, 176, 184, 0.1); 
+          padding: 1rem; 
+          border-radius: 8px; 
+          text-align: left; 
+          overflow-x: auto;
+          margin-top: 1rem;
+        }
+      </style>
+    </head>
+    <body>
+      <div>
+        <h1>500 - Server Error</h1>
+        <p>Something went wrong on our end.</p>
+        ${process.env.NODE_ENV === 'development' ? `<pre>${err.stack}</pre>` : ''}
+        <a href="/">← Go Home</a>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 app.listen(PORT, () => {
