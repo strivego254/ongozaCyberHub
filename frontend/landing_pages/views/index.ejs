@@ -27,7 +27,7 @@
                 <div class="nav-dropdown">
                     <button class="nav-link">Get Started <span>▼</span></button>
                     <div class="dropdown-content">
-                        <a href="/signup">Sign Up</a>
+                        <a href="/signup/student">Sign Up</a>
                         <a href="#personas">Choose Your Role</a>
                         <a href="#features">Learn More</a>
                     </div>
@@ -35,8 +35,8 @@
                 <div class="nav-dropdown">
                     <button class="nav-link">Sign In <span>▼</span></button>
                     <div class="dropdown-content">
-                        <a href="/login">Login</a>
-                        <a href="/signup">Create Account</a>
+                        <a href="/login/student">Login</a>
+                        <a href="/signup/student">Create Account</a>
                     </div>
                 </div>
             </div>
@@ -48,8 +48,8 @@
             <h1 class="hero-title">Empower Your Journey with OCH Platform</h1>
             <p class="hero-subtitle">Connect, learn, and grow through personalized mentorship and role-based experiences</p>
             <div class="hero-actions">
-                <a href="/signup" class="btn btn-primary">Get Started</a>
-                <a href="/login" class="btn btn-outline">Sign In</a>
+                <a href="/signup/student" class="btn btn-primary">Get Started</a>
+                <a href="/login/student" class="btn btn-outline">Sign In</a>
             </div>
         </div>
     </section>
@@ -62,38 +62,47 @@
                 <div class="persona-card" data-persona="student">
                     <div class="persona-icon">🎓</div>
                     <h3 class="persona-title">Student</h3>
-                    <p class="persona-description">Access your learning journey, track progress, and connect with mentors</p>
-                    <a href="/dashboard/student" class="persona-link">Enter Dashboard →</a>
+                    <p class="persona-description">Learning and mentorship recipient. Access your learning journey, track progress, and connect with mentors</p>
+                    <div class="persona-actions">
+                        <a href="/login/student" class="persona-link">Sign In →</a>
+                        <a href="/signup/student" class="persona-link persona-link-secondary">Sign Up →</a>
+                    </div>
                 </div>
                 <div class="persona-card" data-persona="mentor">
                     <div class="persona-icon">👥</div>
                     <h3 class="persona-title">Mentor</h3>
-                    <p class="persona-description">Guide and support student growth with powerful mentoring tools</p>
-                    <a href="/dashboard/mentor" class="persona-link">Enter Dashboard →</a>
+                    <p class="persona-description">Guide and supporter. Guide and support student growth with powerful mentoring tools</p>
+                    <div class="persona-actions">
+                        <a href="/login/mentor" class="persona-link">Sign In →</a>
+                        <a href="/signup/mentor" class="persona-link persona-link-secondary">Sign Up →</a>
+                    </div>
                 </div>
                 <div class="persona-card" data-persona="admin">
                     <div class="persona-icon">⚙️</div>
                     <h3 class="persona-title">Admin</h3>
-                    <p class="persona-description">Manage platform operations, users, and system settings</p>
-                    <a href="/dashboard/admin" class="persona-link">Enter Dashboard →</a>
+                    <p class="persona-description">Platform administrator. Manage platform operations, users, and system settings</p>
+                    <div class="persona-actions">
+                        <a href="/login/admin" class="persona-link">Sign In →</a>
+                        <a href="/signup/admin" class="persona-link persona-link-secondary">Sign Up →</a>
+                    </div>
                 </div>
                 <div class="persona-card" data-persona="director">
                     <div class="persona-icon">🎯</div>
                     <h3 class="persona-title">Program Director</h3>
-                    <p class="persona-description">Oversee program strategy, outcomes, and strategic planning</p>
-                    <a href="/dashboard/director" class="persona-link">Enter Dashboard →</a>
-                </div>
-                <div class="persona-card" data-persona="sponsor">
-                    <div class="persona-icon">💼</div>
-                    <h3 class="persona-title">Sponsor Admin</h3>
-                    <p class="persona-description">Monitor sponsored programs and track impact metrics</p>
-                    <a href="/dashboard/admin" class="persona-link">Enter Dashboard →</a>
+                    <p class="persona-description">Strategic oversight. Oversee program strategy, outcomes, and strategic planning</p>
+                    <div class="persona-actions">
+                        <a href="/login/director" class="persona-link">Sign In →</a>
+                        <a href="/signup/director" class="persona-link persona-link-secondary">Sign Up →</a>
+                    </div>
                 </div>
                 <div class="persona-card" data-persona="analyst">
                     <div class="persona-icon">📊</div>
                     <h3 class="persona-title">Analyst</h3>
-                    <p class="persona-description">Analyze data, generate insights, and create comprehensive reports</p>
-                    <a href="/dashboard/analyst" class="persona-link">Enter Dashboard →</a>
+                    <p class="persona-description">Data and insights specialist. Analyze data, generate insights, and create comprehensive reports</p>
+                    <div class="persona-actions">
+                        <a href="/login/analyst" class="persona-link">Sign In →</a>
+                        <a href="/signup/analyst" class="persona-link persona-link-secondary">Sign Up →</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -147,8 +156,8 @@
                 </div>
                 <div class="footer-section">
                     <h4>Quick Links</h4>
-                    <a href="/login">Login</a>
-                    <a href="/signup">Sign Up</a>
+                    <a href="/login/student">Login</a>
+                    <a href="/signup/student">Sign Up</a>
                     <a href="#personas">Personas</a>
                 </div>
                 <div class="footer-section">
@@ -178,16 +187,11 @@
             });
         });
 
-        document.querySelectorAll('.persona-card').forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-8px)';
-                this.style.boxShadow = '0 20px 40px rgba(3, 72, 168, 0.3)';
-            });
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-            });
-        });
+        // Respect reduced motion preference
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        
+        // Card hover effects are handled by CSS, no JavaScript needed
+        // This ensures animations respect user preferences
     </script>
 </body>
 </html>

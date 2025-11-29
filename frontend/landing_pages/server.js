@@ -11,6 +11,7 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const NEXTJS_APP_URL = process.env.NEXTJS_APP_URL || 'http://localhost:3000';
 const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://localhost:8000';
 
 // View engine setup
@@ -77,6 +78,17 @@ app.get('/blog/:slug', (req, res) => {
     title: 'Blog Post - Ongoza CyberHub',
     slug: req.params.slug,
   });
+});
+
+// Redirect login/signup routes to Next.js app
+app.get('/login/:role?', (req, res) => {
+  const role = req.params.role || 'student';
+  res.redirect(`${NEXTJS_APP_URL}/login/${role}`);
+});
+
+app.get('/signup/:role?', (req, res) => {
+  const role = req.params.role || 'student';
+  res.redirect(`${NEXTJS_APP_URL}/signup/${role}`);
 });
 
 // API proxy for public endpoints (optional)
