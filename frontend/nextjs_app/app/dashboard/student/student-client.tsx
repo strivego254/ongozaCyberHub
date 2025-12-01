@@ -33,14 +33,14 @@ export default function StudentClient() {
   ]
 
   const actions = [
-    { label: 'Complete Profiler', href: '/dashboard/profiler', icon: '📋' },
-    { label: 'Future-You Projection', href: '/dashboard/future-you', icon: '🔮' },
-    { label: 'Coaching OS', href: '/dashboard/coaching', icon: '🎯' },
-    { label: 'Missions', href: '/dashboard/missions', icon: '🚀' },
-    { label: 'Portfolio', href: '/dashboard/portfolio', icon: '💼' },
-    { label: 'TalentScope', href: '/dashboard/talentscope', icon: '📊' },
-    { label: 'Community', href: '/dashboard/community', icon: '💬' },
-    { label: 'Subscription', href: '/dashboard/subscription', icon: '⭐' },
+    { label: 'Complete Profiler', href: '/dashboard/student/coaching', icon: '📋' },
+    { label: 'Future-You Projection', href: '/dashboard/student/coaching', icon: '🔮' },
+    { label: 'Coaching OS', href: '/dashboard/student/coaching', icon: '🎯' },
+    { label: 'Missions', href: '/dashboard/student/missions', icon: '🚀' },
+    { label: 'Portfolio', href: '/dashboard/student/portfolio', icon: '💼' },
+    { label: 'Curriculum', href: '/dashboard/student/curriculum', icon: '📚' },
+    { label: 'Community', href: '/dashboard/student/community', icon: '💬' },
+    { label: 'Mentorship', href: '/dashboard/student/mentorship', icon: '👥' },
   ]
 
   // Transform progress data for display
@@ -53,17 +53,17 @@ export default function StudentClient() {
   // Show loading state
   if (authLoading || progressLoading) {
     return (
-      <div className="min-h-screen bg-och-midnight p-6 flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-och-steel">Loading dashboard...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-och-midnight p-6">
+    <div className="p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-och-mint">Student Dashboard</h1>
+          <h1 className="text-4xl font-bold mb-2 text-och-mint">Dashboard</h1>
           <p className="text-och-steel">
             Welcome back{user?.first_name ? `, ${user.first_name}` : ''}! Here's your learning overview.
           </p>
