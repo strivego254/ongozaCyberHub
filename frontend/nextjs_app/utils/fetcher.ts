@@ -61,9 +61,10 @@ export async function fetcher<T>(
     });
   }
 
-  // Set headers
+  // Set headers - don't set Content-Type for FormData (browser will set it with boundary)
+  const isFormData = fetchOptions.body instanceof FormData;
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    ...(!isFormData && { 'Content-Type': 'application/json' }),
     ...fetchOptions.headers,
   };
 

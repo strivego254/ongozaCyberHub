@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { MentorshipChat } from '@/components/mentorship/MentorshipChat'
 
 export default function MentorshipPage() {
   const sessions = [
@@ -107,6 +108,11 @@ export default function MentorshipPage() {
               ))}
             </div>
           </Card>
+        </div>
+
+        {/* Mentorship Chat */}
+        <div className="mb-6">
+          <MentorshipChat />
         </div>
 
         <Card>

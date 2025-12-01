@@ -122,10 +122,15 @@ export const apiGateway = {
    * POST request
    */
   async post<T>(path: string, data?: any, options?: FetchOptions): Promise<T> {
+    // Handle FormData - don't stringify or set Content-Type
+    const isFormData = data instanceof FormData;
     return apiGatewayRequest<T>(path, {
       ...options,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+      headers: isFormData 
+        ? { ...options?.headers } // Let browser set Content-Type with boundary for FormData
+        : { 'Content-Type': 'application/json', ...options?.headers },
     });
   },
 
@@ -133,10 +138,14 @@ export const apiGateway = {
    * PUT request
    */
   async put<T>(path: string, data?: any, options?: FetchOptions): Promise<T> {
+    const isFormData = data instanceof FormData;
     return apiGatewayRequest<T>(path, {
       ...options,
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+      headers: isFormData 
+        ? { ...options?.headers }
+        : { 'Content-Type': 'application/json', ...options?.headers },
     });
   },
 
@@ -144,10 +153,14 @@ export const apiGateway = {
    * PATCH request
    */
   async patch<T>(path: string, data?: any, options?: FetchOptions): Promise<T> {
+    const isFormData = data instanceof FormData;
     return apiGatewayRequest<T>(path, {
       ...options,
       method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+      headers: isFormData 
+        ? { ...options?.headers }
+        : { 'Content-Type': 'application/json', ...options?.headers },
     });
   },
 

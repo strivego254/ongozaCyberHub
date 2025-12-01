@@ -43,9 +43,7 @@ export const mentorshipClient = {
         formData.append('attachments', file)
       })
     }
-    return apiGateway.post(`/mentorships/${menteeId}/chat`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    return apiGateway.post(`/mentorships/${menteeId}/chat`, formData)
   },
 
   /**

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
+import { AICoachPanel } from '@/components/coaching/AICoachPanel'
 import { useProgress } from '@/hooks/useProgress'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -87,6 +88,11 @@ export default function StudentClient() {
               </div>
             </Card>
           ))}
+        </div>
+
+        {/* AI Coach Panel */}
+        <div className="mb-6">
+          <AICoachPanel />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

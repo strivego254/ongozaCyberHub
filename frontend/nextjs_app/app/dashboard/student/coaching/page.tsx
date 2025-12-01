@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/ProgressBar'
+import { BadgesDisplay } from '@/components/gamification/BadgesDisplay'
 
 export default function CoachingPage() {
   const habits = [
@@ -69,6 +70,11 @@ export default function CoachingPage() {
               <Button variant="outline" className="w-full">Set New Goal</Button>
             </div>
           </Card>
+        </div>
+
+        {/* Badges Display */}
+        <div className="mb-6">
+          <BadgesDisplay />
         </div>
 
         <Card>
