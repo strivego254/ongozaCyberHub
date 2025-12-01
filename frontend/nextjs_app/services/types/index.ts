@@ -14,4 +14,8 @@ export * from './events';
 export * from './marketplace';
 export * from './subscription';
 export * from './community';
+export * from './profiler';
+export * from './habits';
+export * from './missions';
+export * from './portfolio';
 

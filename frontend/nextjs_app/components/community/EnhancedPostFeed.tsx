@@ -31,7 +31,7 @@ export function EnhancedPostFeed() {
     try {
       await addComment(postId, { content })
       setCommentInputs(prev => ({ ...prev, [postId]: '' }))
-      setExpandedPosts(prev => new Set([...prev, postId]))
+      setExpandedPosts(prev => new Set([...Array.from(prev), postId]))
     } catch (err) {
       console.error('Failed to add comment:', err)
     }
@@ -39,7 +39,7 @@ export function EnhancedPostFeed() {
 
   const toggleExpanded = (postId: string) => {
     setExpandedPosts(prev => {
-      const next = new Set(prev)
+      const next = new Set(Array.from(prev))
       if (next.has(postId)) {
         next.delete(postId)
       } else {

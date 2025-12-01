@@ -3,13 +3,11 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import AnalyticsClient from './analytics-client'
-import { useAnalytics } from '@/hooks/useAnalytics'
+import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard'
 
 export default function AnalyticsPage() {
   const router = useRouter()
   const { user, isLoading: authLoading, isAuthenticated } = useAuth()
-  const { data, isLoading: analyticsLoading, error } = useAnalytics({ range: 'week' })
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -17,7 +15,7 @@ export default function AnalyticsPage() {
     }
   }, [authLoading, isAuthenticated, router])
 
-  if (authLoading || analyticsLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-och-midnight p-6 flex items-center justify-center">
         <div className="text-och-steel">Loading analytics...</div>
@@ -29,14 +27,10 @@ export default function AnalyticsPage() {
     return null
   }
 
-  if (error || !data) {
-    return (
-      <div className="min-h-screen bg-och-midnight p-6 flex items-center justify-center">
-        <div className="text-och-orange">Error loading analytics: {error || 'No data available'}</div>
-      </div>
-    )
-  }
-
-  return <AnalyticsClient data={data} />
+  return (
+    <div className="p-6">
+      <AnalyticsDashboard />
+    </div>
+  )
 }
 

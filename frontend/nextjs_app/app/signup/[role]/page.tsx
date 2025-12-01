@@ -165,7 +165,7 @@ export default function RoleSignupPage() {
         </div>
 
         {/* Auth Card */}
-        <Card variant="blue" glow className="p-8 shadow-xl border border-defender-blue/40 rounded-2xl">
+        <Card gradient="defender" glow className="p-8 shadow-xl border border-defender-blue/40 rounded-2xl">
 
           <h2 className="text-h2 text-white mb-6 text-center">Create Account</h2>
 
@@ -293,7 +293,7 @@ export default function RoleSignupPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              variant="primary"
+              variant="defender"
               className="w-full py-3 text-base font-semibold rounded-md"
             >
               {isLoading ? 'Creating Account...' : 'Create Account'}
@@ -316,7 +316,7 @@ export default function RoleSignupPage() {
             </p>
 
             <Button
-              variant="secondary"
+              variant="outline"
               className="w-full py-3 text-base rounded-md"
               onClick={() => router.push(`/login/${role}`)}
             >

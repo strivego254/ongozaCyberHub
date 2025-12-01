@@ -2,7 +2,7 @@ import { ReactNode } from 'react'
 import clsx from 'clsx'
 
 interface CardProps {
-  children: ReactNode
+  children: ReactNode | ReactNode[]
   className?: string
   glow?: boolean
   gradient?: 'defender' | 'leadership' | 'none'
