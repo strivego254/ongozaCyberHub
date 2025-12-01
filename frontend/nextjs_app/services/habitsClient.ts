@@ -4,7 +4,7 @@
  */
 
 import { apiGateway } from './apiGateway'
-import type { Habit, Goal, Reflection } from './types/habits'
+import type { Habit, DailyGoal, Reflection } from './types/habits'
 
 export const habitsClient = {
   /**
@@ -15,24 +15,24 @@ export const habitsClient = {
   },
 
   /**
-   * Toggle habit completion
+   * Update habit completion
    */
-  async toggleHabit(menteeId: string, habitId: string, completed: boolean): Promise<Habit> {
+  async updateHabit(menteeId: string, habitId: string, completed: boolean): Promise<Habit> {
     return apiGateway.patch(`/habits/mentees/${menteeId}/habits/${habitId}`, { completed })
   },
 
   /**
    * Get today's goals
    */
-  async getTodayGoals(menteeId: string): Promise<Goal[]> {
+  async getTodayGoals(menteeId: string): Promise<DailyGoal[]> {
     return apiGateway.get(`/goals/mentees/${menteeId}/today`)
   },
 
   /**
-   * Mark goal as complete
+   * Complete goal
    */
-  async completeGoal(menteeId: string, goalId: string): Promise<Goal> {
-    return apiGateway.patch(`/goals/mentees/${menteeId}/goals/${goalId}`, { completed: true })
+  async completeGoal(menteeId: string, goalId: string): Promise<DailyGoal> {
+    return apiGateway.post(`/goals/mentees/${menteeId}/goals/${goalId}/complete`, {})
   },
 
   /**
@@ -46,7 +46,6 @@ export const habitsClient = {
    * Submit reflection
    */
   async submitReflection(menteeId: string, content: string): Promise<Reflection> {
-    return apiGateway.post(`/reflections/mentees/${menteeId}`, { content })
+    return apiGateway.post(`/reflections`, { mentee_id: menteeId, content })
   },
 }
-

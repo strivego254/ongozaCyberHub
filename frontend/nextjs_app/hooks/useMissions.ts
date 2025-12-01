@@ -19,7 +19,7 @@ export function useMissions(menteeId: string | undefined) {
     try {
       const [inProgressData, recommendedData] = await Promise.all([
         missionsClient.getInProgressMissions(menteeId),
-        missionsClient.getNextRecommended(menteeId).catch(() => null),
+        missionsClient.getNextRecommended(menteeId),
       ])
 
       setInProgress(inProgressData)
@@ -36,12 +36,12 @@ export function useMissions(menteeId: string | undefined) {
 
     try {
       const mission = await missionsClient.startMission(menteeId, missionId)
-      setInProgress(prev => [...prev, mission])
+      await loadData() // Refresh list
       return mission
     } catch (err: any) {
       throw new Error(err.message || 'Failed to start mission')
     }
-  }, [menteeId])
+  }, [menteeId, loadData])
 
   useEffect(() => {
     loadData()
@@ -56,4 +56,3 @@ export function useMissions(menteeId: string | undefined) {
     startMission,
   }
 }
-

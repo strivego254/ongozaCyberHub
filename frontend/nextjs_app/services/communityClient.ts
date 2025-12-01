@@ -71,5 +71,16 @@ export const communityClient = {
   async followUser(menteeId: string, targetUserId: string): Promise<{ detail: string }> {
     return apiGateway.post(`/community/follow`, { mentee_id: menteeId, target_user_id: targetUserId })
   },
+
+  /**
+   * Get recent posts filtered by track
+   */
+  async getRecentPosts(params?: {
+    filter?: string
+    track?: string
+    page_size?: number
+  }): Promise<{ results: CommunityPost[]; count: number }> {
+    return apiGateway.get('/community/posts/recent', { params })
+  },
 }
 

@@ -8,12 +8,12 @@ export interface PortfolioItem {
   created_at: string
   updated_at: string
   file_url?: string
-  thumbnail_url?: string
+  file_type?: string
 }
 
 export interface PortfolioCounts {
   total_items: number
-  limit: number
-  tier: 'starter' | 'premium' | 'enterprise'
+  allowed_items: number
+  tier_limit: number
+  remaining_slots: number
 }
-

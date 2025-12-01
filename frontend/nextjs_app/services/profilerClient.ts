@@ -1,6 +1,6 @@
 /**
  * Profiler Service Client
- * Handles Future-You and track management
+ * Handles Future-You and track-related endpoints
  */
 
 import { apiGateway } from './apiGateway'
@@ -22,17 +22,16 @@ export const profilerClient = {
   },
 
   /**
-   * Update user track
-   */
-  async updateTrack(menteeId: string, trackId: string): Promise<UserTrack> {
-    return apiGateway.post(`/usertracks/${menteeId}`, { track_id: trackId })
-  },
-
-  /**
    * Get readiness window
    */
   async getReadinessWindow(menteeId: string): Promise<ReadinessWindow> {
     return apiGateway.get(`/talentscope/mentees/${menteeId}/readiness-window`)
   },
-}
 
+  /**
+   * Update user track
+   */
+  async updateTrack(menteeId: string, trackId: string): Promise<{ detail: string; track: UserTrack }> {
+    return apiGateway.post(`/usertracks/${menteeId}/change`, { track_id: trackId })
+  },
+}

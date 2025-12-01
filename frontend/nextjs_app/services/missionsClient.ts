@@ -1,6 +1,6 @@
 /**
  * Missions Service Client
- * Handles mission management and recommendations
+ * Handles mission-related endpoints
  */
 
 import { apiGateway } from './apiGateway'
@@ -22,17 +22,9 @@ export const missionsClient = {
   },
 
   /**
-   * Start a mission
+   * Start mission
    */
   async startMission(menteeId: string, missionId: string): Promise<Mission> {
-    return apiGateway.post(`/missions/mentees/${menteeId}/missions/${missionId}/start`)
-  },
-
-  /**
-   * Get mission by ID
-   */
-  async getMission(missionId: string): Promise<Mission> {
-    return apiGateway.get(`/missions/${missionId}`)
+    return apiGateway.post(`/missions/mentees/${menteeId}/missions/${missionId}/start`, {})
   },
 }
-

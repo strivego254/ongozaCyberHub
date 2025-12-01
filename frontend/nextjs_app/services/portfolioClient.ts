@@ -1,6 +1,6 @@
 /**
  * Portfolio Service Client
- * Handles portfolio items and counts
+ * Handles portfolio item endpoints
  */
 
 import { apiGateway } from './apiGateway'
@@ -40,12 +40,4 @@ export const portfolioClient = {
 
     return apiGateway.post(`/portfolio/mentees/${menteeId}/items`, formData)
   },
-
-  /**
-   * List portfolio items
-   */
-  async listItems(menteeId: string): Promise<PortfolioItem[]> {
-    return apiGateway.get(`/portfolio/mentees/${menteeId}/items`)
-  },
 }
-

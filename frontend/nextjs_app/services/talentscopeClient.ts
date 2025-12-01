@@ -1,29 +1,16 @@
 /**
- * TalentScope Service Client
- * Handles readiness scores and overview
+ * Talentscope Service Client
+ * Handles readiness and progress endpoints
  */
 
 import { apiGateway } from './apiGateway'
-
-export interface TalentScopeOverview {
-  readiness_score: number
-  missions_completed: number
-  habit_streak: number
-  portfolio_count: number
-  preview_mode?: boolean
-  breakdown?: {
-    technical: number
-    behavioral: number
-    portfolio: number
-  }
-}
+import type { TalentscopeOverview } from './types/talentscope'
 
 export const talentscopeClient = {
   /**
-   * Get TalentScope overview
+   * Get overview for a mentee
    */
-  async getOverview(menteeId: string): Promise<TalentScopeOverview> {
+  async getOverview(menteeId: string): Promise<TalentscopeOverview> {
     return apiGateway.get(`/talentscope/mentees/${menteeId}/overview`)
   },
 }
-

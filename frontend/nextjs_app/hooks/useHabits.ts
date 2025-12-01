@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { habitsClient } from '@/services/habitsClient'
-import type { Habit, Goal, Reflection } from '@/services/types/habits'
+import type { Habit, DailyGoal, Reflection } from '@/services/types/habits'
 
 export function useHabits(menteeId: string | undefined) {
   const [habits, setHabits] = useState<Habit[]>([])
-  const [goals, setGoals] = useState<Goal[]>([])
+  const [goals, setGoals] = useState<DailyGoal[]>([])
   const [latestReflection, setLatestReflection] = useState<Reflection | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +21,7 @@ export function useHabits(menteeId: string | undefined) {
       const [habitsData, goalsData, reflectionData] = await Promise.all([
         habitsClient.getTodayHabits(menteeId),
         habitsClient.getTodayGoals(menteeId),
-        habitsClient.getLatestReflection(menteeId).catch(() => null),
+        habitsClient.getLatestReflection(menteeId),
       ])
 
       setHabits(habitsData)
@@ -38,7 +38,7 @@ export function useHabits(menteeId: string | undefined) {
     if (!menteeId) return
 
     try {
-      const updated = await habitsClient.toggleHabit(menteeId, habitId, completed)
+      const updated = await habitsClient.updateHabit(menteeId, habitId, completed)
       setHabits(prev => prev.map(h => h.id === habitId ? updated : h))
     } catch (err: any) {
       throw new Error(err.message || 'Failed to update habit')
@@ -84,4 +84,3 @@ export function useHabits(menteeId: string | undefined) {
     submitReflection,
   }
 }
-

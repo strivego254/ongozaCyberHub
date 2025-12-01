@@ -36,8 +36,8 @@ const config: Config = {
           '100%': { boxShadow: '0 0 20px rgba(3, 72, 168, 0.8), 0 0 30px rgba(51, 255, 193, 0.4)' },
         },
         'pulse-glow': {
-          '0%, 100%': { opacity: 1, boxShadow: '0 0 10px rgba(3, 72, 168, 0.5)' },
-          '50%': { opacity: 0.8, boxShadow: '0 0 20px rgba(3, 72, 168, 0.8)' },
+          '0%, 100%': { opacity: '1', boxShadow: '0 0 10px rgba(3, 72, 168, 0.5)' },
+          '50%': { opacity: '0.8', boxShadow: '0 0 20px rgba(3, 72, 168, 0.8)' },
         },
       },
     },

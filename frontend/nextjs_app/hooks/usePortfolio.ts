@@ -18,7 +18,7 @@ export function usePortfolio(menteeId: string | undefined) {
 
     try {
       const [itemData, countsData] = await Promise.all([
-        portfolioClient.getLatestItem(menteeId).catch(() => null),
+        portfolioClient.getLatestItem(menteeId),
         portfolioClient.getCounts(menteeId),
       ])
 
@@ -42,15 +42,12 @@ export function usePortfolio(menteeId: string | undefined) {
 
     try {
       const item = await portfolioClient.addItem(menteeId, data)
-      setLatestItem(item)
-      if (counts) {
-        setCounts({ ...counts, total_items: counts.total_items + 1 })
-      }
+      await loadData() // Refresh data
       return item
     } catch (err: any) {
       throw new Error(err.message || 'Failed to add portfolio item')
     }
-  }, [menteeId, counts])
+  }, [menteeId, loadData])
 
   useEffect(() => {
     loadData()
@@ -65,4 +62,3 @@ export function usePortfolio(menteeId: string | undefined) {
     addItem,
   }
 }
-

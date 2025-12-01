@@ -2,22 +2,22 @@ export interface FutureYou {
   id: string
   persona_name: string
   description: string
-  created_at: string
-  updated_at: string
+  estimated_readiness_date?: string
+  confidence_score?: number
 }
 
 export interface UserTrack {
   id: string
-  track_name: string
-  track_description: string
-  track_slug: string
-  enrolled_at: string
-  progress_percentage: number
+  name: string
+  description: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  estimated_duration: string
+  current_progress: number
 }
 
 export interface ReadinessWindow {
   label: string
-  estimated_date?: string
+  estimated_date: string
   confidence: 'high' | 'medium' | 'low'
+  category: string
 }
-

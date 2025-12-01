@@ -2,20 +2,20 @@ export interface Mission {
   id: string
   title: string
   description: string
+  progress_percent: number
   difficulty: 'beginner' | 'intermediate' | 'advanced'
-  progress_percentage: number
   status: 'not_started' | 'in_progress' | 'completed'
-  estimated_duration?: string
-  started_at?: string
-  completed_at?: string
+  estimated_time?: string
+  due_date?: string
+  track_id?: string
 }
 
 export interface RecommendedMission {
   id: string
   title: string
   description: string
-  difficulty: 'beginner' | 'intermediate' | 'advanced'
   reason: string
-  estimated_duration?: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  estimated_time?: string
+  match_score: number
 }
-

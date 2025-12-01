@@ -34,25 +34,17 @@ export function useProfiler(menteeId: string | undefined) {
     }
   }, [menteeId])
 
-  const updateTrack = useCallback(async (trackId: string) => {
+  const changeTrack = useCallback(async (trackId: string) => {
     if (!menteeId) return
 
     try {
-      const updatedTrack = await profilerClient.updateTrack(menteeId, trackId)
-      setTracks(prev => {
-        const index = prev.findIndex(t => t.id === trackId)
-        if (index >= 0) {
-          const updated = [...prev]
-          updated[index] = updatedTrack
-          return updated
-        }
-        return [...prev, updatedTrack]
-      })
-      return updatedTrack
+      const result = await profilerClient.updateTrack(menteeId, trackId)
+      await loadData() // Refresh data
+      return result
     } catch (err: any) {
-      throw new Error(err.message || 'Failed to update track')
+      throw new Error(err.message || 'Failed to change track')
     }
-  }, [menteeId])
+  }, [menteeId, loadData])
 
   useEffect(() => {
     loadData()
@@ -65,7 +57,6 @@ export function useProfiler(menteeId: string | undefined) {
     isLoading,
     error,
     reload: loadData,
-    updateTrack,
+    changeTrack,
   }
 }
-

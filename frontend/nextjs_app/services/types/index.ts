@@ -18,4 +18,9 @@ export * from './profiler';
 export * from './habits';
 export * from './missions';
 export * from './portfolio';
+export * from './talentscope';
+export * from './profiler';
+export * from './habits';
+export * from './missions';
+export * from './portfolio';
 
