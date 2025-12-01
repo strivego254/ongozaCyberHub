@@ -58,10 +58,23 @@ export async function POST(request: NextRequest) {
 
     return nextResponse;
   } catch (error: any) {
+    console.error('Login API route error:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'An error occurred during login';
+    let errorDetail = 'Please try again or contact support if the problem persists.';
+    
+    if (error.message?.includes('fetch failed') || error.message?.includes('ECONNREFUSED')) {
+      errorMessage = 'Cannot connect to server';
+      errorDetail = 'The backend server is not running. Please ensure the Django API is running on port 8000.';
+    } else if (error.message) {
+      errorDetail = error.message;
+    }
+    
     return NextResponse.json(
       {
-        error: error.message || 'Login failed',
-        detail: 'An error occurred during login',
+        error: errorMessage,
+        detail: errorDetail,
       },
       { status: 500 }
     );

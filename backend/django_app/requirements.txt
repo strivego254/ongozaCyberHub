@@ -1,6 +1,6 @@
 # Django Core
 Django>=5.0,<6.0
-django-environ>=1.0.0
+django-environ>=0.10.0
 
 # Database
 psycopg2-binary>=2.9.9
@@ -15,6 +15,7 @@ django-cors-headers>=4.3.0
 
 # Utilities
 python-dotenv>=1.0.0
+requests>=2.31.0
 
 # MFA/TOTP
 pyotp>=2.9.0

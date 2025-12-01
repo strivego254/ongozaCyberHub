@@ -118,13 +118,29 @@ function LoginForm() {
       }, 200);
 
     } catch (err: any) {
+      console.error('Login error:', err);
+      
       let message = 'Login failed. Please check your credentials.';
+      let detail = '';
 
-      if (err?.data?.detail) message = err.data.detail;
-      else if (err?.detail) message = err.detail;
-      else if (err?.message) message = err.message;
+      // Check for API response errors
+      if (err?.data) {
+        message = err.data.error || err.data.detail || message;
+        detail = err.data.detail || '';
+      } else if (err?.detail) {
+        message = err.detail;
+      } else if (err?.message) {
+        message = err.message;
+        // Check for connection errors
+        if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('ECONNREFUSED')) {
+          message = 'Cannot connect to server';
+          detail = 'The backend server is not running. Please ensure the Django API is running on port 8000.';
+        }
+      }
 
-      setError(message);
+      // Combine message and detail for display
+      const errorMessage = detail ? `${message}\n\n${detail}` : message;
+      setError(errorMessage);
     }
   };
 

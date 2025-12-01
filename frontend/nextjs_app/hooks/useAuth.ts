@@ -57,8 +57,10 @@ export function useAuth() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || errorData.error || 'Login failed');
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(errorData.detail || errorData.error || 'Login failed');
+        (error as any).data = errorData;
+        throw error;
       }
 
       const { user, access_token } = await response.json();

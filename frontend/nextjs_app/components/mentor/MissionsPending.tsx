@@ -6,15 +6,28 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useMentorMissions } from '@/hooks/useMentorMissions'
 import { useAuth } from '@/hooks/useAuth'
+import type { MissionSubmission } from '@/services/types/mentor'
 
-export function MissionsPending() {
+interface MissionsPendingProps {
+  onReviewClick?: (submission: MissionSubmission) => void
+}
+
+export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
   const { user } = useAuth()
   const mentorId = user?.id?.toString()
   const [page, setPage] = useState(1)
-  const { missions, totalCount, isLoading, error } = useMentorMissions(mentorId, page, 10)
+  const { missions, totalCount, isLoading, error } = useMentorMissions(mentorId, {
+    status: 'pending_review',
+    limit: 10,
+    offset: (page - 1) * 10,
+  })
 
-  const handleReview = (id: string) => {
-    alert(`Open detailed review UI for mission ${id} (to be wired to mission review page).`)
+  const handleReview = (submission: MissionSubmission) => {
+    if (onReviewClick) {
+      onReviewClick(submission)
+    } else {
+      alert(`Open detailed review UI for mission ${submission.id}`)
+    }
   }
 
   const handleBulkApprove = () => {
@@ -58,15 +71,10 @@ export function MissionsPending() {
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-white font-semibold text-sm">{m.title}</span>
+                  <span className="text-white font-semibold text-sm">{m.mission_title}</span>
                   <Badge variant="defender" className="text-[11px] capitalize">
                     {m.status.replace('_', ' ')}
                   </Badge>
-                  {m.ai_score !== undefined && (
-                    <Badge variant="mint" className="text-[11px]">
-                      AI Score: {m.ai_score}
-                    </Badge>
-                  )}
                 </div>
                 <div className="text-xs text-och-steel">
                   {m.mentee_name} • Submitted{' '}
@@ -74,7 +82,7 @@ export function MissionsPending() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleReview(m.id)}>
+                <Button variant="outline" size="sm" onClick={() => handleReview(m)}>
                   Review
                 </Button>
                 <Button variant="outline" size="sm">

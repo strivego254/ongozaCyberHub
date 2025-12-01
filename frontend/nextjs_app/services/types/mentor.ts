@@ -1,59 +1,242 @@
-export interface MentorMentee {
+/**
+ * Mentor-specific types for dashboard and management features
+ */
+
+export interface AssignedMentee {
   id: string
+  user_id: string
   name: string
-  email?: string
+  email: string
   avatar_url?: string
   track?: string
   cohort?: string
-  subscription_tier?: string
   readiness_score: number
   readiness_label?: string
+  risk_level: 'low' | 'medium' | 'high'
   last_activity_at?: string
-  risk_level?: 'low' | 'medium' | 'high'
   missions_completed?: number
+  subscription_tier?: 'free' | 'professional' | 'premium'
+  assigned_at: string
+  status: 'active' | 'inactive' | 'flagged'
 }
 
-export interface MentorMenteeDetail extends MentorMentee {
-  recent_activities?: {
-    type: string
-    label: string
-    at: string
-  }[]
-  latest_mission_status?: string
-  latest_notes?: string
-}
-
-export interface MentorMissionPending {
+export interface MentorProfile {
   id: string
-  title: string
-  mentee_id: string
-  mentee_name: string
-  submitted_at: string
-  ai_score?: number
-  status: 'pending' | 'needs_review' | 'in_review'
-}
-
-export interface MentorInfluence {
-  impact_score: number
-  sessions_held: number
-  mentees_engaged: number
-  feedback_count: number
-  history: Array<{
-    date: string
-    impact_score: number
-    sessions: number
-  }>
-}
-
-export interface MentorAlert {
-  id: string
-  mentee_id: string
-  mentee_name: string
-  severity: 'low' | 'medium' | 'high' | 'critical'
-  type: string
-  message: string
+  user_id: string
+  bio?: string
+  expertise_tags: string[]
+  availability: {
+    timezone: string
+    available_hours: {
+      day: string
+      start: string
+      end: string
+    }[]
+  }
+  max_mentees: number
+  current_mentees: number
+  rating?: number
+  total_sessions: number
   created_at: string
+  updated_at: string
+}
+
+export interface MissionSubmission {
+  id: string
+  mission_id: string
+  mission_title: string
+  mentee_id: string
+  mentee_name: string
+  mentee_email: string
+  submitted_at: string
+  status: 'pending_review' | 'in_review' | 'approved' | 'rejected' | 'needs_revision'
+  submission_data: {
+    answers?: Record<string, any>
+    files?: Array<{
+      id: string
+      filename: string
+      url: string
+      file_type: string
+    }>
+    code_repository?: string
+    live_demo_url?: string
+  }
+  tier_requirement: 'professional' // Only Professional tier ($7) requires mentor review
+}
+
+export interface MissionReview {
+  id: string
+  submission_id: string
+  mentor_id: string
+  overall_status: 'pass' | 'fail' | 'needs_revision'
+  feedback: {
+    written?: string
+    audio_url?: string
+  }
+  comments: Array<{
+    id: string
+    comment: string
+    section?: string
+    created_at: string
+  }>
+  technical_competencies: string[] // Tags for skills demonstrated
+  score_breakdown: Record<string, number> // JSONB format
+  recommended_next_missions?: string[]
+  reviewed_at: string
+  version: number // For audit trail
+}
+
+export interface CapstoneProject {
+  id: string
+  mentee_id: string
+  mentee_name: string
+  title: string
+  description: string
+  submitted_at: string
+  status: 'pending_scoring' | 'scored' | 'needs_revision'
+  project_url?: string
+  repository_url?: string
+  documentation_url?: string
+}
+
+export interface CapstoneScore {
+  id: string
+  capstone_id: string
+  mentor_id: string
+  overall_score: number
+  score_breakdown: {
+    technical_quality: number
+    problem_solving: number
+    documentation: number
+    presentation: number
+    innovation: number
+  }
+  feedback: string
+  recommendations?: string[]
+  scored_at: string
+  version: number
+}
+
+export interface GroupMentorshipSession {
+  id: string
+  mentor_id: string
+  title: string
+  description: string
+  scheduled_at: string
+  duration_minutes: number
+  meeting_link?: string
+  meeting_type: 'zoom' | 'google_meet' | 'in_person'
+  track_assignment?: string
+  recording_url?: string
+  transcript_url?: string
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  attendance: Array<{
+    mentee_id: string
+    mentee_name: string
+    attended: boolean
+    joined_at?: string
+    left_at?: string
+  }>
+  created_at: string
+  updated_at: string
+}
+
+export interface MenteeGoal {
+  id: string
+  mentee_id: string
+  mentee_name: string
+  goal_type: 'monthly' | 'weekly'
+  title: string
+  description: string
+  target_date: string
+  status: 'pending' | 'in_progress' | 'completed' | 'missed'
+  created_at: string
+  mentor_feedback?: {
+    feedback: string
+    provided_at: string
+    version: number
+  }
+}
+
+export interface MenteeFlag {
+  id: string
+  mentee_id: string
+  mentee_name: string
+  flag_type: 'struggling' | 'at_risk' | 'needs_attention' | 'technical_issue'
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  description: string
+  raised_by: string // mentor_id
+  raised_at: string
+  status: 'open' | 'acknowledged' | 'resolved'
+  resolution_notes?: string
   resolved_at?: string
 }
 
+export interface TrackAssignment {
+  id: string
+  user_id: string
+  track_key: string
+  assigned_by: string // mentor_id
+  assigned_at: string
+  reason?: string
+}
 
+export interface MenteePerformance {
+  mentee_id: string
+  mentee_name: string
+  overall_score: number
+  readiness_score: number
+  mission_completion_rate: number
+  average_mission_score: number
+  capstone_score?: number
+  engagement_score: number
+  last_updated: string
+}
+
+export interface TalentScopeMentorView {
+  mentee_id: string
+  mentee_name: string
+  ingested_signals: {
+    mentor_evaluations: number
+    habit_logs: number
+    mission_scores: number
+    reflection_sentiment: {
+      positive: number
+      neutral: number
+      negative: number
+    }
+    community_engagement: number
+  }
+  skills_heatmap: Record<string, number> // skill -> proficiency score
+  behavioral_trends: Array<{
+    date: string
+    engagement: number
+    performance: number
+    sentiment: number
+  }>
+  readiness_over_time: Array<{
+    date: string
+    score: number
+  }>
+}
+
+export interface MentorInfluenceIndex {
+  mentor_id: string
+  overall_influence_score: number
+  metrics: {
+    total_feedback_given: number
+    average_response_time_hours: number
+    mentee_improvement_rate: number // % of mentees showing improvement after feedback
+    session_attendance_rate: number
+    mission_approval_rate: number
+  }
+  correlation_data: {
+    feedback_to_performance: number // Correlation coefficient
+    sessions_to_engagement: number
+    reviews_to_mission_quality: number
+  }
+  period: {
+    start_date: string
+    end_date: string
+  }
+}
