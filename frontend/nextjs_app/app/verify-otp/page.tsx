@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { authService } from '@/lib/auth-mock'
 
-export default function VerifyOTPPage() {
+function VerifyOTPContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = searchParams.get('email') || ''
@@ -163,4 +163,17 @@ export default function VerifyOTPPage() {
     </div>
   )
 }
+
+export default function VerifyOTPPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-och-midnight flex items-center justify-center p-4">
+        <div className="text-och-steel">Loading verification...</div>
+      </div>
+    }>
+      <VerifyOTPContent />
+    </Suspense>
+  )
+}
+
 

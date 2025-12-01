@@ -8,8 +8,8 @@ import { useUsers } from '@/hooks/useUsers'
 import { useAnalytics } from '@/hooks/useAnalytics'
 
 export default function AdminClient() {
-  const { users, totalCount, isLoading: usersLoading } = useUsers({ page: 1, page_size: 10 })
-  const { readinessScores, heatmapData, skillMastery, behavioralTrends, isLoading: analyticsLoading } = useAnalytics(undefined)
+  const { users, totalCount } = useUsers({ page: 1, page_size: 10 })
+  useAnalytics(undefined)
 
   const activeUsers = users.filter(u => u.is_active && u.account_status === 'active').length
   const totalUsers = totalCount || users.length

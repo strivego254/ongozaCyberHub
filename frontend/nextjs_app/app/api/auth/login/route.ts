@@ -4,7 +4,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { setServerAuthTokens } from '@/utils/auth-server';
 import type { LoginRequest, LoginResponse } from '@/services/types';
 
 export async function POST(request: NextRequest) {

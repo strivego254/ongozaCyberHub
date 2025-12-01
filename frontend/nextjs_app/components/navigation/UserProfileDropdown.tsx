@@ -3,11 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { useRouter } from 'next/navigation'
 
 export function UserProfileDropdown() {
   const { user, logout } = useAuth()
-  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 

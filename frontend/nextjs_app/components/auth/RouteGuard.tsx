@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { hasRouteAccess, getPrimaryRole, getDashboardRoute } from '@/utils/rbac'
+import { hasRouteAccess } from '@/utils/rbac'
 import { getRedirectRoute } from '@/utils/redirect'
 
 interface RouteGuardProps {
@@ -11,7 +11,7 @@ interface RouteGuardProps {
   requiredRoles?: string[]
 }
 
-export function RouteGuard({ children, requiredRoles }: RouteGuardProps) {
+export function RouteGuard({ children, requiredRoles: _requiredRoles }: RouteGuardProps) {
   const { user, isLoading, isAuthenticated } = useAuth()
   const router = useRouter()
 

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -11,7 +10,6 @@ export function JobRecommendations() {
   const { user } = useAuth()
   const menteeId = user?.id?.toString()
   const { recommendations, isLoading, error } = useMarketplace(menteeId)
-  const [selectedJob, setSelectedJob] = useState<string | null>(null)
 
   const getMatchColor = (score: number) => {
     if (score >= 80) return 'mint'

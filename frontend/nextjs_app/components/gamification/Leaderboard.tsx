@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { useGamification } from '@/hooks/useGamification'
@@ -24,13 +24,6 @@ export function Leaderboard({ trackId, category }: LeaderboardProps) {
     if (rank === 2) return '🥈'
     if (rank === 3) return '🥉'
     return `#${rank}`
-  }
-
-  const getRankColor = (rank: number) => {
-    if (rank === 1) return 'gold'
-    if (rank === 2) return 'steel'
-    if (rank === 3) return 'orange'
-    return 'steel'
   }
 
   if (isLoading) {

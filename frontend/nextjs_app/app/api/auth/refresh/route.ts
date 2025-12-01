@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerRefreshToken, setServerAuthTokens, clearServerAuthTokens } from '@/utils/auth-server';
 import { djangoClient } from '@/services/djangoClient';
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const refreshToken = await getServerRefreshToken();
     

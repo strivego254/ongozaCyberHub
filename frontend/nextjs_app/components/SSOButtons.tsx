@@ -53,7 +53,7 @@ interface SSOButtonsProps {
   onError?: (error: string) => void;
 }
 
-export default function SSOButtons({ mode = 'login', onSuccess, onError }: SSOButtonsProps) {
+export default function SSOButtons({ mode = 'login', onSuccess: _onSuccess, onError }: SSOButtonsProps) {
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleSSO = async (provider: string) => {

@@ -79,7 +79,7 @@ export function PortfolioCard() {
             variant="defender"
             size="sm"
             onClick={() => setShowAddModal(true)}
-            disabled={counts && counts.remaining_slots <= 0}
+            disabled={!!(counts && counts.remaining_slots <= 0)}
           >
             Add Item
           </Button>
@@ -212,8 +212,8 @@ export function PortfolioCard() {
               </div>
             </form>
           </div>
-        )}
-      </>
-    )
+        </div>
+      )}
+    </>
   )
 }

@@ -87,10 +87,6 @@ export default function ProfilePage() {
   }
 
   const isFieldSkipped = (field: keyof ProfileData) => skippedFields.has(field)
-  const isFieldRequired = (field: keyof ProfileData) => {
-    return ['fullName', 'country', 'timezone'].includes(field)
-  }
-
   const canSubmit = () => {
     return profile.fullName && profile.country && profile.timezone
   }

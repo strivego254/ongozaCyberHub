@@ -6,7 +6,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import SSOButtons from '@/components/SSOButtons';
-import { getPrimaryRole, getDashboardRoute, getUserRoles } from '@/utils/rbac';
 import { getRedirectRoute } from '@/utils/redirect';
 import type { LoginRequest } from '@/services/types';
 
@@ -26,7 +25,7 @@ export default function RoleLoginPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const role = (params?.role as string) || 'student';
-  const { login, isLoading, user: authUser } = useAuth();
+  const { login, isLoading } = useAuth();
 
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',

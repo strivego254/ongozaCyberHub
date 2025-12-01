@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { habitsClient } from '@/services/habitsClient'
-import type { Habit, DailyGoal, Reflection } from '@/services/types/habits'
+import type { Habit, DailyGoal, HabitReflection } from '@/services/types/habits'
 
 export function useHabits(menteeId: string | undefined) {
   const [habits, setHabits] = useState<Habit[]>([])
   const [goals, setGoals] = useState<DailyGoal[]>([])
-  const [latestReflection, setLatestReflection] = useState<Reflection | null>(null)
+  const [latestReflection, setLatestReflection] = useState<HabitReflection | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

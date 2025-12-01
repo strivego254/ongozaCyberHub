@@ -4,7 +4,7 @@
  */
 
 import { apiGateway } from './apiGateway'
-import type { Habit, DailyGoal, Reflection } from './types/habits'
+import type { Habit, DailyGoal, HabitReflection } from './types/habits'
 
 export const habitsClient = {
   /**
@@ -38,14 +38,14 @@ export const habitsClient = {
   /**
    * Get latest reflection
    */
-  async getLatestReflection(menteeId: string): Promise<Reflection | null> {
+  async getLatestReflection(menteeId: string): Promise<HabitReflection | null> {
     return apiGateway.get(`/reflections/mentees/${menteeId}/latest`)
   },
 
   /**
    * Submit reflection
    */
-  async submitReflection(menteeId: string, content: string): Promise<Reflection> {
+  async submitReflection(menteeId: string, content: string): Promise<HabitReflection> {
     return apiGateway.post(`/reflections`, { mentee_id: menteeId, content })
   },
 }

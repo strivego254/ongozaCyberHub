@@ -7,7 +7,7 @@ import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard'
 
 export default function AnalyticsPage() {
   const router = useRouter()
-  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
+  const { isLoading: authLoading, isAuthenticated } = useAuth()
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {

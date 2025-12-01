@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAICoaching } from '@/hooks/useAICoaching'
 import { useAuth } from '@/hooks/useAuth'
-import type { DailyNudge, AICoachMessage } from '@/services/types/coaching'
 
 export function AICoachPanel() {
   const { user } = useAuth()

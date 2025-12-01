@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -12,7 +11,6 @@ export function EventsCalendar() {
   const { user } = useAuth()
   const menteeId = user?.id?.toString()
   const { events, isLoading, error } = useEvents(menteeId)
-  const [selectedDate, setSelectedDate] = useState(new Date())
 
   const getEventTypeIcon = (type: string) => {
     switch (type) {

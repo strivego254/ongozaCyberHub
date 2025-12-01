@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useHabits } from '@/hooks/useHabits'
 import { useAuth } from '@/hooks/useAuth'
-import Link from 'next/link'
 
 export function CoachingPanel() {
   const { user } = useAuth()

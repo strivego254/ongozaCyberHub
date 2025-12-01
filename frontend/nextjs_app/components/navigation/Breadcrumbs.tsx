@@ -34,7 +34,7 @@ const generateBreadcrumbs = (pathname: string): BreadcrumbItem[] => {
   }
 
   let currentPath = '/dashboard/student'
-  segments.forEach((segment, index) => {
+  segments.forEach((segment) => {
     // Skip 'dashboard' and 'student' segments
     if (segment === 'dashboard' || segment === 'student') {
       return

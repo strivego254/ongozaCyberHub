@@ -63,9 +63,9 @@ export async function fetcher<T>(
 
   // Set headers - don't set Content-Type for FormData (browser will set it with boundary)
   const isFormData = fetchOptions.body instanceof FormData;
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     ...(!isFormData && { 'Content-Type': 'application/json' }),
-    ...fetchOptions.headers,
+    ...(fetchOptions.headers as Record<string, string> || {}),
   };
 
   // Add auth token if not skipped
@@ -101,7 +101,7 @@ export async function fetcher<T>(
       return null as T;
     }
 
-    return isJson ? await response.json() : await response.text();
+    return isJson ? (await response.json() as T) : (await response.text() as T);
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;

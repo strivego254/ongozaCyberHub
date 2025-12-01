@@ -18,7 +18,7 @@ export interface DailyGoal {
   priority: 'high' | 'medium' | 'low'
 }
 
-export interface Reflection {
+export interface HabitReflection {
   id: string
   content: string
   created_at: string
