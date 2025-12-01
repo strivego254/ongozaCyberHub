@@ -1,135 +1,78 @@
-/**
- * Hook for fetching analytics and audit log data
- */
+'use client'
 
-'use client';
+import { useState, useEffect, useCallback } from 'react'
+import { analyticsClient } from '@/services/analyticsClient'
+import type {
+  ReadinessScore,
+  SkillHeatmapData,
+  SkillMastery,
+  BehavioralTrend,
+  AnalyticsFilter,
+} from '@/services/types/analytics'
 
-import { useState, useEffect } from 'react';
-import { djangoClient } from '@/services/djangoClient';
+export function useAnalytics(menteeId: string | undefined, filter?: AnalyticsFilter) {
+  const [readinessScores, setReadinessScores] = useState<ReadinessScore[]>([])
+  const [heatmapData, setHeatmapData] = useState<SkillHeatmapData[]>([])
+  const [skillMastery, setSkillMastery] = useState<SkillMastery[]>([])
+  const [behavioralTrends, setBehavioralTrends] = useState<BehavioralTrend[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-export interface AnalyticsData {
-  successRate: number;
-  failureRate: number;
-  totalActions: number;
-  successActions: number;
-  failureActions: number;
-  heatmapData: Array<{ day: string; hour: number; value: number }>;
-  systemMetrics: {
-    uptime: number;
-    responseTime: number;
-    errorRate: number;
-    activeUsers: number;
-  };
-}
+  const loadData = useCallback(async () => {
+    if (!menteeId) return
 
-export function useAnalytics(params?: {
-  start_date?: string;
-  end_date?: string;
-  range?: 'today' | 'week' | 'month' | 'year';
-}) {
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const [readiness, heatmap, mastery, trends] = await Promise.all([
+        analyticsClient.getReadinessOverTime(menteeId, filter),
+        analyticsClient.getSkillsHeatmap(menteeId, filter),
+        analyticsClient.getSkillMastery(menteeId, filter?.skill_category),
+        analyticsClient.getBehavioralTrends(menteeId, filter),
+      ])
+
+      setReadinessScores(readiness)
+      setHeatmapData(heatmap)
+      setSkillMastery(mastery)
+      setBehavioralTrends(trends)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load analytics')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [menteeId, filter])
+
+  const exportReport = useCallback(async (format: 'pdf' | 'csv') => {
+    if (!menteeId) return
+
+    try {
+      const blob = await analyticsClient.exportReport(menteeId, format, filter)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `analytics-report.${format}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to export report')
+    }
+  }, [menteeId, filter])
 
   useEffect(() => {
-    async function fetchAnalytics() {
-      try {
-        setIsLoading(true);
-        
-        // Fetch audit stats
-        const stats = await djangoClient.audit.getAuditStats();
-        
-        // Fetch audit logs for heatmap
-        const auditParams: any = {};
-        if (params?.range) {
-          auditParams.range = params.range;
-        }
-        if (params?.start_date) {
-          auditParams.start_date = params.start_date;
-        }
-        if (params?.end_date) {
-          auditParams.end_date = params.end_date;
-        }
-        
-        const logs = await djangoClient.audit.listAuditLogs(auditParams);
-        
-        // Calculate success/failure rates
-        const total = stats.total || 1;
-        const success = stats.success || 0;
-        const failure = stats.failure || 0;
-        const successRate = (success / total) * 100;
-        const failureRate = (failure / total) * 100;
-        
-        // Generate heatmap data from audit logs
-        const heatmapData = generateHeatmapData(logs);
-        
-        // System metrics (placeholder - would come from monitoring system)
-        const systemMetrics = {
-          uptime: 99.9,
-          responseTime: 120,
-          errorRate: failureRate,
-          activeUsers: logs.length > 0 ? new Set(logs.map((log: any) => log.actor_identifier)).size : 0,
-        };
-        
-        setData({
-          successRate: Math.round(successRate * 10) / 10,
-          failureRate: Math.round(failureRate * 10) / 10,
-          totalActions: total,
-          successActions: success,
-          failureActions: failure,
-          heatmapData,
-          systemMetrics,
-        });
-        
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load analytics');
-        setData(null);
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    loadData()
+  }, [loadData])
 
-    fetchAnalytics();
-  }, [params?.start_date, params?.end_date, params?.range]);
-
-  return { data, isLoading, error };
+  return {
+    readinessScores,
+    heatmapData,
+    skillMastery,
+    behavioralTrends,
+    isLoading,
+    error,
+    reload: loadData,
+    exportReport,
+  }
 }
-
-/**
- * Generate heatmap data from audit logs
- */
-function generateHeatmapData(logs: any[]): Array<{ day: string; hour: number; value: number }> {
-  const heatmap: Record<string, number> = {};
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  
-  // Initialize all slots
-  days.forEach(day => {
-    for (let hour = 0; hour < 24; hour++) {
-      heatmap[`${day}-${hour}`] = 0;
-    }
-  });
-  
-  // Count actions per day/hour
-  logs.forEach((log: any) => {
-    if (log.timestamp) {
-      const date = new Date(log.timestamp);
-      const day = days[date.getDay() === 0 ? 6 : date.getDay() - 1]; // Convert to Mon-Sun
-      const hour = date.getHours();
-      const key = `${day}-${hour}`;
-      heatmap[key] = (heatmap[key] || 0) + 1;
-    }
-  });
-  
-  // Convert to array format
-  const maxValue = Math.max(...Object.values(heatmap));
-  return Object.entries(heatmap).map(([key, value]) => {
-    const [day, hour] = key.split('-');
-    return {
-      day,
-      hour: parseInt(hour),
-      value: maxValue > 0 ? Math.round((value / maxValue) * 100) : 0,
-    };
-  });
-}
-
