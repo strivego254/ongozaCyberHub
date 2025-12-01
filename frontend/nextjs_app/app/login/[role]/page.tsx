@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
@@ -20,12 +20,12 @@ const PERSONAS = {
 
 const VALID_ROLES = Object.keys(PERSONAS);
 
-export default function RoleLoginPage() {
+function LoginForm() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const role = (params?.role as string) || 'student';
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, isAuthenticated, user } = useAuth();
 
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',
@@ -41,6 +41,18 @@ export default function RoleLoginPage() {
       router.push('/login/student');
     }
   }, [role, router]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const redirectTo = searchParams.get('redirect');
+      if (redirectTo && redirectTo.startsWith('/dashboard')) {
+        router.push(redirectTo);
+      } else {
+        router.push('/dashboard/student');
+      }
+    }
+  }, [isAuthenticated, user, router, searchParams]);
 
   const currentPersona = PERSONAS[role as keyof typeof PERSONAS] || PERSONAS.student;
 
@@ -262,5 +274,17 @@ export default function RoleLoginPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function RoleLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-och-midnight flex items-center justify-center">
+        <div className="text-och-steel">Loading...</div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
