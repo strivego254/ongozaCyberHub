@@ -1,6 +1,8 @@
 'use client'
 
 import { MentorProfileManagement } from '@/components/mentor/MentorProfileManagement'
+import { MentorAccountSettings } from '@/components/mentor/MentorAccountSettings'
+import { MentorSupportAndHelp } from '@/components/mentor/MentorSupportAndHelp'
 
 export default function ProfilePage() {
   return (
@@ -8,11 +10,15 @@ export default function ProfilePage() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2 text-och-mint">Mentor Profile</h1>
         <p className="text-och-steel">
-          Manage your profile, expertise tags, and availability.
+          Manage your profile details, settings, and support options.
         </p>
       </div>
 
-      <MentorProfileManagement />
+      <div className="space-y-6">
+        <MentorProfileManagement />
+        <MentorAccountSettings />
+        <MentorSupportAndHelp />
+      </div>
     </div>
   )
 }

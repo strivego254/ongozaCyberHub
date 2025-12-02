@@ -14,6 +14,10 @@ export function MenteesOverview() {
   const { mentees, isLoading, error } = useMentorMentees(mentorId)
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isMessageOpen, setIsMessageOpen] = useState(false)
+  const [message, setMessage] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase()
@@ -24,8 +28,13 @@ export function MenteesOverview() {
     )
   }, [mentees, search])
 
+  const selectedMentees = useMemo(
+    () => filtered.filter((m) => selectedIds.has(m.id)),
+    [filtered, selectedIds]
+  )
+
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -41,7 +50,33 @@ export function MenteesOverview() {
 
   const handleBulkMessage = () => {
     if (selectedIds.size === 0) return
-    alert(`Bulk message to ${selectedIds.size} mentees (hook into mentorship chat/API here).`)
+    setIsMessageOpen(true)
+    setSuccessMessage(null)
+  }
+
+  const handleSendMessage = async () => {
+    if (selectedMentees.length === 0 || !message.trim()) {
+      return
+    }
+
+    setIsSending(true)
+    try {
+      // Simulate send delay and hook for future backend/chat integration
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      // eslint-disable-next-line no-console
+      console.log('Bulk mentor message payload', {
+        mentorId,
+        mentees: selectedMentees.map((m) => ({ id: m.id, name: m.name, email: m.email })),
+        message,
+      })
+
+      setIsMessageOpen(false)
+      setMessage('')
+      setSuccessMessage(`Message sent to ${selectedMentees.length} mentee${selectedMentees.length > 1 ? 's' : ''}.`)
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } finally {
+      setIsSending(false)
+    }
   }
 
   return (
@@ -71,6 +106,12 @@ export function MenteesOverview() {
           </Button>
         </div>
       </div>
+
+      {successMessage && (
+        <div className="mb-4 text-sm text-och-mint">
+          {successMessage}
+        </div>
+      )}
 
       {isLoading && (
         <div className="text-och-steel text-sm">Loading mentees...</div>
@@ -172,6 +213,53 @@ export function MenteesOverview() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {isMessageOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          aria-modal="true"
+          role="dialog"
+        >
+          <div className="w-full max-w-md rounded-xl bg-och-midnight border border-och-steel/30 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-white">
+              Message Selected Mentee{selectedMentees.length > 1 ? 's' : ''}
+            </h3>
+            <p className="mb-3 text-xs text-och-steel">
+              {selectedMentees.length === 1
+                ? `Sending to: ${selectedMentees[0]?.name} (${selectedMentees[0]?.email ?? 'no email'})`
+                : `Sending to ${selectedMentees.length} mentees.`}
+            </p>
+            <textarea
+              className="mb-4 h-32 w-full rounded-lg bg-och-midnight border border-och-steel/30 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+              placeholder="Write your message..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              disabled={isSending}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (isSending) return
+                  setIsMessageOpen(false)
+                }}
+                disabled={isSending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="defender"
+                size="sm"
+                onClick={handleSendMessage}
+                disabled={isSending || !message.trim()}
+              >
+                {isSending ? 'Sending...' : 'Send Message'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </Card>

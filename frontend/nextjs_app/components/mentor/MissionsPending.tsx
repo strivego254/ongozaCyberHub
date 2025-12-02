@@ -16,7 +16,9 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
   const { user } = useAuth()
   const mentorId = user?.id?.toString()
   const [page, setPage] = useState(1)
-  const { missions, totalCount, isLoading, error } = useMentorMissions(mentorId, {
+  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const { missions, totalCount, isLoading, error, updateMissionStatus } = useMentorMissions(mentorId, {
     status: 'pending_review',
     limit: 10,
     offset: (page - 1) * 10,
@@ -27,6 +29,42 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
       onReviewClick(submission)
     } else {
       alert(`Open detailed review UI for mission ${submission.id}`)
+    }
+  }
+
+  const handleApprove = async (submission: MissionSubmission) => {
+    if (!updateMissionStatus) return
+    
+    setProcessingId(submission.id)
+    setSuccessMessage(null)
+    
+    try {
+      await updateMissionStatus(submission.id, 'approved')
+      setSuccessMessage(`Mission "${submission.mission_title}" approved successfully`)
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      console.error('Failed to approve mission:', err)
+      alert('Failed to approve mission. Please try again.')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleRequestResubmission = async (submission: MissionSubmission) => {
+    if (!updateMissionStatus) return
+    
+    setProcessingId(submission.id)
+    setSuccessMessage(null)
+    
+    try {
+      await updateMissionStatus(submission.id, 'needs_revision')
+      setSuccessMessage(`Resubmission requested for "${submission.mission_title}"`)
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      console.error('Failed to request resubmission:', err)
+      alert('Failed to request resubmission. Please try again.')
+    } finally {
+      setProcessingId(null)
     }
   }
 
@@ -49,6 +87,12 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
           </Button>
         </div>
       </div>
+
+      {successMessage && (
+        <div className="mb-4 p-3 bg-och-defender/20 border border-och-defender/40 rounded-lg text-och-defender text-sm">
+          {successMessage}
+        </div>
+      )}
 
       {isLoading && (
         <div className="text-och-steel text-sm">Loading missions...</div>
@@ -85,11 +129,21 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
                 <Button variant="outline" size="sm" onClick={() => handleReview(m)}>
                   Review
                 </Button>
-                <Button variant="outline" size="sm">
-                  Request Resubmission
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleRequestResubmission(m)}
+                  disabled={processingId === m.id}
+                >
+                  {processingId === m.id ? 'Processing...' : 'Request Resubmission'}
                 </Button>
-                <Button variant="defender" size="sm">
-                  Approve
+                <Button 
+                  variant="defender" 
+                  size="sm"
+                  onClick={() => handleApprove(m)}
+                  disabled={processingId === m.id}
+                >
+                  {processingId === m.id ? 'Processing...' : 'Approve'}
                 </Button>
               </div>
             </div>

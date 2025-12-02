@@ -8,17 +8,16 @@ import clsx from 'clsx'
 interface NavItem {
   label: string
   href: string
-  icon: string
   badge?: number
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard/mentor', icon: '🧭' },
-  { label: 'Mentees', href: '/dashboard/mentor/mentees', icon: '👥' },
-  { label: 'Missions', href: '/dashboard/mentor/missions', icon: '✅' },
-  { label: 'Sessions', href: '/dashboard/mentor/sessions', icon: '📅' },
-  { label: 'Analytics', href: '/dashboard/mentor/analytics', icon: '📊' },
-  { label: 'Profile', href: '/dashboard/mentor/profile', icon: '👤' },
+  { label: 'Dashboard', href: '/dashboard/mentor' },
+  { label: 'Mentees', href: '/dashboard/mentor/mentees' },
+  { label: 'Missions', href: '/dashboard/mentor/missions' },
+  { label: 'Sessions', href: '/dashboard/mentor/sessions' },
+  { label: 'Analytics', href: '/dashboard/mentor/analytics' },
+  { label: 'Profile', href: '/dashboard/mentor/profile' },
 ]
 
 export function MentorNavigation() {
@@ -86,14 +85,13 @@ export function MentorNavigation() {
                   href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={clsx(
-                    'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200',
+                    'flex items-center px-4 py-3 rounded-lg transition-all duration-200',
                     'hover:bg-och-defender/20 hover:text-och-mint',
                     active
                       ? 'bg-och-defender/30 text-och-mint border-l-4 border-och-mint'
                       : 'text-och-steel'
                   )}
                 >
-                  <span className="text-xl">{item.icon}</span>
                   <span className="font-medium">{item.label}</span>
                   {item.badge && item.badge > 0 && (
                     <span className="ml-auto px-2 py-0.5 text-xs bg-och-orange text-white rounded-full">
