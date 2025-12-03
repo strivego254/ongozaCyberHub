@@ -11,8 +11,11 @@ from users.views.admin_views import (
 )
 from users.views.audit_views import AuditLogViewSet
 
+from .views import health_check, dashboard_metrics
+
 urlpatterns = [
     path('health/', health_check, name='health-check'),
+    path('metrics/dashboard', dashboard_metrics, name='dashboard-metrics'),
     
     # Authentication endpoints (includes password reset)
     path('', include('users.urls')),
@@ -34,5 +37,17 @@ urlpatterns = [
     # Other endpoints
     path('', include('organizations.urls')),
     path('', include('progress.urls')),
+    
+    # Student Dashboard endpoints
+    path('student/', include('student_dashboard.urls')),
+    
+    # Mentorship endpoints
+    path('', include('mentorship.urls')),
+    
+    # Student Journey Modules
+    path('', include('profiler.urls')),
+    path('', include('coaching.urls')),
+    path('', include('missions.urls')),
+    path('', include('subscriptions.urls')),
 ]
 
