@@ -53,10 +53,12 @@ export function AlertsPanel() {
                 </span>
               </div>
               <div className="text-xs text-och-steel">
-                {a.message}{' '}
-                <span className="font-semibold text-och-mint">
-                  ({a.mentee_name})
-                </span>
+                {a.description}{' '}
+                {a.mentee_name && (
+                  <span className="font-semibold text-och-mint">
+                    ({a.mentee_name})
+                  </span>
+                )}
               </div>
               <div className="flex gap-2 mt-1">
                 <Button variant="outline" size="sm">

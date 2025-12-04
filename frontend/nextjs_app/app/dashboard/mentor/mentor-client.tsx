@@ -3,7 +3,6 @@
 import { MenteesOverview } from '@/components/mentor/MenteesOverview'
 import { MissionsPending } from '@/components/mentor/MissionsPending'
 import { InfluenceAnalytics } from '@/components/mentor/InfluenceAnalytics'
-import { SessionManagement } from '@/components/mentor/SessionManagement'
 import { TalentScopeView } from '@/components/mentor/TalentScopeView'
 import { MentorProfileManagement } from '@/components/mentor/MentorProfileManagement'
 import { GoalFeedback } from '@/components/mentor/GoalFeedback'
@@ -25,25 +24,21 @@ export default function MentorClient() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <Link href="/dashboard/mentor/mentees">
           <div className="p-4 bg-och-midnight border border-och-steel/20 rounded-lg hover:bg-och-midnight/80 transition-colors">
-            <div className="text-2xl mb-2">👥</div>
             <div className="text-sm font-medium text-white">Mentees</div>
           </div>
         </Link>
         <Link href="/dashboard/mentor/missions">
           <div className="p-4 bg-och-midnight border border-och-steel/20 rounded-lg hover:bg-och-midnight/80 transition-colors">
-            <div className="text-2xl mb-2">✅</div>
             <div className="text-sm font-medium text-white">Missions</div>
           </div>
         </Link>
         <Link href="/dashboard/mentor/sessions">
           <div className="p-4 bg-och-midnight border border-och-steel/20 rounded-lg hover:bg-och-midnight/80 transition-colors">
-            <div className="text-2xl mb-2">📅</div>
             <div className="text-sm font-medium text-white">Sessions</div>
           </div>
         </Link>
         <Link href="/dashboard/mentor/analytics">
           <div className="p-4 bg-och-midnight border border-och-steel/20 rounded-lg hover:bg-och-midnight/80 transition-colors">
-            <div className="text-2xl mb-2">📊</div>
             <div className="text-sm font-medium text-white">Analytics</div>
           </div>
         </Link>

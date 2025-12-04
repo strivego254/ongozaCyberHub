@@ -58,18 +58,8 @@ export function AICoachPanel() {
   }
 
   const getNudgeIcon = (type: string) => {
-    switch (type) {
-      case 'motivational':
-        return '💪'
-      case 'reminder':
-        return '⏰'
-      case 'tip':
-        return '💡'
-      case 'challenge':
-        return '🎯'
-      default:
-        return '📌'
-    }
+    // Icons removed
+    return ''
   }
 
   if (isLoading) {
@@ -94,7 +84,6 @@ export function AICoachPanel() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">🤖</span>
             <div>
               <h3 className="text-xl font-bold text-white">AI Coach</h3>
               <p className="text-sm text-och-steel">Your personalized learning assistant</p>
@@ -120,7 +109,6 @@ export function AICoachPanel() {
                   key={nudge.id}
                   className="p-3 bg-och-midnight/50 rounded-lg flex items-start gap-3"
                 >
-                  <span className="text-xl">{getNudgeIcon(nudge.type)}</span>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant={getNudgeColor(nudge.priority) as any} className="text-xs">

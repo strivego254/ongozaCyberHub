@@ -240,3 +240,16 @@ export interface MentorInfluenceIndex {
     end_date: string
   }
 }
+
+export interface MentorAlert {
+  id: string
+  type: 'flag' | 'overdue' | 'session_reminder' | 'mission_pending'
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  title: string
+  description: string
+  mentee_id?: string
+  mentee_name?: string
+  related_id?: string // mission_id, session_id, etc.
+  created_at: string
+  resolved: boolean
+}

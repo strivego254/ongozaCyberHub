@@ -245,4 +245,24 @@ export const mentorClient = {
   }): Promise<MentorInfluenceIndex> {
     return apiGateway.get(`/mentors/${mentorId}/influence`, { params })
   },
+
+  /**
+   * Get alerts for mentor (flags, overdue items, etc.)
+   */
+  async getAlerts(mentorId: string): Promise<import('./types/mentor').MentorAlert[]> {
+    // Get flags and convert to alerts format
+    const flags = await this.getMenteeFlags(mentorId, { status: 'open' })
+    return flags.map(flag => ({
+      id: flag.id,
+      type: 'flag' as const,
+      severity: flag.severity,
+      title: `${flag.flag_type} - ${flag.mentee_name}`,
+      description: flag.description,
+      mentee_id: flag.mentee_id,
+      mentee_name: flag.mentee_name,
+      related_id: flag.id,
+      created_at: flag.raised_at,
+      resolved: flag.status === 'resolved',
+    }))
+  },
 }

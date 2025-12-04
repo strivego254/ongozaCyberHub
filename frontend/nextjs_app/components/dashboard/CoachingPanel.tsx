@@ -103,7 +103,7 @@ export function CoachingPanel() {
                   </div>
                 </div>
                 {habit.current_streak > 0 && (
-                  <Badge variant="mint">{habit.current_streak} 🔥</Badge>
+                  <Badge variant="mint">{habit.current_streak} days</Badge>
                 )}
               </div>
             )

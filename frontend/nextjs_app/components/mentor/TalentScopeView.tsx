@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { useTalentScopeView } from '@/hooks/useTalentScopeView'
 import { useAuth } from '@/hooks/useAuth'
 import { useMentorMentees } from '@/hooks/useMentorMentees'
