@@ -44,6 +44,9 @@ urlpatterns = [
     # Mentorship endpoints
     path('', include('mentorship.urls')),
     
+    # Mentorship Coordination Engine
+    path('', include('mentorship_coordination.urls')),
+    
     # Student Journey Modules
     path('', include('profiler.urls')),
     path('', include('coaching.urls')),

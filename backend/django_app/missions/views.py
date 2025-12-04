@@ -141,6 +141,26 @@ def submit_mission(request, mission_id):
     # Trigger AI review
     ai_review_mission_task.delay(str(submission.id))
     
+    # Trigger mentor work queue item creation (if mentor assigned)
+    try:
+        from mentorship_coordination.tasks import create_mission_review_queue_item
+        from mentorship_coordination.models import MenteeMentorAssignment
+        
+        assignment = MenteeMentorAssignment.objects.filter(
+            mentee=user,
+            status='active'
+        ).first()
+        
+        if assignment:
+            create_mission_review_queue_item.delay(
+                str(submission.id),
+                str(assignment.mentor.id)
+            )
+    except Exception as e:
+        # Graceful failure if mentorship_coordination not available
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to create mentor work queue item: {e}")
+    
     # Trigger dashboard refresh
     DashboardAggregationService.queue_update(user, 'mission_submitted', 'high')
     

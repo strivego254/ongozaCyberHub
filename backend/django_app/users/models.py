@@ -109,6 +109,12 @@ class User(AbstractUser):
     # Profile completion tracking
     profile_complete = models.BooleanField(default=False)
     onboarding_complete = models.BooleanField(default=False)
+    
+    # Mentor fields
+    is_mentor = models.BooleanField(default=False, db_index=True)
+    mentor_capacity_weekly = models.IntegerField(default=10)
+    mentor_availability = models.JSONField(default=dict, blank=True)  # {"mon": ["14:00-16:00"]}
+    mentor_specialties = models.JSONField(default=list, blank=True)  # ["SIEM", "DFIR"]
     CYBER_EXPOSURE_CHOICES = [
         ('none', 'No Experience'),
         ('beginner', 'Beginner (Some Awareness)'),
