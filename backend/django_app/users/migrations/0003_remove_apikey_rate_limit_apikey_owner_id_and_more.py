@@ -32,11 +32,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name='apikey',
-            name='id',
-            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
-        ),
-        migrations.AlterField(
-            model_name='apikey',
             name='key_hash',
             field=models.CharField(db_index=True, max_length=128, unique=True),
         ),
