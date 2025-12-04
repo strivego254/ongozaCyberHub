@@ -103,12 +103,14 @@ Return JSON with:
             session.futureyou_persona = persona
             session.recommended_track_id = persona.get('track_id')  # Would need track lookup
             session.track_confidence = persona.get('confidence', 0.75)
-            session.status = 'future_you_complete'
+            session.status = 'finished'
             session.completed_at = timezone.now()
             session.save()
             
-            # Update user's futureyou_persona
+            # Update user's futureyou_persona and onboarding status
             session.user.futureyou_persona = persona
+            if not session.user.onboarding_complete:
+                session.user.onboarding_complete = True
             session.user.save()
         
         # Trigger dashboard refresh

@@ -70,12 +70,8 @@ class HabitLog(models.Model):
             models.Index(fields=['user', 'completed_at']),
             models.Index(fields=['habit', 'completed_at']),
         ]
-        constraints = [
-            models.UniqueConstraint(
-                fields=['habit', 'completed_at'],
-                name='unique_habit_per_day'
-            )
-        ]
+        # Note: Unique constraint per day handled at application level
+        # Database-level constraint would require date_trunc which is PostgreSQL-specific
     
     def __str__(self):
         return f"Log: {self.habit.name} - {self.completed_at.date()}"

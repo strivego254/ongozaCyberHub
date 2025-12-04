@@ -105,6 +105,10 @@ class User(AbstractUser):
         null=True,
         help_text='Career goals and aspirations for TalentScope baseline'
     )
+    
+    # Profile completion tracking
+    profile_complete = models.BooleanField(default=False)
+    onboarding_complete = models.BooleanField(default=False)
     CYBER_EXPOSURE_CHOICES = [
         ('none', 'No Experience'),
         ('beginner', 'Beginner (Some Awareness)'),

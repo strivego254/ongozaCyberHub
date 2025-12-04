@@ -89,6 +89,18 @@ def submit_answers(request):
         if session.status == 'started':
             session.status = 'current_self_complete'
             session.save()
+            
+            # Update current_self_assessment from answers
+            assessment = {}
+            for answer in answers_data:
+                key_parts = answer['question_key'].split('.')
+                if len(key_parts) == 2:
+                    category, field = key_parts
+                    if category not in assessment:
+                        assessment[category] = {}
+                    assessment[category][field] = answer['answer']
+            session.current_self_assessment = assessment
+            session.save()
     
     # Queue Future-You generation
     from profiler.tasks import generate_future_you_task
@@ -155,4 +167,4 @@ def profiler_status(request):
         'track_recommendation': track_recommendation,
         'current_self_complete': session.status in ['current_self_complete', 'future_you_complete', 'finished'],
         'future_you_complete': session.status in ['future_you_complete', 'finished'],
-    })
+    }, status=status.HTTP_200_OK)
