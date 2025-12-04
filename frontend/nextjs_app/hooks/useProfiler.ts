@@ -25,7 +25,7 @@ export function useProfiler(menteeId: string | undefined) {
       ])
 
       setFutureYou(futureYouData)
-      setTracks(tracksData)
+      setTracks(Array.isArray(tracksData) ? tracksData : [])
       setReadinessWindow(windowData)
     } catch (err: any) {
       setError(err.message || 'Failed to load profiler data')

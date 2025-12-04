@@ -63,39 +63,58 @@ export function useAuth() {
         throw error;
       }
 
-      const { user, access_token } = await response.json();
+      const responseData = await response.json();
+      console.log('Login response data:', { 
+        hasUser: !!responseData.user, 
+        hasAccessToken: !!responseData.access_token,
+        keys: Object.keys(responseData)
+      });
+      
+      const { user, access_token } = responseData;
       
       // Store access token in localStorage for client-side requests
       // Refresh token is already in HttpOnly cookie
-      if (access_token) {
-        localStorage.setItem('access_token', access_token);
+      if (!access_token) {
+        console.error('No access_token in login response:', responseData);
+        throw new Error('No access token received from login response');
       }
       
+      // Store token immediately and verify it's stored
+      localStorage.setItem('access_token', access_token);
+      
+      // Verify token is stored (with retry)
+      let storedToken = localStorage.getItem('access_token');
+      let retries = 0;
+      while (!storedToken && retries < 3) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        localStorage.setItem('access_token', access_token);
+        storedToken = localStorage.getItem('access_token');
+        retries++;
+      }
+      
+      if (!storedToken || storedToken !== access_token) {
+        console.error('Failed to store access token in localStorage');
+        throw new Error('Failed to store authentication token');
+      }
+      
+      console.log('✅ Access token stored successfully in localStorage');
+      
       // Fetch full user profile with roles from /auth/me
-      // Wait a bit to ensure token is stored and available
+      // Wait a bit to ensure token is available for the request
       let fullUser = user;
-      if (access_token) {
-        try {
-          // Wait for localStorage to be updated and ensure token is available
-          await new Promise(resolve => setTimeout(resolve, 150));
-          
-          // Verify token is in localStorage before making request
-          const storedToken = localStorage.getItem('access_token');
-          if (storedToken && storedToken === access_token) {
-            console.log('Fetching full user profile from /auth/me...');
-            fullUser = await djangoClient.auth.getCurrentUser();
-            console.log('Full user profile received:', fullUser);
-          } else {
-            console.warn('Token not available in localStorage yet, using login response user');
-            console.warn('Expected token:', access_token?.substring(0, 20) + '...');
-            console.warn('Stored token:', storedToken?.substring(0, 20) + '...');
-          }
-        } catch (err: any) {
-          // If /auth/me fails, use the user from login response
-          console.error('Failed to fetch full user profile:', err?.message || err);
-          console.error('Error details:', err);
-          // The user from login response should still work, but might not have roles
-        }
+      try {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log('Fetching full user profile from /auth/me...');
+        fullUser = await djangoClient.auth.getCurrentUser();
+        console.log('✅ Full user profile received:', fullUser);
+        console.log('User roles:', fullUser?.roles);
+      } catch (err: any) {
+        // If /auth/me fails, use the user from login response
+        console.warn('⚠️ Failed to fetch full user profile from /auth/me:', err?.message || err);
+        console.warn('Using user from login response (may not have full role details)');
+        // The user from login response should still work, but might not have roles
+        // This is okay - we'll use what we have
       }
       
       setState({
@@ -105,7 +124,7 @@ export function useAuth() {
       });
       
       console.log('Login successful, returning user:', fullUser);
-      return { user: fullUser };
+      return { user: fullUser, access_token: access_token };
     } catch (error) {
       setState(prev => ({ ...prev, isLoading: false }));
       throw error;

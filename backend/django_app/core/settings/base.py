@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'missions',
     'subscriptions',
     'mentorship_coordination',
+    'programs',
     'api',
     'shared_schemas',
 ]

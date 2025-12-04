@@ -49,7 +49,9 @@ function LoginForm() {
       if (redirectTo && redirectTo.startsWith('/dashboard')) {
         router.push(redirectTo);
       } else {
-        router.push('/dashboard/student');
+        // Use role-based redirect instead of defaulting to student
+        const dashboardRoute = getRedirectRoute(user);
+        router.push(dashboardRoute);
       }
     }
   }, [isAuthenticated, user, router, searchParams]);
@@ -65,6 +67,20 @@ function LoginForm() {
       console.log('=== Login Success ===');
       console.log('Login result:', result);
 
+      // Get token from result or localStorage
+      const token = result?.access_token || localStorage.getItem('access_token');
+      
+      if (!token) {
+        console.error('Token not found in login result or localStorage');
+        setError('Authentication token not found. Please try logging in again.');
+        return;
+      }
+      
+      // Ensure token is stored in localStorage
+      if (!localStorage.getItem('access_token')) {
+        localStorage.setItem('access_token', token);
+      }
+
       // Determine redirect route based on user role
       let route = '/dashboard/student';
       const redirectTo = searchParams.get('redirect');
@@ -74,11 +90,16 @@ function LoginForm() {
         route = redirectTo;
         console.log('📍 Using redirect parameter:', route);
       } else if (result?.user) {
-        // Wait to ensure roles are fully loaded from /auth/me
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Wait a bit for auth state to update and roles to be loaded
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Try to get the latest user from auth state (which should have roles from /auth/me)
+        const currentUser = user || result.user;
+        console.log('Current user for redirect:', currentUser);
+        console.log('User roles:', currentUser?.roles);
         
         // CRITICAL: Check for admin role first
-        const userRoles = result.user.roles || [];
+        const userRoles = currentUser?.roles || [];
         const isAdmin = userRoles.some((ur: any) => {
           const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
           return roleName?.toLowerCase().trim() === 'admin'
@@ -89,8 +110,9 @@ function LoginForm() {
           route = '/dashboard/admin'
         } else {
           // Use centralized redirect utility for other roles
-          route = getRedirectRoute(result.user);
+          route = getRedirectRoute(currentUser);
           console.log('✅ Login redirect route determined (non-admin):', route);
+          console.log('User roles used for redirect:', userRoles);
         }
       } else {
         console.error('❌ No user in login result, defaulting to student dashboard');
@@ -98,14 +120,6 @@ function LoginForm() {
       }
 
       console.log('🚀 Final redirect route:', route);
-      
-      // Ensure token is in localStorage before redirecting
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        console.error('Token not found in localStorage, cannot redirect');
-        setError('Authentication token not found. Please try logging in again.');
-        return;
-      }
       
       // Set cookie manually in browser to ensure it's available for middleware
       // The API route already set it, but we'll ensure it's in the browser
