@@ -275,7 +275,7 @@ class MentorAssignment(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE, related_name='mentor_assignments')
-    mentor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mentor_assignments')
+    mentor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cohort_mentor_assignments')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='support')
     assigned_at = models.DateTimeField(auto_now_add=True)
     active = models.BooleanField(default=True)
