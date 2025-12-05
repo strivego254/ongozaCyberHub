@@ -116,12 +116,14 @@ export function getUserRoles(user: User | null): Role[] {
     
     // Map backend role names to frontend roles
     // This ensures all role variations are correctly identified
+    // Check program_director FIRST before checking 'director' to avoid conflicts
+    if (normalized === 'program_director' || normalized === 'program director' || normalized === 'programdirector') return 'program_director'
+    if (normalized === 'director') return 'program_director' // 'director' is shorthand for program_director
     if (normalized === 'mentee') return 'mentee'
     if (normalized === 'student') return 'student'
     if (normalized === 'mentor') return 'mentor'
     if (normalized === 'admin') return 'admin'
-    if (normalized === 'program_director' || normalized === 'director' || normalized === 'program director') return 'program_director'
-    if (normalized === 'sponsor_admin' || normalized === 'sponsor' || normalized === 'sponsor/employer admin') return 'sponsor_admin'
+    if (normalized === 'sponsor_admin' || normalized === 'sponsor' || normalized === 'sponsor/employer admin' || normalized === 'sponsoremployer admin') return 'sponsor_admin'
     if (normalized === 'analyst') return 'analyst'
     if (normalized === 'employer') return 'employer'
     

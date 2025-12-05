@@ -52,5 +52,8 @@ urlpatterns = [
     path('', include('coaching.urls')),
     path('', include('missions.urls')),
     path('', include('subscriptions.urls')),
+    
+    # Programs & Cohorts
+    path('', include('programs.urls')),
 ]
 

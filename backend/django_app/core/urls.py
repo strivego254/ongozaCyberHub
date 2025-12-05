@@ -34,10 +34,14 @@ urlpatterns = [
     path('api/v1/oauth/userinfo', oauth_userinfo, name='oauth-userinfo'),
     path('api/v1/oauth/introspect', oauth_introspect, name='oauth-introspect'),
     
-    # API Documentation
+    # API Documentation (Swagger UI)
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    
+    # Alternative paths for easier access
+    path('swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui-alt'),
+    path('api-docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='api-docs'),
     
     # Prometheus Metrics
     path('metrics', metrics_view, name='metrics'),

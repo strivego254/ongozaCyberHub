@@ -15,7 +15,7 @@ export function FutureYouCard() {
   const [showChangeModal, setShowChangeModal] = useState(false)
   const [changing, setChanging] = useState(false)
 
-  const currentTrack = tracks.find(t => t.current_progress > 0) || tracks[0]
+  const currentTrack = Array.isArray(tracks) ? (tracks.find(t => t.current_progress > 0) || tracks[0]) : null
 
   const handleChangeTrack = async (trackId: string) => {
     setChanging(true)
@@ -95,7 +95,7 @@ export function FutureYouCard() {
             <h3 className="text-2xl font-bold text-white mb-4">Change Track</h3>
             <p className="text-och-steel mb-4">Select a new track to switch to:</p>
             <div className="space-y-2 mb-4">
-              {tracks.map((track: UserTrack) => (
+              {Array.isArray(tracks) && tracks.map((track: UserTrack) => (
                 <button
                   key={track.id}
                   onClick={() => handleChangeTrack(track.id)}
