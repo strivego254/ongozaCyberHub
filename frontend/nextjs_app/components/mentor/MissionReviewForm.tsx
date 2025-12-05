@@ -77,23 +77,15 @@ export function MissionReviewForm({ submission, onReviewComplete }: MissionRevie
     setIsSubmitting(true)
     setError(null)
     try {
-      const USE_MOCK_DATA = true // Set to false when backend is ready
-      if (USE_MOCK_DATA) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        // In mock mode, just complete successfully
-        onReviewComplete()
-      } else {
-        await mentorClient.submitMissionReview(submission.id, {
-          overall_status: overallStatus,
-          feedback: writtenFeedback ? { written: writtenFeedback } : undefined,
-          comments: comments.length > 0 ? comments : undefined,
-          technical_competencies: technicalCompetencies.length > 0 ? technicalCompetencies : undefined,
-          score_breakdown: Object.keys(scoreBreakdown).length > 0 ? scoreBreakdown : undefined,
-          recommended_next_missions: recommendedMissions.length > 0 ? recommendedMissions : undefined,
-        })
-        onReviewComplete()
-      }
+      await mentorClient.submitMissionReview(submission.id, {
+        overall_status: overallStatus,
+        feedback: writtenFeedback ? { written: writtenFeedback } : undefined,
+        comments: comments.length > 0 ? comments : undefined,
+        technical_competencies: technicalCompetencies.length > 0 ? technicalCompetencies : undefined,
+        score_breakdown: Object.keys(scoreBreakdown).length > 0 ? scoreBreakdown : undefined,
+        recommended_next_missions: recommendedMissions.length > 0 ? recommendedMissions : undefined,
+      })
+      onReviewComplete()
     } catch (err: any) {
       setError(err.message || 'Failed to submit review')
     } finally {

@@ -5,11 +5,10 @@ import { MissionsPending } from '@/components/mentor/MissionsPending'
 import { MissionReviewForm } from '@/components/mentor/MissionReviewForm'
 import { CapstoneScoringForm } from '@/components/mentor/CapstoneScoringForm'
 import { mentorClient } from '@/services/mentorClient'
-import { mockCapstoneProjects, delay } from '@/services/mockData/mentorMockData'
 import { useAuth } from '@/hooks/useAuth'
 import type { MissionSubmission, CapstoneProject } from '@/services/types/mentor'
 
-const USE_MOCK_DATA = true // Set to false when backend is ready
+const USE_MOCK_DATA = false // Backend is ready
 
 export default function MissionsPage() {
   const { user } = useAuth()
@@ -23,13 +22,8 @@ export default function MissionsPage() {
     if (!mentorId) return
     setLoadingCapstones(true)
     try {
-      if (USE_MOCK_DATA) {
-        await delay(500)
-        setCapstones(mockCapstoneProjects)
-      } else {
-        const data = await mentorClient.getCapstoneProjects(mentorId, { status: 'pending_scoring' })
-        setCapstones(data)
-      }
+      const data = await mentorClient.getCapstoneProjects(mentorId, { status: 'pending_scoring' })
+      setCapstones(data)
     } catch (err) {
       console.error('Failed to load capstones:', err)
     } finally {

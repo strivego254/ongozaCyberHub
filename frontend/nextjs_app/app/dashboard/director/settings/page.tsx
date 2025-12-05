@@ -20,7 +20,7 @@ interface AuditLog {
 }
 
 export default function DirectorSettingsPage() {
-  const { user, reload: reloadUser, logout } = useAuth()
+  const { user, reloadUser, logout } = useAuth()
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -406,11 +406,11 @@ export default function DirectorSettingsPage() {
                     </p>
                   </div>
                 )}
-                {user?.last_login && (
+                {user && (user as any).last_login && (
                   <div>
                     <p className="text-sm text-och-steel mb-1">Last Login</p>
                     <p className="text-white text-sm">
-                      {new Date(user.last_login).toLocaleString()}
+                      {new Date((user as any).last_login).toLocaleString()}
                     </p>
                   </div>
                 )}

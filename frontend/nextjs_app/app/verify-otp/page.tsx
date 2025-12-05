@@ -4,7 +4,6 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { authService } from '@/lib/auth-mock'
 
 function VerifyOTPContent() {
   const router = useRouter()
@@ -62,15 +61,9 @@ function VerifyOTPContent() {
 
     setLoading(true)
     try {
-      const result = await authService.verifyOTP(email, otpString)
-      if (result.success) {
-        // Redirect to onboarding
-        router.push('/onboarding')
-      } else {
-        setError(result.message || 'Invalid OTP. Please try again.')
-        setOtp(['', '', '', '', '', ''])
-        document.getElementById('otp-0')?.focus()
-      }
+      // OTP verification will be implemented with backend
+      // For now, just redirect to onboarding
+      router.push('/onboarding')
     } catch (err) {
       setError('An error occurred. Please try again.')
     } finally {
@@ -84,13 +77,9 @@ function VerifyOTPContent() {
     setLoading(true)
     setError('')
     try {
-      const result = await authService.resendOTP(email)
-      if (result.success) {
-        setResendCooldown(60)
-        setError('')
-      } else {
-        setError(result.message || 'Failed to resend OTP')
-      }
+      // OTP resend will be implemented with backend
+      setResendCooldown(60)
+      setError('')
     } catch (err) {
       setError('An error occurred. Please try again.')
     } finally {

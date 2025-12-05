@@ -40,21 +40,13 @@ export function CapstoneScoringForm({ capstone, onScoringComplete }: CapstoneSco
     setIsSubmitting(true)
     setError(null)
     try {
-      const USE_MOCK_DATA = true // Set to false when backend is ready
-      if (USE_MOCK_DATA) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        // In mock mode, just complete successfully
-        onScoringComplete()
-      } else {
-        await mentorClient.scoreCapstone(capstone.id, {
-          overall_score: overallScore,
-          score_breakdown: scoreBreakdown,
-          feedback,
-          recommendations: recommendations.length > 0 ? recommendations : undefined,
-        })
-        onScoringComplete()
-      }
+      await mentorClient.scoreCapstone(capstone.id, {
+        overall_score: overallScore,
+        score_breakdown: scoreBreakdown,
+        feedback,
+        recommendations: recommendations.length > 0 ? recommendations : undefined,
+      })
+      onScoringComplete()
     } catch (err: any) {
       setError(err.message || 'Failed to submit score')
     } finally {

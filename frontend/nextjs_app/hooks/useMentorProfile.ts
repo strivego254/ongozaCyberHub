@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { mentorClient } from '@/services/mentorClient'
-import { mockMentorProfile, delay } from '@/services/mockData/mentorMockData'
 import type { MentorProfile } from '@/services/types/mentor'
 
-const USE_MOCK_DATA = true // Set to false when backend is ready
+const USE_MOCK_DATA = false // Backend is ready
 
 export function useMentorProfile(mentorId: string | undefined) {
   const [profile, setProfile] = useState<MentorProfile | null>(null)
@@ -17,13 +16,8 @@ export function useMentorProfile(mentorId: string | undefined) {
     setIsLoading(true)
     setError(null)
     try {
-      if (USE_MOCK_DATA) {
-        await delay(500) // Simulate API delay
-        setProfile(mockMentorProfile)
-      } else {
-        const data = await mentorClient.getMentorProfile(mentorId)
-        setProfile(data)
-      }
+      const data = await mentorClient.getMentorProfile(mentorId)
+      setProfile(data)
     } catch (err: any) {
       setError(err.message || 'Failed to load mentor profile')
     } finally {
@@ -42,16 +36,9 @@ export function useMentorProfile(mentorId: string | undefined) {
   }) => {
     if (!mentorId) return
     try {
-      if (USE_MOCK_DATA) {
-        await delay(300) // Simulate API delay
-        const updated = { ...mockMentorProfile, ...data, updated_at: new Date().toISOString() }
-        setProfile(updated)
-        return updated
-      } else {
-        const updated = await mentorClient.updateMentorProfile(mentorId, data)
-        setProfile(updated)
-        return updated
-      }
+      const updated = await mentorClient.updateMentorProfile(mentorId, data)
+      setProfile(updated)
+      return updated
     } catch (err: any) {
       setError(err.message || 'Failed to update profile')
       throw err

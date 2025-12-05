@@ -61,5 +61,8 @@ urlpatterns = [
     
     # Director Dashboard
     path('director/', include('director_dashboard.urls')),
+    
+    # TalentScope Analytics
+    path('talentscope/', include('talentscope.urls')),
 ]
 
