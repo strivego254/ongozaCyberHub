@@ -1,96 +1,105 @@
-/**
- * Sponsor Dashboard Client Component
- */
+'use client'
 
-'use client';
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/hooks/useAuth'
+import { sponsorClient, SponsorDashboardSummary } from '@/services/sponsorClient'
+import { SponsorSummaryCard } from '@/components/sponsor/SponsorSummaryCard'
+import { CohortsList } from '@/components/sponsor/CohortsList'
 
-import type { User, Organization } from '@/services/types';
+export default function SponsorClient() {
+  const { user, isLoading: authLoading } = useAuth()
+  const [summary, setSummary] = useState<SponsorDashboardSummary | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-interface SponsorDashboardClientProps {
-  initialData?: {
-    user: User;
-    organizations: Organization[];
-    organizationCount: number;
-    sponsoredStudentCount: number;
-  };
-}
+  useEffect(() => {
+    if (!authLoading) {
+      loadSummary()
+    }
+  }, [authLoading])
 
-export default function SponsorDashboardClient({ initialData }: SponsorDashboardClientProps = {}) {
-  // Use initialData if provided, otherwise use defaults (data will be fetched client-side)
-  const organizations = initialData?.organizations || [];
-  const organizationCount = initialData?.organizationCount || 0;
-  const sponsoredStudentCount = initialData?.sponsoredStudentCount || 0;
+  const loadSummary = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      console.log('Loading sponsor dashboard summary...')
+      const data = await sponsorClient.getSummary()
+      console.log('✅ Sponsor dashboard data loaded:', data)
+      if (data) {
+        setSummary(data)
+      } else {
+        setError('No data returned from API')
+      }
+    } catch (err: any) {
+      const errorMsg = err.message || err.response?.data?.detail || err.response?.data?.error || 'Failed to load dashboard'
+      setError(errorMsg)
+      console.error('❌ Sponsor dashboard error:', err)
+      console.error('Error response:', err.response?.data)
+      console.error('Error status:', err.response?.status)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (authLoading || loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-och-steel">Loading sponsor dashboard...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-900/20 border border-red-700 rounded-lg p-4">
+          <div className="text-red-400 font-semibold mb-2">Error Loading Dashboard</div>
+          <div className="text-och-steel">{error}</div>
+          <button
+            onClick={loadSummary}
+            className="mt-4 px-4 py-2 bg-och-mint text-och-midnight rounded-lg hover:bg-och-mint/80 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card border-sahara-gold">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-h3 text-white">Organizations</h3>
-            <span className="text-3xl">🏢</span>
-          </div>
-          <p className="text-4xl font-bold text-sahara-gold">{organizationCount}</p>
-          <p className="text-body-s text-steel-grey mt-2">Your organizations</p>
+    <div className="min-h-screen bg-och-midnight p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2 text-och-mint">Sponsor Dashboard</h1>
+          <p className="text-och-steel">
+            Welcome{user?.first_name ? `, ${user.first_name}` : ''}! Here's your ROI overview.
+          </p>
         </div>
 
-        <div className="card border-defender-blue">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-h3 text-white">Sponsored Students</h3>
-            <span className="text-3xl">👥</span>
-          </div>
-          <p className="text-4xl font-bold text-defender-blue">{sponsoredStudentCount}</p>
-          <p className="text-body-s text-steel-grey mt-2">Active sponsorships</p>
-        </div>
+        {summary && (
+          <>
+            <div className="mb-6">
+              <SponsorSummaryCard summary={summary} />
+            </div>
 
-        <div className="card border-cyber-mint">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-h3 text-white">Investment</h3>
-            <span className="text-3xl">💰</span>
-          </div>
-          <p className="text-4xl font-bold text-cyber-mint">--</p>
-          <p className="text-body-s text-steel-grey mt-2">Total investment</p>
-        </div>
-      </div>
+            <div className="mb-6">
+              <CohortsList />
+            </div>
+          </>
+        )}
 
-      {/* Organizations */}
-      {organizations.length > 0 && (
-        <div className="card">
-          <h2 className="text-h2 text-white mb-6">Your Organizations</h2>
-          <div className="space-y-4">
-            {organizations.map((org) => (
-              <div key={org.id} className="border border-steel-grey rounded-card p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-body-m font-semibold text-white">{org.name}</h4>
-                    <p className="text-body-s text-steel-grey mt-1">{org.description}</p>
-                    <span className={`inline-block mt-2 px-3 py-1 rounded-full text-body-s font-semibold ${
-                      org.org_type === 'sponsor' ? 'badge-mastery' :
-                      org.org_type === 'employer' ? 'badge-intermediate' :
-                      'badge-beginner'
-                    }`}>
-                      {org.org_type}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
+        {!summary && !loading && !error && (
+          <div className="bg-och-slate-800 rounded-lg p-6 border border-och-slate-700">
+            <div className="text-och-steel mb-4">No sponsor data available</div>
+            <button
+              onClick={loadSummary}
+              className="px-4 py-2 bg-och-mint text-och-midnight rounded-lg hover:bg-och-mint/80 transition-colors"
+            >
+              Refresh Data
+            </button>
           </div>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="card">
-        <h2 className="text-h2 text-white mb-6">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <a href="/dashboard/sponsor/students" className="btn-mission text-center block">
-            View Sponsored Students
-          </a>
-          <a href="/dashboard/sponsor/organizations" className="btn-secondary text-center block">
-            Manage Organizations
-          </a>
-        </div>
+        )}
       </div>
     </div>
-  );
+  )
 }
-

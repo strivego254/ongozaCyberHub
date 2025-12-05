@@ -55,5 +55,11 @@ urlpatterns = [
     
     # Programs & Cohorts
     path('', include('programs.urls')),
+    
+    # Sponsor Dashboard
+    path('sponsor/', include('sponsor_dashboard.urls')),
+    
+    # Director Dashboard
+    path('director/', include('director_dashboard.urls')),
 ]
 

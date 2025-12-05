@@ -62,9 +62,12 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  user: User;
+  access_token?: string;
+  refresh_token?: string;
+  user?: User;
+  mfa_required?: boolean;
+  session_id?: string;
+  detail?: string;
 }
 
 export interface RefreshTokenRequest {

@@ -1,13 +1,12 @@
 'use client'
 
 import { RouteGuard } from '@/components/auth/RouteGuard'
-import DirectorClient from './director-client'
+import DirectorManagementClient from './director-management-client'
 
 export default function DirectorDashboard() {
   return (
     <RouteGuard>
-      <DirectorClient />
+      <DirectorManagementClient />
     </RouteGuard>
   )
 }
-
