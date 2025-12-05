@@ -338,7 +338,7 @@ export function ViewProgramsView() {
                         <Badge variant={program.status === 'active' ? 'mint' : 'defender'}>
                           {program.status}
                         </Badge>
-                        <Badge variant="outline">{program.category}</Badge>
+                        <Badge variant="steel">{program.category}</Badge>
                       </div>
                       <p className="text-sm text-och-steel mb-3">{program.description}</p>
                       <div className="flex gap-6 text-sm text-och-steel">
