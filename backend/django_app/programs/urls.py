@@ -5,19 +5,15 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     ProgramViewSet, TrackViewSet, CohortViewSet,
-<<<<<<< HEAD
     ProgramRuleViewSet, CertificateViewSet,
     DirectorProgramViewSet, DirectorTrackViewSet, DirectorCohortViewSet,
     DirectorMentorViewSet, DirectorDashboardViewSet,
-    DirectorProgramRuleViewSet
-=======
-    ProgramRuleViewSet, CertificateViewSet, director_dashboard
+    DirectorProgramRuleViewSet, director_dashboard
 )
 from .director_dashboard_views import (
     director_dashboard_summary,
     director_cohorts_list,
     director_cohort_detail
->>>>>>> 15a4791451ba1536df449610b2aafae0a8461fe9
 )
 
 router = DefaultRouter()

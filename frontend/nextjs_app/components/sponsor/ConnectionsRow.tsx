@@ -42,8 +42,8 @@ const colorClasses = {
 
 function ConnectionCard({ title, value, subtitle, icon, action, to, onClick, color }: ConnectionCardProps) {
   const colors = colorClasses[color]
-  const ButtonComponent = to ? Link : 'button'
-  const buttonProps = to ? { href: to } : { onClick, type: 'button' as const }
+  const isLink = !!to
+  const buttonProps = isLink ? { href: to! } : { onClick, type: 'button' as const }
 
   return (
     <div className={`p-4 md:p-6 rounded-xl md:rounded-2xl border-2 ${colors.border} ${colors.bg} transition-all hover:shadow-lg`}>
@@ -57,12 +57,22 @@ function ConnectionCard({ title, value, subtitle, icon, action, to, onClick, col
       <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">{value}</h3>
       <p className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">{subtitle}</p>
       
-      <ButtonComponent
-        {...buttonProps}
-        className={`w-full px-4 py-2 ${colors.button} text-white rounded-lg font-semibold text-sm transition-colors`}
-      >
-        {action}
-      </ButtonComponent>
+      {isLink ? (
+        <Link
+          href={to!}
+          className={`w-full px-4 py-2 ${colors.button} text-white rounded-lg font-semibold text-sm transition-colors block text-center`}
+        >
+          {action}
+        </Link>
+      ) : (
+        <button
+          onClick={onClick}
+          type="button"
+          className={`w-full px-4 py-2 ${colors.button} text-white rounded-lg font-semibold text-sm transition-colors`}
+        >
+          {action}
+        </button>
+      )}
     </div>
   )
 }

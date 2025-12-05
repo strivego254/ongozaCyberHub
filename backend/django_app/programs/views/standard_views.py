@@ -8,12 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from django.db.models import Q, Count, Avg, Sum, F, Case, When, IntegerField
 from django.utils import timezone
-<<<<<<< HEAD:backend/django_app/programs/views/standard_views.py
-from programs.models import (
-=======
 from datetime import timedelta
-from .models import (
->>>>>>> 15a4791451ba1536df449610b2aafae0a8461fe9:backend/django_app/programs/views.py
+from programs.models import (
     Program, Track, Specialization, Cohort, Enrollment,
     CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
 )
