@@ -26,8 +26,24 @@ export function SessionManagement() {
   })
 
   const handleCreate = async () => {
+    if (!mentorId) {
+      console.error('Mentor ID is missing')
+      return
+    }
+    
+    if (!formData.title || !formData.scheduled_at) {
+      console.error('Required fields missing:', { title: formData.title, scheduled_at: formData.scheduled_at })
+      return
+    }
+
     try {
-      await createSession(formData)
+      // Convert datetime-local format to ISO string
+      const sessionData = {
+        ...formData,
+        scheduled_at: formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : new Date().toISOString()
+      }
+      console.log('Creating session with data:', sessionData, 'mentorId:', mentorId)
+      await createSession(sessionData)
       setShowCreateForm(false)
       setFormData({
         title: '',
@@ -38,8 +54,9 @@ export function SessionManagement() {
         meeting_link: '',
         track_assignment: '',
       })
-    } catch (err) {
-      // Error handled by hook
+    } catch (err: any) {
+      console.error('Error creating session:', err)
+      // Error handled by hook, but also log it here
     }
   }
 
@@ -75,13 +92,20 @@ export function SessionManagement() {
       </div>
 
       {showCreateForm && (
-        <div className="mb-6 p-4 bg-och-midnight/50 rounded-lg space-y-3">
+        <form 
+          className="mb-6 p-4 bg-och-midnight/50 rounded-lg space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleCreate()
+          }}
+        >
           <input
             type="text"
             placeholder="Session Title"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+            required
           />
           <textarea
             placeholder="Description"
@@ -96,6 +120,7 @@ export function SessionManagement() {
               value={formData.scheduled_at}
               onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
               className="px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+              required
             />
             <input
               type="number"
@@ -103,6 +128,8 @@ export function SessionManagement() {
               value={formData.duration_minutes}
               onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 60 })}
               className="px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+              min="15"
+              max="240"
             />
           </div>
           <select
@@ -128,12 +155,31 @@ export function SessionManagement() {
             onChange={(e) => setFormData({ ...formData, track_assignment: e.target.value })}
             className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
           />
-          <Button variant="defender" onClick={handleCreate}>Create Session</Button>
-        </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="defender" 
+              type="submit"
+              disabled={!formData.title || !formData.scheduled_at || !mentorId}
+            >
+              Create Session
+            </Button>
+            <Button 
+              variant="outline" 
+              type="button"
+              onClick={() => setShowCreateForm(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
       )}
 
-      {isLoading && <div className="text-och-steel text-sm">Loading sessions...</div>}
-      {error && <div className="text-och-orange text-sm">Error: {error}</div>}
+      {isLoading && <div className="text-och-steel text-sm py-4">Loading sessions...</div>}
+      {error && (
+        <div className="text-och-orange text-sm py-4 px-4 bg-och-orange/10 border border-och-orange/20 rounded-lg">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
 
       {!isLoading && !error && sessions.length === 0 && (
         <div className="text-och-steel text-sm">No sessions found.</div>

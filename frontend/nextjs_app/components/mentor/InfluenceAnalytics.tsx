@@ -17,9 +17,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
-import { mockInfluenceTrendData } from '@/services/mockData/mentorMockData'
-
-const USE_MOCK_DATA = true // Set to false when backend is ready
+const USE_MOCK_DATA = false // Backend is ready
 
 export function InfluenceAnalytics() {
   const { user } = useAuth()
@@ -42,7 +40,8 @@ export function InfluenceAnalytics() {
     { name: 'Reviews→Quality', value: influence.correlation_data.reviews_to_mission_quality, color: '#F59E0B' },
   ] : []
 
-  const trendData = USE_MOCK_DATA ? mockInfluenceTrendData : []
+  // Get trend data from influence analytics if available
+  const trendData = (influence as any)?.trend_data || []
 
   // Custom tooltip style
   const CustomTooltip = ({ active, payload, label }: any) => {

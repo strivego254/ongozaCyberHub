@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { authService } from '@/lib/auth-mock'
+import { djangoClient } from '@/services/djangoClient'
 
 export default function SignupPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -18,6 +20,11 @@ export default function SignupPage() {
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    
+    if (!firstName || !lastName) {
+      setError('First name and last name are required')
+      return
+    }
     
     if (password !== confirmPassword) {
       setError('Passwords do not match')
@@ -31,54 +38,27 @@ export default function SignupPage() {
 
     setLoading(true)
     try {
-      const result = await authService.signupWithEmail(email, password)
-      if (result.success) {
-        // Redirect to OTP verification
-        router.push(`/verify-otp?email=${encodeURIComponent(email)}`)
-      } else {
-        setError(result.message || 'Signup failed')
-      }
-    } catch (err) {
-      setError('An error occurred. Please try again.')
+      await djangoClient.auth.signup({ 
+        email, 
+        password,
+        first_name: firstName,
+        last_name: lastName
+      })
+      // Redirect to OTP verification
+      router.push(`/verify-otp?email=${encodeURIComponent(email)}`)
+    } catch (err: any) {
+      setError(err.message || 'Signup failed. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   const handleGoogleSignup = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const result = await authService.signupWithGoogle()
-      if (result.success) {
-        // SSO users skip OTP, go to onboarding
-        router.push('/onboarding')
-      } else {
-        setError(result.message || 'Google signup failed')
-      }
-    } catch (err) {
-      setError('An error occurred. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+    setError('Google signup is not yet implemented')
   }
 
   const handleAppleSignup = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const result = await authService.signupWithApple()
-      if (result.success) {
-        // SSO users skip OTP, go to onboarding
-        router.push('/onboarding')
-      } else {
-        setError(result.message || 'Apple signup failed')
-      }
-    } catch (err) {
-      setError('An error occurred. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+    setError('Apple signup is not yet implemented')
   }
 
   return (
@@ -130,6 +110,39 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleEmailSignup} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-och-steel mb-1">
+                  First Name
+                </label>
+                <input
+                  id="firstName"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+                  placeholder="John"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-och-steel mb-1">
+                  Last Name
+                </label>
+                <input
+                  id="lastName"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+                  placeholder="Doe"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-och-steel mb-1">
                 Email

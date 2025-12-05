@@ -19,12 +19,22 @@ export function useAnalytics(menteeId: string | undefined, filter?: AnalyticsFil
   const [error, setError] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
-    if (!menteeId) return
-
     setIsLoading(true)
     setError(null)
 
     try {
+      // If no menteeId, provide mock/empty data for platform-wide analytics
+      if (!menteeId) {
+        // For platform-wide analytics (analyst/admin), return empty arrays
+        // The component will handle displaying appropriate content
+        setReadinessScores([])
+        setHeatmapData([])
+        setSkillMastery([])
+        setBehavioralTrends([])
+        setIsLoading(false)
+        return
+      }
+
       const [readiness, heatmap, mastery, trends] = await Promise.all([
         analyticsClient.getReadinessOverTime(menteeId, filter),
         analyticsClient.getSkillsHeatmap(menteeId, filter),
@@ -37,7 +47,17 @@ export function useAnalytics(menteeId: string | undefined, filter?: AnalyticsFil
       setSkillMastery(mastery)
       setBehavioralTrends(trends)
     } catch (err: any) {
-      setError(err.message || 'Failed to load analytics')
+      console.error('Analytics load error:', err)
+      // For 404 or API errors, provide fallback empty data instead of showing error
+      if (err?.status === 404 || err?.message?.includes('404')) {
+        setReadinessScores([])
+        setHeatmapData([])
+        setSkillMastery([])
+        setBehavioralTrends([])
+        setError(null) // Don't show error for missing data
+      } else {
+        setError(err.message || 'Failed to load analytics')
+      }
     } finally {
       setIsLoading(false)
     }

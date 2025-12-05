@@ -11,9 +11,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isLoading) {
+      // Check if user is authenticated
       if (!isAuthenticated) {
-        router.push('/login/student')
-        return
+        // Check if token exists (might be a timing issue after login)
+        const hasToken = typeof window !== 'undefined' && (
+          localStorage.getItem('access_token') || 
+          document.cookie.includes('access_token=')
+        )
+        
+        if (!hasToken) {
+          router.push('/login/student')
+          return
+        } else {
+          // Token exists but user not loaded yet - wait
+          return
+        }
       }
 
       // CRITICAL: Check for admin role first

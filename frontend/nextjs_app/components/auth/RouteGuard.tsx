@@ -16,11 +16,27 @@ export function RouteGuard({ children, requiredRoles: _requiredRoles }: RouteGua
   const router = useRouter()
 
   useEffect(() => {
+    // Wait for auth state to be determined
     if (isLoading) return
 
+    // Only redirect if we're definitely not authenticated
+    // Give a small delay to allow auth state to settle after login
     if (!isAuthenticated || !user) {
-      router.push('/login/student')
-      return
+      // Check if token exists in storage (might be a timing issue)
+      const hasToken = typeof window !== 'undefined' && (
+        localStorage.getItem('access_token') || 
+        document.cookie.includes('access_token=')
+      )
+      
+      if (!hasToken) {
+        console.log('RouteGuard: No auth token found, redirecting to login')
+        router.push('/login/student')
+        return
+      } else {
+        // Token exists but user not loaded yet - wait a bit
+        console.log('RouteGuard: Token exists but user not loaded, waiting...')
+        return
+      }
     }
 
     // Check if user has access to current route
@@ -57,7 +73,22 @@ export function RouteGuard({ children, requiredRoles: _requiredRoles }: RouteGua
     )
   }
 
+  // If not authenticated but token exists, show loading (auth state might be updating)
   if (!isAuthenticated || !user) {
+    const hasToken = typeof window !== 'undefined' && (
+      localStorage.getItem('access_token') || 
+      document.cookie.includes('access_token=')
+    )
+    
+    if (hasToken) {
+      // Token exists but user not loaded - show loading
+      return (
+        <div className="min-h-screen bg-och-midnight flex items-center justify-center">
+          <div className="text-och-steel">Loading...</div>
+        </div>
+      )
+    }
+    
     return null
   }
 

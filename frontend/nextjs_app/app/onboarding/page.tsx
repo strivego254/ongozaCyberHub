@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { authService } from '@/lib/auth-mock'
-
 export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -16,10 +14,6 @@ export default function OnboardingPage() {
   const handleComplete = async () => {
     setLoading(true)
     try {
-      // Mock: Get current user (in real app, get from session)
-      const mockUserId = 'user_current'
-      await authService.completeOnboarding(mockUserId)
-      
       // Redirect to profile completion
       router.push('/profile')
     } catch (err) {

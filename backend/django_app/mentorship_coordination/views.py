@@ -19,6 +19,7 @@ from .serializers import (
     MentorWorkQueueSerializer,
     MentorFlagSerializer,
     CreateSessionSerializer,
+    CreateGroupSessionSerializer,
     MissionReviewSerializer,
     CreateFlagSerializer
 )
@@ -33,6 +34,78 @@ def get_current_mentor(user):
     if not user.is_mentor:
         raise Exception("User is not a mentor")
     return user
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_mentees(request, mentor_id):
+    """
+    GET /api/v1/mentors/{mentor_id}/mentees
+    Get list of assigned mentees for a mentor.
+    """
+    # Verify the mentor_id matches the authenticated user
+    if str(request.user.id) != str(mentor_id):
+        return Response(
+            {'error': 'You can only view your own mentees'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    mentor = get_current_mentor(request.user)
+    
+    # Get active assignments
+    assignments = MenteeMentorAssignment.objects.filter(
+        mentor=mentor,
+        status='active'
+    ).select_related('mentee')
+    
+    # Get mentee dashboard data for readiness scores
+    from student_dashboard.models import StudentDashboardCache
+    from missions.models import MissionSubmission
+    
+    mentees_data = []
+    for assignment in assignments:
+        mentee = assignment.mentee
+        
+        # Get readiness score from dashboard cache
+        cache = StudentDashboardCache.objects.filter(user=mentee).first()
+        readiness_score = float(cache.readiness_score) if cache else 0.0
+        
+        # Determine readiness label
+        if readiness_score >= 80:
+            readiness_label = "Advanced Ready"
+        elif readiness_score >= 70:
+            readiness_label = "Ready for Intermediate"
+        elif readiness_score >= 40:
+            readiness_label = "Needs Support"
+        else:
+            readiness_label = "At Risk"
+        
+        # Get last activity (from last login or session)
+        last_activity = mentee.last_login or mentee.updated_at
+        
+        # Get risk level from cache or default
+        risk_level = cache.risk_level if cache and cache.risk_level else 'low'
+        
+        # Count completed missions
+        missions_completed = MissionSubmission.objects.filter(
+            user=mentee,
+            status='approved'
+        ).count()
+        
+        mentees_data.append({
+            'id': str(mentee.id),
+            'name': mentee.get_full_name() or mentee.email,
+            'email': mentee.email,
+            'track': mentee.track_key or None,
+            'cohort': assignment.cohort_id or None,
+            'readiness_score': readiness_score,
+            'readiness_label': readiness_label,
+            'last_activity_at': last_activity.isoformat() if last_activity else None,
+            'risk_level': risk_level.lower(),
+            'missions_completed': missions_completed,
+        })
+    
+    return Response(mentees_data)
 
 
 @api_view(['GET'])
@@ -236,18 +309,171 @@ def mentee_cockpit(request, mentee_id):
     })
 
 
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def mentor_sessions(request, mentor_id):
+    """
+    GET /api/v1/mentors/{mentor_id}/sessions - List group mentorship sessions
+    POST /api/v1/mentors/{mentor_id}/sessions - Create a group mentorship session
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"mentor_sessions called: method={request.method}, mentor_id={mentor_id}, user_id={request.user.id}")
+    
+    # Verify the mentor_id matches the authenticated user
+    if str(request.user.id) != str(mentor_id):
+        logger.warning(f"Mentor ID mismatch: user_id={request.user.id}, mentor_id={mentor_id}")
+        return Response(
+            {'error': 'You can only access your own sessions'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        mentor = get_current_mentor(request.user)
+    except Exception as e:
+        logger.error(f"Error getting mentor: {e}")
+        return Response(
+            {'error': f'User is not a mentor: {str(e)}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if request.method == 'GET':
+        # List sessions
+        status_filter = request.query_params.get('status', 'all')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        queryset = MentorSession.objects.filter(
+            mentor=mentor,
+            type='group'
+        )
+        
+        if status_filter != 'all':
+            # Map frontend status to database fields
+            if status_filter == 'scheduled':
+                queryset = queryset.filter(start_time__gt=timezone.now(), attended=False)
+            elif status_filter == 'completed':
+                queryset = queryset.filter(attended=True)
+        
+        if start_date:
+            queryset = queryset.filter(start_time__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(start_time__lte=end_date)
+        
+        queryset = queryset.order_by('-start_time')
+        sessions = queryset.select_related('mentee', 'assignment')
+        
+        # Format sessions for frontend
+        sessions_data = []
+        for session in sessions:
+            outcomes = session.outcomes or {}
+            sessions_data.append({
+                'id': str(session.id),
+                'mentor_id': str(mentor.id),
+                'title': session.title,
+                'description': outcomes.get('description', ''),
+                'scheduled_at': session.start_time.isoformat(),
+                'duration_minutes': int((session.end_time - session.start_time).total_seconds() / 60),
+                'meeting_link': session.zoom_url or '',
+                'meeting_type': outcomes.get('meeting_type', 'zoom'),
+                'track_assignment': outcomes.get('track_assignment', ''),
+                'recording_url': None,  # Would come from separate field if added
+                'transcript_url': None,  # Would come from separate field if added
+                'status': 'completed' if session.attended else ('in_progress' if session.start_time <= timezone.now() <= session.end_time else 'scheduled'),
+                'attendance': [],  # Would need to be populated from a separate model
+                'created_at': session.created_at.isoformat(),
+                'updated_at': session.updated_at.isoformat(),
+            })
+        
+        return Response(sessions_data)
+    
+    elif request.method == 'POST':
+        # Create group session
+        logger.info(f"Creating group session with data: {request.data}")
+        serializer = CreateGroupSessionSerializer(data=request.data)
+        if not serializer.is_valid():
+            logger.error(f"Serializer validation failed: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        scheduled_at = serializer.validated_data['scheduled_at']
+        duration = serializer.validated_data['duration_minutes']
+        end_time = scheduled_at + timedelta(minutes=duration)
+        
+        # For group sessions, we need to create a session without a specific mentee
+        # We'll use the mentor's first active assignment as a placeholder, or create a dummy one
+        # Get first active assignment for this mentor (or create a placeholder)
+        first_assignment = MenteeMentorAssignment.objects.filter(
+            mentor=mentor,
+            status='active'
+        ).first()
+        
+        if not first_assignment:
+            # If no assignments exist, we can't create a session (group sessions still need a base assignment)
+            return Response(
+                {'error': 'No active mentee assignments found. Group sessions require at least one active assignment.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create group session using first assignment as base (group sessions can have multiple mentees)
+        session = MentorSession.objects.create(
+            assignment=first_assignment,
+            mentee=first_assignment.mentee,  # Use first mentee as placeholder
+            mentor=mentor,
+            title=serializer.validated_data['title'],
+            type='group',
+            start_time=scheduled_at,
+            end_time=end_time,
+            zoom_url=serializer.validated_data.get('meeting_link', '') or f"https://zoom.us/j/{uuid.uuid4().hex[:10]}",
+            notes=serializer.validated_data.get('description', '')
+        )
+        
+        # Store track assignment and meeting type in outcomes JSON field
+        session.outcomes = {
+            'track_assignment': serializer.validated_data.get('track_assignment', ''),
+            'meeting_type': serializer.validated_data.get('meeting_type', 'zoom'),
+            'description': serializer.validated_data.get('description', '')
+        }
+        session.save()
+        
+        # Return session data in format expected by frontend
+        session_data = {
+            'id': str(session.id),
+            'mentor_id': str(mentor.id),
+            'title': session.title,
+            'description': serializer.validated_data.get('description', ''),
+            'scheduled_at': scheduled_at.isoformat(),
+            'duration_minutes': duration,
+            'meeting_type': serializer.validated_data.get('meeting_type', 'zoom'),
+            'meeting_link': session.zoom_url,
+            'track_assignment': serializer.validated_data.get('track_assignment', ''),
+            'status': 'scheduled',
+            'attendance': [],
+            'created_at': session.created_at.isoformat(),
+            'updated_at': session.updated_at.isoformat(),
+        }
+        
+        return Response(session_data, status=status.HTTP_201_CREATED)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_session(request):
     """
     POST /api/v1/mentor/sessions
-    Create a mentor session and schedule Zoom meeting.
+    Create a one-on-one mentor session and schedule Zoom meeting.
     """
     mentor = get_current_mentor(request.user)
     serializer = CreateSessionSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     
-    mentee_id = serializer.validated_data['mentee_id']
+    mentee_id = serializer.validated_data.get('mentee_id')
+    
+    if not mentee_id:
+        return Response(
+            {'error': 'mentee_id is required for one-on-one sessions'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     # Verify assignment
     assignment = MenteeMentorAssignment.objects.filter(
