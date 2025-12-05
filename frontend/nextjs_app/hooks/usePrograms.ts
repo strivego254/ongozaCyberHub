@@ -6,7 +6,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { programsClient, type Program, type Track, type Cohort, type ProgramRule, type CohortDashboard } from '@/services/programsClient'
+import { programsClient, type Program, type Track, type Cohort, type ProgramRule, type CohortDashboard, type DirectorDashboard } from '@/services/programsClient'
 
 // Programs
 export function usePrograms() {
@@ -103,6 +103,26 @@ export function useUpdateProgram() {
   return { updateProgram, isLoading, error }
 }
 
+export function useDeleteProgram() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteProgram = useCallback(async (id: string) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await programsClient.deleteProgram(id)
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete program')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  return { deleteProgram, isLoading, error }
+}
+
 // Tracks
 export function useTracks(programId?: string) {
   const [tracks, setTracks] = useState<Track[]>([])
@@ -149,6 +169,47 @@ export function useCreateTrack() {
   }, [])
 
   return { createTrack, isLoading, error }
+}
+
+export function useUpdateTrack() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const updateTrack = useCallback(async (id: string, data: Partial<Track>) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const result = await programsClient.updateTrack(id, data)
+      return result
+    } catch (err: any) {
+      setError(err.message || 'Failed to update track')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  return { updateTrack, isLoading, error }
+}
+
+export function useDeleteTrack() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteTrack = useCallback(async (id: string) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await programsClient.deleteTrack(id)
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete track')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  return { deleteTrack, isLoading, error }
 }
 
 // Cohorts
@@ -272,6 +333,26 @@ export function useUpdateCohort() {
   return { updateCohort, isLoading, error }
 }
 
+export function useDeleteCohort() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteCohort = useCallback(async (id: string) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await programsClient.deleteCohort(id)
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete cohort')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  return { deleteCohort, isLoading, error }
+}
+
 // Program Rules
 export function useProgramRules(programId?: string) {
   const [rules, setRules] = useState<ProgramRule[]>([])
@@ -338,4 +419,30 @@ export function useUpdateProgramRule() {
   }, [])
 
   return { updateRule, isLoading, error }
+}
+
+// Director Dashboard
+export function useDirectorDashboard() {
+  const [dashboard, setDashboard] = useState<DirectorDashboard | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadDashboard = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const data = await programsClient.getDirectorDashboard()
+      setDashboard(data)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load director dashboard')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard])
+
+  return { dashboard, isLoading, error, reload: loadDashboard }
 }

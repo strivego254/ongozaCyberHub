@@ -6,6 +6,7 @@ from .models import (
     Program, Track, Specialization, Cohort, Enrollment,
     CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
 )
+from programs.director_dashboard_models import DirectorDashboardCache, DirectorCohortDashboard
 
 
 @admin.register(Program)
@@ -77,4 +78,20 @@ class CertificateAdmin(admin.ModelAdmin):
     list_display = ['enrollment', 'issued_at']
     list_filter = ['issued_at']
     search_fields = ['enrollment__user__email', 'enrollment__cohort__name']
+
+
+@admin.register(DirectorDashboardCache)
+class DirectorDashboardCacheAdmin(admin.ModelAdmin):
+    list_display = ['director', 'active_programs_count', 'active_cohorts_count', 'seats_used', 'cache_updated_at']
+    list_filter = ['cache_updated_at']
+    search_fields = ['director__email']
+    readonly_fields = ['cache_updated_at']
+
+
+@admin.register(DirectorCohortDashboard)
+class DirectorCohortDashboardAdmin(admin.ModelAdmin):
+    list_display = ['cohort_name', 'director', 'track_name', 'seats_used', 'completion_pct', 'updated_at']
+    list_filter = ['mode', 'updated_at']
+    search_fields = ['cohort_name', 'track_name', 'director__email']
+    readonly_fields = ['updated_at']
 

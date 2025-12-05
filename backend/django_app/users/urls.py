@@ -32,19 +32,31 @@ router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [
-    # Authentication endpoints
+    # Authentication endpoints (support both with and without trailing slash)
     path('auth/signup', SignupView.as_view(), name='signup'),
+    path('auth/signup/', SignupView.as_view(), name='signup-slash'),
     path('auth/login', LoginView.as_view(), name='login'),
+    path('auth/login/', LoginView.as_view(), name='login-slash'),
     path('auth/login/magic-link', MagicLinkView.as_view(), name='magic-link'),
+    path('auth/login/magic-link/', MagicLinkView.as_view(), name='magic-link-slash'),
     path('auth/mfa/enroll', MFAEnrollView.as_view(), name='mfa-enroll'),
+    path('auth/mfa/enroll/', MFAEnrollView.as_view(), name='mfa-enroll-slash'),
     path('auth/mfa/verify', MFAVerifyView.as_view(), name='mfa-verify'),
+    path('auth/mfa/verify/', MFAVerifyView.as_view(), name='mfa-verify-slash'),
     path('auth/mfa/disable', MFADisableView.as_view(), name='mfa-disable'),
+    path('auth/mfa/disable/', MFADisableView.as_view(), name='mfa-disable-slash'),
     path('auth/token/refresh', RefreshTokenView.as_view(), name='token-refresh'),
+    path('auth/token/refresh/', RefreshTokenView.as_view(), name='token-refresh-slash'),
     path('auth/logout', LogoutView.as_view(), name='logout'),
+    path('auth/logout/', LogoutView.as_view(), name='logout-slash'),
     path('auth/me', MeView.as_view(), name='me'),
+    path('auth/me/', MeView.as_view(), name='me-slash'),
     path('auth/consents', ConsentView.as_view(), name='consents'),
+    path('auth/consents/', ConsentView.as_view(), name='consents-slash'),
     path('auth/password/reset/request', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('auth/password/reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request-slash'),
     path('auth/password/reset/confirm', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('auth/password/reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm-slash'),
     
     # SSO endpoints (generic and specific)
     path('auth/sso/<str:provider>', SSOLoginView.as_view(), name='sso-generic'),

@@ -2,11 +2,13 @@
 API views for Programs app.
 """
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q, Count, Avg
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from django.db.models import Q, Count, Avg, Sum, F, Case, When, IntegerField
 from django.utils import timezone
+from datetime import timedelta
 from .models import (
     Program, Track, Specialization, Cohort, Enrollment,
     CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
@@ -20,6 +22,166 @@ from .serializers import (
 from .services import auto_graduate_cohort, EnrollmentService, ProgramManagementService
 
 
+@extend_schema(
+    summary='Get Director Dashboard (Legacy)',
+    description='Comprehensive director dashboard endpoint. Returns hero metrics, alerts, cohort table data, and program overview. Use /api/v1/director/dashboard/summary/ for cached version.',
+    tags=['Director Dashboard'],
+    deprecated=True,
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def director_dashboard(request):
+    """
+    Comprehensive director dashboard endpoint.
+    Returns hero metrics, alerts, cohort table data, and program overview.
+    """
+    user = request.user
+    
+    # Get user's programs and cohorts
+    if user.is_staff:
+        programs = Program.objects.all()
+        cohorts = Cohort.objects.all()
+    else:
+        programs = Program.objects.filter(tracks__director=user).distinct()
+        cohorts = Cohort.objects.filter(
+            Q(track__director=user) | Q(mentor_assignments__mentor=user)
+        ).distinct()
+    
+    active_programs = programs.filter(status='active').count()
+    active_cohorts = cohorts.filter(status__in=['active', 'running'])
+    
+    # Hero Metrics
+    total_seats_used = sum(c.enrollments.filter(status='active').count() for c in active_cohorts)
+    total_seats_available = sum(c.seat_cap for c in active_cohorts)
+    seat_utilization = (total_seats_used / total_seats_available * 100) if total_seats_available > 0 else 0
+    
+    # Calculate average readiness (mock - should come from TalentScope)
+    avg_readiness = 65.0  # TODO: Aggregate from student_dashboard_cache
+    
+    completion_rates = [c.completion_rate or 0 for c in active_cohorts if c.completion_rate]
+    avg_completion = sum(completion_rates) / len(completion_rates) if completion_rates else 0
+    
+    # Revenue per seat (mock - should come from billing)
+    revenue_per_seat = 0.0  # TODO: Calculate from billing data
+    
+    # Alerts - items needing attention
+    alerts = []
+    
+    # Cohorts at risk (low completion or readiness)
+    for cohort in active_cohorts:
+        if (cohort.completion_rate or 0) < 50:
+            alerts.append({
+                'type': 'cohort_at_risk',
+                'severity': 'high',
+                'title': f'Low completion rate: {cohort.name}',
+                'message': f'Completion rate is {cohort.completion_rate or 0}%',
+                'cohort_id': str(cohort.id),
+                'action_url': f'/dashboard/director/cohorts/{cohort.id}'
+            })
+        
+        # Check seat utilization
+        enrolled_count = cohort.enrollments.filter(status='active').count()
+        utilization = (enrolled_count / cohort.seat_cap * 100) if cohort.seat_cap > 0 else 0
+        if utilization < 60 and enrolled_count > 0:
+            alerts.append({
+                'type': 'underfilled_cohort',
+                'severity': 'medium',
+                'title': f'Under-filled cohort: {cohort.name}',
+                'message': f'Only {utilization:.0f}% of seats filled',
+                'cohort_id': str(cohort.id),
+                'action_url': f'/dashboard/director/cohorts/{cohort.id}'
+            })
+        elif utilization >= 95:
+            alerts.append({
+                'type': 'overfilled_cohort',
+                'severity': 'medium',
+                'title': f'Near capacity: {cohort.name}',
+                'message': f'{utilization:.0f}% of seats filled',
+                'cohort_id': str(cohort.id),
+                'action_url': f'/dashboard/director/cohorts/{cohort.id}'
+            })
+    
+    # Mentor SLA breaches (mock - should check mentor performance)
+    # TODO: Check mentor session completion rates, feedback scores
+    
+    # Payment anomalies
+    pending_payments = Enrollment.objects.filter(
+        cohort__in=active_cohorts,
+        payment_status='pending',
+        status='active'
+    ).count()
+    
+    if pending_payments > 0:
+        alerts.append({
+            'type': 'payment_anomaly',
+            'severity': 'medium',
+            'title': f'{pending_payments} pending payments',
+            'message': 'Review payment status for active enrollments',
+            'action_url': '/dashboard/director/reports?filter=payments'
+        })
+    
+    # Cohort Table Data
+    cohort_table = []
+    for cohort in active_cohorts:
+        enrollments = cohort.enrollments.filter(status='active')
+        mentor_count = cohort.mentor_assignments.filter(active=True).count()
+        
+        # Upcoming milestones
+        upcoming_events = CalendarEvent.objects.filter(
+            cohort=cohort,
+            start_ts__gte=timezone.now()
+        ).order_by('start_ts')[:3]
+        
+        milestones = [
+            {
+                'title': event.title,
+                'date': event.start_ts.isoformat(),
+                'type': event.type
+            }
+            for event in upcoming_events
+        ]
+        
+        enrolled_count = cohort.enrollments.filter(status='active').count()
+        cohort_table.append({
+            'id': str(cohort.id),
+            'name': cohort.name,
+            'track_name': cohort.track.name if cohort.track else '',
+            'program_name': cohort.track.program.name if cohort.track and cohort.track.program else '',
+            'status': cohort.status,
+            'seats_used': enrolled_count,
+            'seats_available': cohort.seat_cap - enrolled_count,
+            'seats_total': cohort.seat_cap,
+            'readiness_delta': 0.0,  # TODO: Calculate from TalentScope
+            'completion_rate': cohort.completion_rate or 0,
+            'mentor_coverage': mentor_count,
+            'upcoming_milestones': milestones,
+            'start_date': cohort.start_date.isoformat() if cohort.start_date else None,
+            'end_date': cohort.end_date.isoformat() if cohort.end_date else None,
+        })
+    
+    # Sort cohorts by status and start date
+    cohort_table.sort(key=lambda x: (
+        {'running': 0, 'active': 1, 'closing': 2, 'closed': 3}.get(x['status'], 4),
+        x['start_date'] or ''
+    ))
+    
+    return Response({
+        'hero_metrics': {
+            'active_programs': active_programs,
+            'active_cohorts': active_cohorts.count(),
+            'seats_used': total_seats_used,
+            'seats_available': total_seats_available,
+            'seat_utilization': round(seat_utilization, 1),
+            'avg_readiness': round(avg_readiness, 1),
+            'avg_completion_rate': round(avg_completion, 1),
+            'revenue_per_seat': revenue_per_seat,
+        },
+        'alerts': alerts[:10],  # Top 10 alerts
+        'cohort_table': cohort_table,
+        'programs': ProgramSerializer(programs, many=True).data,
+    })
+
+
 class ProgramViewSet(viewsets.ModelViewSet):
     """ViewSet for Program model."""
     queryset = Program.objects.all()
@@ -31,8 +193,18 @@ class ProgramViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_staff:
             return Program.objects.all()
-        # Directors can see programs they direct
-        return Program.objects.filter(tracks__director=user).distinct()
+        # Directors can see programs they direct (via tracks)
+        # Also allow programs with no tracks if the director has created tracks elsewhere
+        # (this allows seeing newly created programs before tracks are added)
+        director_has_tracks = user.directed_tracks.exists()
+        if director_has_tracks:
+            # Director has tracks, show programs they direct OR programs with no tracks
+            return Program.objects.filter(
+                Q(tracks__director=user) | Q(tracks__isnull=True)
+            ).distinct()
+        else:
+            # New director with no tracks yet, show all programs (they can create tracks)
+            return Program.objects.all()
 
 
 class TrackViewSet(viewsets.ModelViewSet):
@@ -77,9 +249,11 @@ class CohortViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=status_filter)
         
         if not user.is_staff:
+            # Directors can see cohorts from tracks they direct OR cohorts they're assigned as mentors
             queryset = queryset.filter(
                 Q(track__director=user) |
-                Q(mentor_assignments__mentor=user)
+                Q(mentor_assignments__mentor=user) |
+                Q(track__program__tracks__director=user)  # Also allow cohorts from programs they direct
             ).distinct()
         
         return queryset
@@ -326,4 +500,3 @@ class CertificateViewSet(viewsets.ReadOnlyModelViewSet):
             {'error': 'Certificate file not available'},
             status=status.HTTP_404_NOT_FOUND
         )
-

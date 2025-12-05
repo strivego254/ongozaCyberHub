@@ -129,6 +129,10 @@ export interface CohortDashboard {
 
 class ProgramsClient {
   // Programs
+  /**
+   * Get all programs from /api/v1/programs/
+   * Used by the "View Programs" view in director dashboard
+   */
   async getPrograms(): Promise<Program[]> {
     return apiGateway.get('/programs/')
   }
@@ -143,6 +147,10 @@ class ProgramsClient {
 
   async updateProgram(id: string, data: Partial<Program>): Promise<Program> {
     return apiGateway.put(`/programs/${id}/`, data)
+  }
+
+  async deleteProgram(id: string): Promise<void> {
+    return apiGateway.delete(`/programs/${id}/`)
   }
 
   // Tracks
@@ -164,6 +172,10 @@ class ProgramsClient {
     return apiGateway.put(`/tracks/${id}/`, data)
   }
 
+  async deleteTrack(id: string): Promise<void> {
+    return apiGateway.delete(`/tracks/${id}/`)
+  }
+
   // Cohorts
   async getCohorts(trackId?: string, status?: string): Promise<Cohort[]> {
     const params: string[] = []
@@ -183,6 +195,10 @@ class ProgramsClient {
 
   async updateCohort(id: string, data: Partial<Cohort>): Promise<Cohort> {
     return apiGateway.put(`/cohorts/${id}/`, data)
+  }
+
+  async deleteCohort(id: string): Promise<void> {
+    return apiGateway.delete(`/cohorts/${id}/`)
   }
 
   async getCohortDashboard(cohortId: string): Promise<CohortDashboard> {
@@ -255,6 +271,57 @@ class ProgramsClient {
     }
     return response.blob()
   }
+
+  // Director Dashboard
+  async getDirectorDashboard(): Promise<DirectorDashboard> {
+    return apiGateway.get('/programs/director/dashboard/')
+  }
+}
+
+export interface DirectorAlert {
+  type: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  title: string
+  message: string
+  cohort_id?: string
+  action_url: string
+}
+
+export interface CohortTableRow {
+  id: string
+  name: string
+  track_name: string
+  program_name: string
+  status: string
+  seats_used: number
+  seats_available: number
+  seats_total: number
+  readiness_delta: number
+  completion_rate: number
+  mentor_coverage: number
+  upcoming_milestones: Array<{
+    title: string
+    date: string
+    type: string
+  }>
+  start_date: string | null
+  end_date: string | null
+}
+
+export interface DirectorDashboard {
+  hero_metrics: {
+    active_programs: number
+    active_cohorts: number
+    seats_used: number
+    seats_available: number
+    seat_utilization: number
+    avg_readiness: number
+    avg_completion_rate: number
+    revenue_per_seat: number
+  }
+  alerts: DirectorAlert[]
+  cohort_table: CohortTableRow[]
+  programs: Program[]
 }
 
 export const programsClient = new ProgramsClient()
