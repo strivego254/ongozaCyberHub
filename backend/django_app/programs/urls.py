@@ -5,10 +5,19 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     ProgramViewSet, TrackViewSet, CohortViewSet,
+<<<<<<< HEAD
     ProgramRuleViewSet, CertificateViewSet,
     DirectorProgramViewSet, DirectorTrackViewSet, DirectorCohortViewSet,
     DirectorMentorViewSet, DirectorDashboardViewSet,
     DirectorProgramRuleViewSet
+=======
+    ProgramRuleViewSet, CertificateViewSet, director_dashboard
+)
+from .director_dashboard_views import (
+    director_dashboard_summary,
+    director_cohorts_list,
+    director_cohort_detail
+>>>>>>> 15a4791451ba1536df449610b2aafae0a8461fe9
 )
 
 router = DefaultRouter()
@@ -28,8 +37,17 @@ director_router.register(r'rules', DirectorProgramRuleViewSet, basename='directo
 director_router.register(r'dashboard', DirectorDashboardViewSet, basename='director-dashboard')
 
 urlpatterns = [
+    # Legacy director dashboard endpoint (kept for backward compatibility)
+    path('programs/director/dashboard/', director_dashboard, name='director-dashboard'),
+    
+    # New high-performance cached director dashboard endpoints
+    path('director/dashboard/summary/', director_dashboard_summary, name='director-dashboard-summary'),
+    path('director/dashboard/cohorts/', director_cohorts_list, name='director-cohorts-list'),
+    path('director/dashboard/cohorts/<uuid:cohort_id>/', director_cohort_detail, name='director-cohort-detail'),
+    
     path('', include(router.urls)),
     path('director/', include(director_router.urls)),
 ]
+
 
 

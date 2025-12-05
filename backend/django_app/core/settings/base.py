@@ -195,3 +195,75 @@ except ImportError:
 
 # Monitoring & Metrics
 ENABLE_METRICS = os.environ.get('ENABLE_METRICS', 'False').lower() == 'true'
+
+# drf-spectacular (Swagger/OpenAPI) Settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'OCH Cyber Talent Engine API',
+    'DESCRIPTION': '''
+    Comprehensive API for the OCH Cyber Talent Engine platform.
+    
+    This API provides endpoints for:
+    - User authentication and management
+    - Program, Track, and Cohort management
+    - Mentorship coordination
+    - Student dashboards and progress tracking
+    - Missions and portfolio management
+    - Director dashboards and analytics
+    
+    **Authentication**: Use JWT Bearer tokens. Obtain tokens via `/api/v1/auth/login` or `/api/v1/auth/login/`
+    ''',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': '/api/v1/',
+    'COMPONENT_SPLIT_REQUEST': True,
+    'COMPONENT_NO_READ_ONLY_REQUIRED': True,
+    'TAGS': [
+        {'name': 'Authentication', 'description': 'User authentication and JWT token management'},
+        {'name': 'Users', 'description': 'User management and profiles'},
+        {'name': 'Programs', 'description': 'Program, Track, and Cohort management'},
+        {'name': 'Director Dashboard', 'description': 'Director dashboard and analytics'},
+        {'name': 'Mentorship', 'description': 'Mentorship coordination and sessions'},
+        {'name': 'Missions', 'description': 'Mission submissions and approvals'},
+        {'name': 'Coaching', 'description': 'Coaching and habit tracking'},
+        {'name': 'Portfolio', 'description': 'Portfolio management'},
+        {'name': 'Organizations', 'description': 'Organization management'},
+        {'name': 'Progress', 'description': 'Progress tracking'},
+        {'name': 'Subscriptions', 'description': 'Subscription and billing'},
+    ],
+    'SECURITY': [
+        {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT',
+        }
+    ],
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'displayOperationId': False,
+        'defaultModelsExpandDepth': 1,
+        'defaultModelExpandDepth': 1,
+        'displayRequestDuration': True,
+        'docExpansion': 'list',
+        'filter': True,
+        'showExtensions': True,
+        'showCommonExtensions': True,
+        'tryItOutEnabled': True,
+    },
+    'REDOC_UI_SETTINGS': {
+        'hideDownloadButton': False,
+        'hideHostname': False,
+        'hideLoading': False,
+        'nativeScrollbars': False,
+        'requiredPropsFirst': True,
+        'scrollYOffset': 0,
+        'showExtensions': True,
+        'sortPropsAlphabetically': True,
+        'theme': {
+            'colors': {
+                'primary': {
+                    'main': '#FF6B35',  # OCH Orange
+                }
+            }
+        },
+    },
+}

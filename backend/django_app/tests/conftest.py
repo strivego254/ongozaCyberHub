@@ -42,6 +42,7 @@ def authenticated_client(api_client, test_user):
 def admin_user(db):
     """Create an admin user."""
     user = User.objects.create_user(
+        username='admin@test.com',
         email='admin@test.com',
         password='testpass123',
         first_name='Admin',

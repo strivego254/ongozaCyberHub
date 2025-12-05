@@ -174,7 +174,7 @@ export default function SponsorDashboardClient() {
           />
           <ROIMetricCard
             title="FORECAST GRADUATES"
-            value={summary.forecast_graduates || 42}
+            value={42}
             subtitle="84% Confidence"
             trend={{ value: 0, direction: 'neutral' }}
             icon="🔮"
