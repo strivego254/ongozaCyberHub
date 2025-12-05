@@ -22,28 +22,28 @@ class Migration(migrations.Migration):
             -- Policies for assignments (mentors see their assignments, mentees see their assignments)
             CREATE POLICY mentor_assignments_policy ON menteementorassignments
                 FOR ALL USING (
-                    mentor_id = current_setting('app.current_user_id', true)::uuid
-                    OR mentee_id = current_setting('app.current_user_id', true)::uuid
+                    mentor_id = current_setting('app.current_user_id', true)::bigint
+                    OR mentee_id = current_setting('app.current_user_id', true)::bigint
                 );
             
             -- Policies for sessions
             CREATE POLICY mentor_sessions_policy ON mentorsessions
                 FOR ALL USING (
-                    mentor_id = current_setting('app.current_user_id', true)::uuid
-                    OR mentee_id = current_setting('app.current_user_id', true)::uuid
+                    mentor_id = current_setting('app.current_user_id', true)::bigint
+                    OR mentee_id = current_setting('app.current_user_id', true)::bigint
                 );
             
             -- Policies for work queue (mentors see their queue)
             CREATE POLICY mentor_workqueue_policy ON mentorworkqueue
                 FOR ALL USING (
-                    mentor_id = current_setting('app.current_user_id', true)::uuid
+                    mentor_id = current_setting('app.current_user_id', true)::bigint
                 );
             
             -- Policies for flags (mentors see flags they raised, mentees see their flags)
             CREATE POLICY mentor_flags_policy ON mentorflags
                 FOR ALL USING (
-                    mentor_id = current_setting('app.current_user_id', true)::uuid
-                    OR mentee_id = current_setting('app.current_user_id', true)::uuid
+                    mentor_id = current_setting('app.current_user_id', true)::bigint
+                    OR mentee_id = current_setting('app.current_user_id', true)::bigint
                 );
             """,
             reverse_sql="""

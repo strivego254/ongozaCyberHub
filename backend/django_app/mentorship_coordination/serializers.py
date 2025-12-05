@@ -91,11 +91,22 @@ class MentorFlagSerializer(serializers.ModelSerializer):
 
 class CreateSessionSerializer(serializers.Serializer):
     """Serializer for creating a mentor session."""
-    mentee_id = serializers.UUIDField()
+    mentee_id = serializers.UUIDField(required=False)
     title = serializers.CharField(max_length=200)
     start_time = serializers.DateTimeField()
     duration_minutes = serializers.IntegerField(default=45, min_value=15, max_value=120)
     type = serializers.ChoiceField(choices=MentorSession.TYPE_CHOICES, default='one_on_one')
+
+
+class CreateGroupSessionSerializer(serializers.Serializer):
+    """Serializer for creating a group mentorship session."""
+    title = serializers.CharField(max_length=200)
+    description = serializers.CharField(required=False, allow_blank=True, default='')
+    scheduled_at = serializers.DateTimeField()
+    duration_minutes = serializers.IntegerField(default=60, min_value=15, max_value=240)
+    meeting_type = serializers.ChoiceField(choices=[('zoom', 'Zoom'), ('google_meet', 'Google Meet'), ('in_person', 'In Person')], default='zoom')
+    meeting_link = serializers.CharField(required=False, allow_blank=True, default='')
+    track_assignment = serializers.CharField(required=False, allow_blank=True, max_length=100, default='')
 
 
 class MissionReviewSerializer(serializers.Serializer):

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { authService } from '@/lib/auth-mock'
 
 interface ProfileData {
   fullName: string
@@ -105,9 +104,7 @@ export default function ProfilePage() {
       console.log('Profile data:', profile)
       console.log('Skipped fields:', Array.from(skippedFields))
       
-      // Mock: Complete profile
-      const mockUserId = 'user_current'
-      await authService.completeProfile(mockUserId)
+      // Profile data will be saved to backend in future implementation
 
       // Mock: Feed into TalentScope baseline calculations
       console.log('Feeding profile data into TalentScope baseline calculations...')

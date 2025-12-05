@@ -29,6 +29,9 @@ export function useAuth() {
    * Load current user from API
    */
   const loadUser = useCallback(async () => {
+    // Set loading state first
+    setState(prev => ({ ...prev, isLoading: true }));
+    
     if (!isAuthenticated()) {
       setState({ user: null, isLoading: false, isAuthenticated: false });
       return;
@@ -37,10 +40,16 @@ export function useAuth() {
     try {
       const user = await djangoClient.auth.getCurrentUser();
       setState({ user, isLoading: false, isAuthenticated: true });
-    } catch (error) {
-      // Token invalid or expired
-      clearAuthTokens();
-      setState({ user: null, isLoading: false, isAuthenticated: false });
+    } catch (error: any) {
+      console.error('Failed to load user:', error);
+      // Token invalid or expired - only clear if it's an auth error
+      if (error?.status === 401 || error?.response?.status === 401) {
+        clearAuthTokens();
+        setState({ user: null, isLoading: false, isAuthenticated: false });
+      } else {
+        // For other errors, keep the token but mark as not authenticated
+        setState({ user: null, isLoading: false, isAuthenticated: false });
+      }
     }
   }, []);
 
@@ -63,12 +72,28 @@ export function useAuth() {
         throw error;
       }
 
-      const { user, access_token } = await response.json();
+      const responseData = await response.json();
+      console.log('Login API response:', responseData);
+      
+      // Check if MFA is required
+      if (responseData.mfa_required) {
+        const error = new Error('MFA required');
+        (error as any).mfa_required = true;
+        (error as any).session_id = responseData.session_id;
+        (error as any).data = responseData;
+        throw error;
+      }
+      
+      const { user, access_token } = responseData;
       
       // Store access token in localStorage for client-side requests
       // Refresh token is already in HttpOnly cookie
       if (access_token) {
         localStorage.setItem('access_token', access_token);
+        console.log('Token stored in localStorage');
+      } else {
+        console.error('No access_token in login response:', responseData);
+        throw new Error('No access token received from server');
       }
       
       // Fetch full user profile with roles from /auth/me
@@ -98,13 +123,16 @@ export function useAuth() {
         }
       }
       
+      // Update state with authenticated user
       setState({
         user: fullUser,
         isLoading: false,
         isAuthenticated: true,
       });
       
-      console.log('Login successful, returning user:', fullUser);
+      console.log('Login successful, user state updated:', fullUser);
+      console.log('Auth state:', { isAuthenticated: true, hasUser: !!fullUser });
+      
       return { user: fullUser };
     } catch (error) {
       setState(prev => ({ ...prev, isLoading: false }));

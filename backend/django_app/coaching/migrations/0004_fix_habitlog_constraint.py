@@ -11,16 +11,12 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Note: Unique constraint per day is handled at application level
+        # (see HabitLog model comment). PostgreSQL requires IMMUTABLE functions
+        # for index expressions, and date_trunc casting is not suitable here.
         migrations.RunSQL(
-            sql="""
-            -- Add unique constraint using date_trunc (PostgreSQL specific)
-            -- This ensures only one log per habit per day
-            CREATE UNIQUE INDEX IF NOT EXISTS unique_habit_per_day 
-            ON habitlogs (habit_id, date_trunc('day', completed_at));
-            """,
-            reverse_sql="""
-            DROP INDEX IF EXISTS unique_habit_per_day;
-            """
+            sql="SELECT 1; -- No-op: constraint handled at application level",
+            reverse_sql="SELECT 1; -- No-op"
         ),
     ]
 

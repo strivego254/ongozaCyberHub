@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             
             -- Policy: Users can only see their own subscription
             CREATE POLICY student_subscriptions ON user_subscriptions
-                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::uuid);
+                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::bigint);
             """,
             reverse_sql="""
             DROP POLICY IF EXISTS student_subscriptions ON user_subscriptions;

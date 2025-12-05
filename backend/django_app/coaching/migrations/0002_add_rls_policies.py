@@ -21,16 +21,16 @@ class Migration(migrations.Migration):
             
             -- Policies: Users can only see their own data
             CREATE POLICY student_habits ON habits
-                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::uuid);
+                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::bigint);
             
             CREATE POLICY student_habitlogs ON habitlogs
-                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::uuid);
+                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::bigint);
             
             CREATE POLICY student_goals ON goals
-                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::uuid);
+                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::bigint);
             
             CREATE POLICY student_reflections ON reflections
-                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::uuid);
+                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::bigint);
             """,
             reverse_sql="""
             DROP POLICY IF EXISTS student_habits ON habits;

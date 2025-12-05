@@ -24,7 +24,21 @@ function LoginForm() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  const role = (params?.role as string) || 'student';
+  // Get role from URL params - this will update when URL changes
+  const roleParam = params?.role as string;
+  const urlRole = roleParam && VALID_ROLES.includes(roleParam) ? roleParam : 'student';
+  
+  // Use state to track current role for immediate UI updates
+  const [currentRole, setCurrentRole] = useState(urlRole);
+  const role = currentRole;
+  
+  // Update state when URL param changes
+  useEffect(() => {
+    if (urlRole !== currentRole) {
+      setCurrentRole(urlRole);
+    }
+  }, [urlRole, currentRole]);
+  
   const { login, isLoading, isAuthenticated, user } = useAuth();
 
   const [formData, setFormData] = useState<LoginRequest>({
@@ -35,6 +49,7 @@ function LoginForm() {
   });
 
   const [error, setError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     if (role && !VALID_ROLES.includes(role)) {
@@ -42,28 +57,54 @@ function LoginForm() {
     }
   }, [role, router]);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (but only if not currently logging in)
   useEffect(() => {
-    if (isAuthenticated && user) {
+    // Don't redirect if we're in the middle of logging in
+    if (isLoggingIn) return;
+    
+    // Only redirect if we're already authenticated and not in the middle of a login attempt
+    // This prevents redirect loops during login
+    if (isAuthenticated && user && !isLoading) {
       const redirectTo = searchParams.get('redirect');
       if (redirectTo && redirectTo.startsWith('/dashboard')) {
         router.push(redirectTo);
       } else {
-        router.push('/dashboard/student');
+        const route = getRedirectRoute(user);
+        router.push(route);
       }
     }
-  }, [isAuthenticated, user, router, searchParams]);
+  }, [isAuthenticated, user, router, searchParams, isLoading, isLoggingIn]);
 
   const currentPersona = PERSONAS[role as keyof typeof PERSONAS] || PERSONAS.student;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsLoggingIn(true);
 
     try {
       const result = await login(formData);
       console.log('=== Login Success ===');
       console.log('Login result:', result);
+
+      // Wait a bit to ensure token is stored in localStorage
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Check for token in localStorage (with retry)
+      let token = localStorage.getItem('access_token');
+      let retries = 0;
+      while (!token && retries < 5) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        token = localStorage.getItem('access_token');
+        retries++;
+      }
+
+      if (!token) {
+        console.error('Token not found in localStorage after login');
+        console.error('Login result:', result);
+        setError('Authentication token not found. Please try logging in again.');
+        return;
+      }
 
       // Determine redirect route based on user role
       let route = '/dashboard/student';
@@ -75,7 +116,7 @@ function LoginForm() {
         console.log('📍 Using redirect parameter:', route);
       } else if (result?.user) {
         // Wait to ensure roles are fully loaded from /auth/me
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 200));
         
         // CRITICAL: Check for admin role first
         const userRoles = result.user.roles || [];
@@ -99,53 +140,70 @@ function LoginForm() {
 
       console.log('🚀 Final redirect route:', route);
       
-      // Ensure token is in localStorage before redirecting
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        console.error('Token not found in localStorage, cannot redirect');
-        setError('Authentication token not found. Please try logging in again.');
-        return;
-      }
-      
-      // Set cookie manually in browser to ensure it's available for middleware
-      // The API route already set it, but we'll ensure it's in the browser
+      // Ensure cookie is set in browser (API route already set it server-side)
+      // This ensures it's available for middleware checks
       document.cookie = `access_token=${token}; path=/; max-age=${60 * 15}; SameSite=Lax`;
       
-      // Small delay to ensure cookie is set, then redirect
-      setTimeout(() => {
-        console.log('🚀 Redirecting to:', route);
-        window.location.href = route;
-      }, 200);
+      // Small delay to ensure auth state is fully updated and cookies are set
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Use router.push instead of window.location.href to preserve React state
+      // This ensures the auth state is maintained across navigation
+      console.log('🚀 Redirecting to:', route);
+      
+      // Reset logging in flag after a short delay to allow redirect to happen
+      setTimeout(() => setIsLoggingIn(false), 1000);
+      
+      router.push(route);
 
     } catch (err: any) {
+      setIsLoggingIn(false);
       console.error('Login error:', err);
       
       let message = 'Login failed. Please check your credentials.';
-      let detail = '';
 
-      // Check for API response errors
-      if (err?.data) {
-        message = err.data.error || err.data.detail || message;
-        detail = err.data.detail || '';
+      // Check for MFA requirement
+      if (err?.mfa_required) {
+        message = 'Multi-factor authentication is required. Please contact support to set up MFA.';
+      } else if (err?.data) {
+        // Prefer detail over error if both exist, otherwise use either
+        if (err.data.detail && err.data.detail !== err.data.error) {
+          message = err.data.detail;
+        } else {
+          message = err.data.detail || err.data.error || message;
+        }
       } else if (err?.detail) {
         message = err.detail;
       } else if (err?.message) {
         message = err.message;
         // Check for connection errors
         if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('ECONNREFUSED')) {
-          message = 'Cannot connect to server';
-          detail = 'The backend server is not running. Please ensure the Django API is running on port 8000.';
+          message = 'Cannot connect to server - The backend server is not running. Please ensure the Django API is running on port 8000.';
         }
       }
 
-      // Combine message and detail for display
-      const errorMessage = detail ? `${message}\n\n${detail}` : message;
-      setError(errorMessage);
+      setError(message);
     }
   };
 
   const switchRole = (newRole: string) => {
-    router.push(`/login/${newRole}`);
+    // Don't switch if already on that role
+    if (newRole === currentRole) {
+      return;
+    }
+    
+    // Update state immediately for instant UI feedback
+    setCurrentRole(newRole);
+    
+    // Preserve redirect parameter if it exists
+    const redirectTo = searchParams.get('redirect');
+    let newUrl = `/login/${newRole}`;
+    if (redirectTo) {
+      newUrl += `?redirect=${encodeURIComponent(redirectTo)}`;
+    }
+    
+    // Update URL - use replace to avoid adding to history
+    router.replace(newUrl);
   };
 
   return (

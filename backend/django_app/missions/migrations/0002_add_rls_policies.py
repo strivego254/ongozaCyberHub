@@ -19,13 +19,13 @@ class Migration(migrations.Migration):
             
             -- Policies: Users can only see their own submissions
             CREATE POLICY student_mission_submissions ON missionsubmissions
-                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::uuid);
+                FOR ALL USING (user_id = current_setting('app.current_user_id', true)::bigint);
             
             CREATE POLICY student_mission_files ON missionfiles
                 FOR ALL USING (
                     submission_id IN (
                         SELECT id FROM missionsubmissions
-                        WHERE user_id = current_setting('app.current_user_id', true)::uuid
+                        WHERE user_id = current_setting('app.current_user_id', true)::bigint
                     )
                 );
             """,

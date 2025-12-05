@@ -29,7 +29,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data: LoginResponse = await response.json();
+    const data: any = await response.json();
+
+    // Check if this is an MFA challenge response
+    if (data.mfa_required) {
+      return NextResponse.json(
+        {
+          mfa_required: true,
+          session_id: data.session_id,
+          detail: data.detail || 'MFA required',
+        },
+        { status: 200 }
+      );
+    }
+
+    // Validate response has required fields for successful login
+    if (!data.access_token) {
+      console.error('Django API response missing access_token:', data);
+      return NextResponse.json(
+        {
+          error: 'Login failed',
+          detail: data.detail || 'Server did not return authentication token',
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!data.user) {
+      console.error('Django API response missing user:', data);
+      return NextResponse.json(
+        {
+          error: 'Login failed',
+          detail: 'Server did not return user data',
+        },
+        { status: 500 }
+      );
+    }
 
     // Create response first
     const nextResponse = NextResponse.json({

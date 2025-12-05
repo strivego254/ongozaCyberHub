@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { mentorClient } from '@/services/mentorClient'
-import { mockInfluenceIndex, delay } from '@/services/mockData/mentorMockData'
 import type { MentorInfluenceIndex } from '@/services/types/mentor'
 
-const USE_MOCK_DATA = true // Set to false when backend is ready
+const USE_MOCK_DATA = false // Backend is ready
 
 export function useMentorInfluence(mentorId: string | undefined, params?: {
   start_date?: string
@@ -20,13 +19,8 @@ export function useMentorInfluence(mentorId: string | undefined, params?: {
     setIsLoading(true)
     setError(null)
     try {
-      if (USE_MOCK_DATA) {
-        await delay(500) // Simulate API delay
-        setInfluence(mockInfluenceIndex)
-      } else {
-        const data = await mentorClient.getInfluenceIndex(mentorId, params)
-        setInfluence(data)
-      }
+      const data = await mentorClient.getInfluenceIndex(mentorId, params)
+      setInfluence(data)
     } catch (err: any) {
       setError(err.message || 'Failed to load influence analytics')
     } finally {

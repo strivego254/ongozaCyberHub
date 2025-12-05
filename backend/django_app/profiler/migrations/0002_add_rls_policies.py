@@ -20,14 +20,14 @@ class Migration(migrations.Migration):
             -- Policy: Users can only see their own profiler sessions
             CREATE POLICY student_profiler_sessions ON profilersessions
                 FOR ALL
-                USING (user_id = current_setting('app.current_user_id', true)::uuid);
+                USING (user_id = current_setting('app.current_user_id', true)::bigint);
             
             CREATE POLICY student_profiler_answers ON profileranswers
                 FOR ALL
                 USING (
                     session_id IN (
                         SELECT id FROM profilersessions
-                        WHERE user_id = current_setting('app.current_user_id', true)::uuid
+                        WHERE user_id = current_setting('app.current_user_id', true)::bigint
                     )
                 );
             """,
