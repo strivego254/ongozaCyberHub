@@ -55,5 +55,8 @@ urlpatterns = [
     
     # Programs & Cohorts
     path('', include('programs.urls')),
+    
+    # TalentScope Analytics
+    path('talentscope/', include('talentscope.urls')),
 ]
 

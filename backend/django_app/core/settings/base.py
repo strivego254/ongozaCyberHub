@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'subscriptions',
     'mentorship_coordination',
     'programs',
+    'talentscope',
     'api',
     'shared_schemas',
 ]
