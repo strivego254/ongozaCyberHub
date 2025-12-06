@@ -5,14 +5,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import clsx from 'clsx'
 
+
 interface NavItem {
   label: string
   href: string
+  icon?: string
   badge?: number
 }
 
 const navItems: NavItem[] = [
-<<<<<<< HEAD
   { label: 'Dashboard', href: '/dashboard/student', icon: '' },
   { label: 'Missions', href: '/dashboard/student/missions', icon: '' },
   { label: 'Coaching', href: '/dashboard/student/coaching', icon: '' },
@@ -21,16 +22,6 @@ const navItems: NavItem[] = [
   { label: 'Community', href: '/dashboard/student/community', icon: '' },
   { label: 'Mentorship', href: '/dashboard/student/mentorship', icon: '' },
   { label: 'Settings', href: '/dashboard/student/settings', icon: '' },
-=======
-  { label: 'Dashboard', href: '/dashboard/student' },
-  { label: 'Missions', href: '/dashboard/student/missions' },
-  { label: 'Coaching', href: '/dashboard/student/coaching' },
-  { label: 'Curriculum', href: '/dashboard/student/curriculum' },
-  { label: 'Portfolio', href: '/dashboard/student/portfolio' },
-  { label: 'Community', href: '/dashboard/student/community' },
-  { label: 'Mentorship', href: '/dashboard/student/mentorship' },
-  { label: 'Settings', href: '/dashboard/student/settings' },
->>>>>>> 6e4bbdbe00dda65dcf3c3a7bbaa675741858f2b1
 ]
 
 export function StudentNavigation() {
@@ -105,10 +96,7 @@ export function StudentNavigation() {
                       : 'text-och-steel'
                   )}
                 >
-<<<<<<< HEAD
                   {item.icon && <span className="text-xl">{item.icon}</span>}
-=======
->>>>>>> 6e4bbdbe00dda65dcf3c3a7bbaa675741858f2b1
                   <span className="font-medium">{item.label}</span>
                   {item.badge && item.badge > 0 && (
                     <span className="ml-auto px-2 py-0.5 text-xs bg-och-orange text-white rounded-full">
@@ -128,12 +116,9 @@ export function StudentNavigation() {
           </div>
         </div>
       </aside>
-<<<<<<< HEAD
 
       {/* Desktop: Spacer for fixed sidebar */}
       <div className="hidden lg:block w-64 flex-shrink-0" aria-hidden="true" />
-=======
->>>>>>> 6e4bbdbe00dda65dcf3c3a7bbaa675741858f2b1
     </>
   )
 }
