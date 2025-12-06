@@ -248,8 +248,7 @@ class LoginView(APIView):
                 )
         elif password:
             # Password login
-            user_auth = authenticate(username=email, password=password)
-            if not user_auth or user_auth != user:
+            if not user.check_password(password):
                 _log_audit_event(user, 'login', 'user', 'failure', {'method': 'password'})
                 return Response(
                     {'detail': 'Invalid credentials'},

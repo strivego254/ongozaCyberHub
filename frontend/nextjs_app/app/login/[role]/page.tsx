@@ -179,8 +179,8 @@ function LoginForm() {
       } else if (err?.message) {
         message = err.message;
         // Check for connection errors
-        if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('ECONNREFUSED')) {
-          message = 'Cannot connect to server - The backend server is not running. Please ensure the Django API is running on port 8000.';
+        if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('ECONNREFUSED') || err.message.includes('fetch failed')) {
+          message = 'Cannot connect to backend server. The Django API is not running. Please start the Django backend server on port 8000.';
         }
       }
 

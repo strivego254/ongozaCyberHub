@@ -72,6 +72,45 @@ export interface SponsorStudent {
   consent_employer_share: boolean
 }
 
+export interface SponsorStudentProfile {
+  student_id: string
+  name: string
+  email: string | null
+  readiness_score: number | null
+  completion_pct: number | null
+  portfolio_items: number
+  cohort: {
+    id: string
+    name: string
+  }
+  enrollment_status: string
+}
+
+export interface PortfolioItem {
+  id: string
+  title: string
+  description: string
+  created_at: string
+  file_url: string | null
+}
+
+export interface StudentPortfolio {
+  student_id: string
+  portfolio_items: PortfolioItem[]
+  total_items: number
+}
+
+export interface CompetencyDefinition {
+  id: string
+  name: string
+  description: string
+}
+
+export interface CompetenciesResponse {
+  competencies: CompetencyDefinition[]
+  count: number
+}
+
 export interface SponsorCode {
   id: string
   code: string
@@ -195,6 +234,27 @@ class SponsorClient {
     type: string
   }): Promise<any> {
     return apiGateway.post('/sponsor/reports/export', data)
+  }
+
+  /**
+   * Get student profile (consent-gated)
+   */
+  async getStudentProfile(studentId: string): Promise<SponsorStudentProfile> {
+    return apiGateway.get(`/sponsor/dashboard/students/${studentId}`)
+  }
+
+  /**
+   * Get student portfolio (consent-gated with portfolio.public_page)
+   */
+  async getStudentPortfolio(studentId: string): Promise<StudentPortfolio> {
+    return apiGateway.get(`/sponsor/dashboard/students/${studentId}/portfolio`)
+  }
+
+  /**
+   * Get competency/role definitions from MCRR
+   */
+  async getCompetencies(): Promise<CompetenciesResponse> {
+    return apiGateway.get('/sponsor/dashboard/competencies')
   }
 }
 

@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DirectorDashboardCache',
             fields=[
-                ('director', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='director_dashboard_cache', serialize=False, to=settings.AUTH_USER_MODEL)),
+                ('director', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='director_dashboard_cache_v2', serialize=False, to=settings.AUTH_USER_MODEL)),
                 ('active_programs_count', models.IntegerField(default=0, validators=[django.core.validators.MinValueValidator(0)])),
                 ('active_cohorts_count', models.IntegerField(default=0, validators=[django.core.validators.MinValueValidator(0)])),
                 ('total_seats', models.IntegerField(default=0, validators=[django.core.validators.MinValueValidator(0)])),
@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 ('cache_updated_at', models.DateTimeField(auto_now=True, db_index=True)),
             ],
             options={
-                'db_table': 'director_dashboard_cache',
+                'db_table': 'director_dashboard_cache_v2',
                 'ordering': ['-cache_updated_at'],
             },
         ),

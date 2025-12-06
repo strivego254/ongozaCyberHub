@@ -6,52 +6,8 @@ import { Badge } from '@/components/ui/Badge'
 import { MentorshipChat } from '@/components/mentorship/MentorshipChat'
 
 export default function MentorshipPage() {
-  const sessions = [
-    {
-      id: '1',
-      mentor: 'Dr. Sarah Johnson',
-      topic: 'Career Guidance',
-      date: '2024-12-05',
-      time: '14:00',
-      status: 'upcoming',
-      type: 'scheduled',
-    },
-    {
-      id: '2',
-      mentor: 'Dr. Sarah Johnson',
-      topic: 'Technical Review',
-      date: '2024-11-28',
-      time: '10:00',
-      status: 'completed',
-      type: 'completed',
-    },
-    {
-      id: '3',
-      mentor: 'Prof. Michael Chen',
-      topic: 'Project Feedback',
-      date: '2024-12-10',
-      time: '16:00',
-      status: 'upcoming',
-      type: 'scheduled',
-    },
-  ]
-
-  const feedback = [
-    {
-      id: '1',
-      from: 'Dr. Sarah Johnson',
-      message: 'Great progress on the network security project. Your analysis was thorough.',
-      date: '2024-11-28',
-      project: 'Network Security Assessment',
-    },
-    {
-      id: '2',
-      from: 'Prof. Michael Chen',
-      message: 'Consider exploring more advanced encryption techniques for your next project.',
-      date: '2024-11-25',
-      project: 'Encryption Implementation',
-    },
-  ]
+  const sessions: any[] = []
+  const feedback: any[] = []
 
   return (
     <div className="p-6">
@@ -70,9 +26,14 @@ export default function MentorshipPage() {
           <Card>
             <h2 className="text-2xl font-bold mb-4 text-white">Upcoming Sessions</h2>
             <div className="space-y-4">
-              {sessions
-                .filter(s => s.status === 'upcoming')
-                .map((session) => (
+              {sessions.filter(s => s.status === 'upcoming').length === 0 ? (
+                <div className="text-center py-8 text-och-steel">
+                  <p>No upcoming sessions scheduled.</p>
+                </div>
+              ) : (
+                sessions
+                  .filter(s => s.status === 'upcoming')
+                  .map((session) => (
                   <div key={session.id} className="p-4 bg-och-defender/20 rounded-lg">
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -89,14 +50,20 @@ export default function MentorshipPage() {
                       <Button variant="defender" size="sm">Reschedule</Button>
                     </div>
                   </div>
-                ))}
+                  ))
+              )}
             </div>
           </Card>
 
           <Card>
             <h2 className="text-2xl font-bold mb-4 text-white">Recent Feedback</h2>
             <div className="space-y-4">
-              {feedback.map((item) => (
+              {feedback.length === 0 ? (
+                <div className="text-center py-8 text-och-steel">
+                  <p>No feedback received yet.</p>
+                </div>
+              ) : (
+                feedback.map((item) => (
                 <div key={item.id} className="p-4 bg-och-midnight/50 rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <div className="font-medium text-white">{item.from}</div>
@@ -105,7 +72,8 @@ export default function MentorshipPage() {
                   <div className="text-sm text-och-steel mb-2">{item.message}</div>
                   <Badge variant="steel" className="text-xs">{item.project}</Badge>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>
@@ -118,7 +86,12 @@ export default function MentorshipPage() {
         <Card>
           <h2 className="text-2xl font-bold mb-4 text-white">Session History</h2>
           <div className="space-y-3">
-            {sessions.map((session) => (
+            {sessions.length === 0 ? (
+              <div className="text-center py-8 text-och-steel">
+                <p>No session history available.</p>
+              </div>
+            ) : (
+              sessions.map((session) => (
               <div
                 key={session.id}
                 className="flex items-center justify-between p-4 bg-och-midnight/50 rounded-lg"
@@ -139,7 +112,8 @@ export default function MentorshipPage() {
                   <Button variant="outline" size="sm">View</Button>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </Card>
       </div>

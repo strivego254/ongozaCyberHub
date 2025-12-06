@@ -31,11 +31,31 @@ export default function SponsorClient() {
         setError('No data returned from API')
       }
     } catch (err: any) {
-      const errorMsg = err.message || err.response?.data?.detail || err.response?.data?.error || 'Failed to load dashboard'
-      setError(errorMsg)
       console.error('❌ Sponsor dashboard error:', err)
-      console.error('Error response:', err.response?.data)
-      console.error('Error status:', err.response?.status)
+      console.error('Error object:', err)
+      console.error('Error data:', err.data)
+      console.error('Error status:', err.status)
+      
+      // Extract error message from various possible locations
+      let errorMsg = 'Failed to load dashboard'
+      
+      if (err?.data?.detail) {
+        errorMsg = err.data.detail
+      } else if (err?.data?.error) {
+        errorMsg = err.data.error
+      } else if (err?.data?.message) {
+        errorMsg = err.data.message
+      } else if (err?.message) {
+        errorMsg = err.message
+        // Don't show "HTTP 500" as the message, try to get more details
+        if (errorMsg === 'HTTP 500' || errorMsg.includes('HTTP')) {
+          errorMsg = 'An error occurred while loading the dashboard. Please check the server logs or try again later.'
+        }
+      } else if (err?.status === 500) {
+        errorMsg = 'Internal server error. Please try again or contact support if the problem persists.'
+      }
+      
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }

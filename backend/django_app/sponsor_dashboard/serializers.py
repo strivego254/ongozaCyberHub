@@ -12,7 +12,11 @@ from .models import (
 
 class SponsorDashboardSummarySerializer(serializers.ModelSerializer):
     """Serializer for sponsor dashboard summary."""
-    org_id = serializers.UUIDField(source='org.id', read_only=True)
+    org_id = serializers.SerializerMethodField()
+    
+    def get_org_id(self, obj):
+        """Safely get org ID."""
+        return obj.org.id if obj.org else None
     alerts = serializers.SerializerMethodField()
     budget_total = serializers.DecimalField(max_digits=12, decimal_places=2, coerce_to_string=False)
     budget_used = serializers.DecimalField(max_digits=12, decimal_places=2, coerce_to_string=False)
@@ -52,8 +56,14 @@ class SponsorDashboardSummarySerializer(serializers.ModelSerializer):
 
 class SponsorCohortListSerializer(serializers.ModelSerializer):
     """Serializer for sponsor cohort list."""
-    cohort_id = serializers.UUIDField(source='cohort.id', read_only=True)
+    cohort_id = serializers.SerializerMethodField()
     budget_remaining = serializers.SerializerMethodField()
+    
+    def get_cohort_id(self, obj):
+        """Safely get cohort ID."""
+        if obj.cohort:
+            return str(obj.cohort.id)
+        return None
     
     class Meta:
         model = SponsorCohortDashboard

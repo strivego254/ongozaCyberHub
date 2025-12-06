@@ -14,7 +14,7 @@ class DirectorDashboardCache(models.Model):
     director = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
-        related_name='director_dashboard_cache',
+        related_name='director_dashboard_cache_v2',
         primary_key=True,
         db_index=True
     )
@@ -48,7 +48,7 @@ class DirectorDashboardCache(models.Model):
     cache_updated_at = models.DateTimeField(auto_now=True, db_index=True)
     
     class Meta:
-        db_table = 'director_dashboard_cache'
+        db_table = 'director_dashboard_cache_v2'
         ordering = ['-cache_updated_at']
     
     def __str__(self):

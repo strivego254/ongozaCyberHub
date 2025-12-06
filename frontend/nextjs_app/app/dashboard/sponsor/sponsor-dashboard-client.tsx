@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { sponsorClient, SponsorDashboardSummary, SponsorCohort } from '@/services/sponsorClient'
-import { SponsorHeader } from '@/components/sponsor/SponsorHeader'
 import { ROIMetricCard } from '@/components/sponsor/ROIMetricCard'
 import { SponsorCohortRow } from '@/components/sponsor/SponsorCohortRow'
 import { QuickSeatActions } from '@/components/sponsor/QuickSeatActions'
@@ -108,21 +107,21 @@ export default function SponsorDashboardClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading dashboard...</div>
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-och-steel">Loading dashboard...</div>
       </div>
     )
   }
 
   if (error || !summary) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl border border-red-200 p-6 max-w-md shadow-lg">
-          <h2 className="text-xl font-bold text-red-600 mb-2">Error Loading Dashboard</h2>
-          <p className="text-gray-600 mb-4">{error || 'No data available'}</p>
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="bg-och-midnight border border-och-steel/20 rounded-xl p-6 max-w-md">
+          <h2 className="text-xl font-bold text-och-orange mb-2">Error Loading Dashboard</h2>
+          <p className="text-och-steel mb-4">{error || 'No data available'}</p>
           <button
             onClick={loadDashboard}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-och-defender text-white rounded-lg hover:bg-och-defender/80 transition-colors"
           >
             Retry
           </button>
@@ -142,10 +141,14 @@ export default function SponsorDashboardClient() {
     : summary.budget_used_pct || 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <SponsorHeader />
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:pl-0 lg:pr-6 xl:pr-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2 text-och-mint">Sponsor Dashboard</h1>
+          <p className="text-och-steel">
+            Monitor sponsored cohorts, track ROI, and manage employee enrollment.
+          </p>
+        </div>
+        
         {/* Hero ROI Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
           <ROIMetricCard
@@ -154,7 +157,7 @@ export default function SponsorDashboardClient() {
             subtitle={`${seatsUtilization}% of ${summary.seats_total}`}
             trend={{ value: 12, direction: 'up', label: 'MoM' }}
             icon="👥"
-            roiColor={{ bg: 'bg-emerald-500/20' }}
+            roiColor={{ bg: 'bg-och-mint/20' }}
           />
           <ROIMetricCard
             title="AVG READINESS"
@@ -162,7 +165,7 @@ export default function SponsorDashboardClient() {
             subtitle="Graduate readiness score"
             trend={{ value: 0, direction: 'neutral' }}
             icon="📊"
-            roiColor={{ bg: 'bg-amber-500/20' }}
+            roiColor={{ bg: 'bg-och-defender/20' }}
           />
           <ROIMetricCard
             title="GRADUATES READY"
@@ -170,7 +173,7 @@ export default function SponsorDashboardClient() {
             subtitle="Q4 2025"
             trend={{ value: 5, direction: 'up' }}
             icon="🎓"
-            roiColor={{ bg: 'bg-blue-500/20' }}
+            roiColor={{ bg: 'bg-och-gold/20' }}
           />
           <ROIMetricCard
             title="FORECAST GRADUATES"
@@ -178,7 +181,7 @@ export default function SponsorDashboardClient() {
             subtitle="84% Confidence"
             trend={{ value: 0, direction: 'neutral' }}
             icon="🔮"
-            roiColor={{ bg: 'bg-purple-500/20' }}
+            roiColor={{ bg: 'bg-och-mint/20' }}
           />
           <ROIMetricCard
             title="BUDGET UTILIZED"
@@ -186,7 +189,7 @@ export default function SponsorDashboardClient() {
             subtitle={`${budgetUtilization}% of BWP ${(budgetTotal / 1000).toFixed(0)}K`}
             trend={{ value: budgetUtilization, direction: budgetUtilization >= 75 ? 'up' : 'neutral' }}
             icon="💰"
-            roiColor={{ bg: budgetUtilization >= 75 ? 'bg-amber-500/20' : 'bg-emerald-500/20' }}
+            roiColor={{ bg: budgetUtilization >= 75 ? 'bg-och-orange/20' : 'bg-och-gold/20' }}
           />
         </div>
 
@@ -206,11 +209,11 @@ export default function SponsorDashboardClient() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Cohorts Table - Takes 3 columns */}
           <div className="lg:col-span-3">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-och-midnight border border-och-steel/20 rounded-xl overflow-hidden">
               {/* Table Header with Filters */}
-              <div className="p-6 border-b border-gray-200">
+              <div className="p-6 border-b border-och-steel/20">
                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900">📊 Sponsored Cohorts</h2>
+                  <h2 className="text-xl font-bold text-white">📊 Sponsored Cohorts</h2>
                   
                   <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <input
@@ -218,13 +221,13 @@ export default function SponsorDashboardClient() {
                       placeholder="Search: Cohort..."
                       value={filters.search}
                       onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-sm text-white placeholder-och-steel focus:outline-none focus:ring-2 focus:ring-och-mint"
                     />
                     
                     <select
                       value={filters.risk}
                       onChange={(e) => setFilters({ ...filters, risk: e.target.value })}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-och-mint"
                     >
                       <option value="all">Risk: All</option>
                       <option value="high">Risk: High</option>
@@ -235,7 +238,7 @@ export default function SponsorDashboardClient() {
                     <select
                       value={filters.track}
                       onChange={(e) => setFilters({ ...filters, track: e.target.value })}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-och-mint"
                     >
                       <option value="all">Track: All</option>
                       {Array.from(new Set(cohorts.map(c => c.track_name))).map(track => (
@@ -245,7 +248,7 @@ export default function SponsorDashboardClient() {
                     
                     <button
                       onClick={handleBulkExport}
-                      className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-colors text-sm font-semibold flex items-center gap-2"
+                      className="px-4 py-2 bg-och-defender text-white rounded-lg hover:bg-och-defender/80 transition-colors text-sm font-semibold flex items-center gap-2"
                     >
                       💰 Export ROI Report
                     </button>
@@ -255,14 +258,14 @@ export default function SponsorDashboardClient() {
 
               {/* Bulk Actions Bar */}
               {selectedCohorts.length > 0 && (
-                <div className="px-6 py-3 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between">
-                  <span className="text-sm font-medium text-emerald-900">
+                <div className="px-6 py-3 bg-och-mint/10 border-b border-och-mint/20 flex items-center justify-between">
+                  <span className="text-sm font-medium text-och-mint">
                     {selectedCohorts.length} cohort{selectedCohorts.length > 1 ? 's' : ''} selected
                   </span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setSelectedCohorts([])}
-                      className="px-3 py-1 text-sm text-emerald-600 hover:text-emerald-700"
+                      className="px-3 py-1 text-sm text-och-steel hover:text-white"
                     >
                       Clear
                     </button>
@@ -271,7 +274,7 @@ export default function SponsorDashboardClient() {
                         console.log('Bulk action on:', selectedCohorts)
                         setSelectedCohorts([])
                       }}
-                      className="px-4 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 transition-colors"
+                      className="px-4 py-1 bg-och-defender text-white rounded text-sm hover:bg-och-defender/80 transition-colors"
                     >
                       Bulk Assign
                     </button>
@@ -282,9 +285,9 @@ export default function SponsorDashboardClient() {
               {/* Table */}
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-och-midnight border-b border-och-steel/20">
                     <tr>
-                      <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-8 py-4 text-left text-xs font-medium text-och-steel uppercase tracking-wider">
                         <input
                           type="checkbox"
                           checked={selectedCohorts.length === filteredCohorts.length && filteredCohorts.length > 0}
@@ -295,39 +298,39 @@ export default function SponsorDashboardClient() {
                               setSelectedCohorts([])
                             }
                           }}
-                          className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                          className="w-5 h-5 text-och-mint border-och-steel/20 rounded focus:ring-och-mint"
                         />
                       </th>
-                      <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-8 py-4 text-left text-xs font-medium text-och-steel uppercase tracking-wider">
                         Cohort
                       </th>
-                      <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-8 py-4 text-left text-xs font-medium text-och-steel uppercase tracking-wider">
                         ROI Score
                       </th>
-                      <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-8 py-4 text-left text-xs font-medium text-och-steel uppercase tracking-wider">
                         Seats
                       </th>
-                      <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-8 py-4 text-left text-xs font-medium text-och-steel uppercase tracking-wider">
                         Readiness
                       </th>
-                      <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-8 py-4 text-left text-xs font-medium text-och-steel uppercase tracking-wider">
                         Graduates
                       </th>
-                      <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-8 py-4 text-left text-xs font-medium text-och-steel uppercase tracking-wider">
                         Budget Used
                       </th>
-                      <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-8 py-4 text-left text-xs font-medium text-och-steel uppercase tracking-wider">
                         Risk
                       </th>
-                      <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-8 py-4 text-left text-xs font-medium text-och-steel uppercase tracking-wider">
                         Action
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-och-midnight divide-y divide-och-steel/20">
                     {filteredCohorts.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-8 py-8 text-center text-gray-500">
+                        <td colSpan={9} className="px-8 py-8 text-center text-och-steel">
                           No cohorts found
                         </td>
                       </tr>
@@ -371,7 +374,6 @@ export default function SponsorDashboardClient() {
             </div>
           </div>
         </div>
-      </main>
     </div>
   )
 }

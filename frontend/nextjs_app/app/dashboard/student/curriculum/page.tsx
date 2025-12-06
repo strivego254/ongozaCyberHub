@@ -6,35 +6,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 
 export default function CurriculumPage() {
-  const tracks = [
-    {
-      id: '1',
-      name: 'Cybersecurity Fundamentals',
-      description: 'Foundational knowledge in cybersecurity',
-      modules: 8,
-      completed: 5,
-      progress: 62,
-      status: 'in_progress',
-    },
-    {
-      id: '2',
-      name: 'Network Security',
-      description: 'Deep dive into network security protocols',
-      modules: 12,
-      completed: 0,
-      progress: 0,
-      status: 'available',
-    },
-    {
-      id: '3',
-      name: 'Ethical Hacking',
-      description: 'Learn ethical hacking techniques',
-      modules: 10,
-      completed: 10,
-      progress: 100,
-      status: 'completed',
-    },
-  ]
+  const tracks: any[] = []
 
   return (
     <div className="p-6">
@@ -47,8 +19,15 @@ export default function CurriculumPage() {
         </div>
 
         <div className="space-y-4">
-          {tracks.map((track) => (
-            <Card key={track.id}>
+          {tracks.length === 0 ? (
+            <Card>
+              <div className="text-center py-8 text-och-steel">
+                <p>No curriculum tracks available yet.</p>
+              </div>
+            </Card>
+          ) : (
+            tracks.map((track) => (
+              <Card key={track.id}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -69,20 +48,16 @@ export default function CurriculumPage() {
                 </div>
               </div>
             </Card>
-          ))}
+            ))
+          )}
         </div>
 
         <div className="mt-8">
           <Card>
             <h2 className="text-2xl font-bold mb-4 text-white">Recommended Next Steps</h2>
             <div className="space-y-3">
-              <div className="p-4 bg-och-defender/20 rounded-lg">
-                <div className="font-medium text-white mb-1">Complete Module 6: Encryption</div>
-                <div className="text-sm text-och-steel">Continue your progress in Cybersecurity Fundamentals</div>
-              </div>
-              <div className="p-4 bg-och-defender/20 rounded-lg">
-                <div className="font-medium text-white mb-1">Start Network Security Track</div>
-                <div className="text-sm text-och-steel">Build on your fundamentals with advanced topics</div>
+              <div className="text-center py-8 text-och-steel">
+                <p>No recommendations available yet.</p>
               </div>
             </div>
           </Card>

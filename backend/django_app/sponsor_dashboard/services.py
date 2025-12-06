@@ -77,11 +77,11 @@ class SponsorDashboardService:
         aggregates = SponsorStudentAggregates.objects.filter(org=org)
         if aggregates.exists():
             aggregate_readiness = aggregates.aggregate(avg=Avg('readiness_score'))['avg']
-            aggregate_completion = aggregates.aggregate(avg=Avg('completion_pct'))['avg']
-            if aggregate_readiness:
+            aggregate_completion_pct_val = aggregates.aggregate(avg=Avg('completion_pct'))['avg']
+            if aggregate_readiness is not None:
                 avg_readiness = Decimal(str(aggregate_readiness))
-            if aggregate_completion:
-                avg_completion_pct = Decimal(str(aggregate_completion))
+            if aggregate_completion_pct_val is not None:
+                avg_completion_pct = Decimal(str(aggregate_completion_pct_val))
         
         graduates_count = 0
         active_cohorts_count = sponsored_cohorts.filter(
@@ -99,9 +99,22 @@ class SponsorDashboardService:
         # Count low utilization cohorts
         low_utilization_cohorts = 0
         for cohort in sponsored_cohorts:
-            utilization = cohort.seat_utilization
-            if utilization < 50:
-                low_utilization_cohorts += 1
+            try:
+                # Try to get seat utilization (property or calculate)
+                if hasattr(cohort, 'seat_utilization'):
+                    utilization = getattr(cohort, 'seat_utilization', 0)
+                    if isinstance(utilization, (int, float)) and utilization < 50:
+                        low_utilization_cohorts += 1
+                else:
+                    # Calculate utilization manually if property doesn't exist
+                    total_seats = getattr(cohort, 'seat_cap', 0) or 0
+                    used_seats = enrollments.filter(cohort=cohort, status='active').count()
+                    utilization = (used_seats / total_seats * 100) if total_seats > 0 else 0
+                    if utilization < 50:
+                        low_utilization_cohorts += 1
+            except (AttributeError, ZeroDivisionError, TypeError):
+                # Skip if we can't calculate utilization
+                pass
         
         # Sync student aggregates if requested
         if sync_students:
@@ -154,10 +167,10 @@ class SponsorDashboardService:
             seat_type='sponsored'
         )
         
-        seats_total = cohort.seat_cap
+        seats_total = getattr(cohort, 'seat_cap', 0) or 0
         seats_used = sponsor_enrollments.filter(status='active').count()
         seats_sponsored = sponsor_enrollments.count()
-        seats_remaining = max(0, seats_total - seats_used)
+        seats_remaining = max(0, seats_total - seats_used) if seats_total else 0
         
         # Calculate progress metrics
         student_aggregates = SponsorStudentAggregates.objects.filter(
@@ -185,25 +198,33 @@ class SponsorDashboardService:
         
         # Get next milestone (from cohort calendar events)
         next_milestone = {}
-        next_event = cohort.calendar_events.filter(
-            status='scheduled',
-            start_ts__gte=timezone.now()
-        ).order_by('start_ts').first()
+        upcoming_events = []
         
-        if next_event:
-            next_milestone = {
-                'title': next_event.title,
-                'date': next_event.start_ts.isoformat(),
-                'type': next_event.type,
-            }
-        
-        # Get upcoming events
-        upcoming_events = list(
-            cohort.calendar_events.filter(
-                status='scheduled',
-                start_ts__gte=timezone.now()
-            ).order_by('start_ts')[:5].values('title', 'start_ts', 'type')
-        )
+        try:
+            # Try to access calendar_events if it exists
+            if hasattr(cohort, 'calendar_events'):
+                next_event = cohort.calendar_events.filter(
+                    status='scheduled',
+                    start_ts__gte=timezone.now()
+                ).order_by('start_ts').first()
+                
+                if next_event:
+                    next_milestone = {
+                        'title': next_event.title,
+                        'date': next_event.start_ts.isoformat(),
+                        'type': getattr(next_event, 'type', 'milestone'),
+                    }
+                
+                # Get upcoming events
+                upcoming_events = list(
+                    cohort.calendar_events.filter(
+                        status='scheduled',
+                        start_ts__gte=timezone.now()
+                    ).order_by('start_ts')[:5].values('title', 'start_ts', 'type')
+                )
+        except (AttributeError, Exception):
+            # Calendar events not available, use empty defaults
+            pass
         
         # Compute flags
         flags = []
@@ -217,11 +238,11 @@ class SponsorDashboardService:
             org=org,
             cohort=cohort,
             defaults={
-                'cohort_name': cohort.name,
-                'track_name': cohort.track.name if cohort.track else '',
-                'start_date': cohort.start_date,
-                'end_date': cohort.end_date,
-                'mode': cohort.mode,
+                'cohort_name': getattr(cohort, 'name', 'Unknown Cohort'),
+                'track_name': cohort.track.name if hasattr(cohort, 'track') and cohort.track else '',
+                'start_date': getattr(cohort, 'start_date', None),
+                'end_date': getattr(cohort, 'end_date', None),
+                'mode': getattr(cohort, 'mode', ''),
                 'seats_total': seats_total,
                 'seats_used': seats_used,
                 'seats_sponsored': seats_sponsored,
@@ -415,7 +436,8 @@ class BillingService:
             consent_employer_share = ConsentScope.objects.filter(
                 user=student,
                 scope_type='employer_share',
-                granted=True
+                granted=True,
+                expires_at__isnull=True
             ).exists()
             
             # Get readiness and completion from TalentScope or student dashboard
@@ -432,6 +454,13 @@ class BillingService:
             elif enrollment.status == 'active':
                 # Estimate based on cohort progress
                 completion_pct = Decimal(str(cohort.completion_rate)) if hasattr(cohort, 'completion_rate') else None
+            
+            # Count portfolio items (with consent check)
+            try:
+                from progress.models import PortfolioItem
+                portfolio_items = PortfolioItem.objects.filter(user=student).count()
+            except ImportError:
+                pass
             
             # Anonymize name if no consent
             if consent_employer_share:
