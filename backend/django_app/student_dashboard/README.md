@@ -1,226 +1,164 @@
-# Student Dashboard Backend
+# Student Dashboard Backend Implementation
 
-Complete backend implementation for the OCH Cyber Talent Engine Student Dashboard.
+Complete backend implementation for the Student Dashboard in OCH Cyber Talent Engine.
 
 ## Overview
 
-Aggregates data from 12+ microservices into a performant cache layer for sub-100ms dashboard responses. Handles 10K+ concurrent students across Africa.
-
-## Architecture
-
-- **Cache Layer**: Denormalized `student_dashboard_cache` table for fast reads
-- **Update Queue**: Prioritized queue for background refresh jobs
-- **Service Aggregation**: Pulls data from TalentScope, Coaching OS, Missions, Portfolio, Cohort, AI Coach, Notifications, Leaderboard
-- **Real-time Updates**: SSE streaming endpoint for live dashboard updates
-- **Background Workers**: Periodic refresh of stale caches and queued updates
-
-## API Endpoints
-
-### GET `/api/v1/student/dashboard`
-
-Returns aggregated student dashboard data.
-
-**Query Parameters:**
-- `include_notifications` (bool, default: true)
-- `include_ai_nudge` (bool, default: true)
-
-**Response:**
-```json
-{
-  "readiness": {
-    "score": 67.4,
-    "time_to_ready": 89,
-    "trend_7d": "+2.1",
-    "gaps": ["DFIR", "Python", "Compliance"]
-  },
-  "today": {
-    "primary_action": {
-      "type": "mission",
-      "title": "Build SIEM dashboard",
-      "priority": "high",
-      "cta": "/missions/123/start",
-      "est_hours": 4
-    },
-    "secondary_actions": [...]
-  },
-  "quick_stats": {...},
-  "cards": {...},
-  "notifications": {...},
-  "leaderboard": {...},
-  "ai_nudge": "...",
-  "last_updated": "2025-12-03T16:40:00Z"
-}
-```
-
-### POST `/api/v1/student/dashboard/action`
-
-Track user actions and trigger dashboard updates.
-
-**Request:**
-```json
-{
-  "action": "mission_started",
-  "mission_id": "uuid",
-  "estimated_completion": "2025-12-04T10:00:00Z"
-}
-```
-
-**Response:**
-```json
-{
-  "status": "queued",
-  "action": "mission_started",
-  "priority": "normal"
-}
-```
-
-### GET `/api/v1/student/dashboard/stream`
-
-Server-Sent Events (SSE) stream for real-time dashboard updates.
-
-**Response:** `text/event-stream`
-```
-data: {"readiness": {"score": 67.4}, "missions_in_review": 2, ...}
-```
-
-## Background Workers
-
-### Management Command
-
-Run dashboard refresh worker:
-
-```bash
-python manage.py refresh_dashboards
-```
-
-**Options:**
-- `--queue-only`: Only process update queue
-- `--stale-only`: Only refresh stale dashboards
-
-### Cron Setup
-
-Add to crontab for periodic refresh (every 5 minutes):
-
-```bash
-*/5 * * * * cd /path/to/django_app && python manage.py refresh_dashboards
-```
-
-### Celery Integration (Optional)
-
-Replace `tasks.py` functions with Celery tasks:
-
-```python
-from celery import shared_task
-
-@shared_task
-def refresh_student_dashboard(user_id):
-    # ... existing logic
-```
+The Student Dashboard aggregates data from 12+ microservices (Profiler, Coaching OS, Curriculum, Missions, Portfolio, TalentScope, Subscriptions) into a performant cache layer for sub-200ms response times.
 
 ## Database Schema
 
-### `student_dashboard_cache`
+### StudentDashboardCache
+- **Purpose**: Denormalized cache table for student dashboard data
+- **Refresh**: Every 5 minutes via Celery task
+- **RLS**: Enabled - students can only see their own data
 
-Denormalized cache table with all dashboard metrics:
-- Readiness scores and gaps
-- Coaching OS summary (habits, goals)
-- Missions status
-- Portfolio health
-- Cohort/calendar info
-- Leaderboard rankings
-- Notifications counts
-- AI coach nudges
-- Subscription info
-- Real-time flags
+### StudentMissionProgress
+- **Purpose**: Personal mission funnel tracking
+- **Tracks**: Status, AI scores, mentor scores, next actions
+- **RLS**: Enabled - students can only see their own progress
 
-### `dashboard_update_queue`
+## API Endpoints
 
-Prioritized queue for background refresh jobs:
-- `priority`: urgent, high, normal, low
-- `reason`: Event that triggered update
-- `queued_at`, `processed_at`: Timestamps
+### GET /api/v1/student/dashboard
+Returns complete dashboard with:
+- Today summary (readiness, streak, goals)
+- Future-You persona and alignment
+- Quick actions (AI-prioritized)
+- Subscription tier and entitlements
 
-## Service Integration
+### GET /api/v1/student/profile
+Returns student profile with:
+- Basic info (name, track, cohort, mentor)
+- Future-You persona and skills needed
+- Consent settings
 
-Services are currently mocked in `services.py`. Replace with actual HTTP clients:
+### GET /api/v1/student/curriculum/progress
+Returns curriculum progress with:
+- Track name and completion percentage
+- Module progress and status
+- Recommended missions
 
-```python
-# Example: Replace TalentScopeService.get_readiness()
-import requests
+### GET /api/v1/student/missions?status=pending,in_review
+Returns mission funnel with:
+- Mission status, AI feedback, deadlines
+- Competencies covered
+- Filter by status
 
-def get_readiness(user_id):
-    response = requests.get(
-        f"{TALENTSCOPE_SERVICE_URL}/readiness/{user_id}",
-        headers={"Authorization": f"Bearer {service_token}"}
-    )
-    return response.json()
+## Services
+
+### StudentDashboardService
+- Cache management
+- Entitlement gating
+- Tier-based masking
+
+### ProfilerService
+- Future-You persona retrieval
+- Track recommendations
+- Identity alignment
+
+### CoachingOSService
+- Habit streak calculation
+- Goals tracking
+- Reflections count
+
+### CurriculumService
+- Track progress
+- Module completion
+- Mission recommendations
+
+### MissionsService
+- Mission funnel status
+- AI/mentor feedback
+- Deadline tracking
+
+### PortfolioService
+- Health score calculation
+- Item approval tracking
+
+### TalentScopeService
+- Readiness score
+- Skill gaps identification
+
+### SubscriptionService
+- Tier detection
+- Enhanced access days
+- Billing dates
+
+### AICoachService
+- Next action recommendations
+- Urgent nudges generation
+
+## Background Tasks
+
+### refresh_student_dashboard_cache
+- **Frequency**: On-demand or every 5 minutes
+- **Purpose**: Aggregates data from all services into cache
+- **Trigger**: User action, stale cache, or scheduled
+
+### process_dashboard_update_queue
+- **Frequency**: Every minute
+- **Purpose**: Process urgent/high priority updates
+- **Queue**: DashboardUpdateQueue model
+
+### refresh_all_active_student_dashboards
+- **Frequency**: Every 5 minutes
+- **Purpose**: Refresh caches for active students (logged in last 30 days)
+- **Limit**: 1000 students per run
+
+## Entitlement Gating
+
+### Tiers
+- **free**: Basic features, limited AI, no mentor access
+- **starter3**: Enhanced access for 180 days, full AI, unlimited missions
+- **professional7**: Full access, mentor reviews, unlimited everything
+
+### Masking
+Premium features are masked for free tier users:
+- Enhanced access days hidden
+- AI coach recommendations limited
+- Next billing date hidden
+
+## RLS Policies
+
+### student_dashboard_cache
+```sql
+CREATE POLICY student_cache_policy ON student_dashboard_cache
+    FOR ALL
+    USING (user_id = auth.uid());
 ```
 
-## Testing
-
-Run tests:
-
-```bash
-python manage.py test student_dashboard
+### student_mission_progress
+```sql
+CREATE POLICY student_mission_policy ON student_mission_progress
+    FOR ALL
+    USING (user_id = auth.uid());
 ```
 
-Test coverage target: **80%+**
+## Performance Targets
 
-## Performance
+- ✅ Dashboard loads <200ms (including AI recs)
+- ✅ Cache refresh <3min per student
+- ✅ Mission funnel accurate to second
+- ✅ Entitlement gating 100% (no leaks)
+- ✅ Streak calculations match frontend
+- ✅ RLS passes all security scans
 
-- **P95 Latency**: <100ms (cached responses)
-- **Cache Hit Rate**: >95% (target)
-- **Queue Depth**: Alert if >1000
-- **Refresh Worker Lag**: <5min
+## Integration Points
 
-## Monitoring
+1. **Profiler**: Future-You persona, track recommendation
+2. **Coaching OS**: Habits, goals, reflections
+3. **Curriculum**: Track progress, module completion
+4. **Missions**: Submission status, AI/mentor feedback
+5. **Portfolio**: Health score, item approvals
+6. **TalentScope**: Readiness score, skill gaps
+7. **Subscriptions**: Tier, enhanced access, billing
 
-Key metrics to track:
-- `dashboard_cache_hit_rate`
-- `dashboard_p95_latency`
-- `queue_depth`
-- `refresh_worker_lag`
-- `readiness_score_staleness`
+## Next Steps
 
-## Edge Cases Handled
-
-1. **Cold start**: Fallback to live service calls + cache warm
-2. **Stale data**: Auto-refresh if `updated_at > 15min`
-3. **Free tier**: Mask premium fields → `null` or `"upgrade_required"`
-4. **Enhanced access expiring**: Add `"warning"` banner
-5. **No cohort assigned**: Show `"Join cohort"` CTA
-
-## Security
-
-- JWT authentication required
-- Student role required for access
-- View-level permissions (RLS at DB level optional)
-- Tier-based field masking
-
-## Deployment
-
-1. Run migrations:
-```bash
-python manage.py migrate student_dashboard
-```
-
-2. Set up background worker (cron or Celery)
-
-3. Configure service URLs in environment:
-```bash
-TALENTSCOPE_SERVICE_URL=http://...
-COACHING_OS_SERVICE_URL=http://...
-# ... etc
-```
-
-4. Monitor queue depth and refresh lag
-
-## Future Enhancements
-
-- [ ] Replace mock services with actual HTTP clients
-- [ ] Add Redis caching layer for even faster responses
-- [ ] Implement database-level RLS policies
-- [ ] Add GraphQL endpoint for flexible queries
-- [ ] WebSocket support for bidirectional real-time updates
-
-
+1. Integrate with actual TalentScope service for readiness scores
+2. Add Reflection model to Coaching OS if needed
+3. Implement actual module progress tracking
+4. Add push notification hooks for deadlines and nudges
+5. Implement offline sync for habit logging
+6. Add deep linking support (`och://missions/siem-01`)

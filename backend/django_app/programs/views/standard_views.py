@@ -9,17 +9,18 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from django.db.models import Q, Count, Avg, Sum, F, Case, When, IntegerField
 from django.utils import timezone
 from datetime import timedelta
-from .models import (
+from programs.models import (
     Program, Track, Specialization, Cohort, Enrollment,
     CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
 )
-from .serializers import (
+from programs.serializers import (
     ProgramSerializer, TrackSerializer, SpecializationSerializer,
     CohortSerializer, EnrollmentSerializer, CalendarEventSerializer,
     MentorAssignmentSerializer, ProgramRuleSerializer, CertificateSerializer,
     CohortDashboardSerializer, WaitlistSerializer
 )
-from .services import auto_graduate_cohort, EnrollmentService, ProgramManagementService
+# Import from core_services module
+from programs.core_services import auto_graduate_cohort, EnrollmentService, ProgramManagementService
 
 
 @extend_schema(

@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if MFA is required (Django returns different structure)
-    if (data.mfa_required) {
+    if ('mfa_required' in data && data.mfa_required) {
       console.log('Login API route: MFA required', data);
       return NextResponse.json({
         mfa_required: true,
@@ -123,21 +123,25 @@ export async function POST(request: NextRequest) {
 
     // Set cookies directly on the response object
     // This ensures cookies are available on the next request
-    nextResponse.cookies.set('access_token', data.access_token, {
-      httpOnly: false, // Allow client-side access for Authorization header
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 15, // 15 minutes
-      path: '/',
-    });
+    if (data.access_token) {
+      nextResponse.cookies.set('access_token', data.access_token, {
+        httpOnly: false, // Allow client-side access for Authorization header
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 15, // 15 minutes
+        path: '/',
+      });
+    }
 
-    nextResponse.cookies.set('refresh_token', data.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: '/',
-    });
+    if (data.refresh_token) {
+      nextResponse.cookies.set('refresh_token', data.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/',
+      });
+    }
 
     return nextResponse;
   } catch (error: any) {

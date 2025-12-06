@@ -54,6 +54,9 @@ INSTALLED_APPS = [
     'subscriptions',
     'mentorship_coordination',
     'programs',
+    'sponsor_dashboard',
+    'director_dashboard',
+    'talentscope',
     'api',
     'shared_schemas',
 ]
@@ -181,6 +184,15 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# Celery Beat Schedule (periodic tasks)
+try:
+    from director_dashboard.celery_config import DIRECTOR_DASHBOARD_BEAT_SCHEDULE
+    CELERY_BEAT_SCHEDULE = {
+        **DIRECTOR_DASHBOARD_BEAT_SCHEDULE,
+    }
+except ImportError:
+    CELERY_BEAT_SCHEDULE = {}
 
 # Monitoring & Metrics
 ENABLE_METRICS = os.environ.get('ENABLE_METRICS', 'False').lower() == 'true'
