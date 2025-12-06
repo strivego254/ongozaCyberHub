@@ -33,7 +33,7 @@ export function DirectorHeader() {
 
   const isInboxPage = pathname?.includes('/inbox')
   const isNotificationsPage = pathname?.includes('/notifications')
-
+  
   return (
     <header className="sticky top-0 z-30 bg-och-midnight/95 backdrop-blur-sm border-b border-och-steel/20">
       <div className="flex items-center justify-end gap-4 px-4 py-3 lg:px-6">
@@ -69,8 +69,8 @@ export function DirectorHeader() {
           {notificationCount.critical > 0 && (
             <span className="absolute top-0 right-0 w-2 h-2 bg-och-orange rounded-full animate-pulse" />
           )}
-        </Link>
-
+          </Link>
+          
         {/* Mail/Inbox Button */}
         <Link
           href="/dashboard/director/inbox"

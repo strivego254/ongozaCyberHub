@@ -376,6 +376,44 @@ class ProgramsClient {
     return apiGateway.post(`/cohorts/${cohortId}/mentors/`, data)
   }
 
+  async removeMentorAssignment(assignmentId: string): Promise<void> {
+    return apiGateway.delete(`/mentor-assignments/${assignmentId}/`)
+  }
+
+  async listMentors(searchQuery?: string): Promise<any[]> {
+    const queryString = searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''
+    return apiGateway.get(`/mentors/${queryString}`)
+  }
+
+  async getMentorAnalytics(mentorId: string): Promise<any> {
+    return apiGateway.get(`/mentors/${mentorId}/analytics/`)
+  }
+
+  async autoMatchMentors(cohortId: string, trackId?: string, role: string = 'support'): Promise<{ assignments: any[] }> {
+    return apiGateway.post(`/cohorts/${cohortId}/mentors/auto-match/`, { track_id: trackId, role })
+  }
+
+  async reassignMentor(assignmentId: string, newMentorId: string): Promise<MentorAssignment> {
+    return apiGateway.patch(`/mentor-assignments/${assignmentId}/`, { mentor: newMentorId })
+  }
+
+  async getMentorReviews(mentorId: string, cohortId?: string): Promise<any[]> {
+    const queryString = cohortId ? `?cohort_id=${cohortId}` : ''
+    return apiGateway.get(`/mentors/${mentorId}/reviews/${queryString}`)
+  }
+
+  async updateMenteeGoal(menteeId: string, goalId: string, updates: any): Promise<any> {
+    return apiGateway.patch(`/mentees/${menteeId}/goals/${goalId}/`, updates)
+  }
+
+  async approveCycleClosure(cohortId: string, mentorId: string): Promise<any> {
+    return apiGateway.post(`/cohorts/${cohortId}/mentors/${mentorId}/approve-closure/`)
+  }
+
+  async sendCohortNotification(cohortId: string, notification: { type: string; message: string; recipients?: string[] }): Promise<void> {
+    return apiGateway.post(`/cohorts/${cohortId}/notifications/`, notification)
+  }
+
   // Program Rules
   async getProgramRules(programId?: string): Promise<ProgramRule[]> {
     const queryString = programId ? `?program_id=${programId}` : ''
