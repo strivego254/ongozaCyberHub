@@ -155,7 +155,7 @@ export function AdminNavigation() {
                         {isExpanded ? '▼' : '▶'}
                       </span>
                     </button>
-                    {isExpanded && (
+                    {isExpanded && item.children && (
                       <div className="ml-4 mt-1 space-y-1 border-l border-och-steel/20 pl-4">
                         {item.children.map((child) => {
                           const childActive = isActive(child.href)

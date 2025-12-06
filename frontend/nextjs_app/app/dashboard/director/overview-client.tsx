@@ -120,15 +120,22 @@ export default function OverviewClient() {
 
     const total = Object.values(trackCounts).reduce((sum, count) => sum + count, 0)
 
+    const COLORS: { [key: string]: string } = {
+      Builders: '#3B82F6',
+      Leaders: '#10B981',
+      Entrepreneurs: '#8B5CF6',
+      Educators: '#F59E0B',
+      Researchers: '#EF4444',
+    }
+
     // If no track data, use mock data based on the image percentages
     if (total === 0) {
-      const mockTotal = 100
       return [
-        { name: 'Builders', value: 35, percentage: 35 },
-        { name: 'Leaders', value: 22, percentage: 22 },
-        { name: 'Entrepreneurs', value: 18, percentage: 18 },
-        { name: 'Educators', value: 15, percentage: 15 },
-        { name: 'Researchers', value: 10, percentage: 10 },
+        { name: 'Builders', value: 35, percentage: 35, color: COLORS.Builders },
+        { name: 'Leaders', value: 22, percentage: 22, color: COLORS.Leaders },
+        { name: 'Entrepreneurs', value: 18, percentage: 18, color: COLORS.Entrepreneurs },
+        { name: 'Educators', value: 15, percentage: 15, color: COLORS.Educators },
+        { name: 'Researchers', value: 10, percentage: 10, color: COLORS.Researchers },
       ]
     }
 
@@ -137,6 +144,7 @@ export default function OverviewClient() {
         name,
         value,
         percentage: total > 0 ? Math.round((value / total) * 100) : 0,
+        color: COLORS[name] || '#6B7280',
       }))
       .filter((track) => track.value > 0)
       .sort((a, b) => b.value - a.value)

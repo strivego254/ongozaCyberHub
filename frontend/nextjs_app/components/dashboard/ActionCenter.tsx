@@ -7,17 +7,6 @@ import type { DirectorAlert } from '@/services/programsClient'
 
 interface Notification {
   id: string
-  type: 'alert' | 'request' | 'review'
-  title: string
-  message: string
-  severity?: 'critical' | 'high' | 'medium' | 'low'
-  timestamp: string
-  actionUrl?: string
-  onAction?: () => void
-}
-
-interface Notification {
-  id: string
   type: 'info' | 'warning' | 'success' | 'error' | 'alert' | 'request' | 'review'
   title: string
   message: string

@@ -295,21 +295,23 @@ export default function NotificationsPage() {
           ) : (
             <div className="space-y-3">
               {sortedNotifications.map((notification) => (
-                <Card
-                  key={notification.id}
-                  className={`${getPriorityColor(notification.priority)} ${
-                    !notification.read
-                      ? 'bg-och-midnight/50 hover:bg-och-midnight/70'
-                      : 'bg-och-midnight/30 opacity-75 hover:opacity-100'
-                  } transition-all duration-200 cursor-pointer`}
-                  onClick={() => {
-                    if (!notification.read) markAsRead(notification.id)
-                    if (notification.actionUrl) {
-                      window.location.href = notification.actionUrl
-                    }
-                  }}
-                >
-                  <div className="p-4">
+                    <Card
+                      key={notification.id}
+                      className={`${getPriorityColor(notification.priority)} ${
+                        !notification.read
+                          ? 'bg-och-midnight/50 hover:bg-och-midnight/70'
+                          : 'bg-och-midnight/30 opacity-75 hover:opacity-100'
+                      } transition-all duration-200 cursor-pointer`}
+                    >
+                      <div
+                        className="p-4"
+                        onClick={() => {
+                          if (!notification.read) markAsRead(notification.id)
+                          if (notification.actionUrl) {
+                            window.location.href = notification.actionUrl
+                          }
+                        }}
+                      >
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-och-defender/20 flex items-center justify-center text-xl">
                         {getNotificationIcon(notification.type)}

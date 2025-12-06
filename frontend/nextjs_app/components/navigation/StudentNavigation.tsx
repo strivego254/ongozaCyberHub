@@ -13,14 +13,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard/student', icon: '🏠' },
-  { label: 'Missions', href: '/dashboard/student/missions', icon: '🚀' },
-  { label: 'Coaching', href: '/dashboard/student/coaching', icon: '🎯' },
-  { label: 'Curriculum', href: '/dashboard/student/curriculum', icon: '📚' },
-  { label: 'Portfolio', href: '/dashboard/student/portfolio', icon: '💼' },
-  { label: 'Community', href: '/dashboard/student/community', icon: '💬' },
-  { label: 'Mentorship', href: '/dashboard/student/mentorship', icon: '👥' },
-  { label: 'Settings', href: '/dashboard/student/settings', icon: '⚙️' },
+  { label: 'Dashboard', href: '/dashboard/student', icon: '' },
+  { label: 'Missions', href: '/dashboard/student/missions', icon: '' },
+  { label: 'Coaching', href: '/dashboard/student/coaching', icon: '' },
+  { label: 'Curriculum', href: '/dashboard/student/curriculum', icon: '' },
+  { label: 'Portfolio', href: '/dashboard/student/portfolio', icon: '' },
+  { label: 'Community', href: '/dashboard/student/community', icon: '' },
+  { label: 'Mentorship', href: '/dashboard/student/mentorship', icon: '' },
+  { label: 'Settings', href: '/dashboard/student/settings', icon: '' },
 ]
 
 export function StudentNavigation() {
@@ -95,7 +95,7 @@ export function StudentNavigation() {
                       : 'text-och-steel'
                   )}
                 >
-                  <span className="text-xl">{item.icon}</span>
+                  {item.icon && <span className="text-xl">{item.icon}</span>}
                   <span className="font-medium">{item.label}</span>
                   {item.badge && item.badge > 0 && (
                     <span className="ml-auto px-2 py-0.5 text-xs bg-och-orange text-white rounded-full">
@@ -116,8 +116,8 @@ export function StudentNavigation() {
         </div>
       </aside>
 
-      {/* Desktop: Add margin to content when sidebar is visible */}
-      <div className="hidden lg:block w-64 flex-shrink-0" />
+      {/* Desktop: Spacer for fixed sidebar */}
+      <div className="hidden lg:block w-64 flex-shrink-0" aria-hidden="true" />
     </>
   )
 }

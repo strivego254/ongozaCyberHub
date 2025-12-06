@@ -261,7 +261,7 @@ export default function DirectorInboxPage() {
   const criticalCount = notifications.filter((n) => n.priority === 'critical' && !n.read).length
   const highCount = notifications.filter((n) => n.priority === 'high' && !n.read).length
 
-  const categories = Array.from(new Set(notifications.map((n) => n.category).filter(Boolean)))
+  const categories = Array.from(new Set(notifications.map((n) => n.category).filter((cat): cat is string => Boolean(cat))))
 
   return (
     <RouteGuard>
@@ -427,14 +427,16 @@ export default function DirectorInboxPage() {
                           ? 'bg-och-midnight/50 hover:bg-och-midnight/70'
                           : 'bg-och-midnight/30 opacity-75 hover:opacity-100'
                       } transition-all duration-200 cursor-pointer group`}
-                      onClick={() => {
-                        if (!notification.read) markAsRead(notification.id)
-                        if (notification.actionUrl) {
-                          window.location.href = notification.actionUrl
-                        }
-                      }}
                     >
-                      <div className="p-4">
+                      <div
+                        className="p-4"
+                        onClick={() => {
+                          if (!notification.read) markAsRead(notification.id)
+                          if (notification.actionUrl) {
+                            window.location.href = notification.actionUrl
+                          }
+                        }}
+                      >
                         <div className="flex items-start gap-3">
                           {/* Category Icon */}
                           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-och-defender/20 flex items-center justify-center text-xl">

@@ -2,7 +2,7 @@
 Serializers for Missions MXP.
 """
 from rest_framework import serializers
-from .models import Mission, MissionSubmission, MissionFile
+from .models import Mission, MissionSubmission, MissionArtifact, AIFeedback
 
 
 class MissionSerializer(serializers.ModelSerializer):
@@ -10,38 +10,60 @@ class MissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mission
         fields = [
-            'id', 'title', 'description', 'difficulty',
-            'track_id', 'est_hours', 'competencies', 'created_at'
+            'id', 'code', 'title', 'description', 'difficulty', 'type',
+            'track_id', 'track_key', 'est_hours', 'estimated_time_minutes',
+            'competencies', 'requirements', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
 
 
-class MissionFileSerializer(serializers.ModelSerializer):
-    """Serializer for mission files."""
+class MissionArtifactSerializer(serializers.ModelSerializer):
+    """Serializer for mission artifacts."""
     class Meta:
-        model = MissionFile
-        fields = ['id', 'filename', 'file_url', 'content_type', 'size_bytes', 'uploaded_at']
-        read_only_fields = ['id', 'uploaded_at']
+        model = MissionArtifact
+        fields = ['id', 'type', 'url', 'filename', 'size_bytes', 'metadata', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class AIFeedbackSerializer(serializers.ModelSerializer):
+    """Serializer for AI feedback."""
+    class Meta:
+        model = AIFeedback
+        fields = [
+            'id', 'score', 'strengths', 'gaps', 'suggestions',
+            'competencies_detected', 'full_feedback', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
 
 
 class MissionSubmissionSerializer(serializers.ModelSerializer):
     """Serializer for mission submissions."""
     mission = MissionSerializer(read_only=True)
-    files = MissionFileSerializer(many=True, read_only=True)
+    artifacts = MissionArtifactSerializer(many=True, read_only=True)
+    ai_feedback_detail = AIFeedbackSerializer(read_only=True)
     
     class Meta:
         model = MissionSubmission
         fields = [
-            'id', 'mission', 'status', 'ai_score', 'ai_feedback',
-            'mentor_feedback', 'notes', 'submitted_at', 'reviewed_at',
-            'created_at', 'files'
+            'id', 'mission', 'status', 'ai_score', 'mentor_score',
+            'ai_feedback', 'mentor_feedback', 'notes', 'portfolio_item_id',
+            'submitted_at', 'ai_reviewed_at', 'mentor_reviewed_at',
+            'reviewed_at', 'created_at', 'updated_at', 'artifacts', 'ai_feedback_detail'
         ]
-        read_only_fields = ['id', 'status', 'ai_score', 'ai_feedback', 'mentor_feedback', 'submitted_at', 'reviewed_at', 'created_at']
+        read_only_fields = [
+            'id', 'status', 'ai_score', 'mentor_score', 'ai_feedback',
+            'mentor_feedback', 'portfolio_item_id', 'submitted_at',
+            'ai_reviewed_at', 'mentor_reviewed_at', 'reviewed_at',
+            'created_at', 'updated_at'
+        ]
 
 
 class SubmitMissionSerializer(serializers.Serializer):
     """Serializer for submitting missions."""
     notes = serializers.CharField(required=False, allow_blank=True)
+    github_url = serializers.URLField(required=False, allow_blank=True)
+    notebook_url = serializers.URLField(required=False, allow_blank=True)
+    video_url = serializers.URLField(required=False, allow_blank=True)
     # Files handled via FormData
 
 

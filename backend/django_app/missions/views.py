@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-from .models import Mission, MissionSubmission, MissionFile
+from .models import Mission, MissionSubmission, MissionArtifact
 from .serializers import (
     MissionSerializer,
     MissionSubmissionSerializer,
@@ -18,7 +18,7 @@ from .serializers import (
     MissionStatusSerializer,
 )
 from student_dashboard.services import DashboardAggregationService
-from missions.tasks import ai_review_mission_task
+from missions.tasks import process_mission_ai_review
 from subscriptions.utils import require_tier, get_user_tier
 
 
@@ -125,12 +125,13 @@ def submit_mission(request, mission_id):
                 f.write(chunk)
         
         # Create file record
-        MissionFile.objects.create(
+        MissionArtifact.objects.create(
             submission=submission,
+            type='file',
+            url=f'/media/missions/{submission.id}/{file.name}',
             filename=file.name,
-            file_url=f'/media/missions/{submission.id}/{file.name}',
-            content_type=file.content_type or 'application/octet-stream',
-            size_bytes=file.size
+            size_bytes=file.size,
+            metadata={'content_type': file.content_type or 'application/octet-stream'}
         )
     
     # Update submission status
@@ -139,7 +140,7 @@ def submit_mission(request, mission_id):
     submission.save()
     
     # Trigger AI review
-    ai_review_mission_task.delay(str(submission.id))
+    process_mission_ai_review.delay(str(submission.id))
     
     # Trigger mentor work queue item creation (if mentor assigned)
     try:

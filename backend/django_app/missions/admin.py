@@ -2,7 +2,7 @@
 Admin interface for Missions MXP.
 """
 from django.contrib import admin
-from .models import Mission, MissionSubmission, MissionFile
+from .models import Mission, MissionSubmission, MissionArtifact, AIFeedback
 
 
 @admin.register(Mission)
@@ -19,8 +19,15 @@ class MissionSubmissionAdmin(admin.ModelAdmin):
     search_fields = ['mission__title', 'user__email']
 
 
-@admin.register(MissionFile)
-class MissionFileAdmin(admin.ModelAdmin):
-    list_display = ['filename', 'submission', 'size_bytes', 'uploaded_at']
-    list_filter = ['uploaded_at']
+@admin.register(MissionArtifact)
+class MissionArtifactAdmin(admin.ModelAdmin):
+    list_display = ['type', 'filename', 'submission', 'size_bytes', 'created_at']
+    list_filter = ['type', 'created_at']
     search_fields = ['filename', 'submission__mission__title']
+
+
+@admin.register(AIFeedback)
+class AIFeedbackAdmin(admin.ModelAdmin):
+    list_display = ['submission', 'score', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['submission__mission__title', 'submission__user__email']
