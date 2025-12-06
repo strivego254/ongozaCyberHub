@@ -49,12 +49,19 @@ class Program(models.Model):
 
 class Track(models.Model):
     """Track model - specialization within a program."""
+    TRACK_TYPE_CHOICES = [
+        ('primary', 'Primary Track'),  # Defenders, Offensive, GRC, Innovation
+        ('cross_track', 'Cross-Track Program'),  # Entrepreneurship, Soft Skills, etc.
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='tracks')
     name = models.CharField(max_length=200)
     key = models.CharField(max_length=100, db_index=True)
+    track_type = models.CharField(max_length=20, choices=TRACK_TYPE_CHOICES, default='primary', null=True, blank=True)
     description = models.TextField(blank=True)
     competencies = models.JSONField(default=dict, blank=True)
+    missions = models.JSONField(default=list, blank=True, help_text='List of mission IDs from registry')
     director = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -72,6 +79,65 @@ class Track(models.Model):
     
     def __str__(self):
         return f"{self.name} ({self.program.name})"
+
+
+class Milestone(models.Model):
+    """Milestone model - major checkpoint within a track."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    track = models.ForeignKey(Track, on_delete=models.CASCADE, related_name='milestones')
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    order = models.IntegerField(default=0, help_text='Order within track')
+    duration_weeks = models.IntegerField(validators=[MinValueValidator(1)], null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'milestones'
+        ordering = ['track', 'order']
+        unique_together = ['track', 'order']
+    
+    def __str__(self):
+        return f"{self.name} ({self.track.name})"
+
+
+class Module(models.Model):
+    """Module model - content unit within a milestone."""
+    CONTENT_TYPE_CHOICES = [
+        ('video', 'Video'),
+        ('article', 'Article'),
+        ('quiz', 'Quiz'),
+        ('assignment', 'Assignment'),
+        ('lab', 'Lab'),
+        ('workshop', 'Workshop'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    milestone = models.ForeignKey(Milestone, on_delete=models.CASCADE, related_name='modules')
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    content_type = models.CharField(max_length=20, choices=CONTENT_TYPE_CHOICES, default='video')
+    content_url = models.URLField(blank=True, help_text='URL to content resource')
+    order = models.IntegerField(default=0, help_text='Order within milestone')
+    estimated_hours = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0)])
+    skills = models.JSONField(default=list, blank=True, help_text='List of skills/tags: ["Risk Analysis", "Team Management"]')
+    # Many-to-Many relationship for cross-track content
+    applicable_tracks = models.ManyToManyField(
+        Track,
+        related_name='modules',
+        blank=True,
+        help_text='Tracks this module applies to (for cross-track content)'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'modules'
+        ordering = ['milestone', 'order']
+        unique_together = ['milestone', 'order']
+    
+    def __str__(self):
+        return f"{self.name} ({self.milestone.name})"
 
 
 class Specialization(models.Model):

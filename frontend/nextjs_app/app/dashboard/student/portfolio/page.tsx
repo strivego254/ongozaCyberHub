@@ -5,35 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 
 export default function PortfolioPage() {
-  const portfolioItems = [
-    {
-      id: '1',
-      title: 'Network Security Assessment',
-      description: 'Comprehensive security assessment of a corporate network',
-      type: 'project',
-      status: 'published',
-      date: '2024-11-15',
-      tags: ['Security', 'Networking', 'Assessment'],
-    },
-    {
-      id: '2',
-      title: 'Encryption Implementation',
-      description: 'Implemented AES-256 encryption for data protection',
-      type: 'project',
-      status: 'draft',
-      date: '2024-11-20',
-      tags: ['Encryption', 'Security', 'Implementation'],
-    },
-    {
-      id: '3',
-      title: 'Penetration Testing Report',
-      description: 'Ethical hacking assessment report',
-      type: 'document',
-      status: 'published',
-      date: '2024-10-30',
-      tags: ['Penetration Testing', 'Report', 'Security'],
-    },
-  ]
+  const portfolioItems: any[] = []
 
   return (
     <div className="p-6">
@@ -51,30 +23,33 @@ export default function PortfolioPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card>
             <div className="text-center">
-              <div className="text-3xl font-bold text-och-mint mb-1">{portfolioItems.length}</div>
+              <div className="text-3xl font-bold text-och-mint mb-1">0</div>
               <div className="text-sm text-och-steel">Total Items</div>
             </div>
           </Card>
           <Card>
             <div className="text-center">
-              <div className="text-3xl font-bold text-och-gold mb-1">
-                {portfolioItems.filter(i => i.status === 'published').length}
-              </div>
+              <div className="text-3xl font-bold text-och-gold mb-1">0</div>
               <div className="text-sm text-och-steel">Published</div>
             </div>
           </Card>
           <Card>
             <div className="text-center">
-              <div className="text-3xl font-bold text-och-defender mb-1">
-                {portfolioItems.filter(i => i.status === 'draft').length}
-              </div>
+              <div className="text-3xl font-bold text-och-defender mb-1">0</div>
               <div className="text-sm text-och-steel">Drafts</div>
             </div>
           </Card>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {portfolioItems.map((item) => (
+          {portfolioItems.length === 0 ? (
+            <Card className="md:col-span-2 lg:col-span-3">
+              <div className="text-center py-8 text-och-steel">
+                <p>No portfolio items yet. Add your first item to get started.</p>
+              </div>
+            </Card>
+          ) : (
+            portfolioItems.map((item) => (
             <Card key={item.id}>
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-2">
@@ -99,7 +74,8 @@ export default function PortfolioPage() {
                 <Button variant="defender" className="flex-1">Edit</Button>
               </div>
             </Card>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

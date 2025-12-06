@@ -15,28 +15,28 @@ interface ConnectionCardProps {
 
 const colorClasses = {
   blue: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    text: 'text-blue-700',
-    button: 'bg-blue-600 hover:bg-blue-700',
+    bg: 'bg-och-defender/20',
+    border: 'border-och-defender/30',
+    text: 'text-och-defender',
+    button: 'bg-och-defender hover:bg-och-defender/80',
   },
   indigo: {
-    bg: 'bg-indigo-50',
-    border: 'border-indigo-200',
-    text: 'text-indigo-700',
-    button: 'bg-indigo-600 hover:bg-indigo-700',
+    bg: 'bg-och-defender/20',
+    border: 'border-och-defender/30',
+    text: 'text-och-defender',
+    button: 'bg-och-defender hover:bg-och-defender/80',
   },
   emerald: {
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    text: 'text-emerald-700',
-    button: 'bg-emerald-600 hover:bg-emerald-700',
+    bg: 'bg-och-mint/20',
+    border: 'border-och-mint/30',
+    text: 'text-och-mint',
+    button: 'bg-och-mint hover:bg-och-mint/80 text-och-midnight',
   },
   purple: {
-    bg: 'bg-purple-50',
-    border: 'border-purple-200',
-    text: 'text-purple-700',
-    button: 'bg-purple-600 hover:bg-purple-700',
+    bg: 'bg-och-gold/20',
+    border: 'border-och-gold/30',
+    text: 'text-och-gold',
+    button: 'bg-och-gold hover:bg-och-gold/80 text-och-midnight',
   },
 }
 
@@ -46,21 +46,21 @@ function ConnectionCard({ title, value, subtitle, icon, action, to, onClick, col
   const buttonProps = isLink ? { href: to! } : { onClick, type: 'button' as const }
 
   return (
-    <div className={`p-4 md:p-6 rounded-xl md:rounded-2xl border-2 ${colors.border} ${colors.bg} transition-all hover:shadow-lg`}>
+    <div className={`p-4 md:p-6 rounded-xl border ${colors.border} ${colors.bg} transition-all hover:border-opacity-60`}>
       <div className="flex items-start justify-between mb-4">
         <div className="text-3xl">{icon}</div>
-        <div className={`px-3 py-1 rounded-full text-xs font-semibold ${colors.text} ${colors.bg}`}>
+        <div className={`px-3 py-1 rounded-full text-xs font-semibold ${colors.text} bg-och-midnight/50`}>
           {title}
         </div>
       </div>
       
-      <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">{value}</h3>
-      <p className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">{subtitle}</p>
+      <h3 className="text-xl md:text-2xl font-bold text-white mb-1">{value}</h3>
+      <p className="text-xs md:text-sm text-och-steel mb-3 md:mb-4">{subtitle}</p>
       
       {isLink ? (
         <Link
           href={to!}
-          className={`w-full px-4 py-2 ${colors.button} text-white rounded-lg font-semibold text-sm transition-colors block text-center`}
+          className={`w-full px-4 py-2 ${colors.button} rounded-lg font-semibold text-sm transition-colors block text-center`}
         >
           {action}
         </Link>
@@ -68,7 +68,7 @@ function ConnectionCard({ title, value, subtitle, icon, action, to, onClick, col
         <button
           onClick={onClick}
           type="button"
-          className={`w-full px-4 py-2 ${colors.button} text-white rounded-lg font-semibold text-sm transition-colors`}
+          className={`w-full px-4 py-2 ${colors.button} rounded-lg font-semibold text-sm transition-colors`}
         >
           {action}
         </button>

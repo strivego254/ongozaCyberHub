@@ -6,29 +6,67 @@
 import { apiGateway } from './apiGateway'
 
 export interface Program {
-  id: string
+  id?: string
   name: string
-  category: 'technical' | 'leadership' | 'mentorship'
+  category: 'technical' | 'leadership' | 'mentorship' | 'executive'
   description: string
   duration_months: number
   default_price: number
   currency: string
+  outcomes: string[]
+  structure?: Record<string, any>
+  missions_registry_link?: string
   status: 'active' | 'inactive' | 'archived'
-  created_at: string
-  updated_at: string
+  tracks?: Track[]
+  tracks_count?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface Module {
+  id?: string
+  milestone?: string
+  milestone_name?: string
+  name: string
+  description: string
+  content_type: 'video' | 'article' | 'quiz' | 'assignment' | 'lab' | 'workshop'
+  content_url: string
+  order: number
+  estimated_hours?: number
+  skills: string[]
+  applicable_tracks?: string[] | Track[]
+  applicable_track_names?: string[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface Milestone {
+  id?: string
+  track?: string
+  track_name?: string
+  name: string
+  description: string
+  order: number
+  duration_weeks?: number
+  modules?: Module[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Track {
-  id: string
-  program: string
+  id?: string
+  program?: string
   program_name?: string
   name: string
   key: string
+  track_type: 'primary' | 'cross_track'
   description: string
   competencies: Record<string, any>
+  missions: string[]
   director: string | null
-  created_at: string
-  updated_at: string
+  milestones?: Milestone[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Cohort {
@@ -207,15 +245,56 @@ class ProgramsClient {
   }
 
   async createProgram(data: Partial<Program>): Promise<Program> {
-    return apiGateway.post('/programs/', data)
+    // Use program-management endpoint for full structure support
+    return apiGateway.post('/programs-management/', data)
   }
 
   async updateProgram(id: string, data: Partial<Program>): Promise<Program> {
-    return apiGateway.patch(`/programs/${id}/`, data)
+    // Use program-management endpoint for full structure support
+    return apiGateway.patch(`/programs-management/${id}/`, data)
   }
 
   async deleteProgram(id: string): Promise<void> {
     return apiGateway.delete(`/programs/${id}/`)
+  }
+
+  // Milestones
+  async getMilestones(trackId?: string): Promise<Milestone[]> {
+    const queryString = trackId ? `?track_id=${trackId}` : ''
+    return apiGateway.get(`/milestones/${queryString}`)
+  }
+
+  async createMilestone(data: Partial<Milestone>): Promise<Milestone> {
+    return apiGateway.post('/milestones/', data)
+  }
+
+  async updateMilestone(id: string, data: Partial<Milestone>): Promise<Milestone> {
+    return apiGateway.patch(`/milestones/${id}/`, data)
+  }
+
+  async deleteMilestone(id: string): Promise<void> {
+    return apiGateway.delete(`/milestones/${id}/`)
+  }
+
+  // Modules
+  async getModules(milestoneId?: string, trackId?: string): Promise<Module[]> {
+    const params: string[] = []
+    if (milestoneId) params.push(`milestone_id=${milestoneId}`)
+    if (trackId) params.push(`track_id=${trackId}`)
+    const queryString = params.length > 0 ? `?${params.join('&')}` : ''
+    return apiGateway.get(`/modules/${queryString}`)
+  }
+
+  async createModule(data: Partial<Module>): Promise<Module> {
+    return apiGateway.post('/modules/', data)
+  }
+
+  async updateModule(id: string, data: Partial<Module>): Promise<Module> {
+    return apiGateway.patch(`/modules/${id}/`, data)
+  }
+
+  async deleteModule(id: string): Promise<void> {
+    return apiGateway.delete(`/modules/${id}/`)
   }
 
   // Tracks
@@ -295,6 +374,44 @@ class ProgramsClient {
 
   async assignMentor(cohortId: string, data: Partial<MentorAssignment>): Promise<MentorAssignment> {
     return apiGateway.post(`/cohorts/${cohortId}/mentors/`, data)
+  }
+
+  async removeMentorAssignment(assignmentId: string): Promise<void> {
+    return apiGateway.delete(`/mentor-assignments/${assignmentId}/`)
+  }
+
+  async listMentors(searchQuery?: string): Promise<any[]> {
+    const queryString = searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''
+    return apiGateway.get(`/mentors/${queryString}`)
+  }
+
+  async getMentorAnalytics(mentorId: string): Promise<any> {
+    return apiGateway.get(`/mentors/${mentorId}/analytics/`)
+  }
+
+  async autoMatchMentors(cohortId: string, trackId?: string, role: string = 'support'): Promise<{ assignments: any[] }> {
+    return apiGateway.post(`/cohorts/${cohortId}/mentors/auto-match/`, { track_id: trackId, role })
+  }
+
+  async reassignMentor(assignmentId: string, newMentorId: string): Promise<MentorAssignment> {
+    return apiGateway.patch(`/mentor-assignments/${assignmentId}/`, { mentor: newMentorId })
+  }
+
+  async getMentorReviews(mentorId: string, cohortId?: string): Promise<any[]> {
+    const queryString = cohortId ? `?cohort_id=${cohortId}` : ''
+    return apiGateway.get(`/mentors/${mentorId}/reviews/${queryString}`)
+  }
+
+  async updateMenteeGoal(menteeId: string, goalId: string, updates: any): Promise<any> {
+    return apiGateway.patch(`/mentees/${menteeId}/goals/${goalId}/`, updates)
+  }
+
+  async approveCycleClosure(cohortId: string, mentorId: string): Promise<any> {
+    return apiGateway.post(`/cohorts/${cohortId}/mentors/${mentorId}/approve-closure/`)
+  }
+
+  async sendCohortNotification(cohortId: string, notification: { type: string; message: string; recipients?: string[] }): Promise<void> {
+    return apiGateway.post(`/cohorts/${cohortId}/notifications/`, notification)
   }
 
   // Program Rules

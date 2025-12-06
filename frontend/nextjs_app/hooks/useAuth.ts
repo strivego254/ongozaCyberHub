@@ -59,11 +59,30 @@ export function useAuth() {
   const login = useCallback(async (credentials: LoginRequest) => {
     try {
       // Call Next.js API route (sets HttpOnly cookies)
-      const response = await fetch('/api/auth/login', {
+      let response: Response;
+      try {
+        response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
       });
+      } catch (fetchError: any) {
+        // Catch network/connection errors
+        const errorMsg = fetchError.message || 'Unknown error';
+        const isConnectionError = 
+          errorMsg.includes('fetch failed') ||
+          errorMsg.includes('Failed to fetch') ||
+          errorMsg.includes('NetworkError') ||
+          errorMsg.includes('ECONNREFUSED');
+        
+        const error = new Error(
+          isConnectionError 
+            ? 'Cannot connect to backend server. Please ensure the Django API is running on port 8000.'
+            : `Network error: ${errorMsg}`
+        );
+        (error as any).data = { detail: error.message };
+        throw error;
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

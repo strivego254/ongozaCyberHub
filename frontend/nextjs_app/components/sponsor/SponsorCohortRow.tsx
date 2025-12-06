@@ -27,12 +27,12 @@ interface SponsorCohortRowProps {
 
 function SeatProgress({ used, total }: { used: number; total: number }) {
   const percentage = total > 0 ? (used / total) * 100 : 0
-  const colorClass = percentage >= 90 ? 'bg-red-500' : percentage >= 70 ? 'bg-amber-500' : 'bg-emerald-500'
+  const colorClass = percentage >= 90 ? 'bg-och-orange' : percentage >= 70 ? 'bg-och-gold' : 'bg-och-mint'
   
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm font-semibold text-gray-900">{used}/{total}</span>
-      <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+      <span className="text-sm font-semibold text-white">{used}/{total}</span>
+      <div className="w-16 h-2 bg-och-steel/20 rounded-full overflow-hidden">
         <div
           className={`${colorClass} h-full transition-all`}
           style={{ width: `${Math.min(percentage, 100)}%` }}
@@ -44,14 +44,14 @@ function SeatProgress({ used, total }: { used: number; total: number }) {
 
 function MetricChip({ value, trend }: { value: number; trend?: number }) {
   const trendDisplay = trend !== undefined ? (
-    <span className={`text-xs ${trend >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+    <span className={`text-xs ${trend >= 0 ? 'text-och-mint' : 'text-och-orange'}`}>
       {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
     </span>
   ) : null
   
   return (
     <div className="flex flex-col">
-      <span className="text-sm font-semibold text-gray-900">{value.toFixed(1)} avg</span>
+      <span className="text-sm font-semibold text-white">{value.toFixed(1)} avg</span>
       {trendDisplay}
     </div>
   )
@@ -59,9 +59,9 @@ function MetricChip({ value, trend }: { value: number; trend?: number }) {
 
 function RiskChip({ level }: { level: 'low' | 'medium' | 'high' }) {
   const colors = {
-    low: 'bg-emerald-100 text-emerald-700',
-    medium: 'bg-amber-100 text-amber-700',
-    high: 'bg-red-100 text-red-700',
+    low: 'bg-och-mint/20 text-och-mint',
+    medium: 'bg-och-gold/20 text-och-gold',
+    high: 'bg-och-orange/20 text-och-orange',
   }
   const icons = {
     low: '🟢',
@@ -79,28 +79,28 @@ function RiskChip({ level }: { level: 'low' | 'medium' | 'high' }) {
 
 export function SponsorCohortRow({ cohort, selected, onSelect, currency = 'BWP' }: SponsorCohortRowProps) {
   return (
-    <tr className={`hover:bg-gradient-to-r hover:from-emerald-50/50 hover:to-blue-50/30 group border-b border-gray-100/50 h-20 transition-all duration-200 ${
-      selected ? 'ring-2 ring-emerald-200/50 bg-emerald-50/30' : ''
+    <tr className={`hover:bg-och-midnight/80 group border-b border-och-steel/20 h-20 transition-all duration-200 ${
+      selected ? 'ring-2 ring-och-mint/50 bg-och-mint/10' : ''
     }`}>
       <td className="px-8 py-5">
         <input
           type="checkbox"
           checked={selected}
           onChange={(e) => onSelect(cohort.cohort_id, e.target.checked)}
-          className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+          className="w-5 h-5 text-och-mint border-och-steel/20 rounded focus:ring-och-mint"
         />
       </td>
       
       {/* Cohort Name + Track */}
-      <td className="px-8 py-5 font-semibold text-gray-900">
+      <td className="px-8 py-5 font-semibold text-white">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center text-white font-bold">
+          <div className="w-10 h-10 bg-gradient-to-br from-och-defender to-och-mint rounded-lg flex items-center justify-center text-white font-bold">
             {cohort.cohort_name?.[0] || 'C'}
           </div>
           <div>
-            <div className="font-semibold">{cohort.cohort_name}</div>
+            <div className="font-semibold text-white">{cohort.cohort_name}</div>
             {cohort.track && (
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+              <span className="text-xs text-och-steel bg-och-steel/20 px-2 py-0.5 rounded">
                 {cohort.track}
               </span>
             )}
@@ -125,7 +125,7 @@ export function SponsorCohortRow({ cohort, selected, onSelect, currency = 'BWP' 
       
       {/* Graduates */}
       <td className="px-8 py-5">
-        <div className="text-sm font-semibold text-gray-900">
+        <div className="text-sm font-semibold text-white">
           {cohort.graduates_ready || 0} / {cohort.graduates_total || cohort.seats_used}
         </div>
       </td>
@@ -150,7 +150,7 @@ export function SponsorCohortRow({ cohort, selected, onSelect, currency = 'BWP' 
         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <Link
             href={`/dashboard/sponsor/cohorts/${cohort.cohort_id}`}
-            className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
+            className="px-3 py-1.5 text-xs bg-och-defender text-white rounded hover:bg-och-defender/80 transition-colors font-medium"
           >
             View
           </Link>

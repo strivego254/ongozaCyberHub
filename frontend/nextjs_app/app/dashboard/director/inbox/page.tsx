@@ -269,22 +269,22 @@ export default function DirectorInboxPage() {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
                 <h1 className="text-4xl font-bold mb-2 text-och-defender">Inbox</h1>
                 <p className="text-och-steel">
-                  {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
-                </p>
-              </div>
+                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
+              </p>
+            </div>
               {unreadCount > 0 && (
                 <Button variant="outline" size="sm" onClick={markAllAsRead}>
                   Mark all read
                 </Button>
               )}
-            </div>
+          </div>
 
             {/* Priority Pills */}
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => setFilter('all')}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
@@ -357,9 +357,9 @@ export default function DirectorInboxPage() {
             </button>
           </div>
 
-            {/* Category Filter */}
-            {categories.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pt-2 scrollbar-hide">
+          {/* Category Filter */}
+          {categories.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pt-2 scrollbar-hide">
               <button
                 onClick={() => setCategoryFilter('all')}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
@@ -384,10 +384,10 @@ export default function DirectorInboxPage() {
                 </button>
               ))}
             </div>
-            )}
-          </div>
+          )}
+      </div>
 
-          {/* Feed Content */}
+      {/* Feed Content */}
           <div className="py-6">
         {isLoading ? (
           <div className="space-y-4">
@@ -492,7 +492,7 @@ export default function DirectorInboxPage() {
             ))}
           </div>
         )}
-          </div>
+      </div>
         </div>
       </DirectorLayout>
       <style jsx>{`

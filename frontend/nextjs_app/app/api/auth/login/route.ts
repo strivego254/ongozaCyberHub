@@ -25,10 +25,19 @@ export async function POST(request: NextRequest) {
       });
     } catch (fetchError: any) {
       console.error('Login API route: Fetch error', fetchError);
+      const errorMsg = fetchError.message || 'Unknown error';
+      const isConnectionError = 
+        errorMsg.includes('fetch failed') ||
+        errorMsg.includes('ECONNREFUSED') ||
+        errorMsg.includes('Failed to fetch') ||
+        errorMsg.includes('NetworkError');
+      
       return NextResponse.json(
         {
-          error: 'Cannot connect to server',
-          detail: fetchError.message || 'The backend server is not running. Please ensure the Django API is running on port 8000.',
+          error: 'Cannot connect to backend server',
+          detail: isConnectionError 
+            ? `Unable to connect to Django API at ${loginUrl}. Please ensure the Django backend server is running on port 8000. Error: ${errorMsg}`
+            : `Connection error: ${errorMsg}`,
         },
         { status: 500 }
       );

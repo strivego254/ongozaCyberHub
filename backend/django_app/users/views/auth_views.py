@@ -248,8 +248,7 @@ class LoginView(APIView):
                 )
         elif password:
             # Password login
-            user_auth = authenticate(username=email, password=password)
-            if not user_auth or user_auth != user:
+            if not user.check_password(password):
                 _log_audit_event(user, 'login', 'user', 'failure', {'method': 'password'})
                 return Response(
                     {'detail': 'Invalid credentials'},
@@ -272,7 +271,7 @@ class LoginView(APIView):
         # In development, auto-trust device for test users
         from django.conf import settings
         if settings.DEBUG and user.email.endswith('@test.com') and not device_trusted:
-            from users.utils.auth_utils import trust_device, _detect_device_type
+            from users.utils.auth_utils import _detect_device_type
             device_type = _detect_device_type(user_agent)
             trust_device(user, device_fingerprint, device_name, device_type, ip_address, user_agent, expires_days=365)
             device_trusted = True

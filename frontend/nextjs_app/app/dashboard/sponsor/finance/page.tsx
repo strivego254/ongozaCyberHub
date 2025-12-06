@@ -63,216 +63,215 @@ export default function FinancePage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-BW', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'BWP',
       minimumFractionDigits: 0,
     }).format(amount)
   }
 
   const statusColors = {
-    pending: 'bg-amber-100 text-amber-700',
-    paid: 'bg-emerald-100 text-emerald-700',
-    overdue: 'bg-red-100 text-red-700',
-    approved: 'bg-emerald-100 text-emerald-700',
-    rejected: 'bg-red-100 text-red-700',
+    pending: 'bg-och-gold/20 text-och-gold',
+    paid: 'bg-och-mint/20 text-och-mint',
+    overdue: 'bg-och-orange/20 text-och-orange',
+    approved: 'bg-och-mint/20 text-och-mint',
+    rejected: 'bg-och-orange/20 text-och-orange',
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">💰 Finance & Billing</h1>
-            <p className="text-gray-600 mt-1">Manage invoices and refund requests</p>
-          </div>
-          <button
-            onClick={() => setShowRefundModal(true)}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
-          >
-            Request Refund
-          </button>
-        </div>
+    <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:pl-0 lg:pr-6 xl:pr-8">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold mb-2 text-och-mint">💰 Finance & Billing</h1>
+        <p className="text-och-steel">
+          Manage invoices and refund requests
+        </p>
+      </div>
+      
+      <div className="mb-6 flex justify-end">
+        <button
+          onClick={() => setShowRefundModal(true)}
+          className="px-4 py-2 bg-och-mint text-och-midnight rounded-lg hover:bg-och-mint/80 transition-colors font-semibold"
+        >
+          Request Refund
+        </button>
+      </div>
 
-        {/* Refund Modal */}
-        {showRefundModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
-              <h3 className="text-lg font-bold mb-4">Request Refund</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Amount (BWP)
-                  </label>
-                  <input
-                    type="number"
-                    value={refundForm.amount}
-                    onChange={(e) => setRefundForm({ ...refundForm, amount: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Reason
-                  </label>
-                  <textarea
-                    value={refundForm.reason}
-                    onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    rows={4}
-                    placeholder="Explain the reason for this refund request..."
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleRequestRefund}
-                    disabled={!refundForm.amount || !refundForm.reason}
-                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Submit Request
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowRefundModal(false)
-                      setRefundForm({ amount: '', reason: '' })
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
-                  >
-                    Cancel
-                  </button>
-                </div>
+      {/* Refund Modal */}
+      {showRefundModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-och-midnight border border-och-steel/20 rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold mb-4 text-white">Request Refund</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-och-steel mb-2">
+                  Amount (BWP)
+                </label>
+                <input
+                  type="number"
+                  value={refundForm.amount}
+                  onChange={(e) => setRefundForm({ ...refundForm, amount: e.target.value })}
+                  className="w-full px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:ring-2 focus:ring-och-mint focus:border-och-mint"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-och-steel mb-2">
+                  Reason
+                </label>
+                <textarea
+                  value={refundForm.reason}
+                  onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })}
+                  className="w-full px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:ring-2 focus:ring-och-mint focus:border-och-mint"
+                  rows={4}
+                  placeholder="Explain the reason for this refund request..."
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleRequestRefund}
+                  disabled={!refundForm.amount || !refundForm.reason}
+                  className="flex-1 px-4 py-2 bg-och-mint text-och-midnight rounded-lg hover:bg-och-mint/80 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Submit Request
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRefundModal(false)
+                    setRefundForm({ amount: '', reason: '' })
+                  }}
+                  className="px-4 py-2 border border-och-steel/20 text-och-steel rounded-lg hover:bg-och-midnight/80 transition-colors font-semibold"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Invoices */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">Invoices</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Invoice #
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Due Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                        Loading invoices...
-                      </td>
-                    </tr>
-                  ) : invoices.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                        No invoices found
-                      </td>
-                    </tr>
-                  ) : (
-                    invoices.map((invoice) => (
-                      <tr key={invoice.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900">
-                          {invoice.invoice_number}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {formatCurrency(invoice.amount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[invoice.status]}`}>
-                            {invoice.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(invoice.due_date).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Invoices */}
+        <div className="bg-och-midnight border border-och-steel/20 rounded-xl overflow-hidden">
+          <div className="p-6 border-b border-och-steel/20">
+            <h2 className="text-xl font-bold text-white">Invoices</h2>
           </div>
-
-          {/* Refund Requests */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">Refund Requests</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-och-midnight border-b border-och-steel/20">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-och-steel uppercase">
+                    Invoice #
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-och-steel uppercase">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-och-steel uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-och-steel uppercase">
+                    Due Date
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-och-steel/20">
+                {loading ? (
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Reason
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Date
-                    </th>
+                    <td colSpan={4} className="px-6 py-8 text-center text-och-steel">
+                      Loading invoices...
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                        Loading refunds...
+                ) : invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-och-steel">
+                      No invoices found
+                    </td>
+                  </tr>
+                ) : (
+                  invoices.map((invoice) => (
+                    <tr key={invoice.id} className="hover:bg-och-midnight/80">
+                      <td className="px-6 py-4 whitespace-nowrap font-semibold text-white">
+                        {invoice.invoice_number}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-white">
+                        {formatCurrency(invoice.amount)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[invoice.status]}`}>
+                          {invoice.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-och-steel">
+                        {new Date(invoice.due_date).toLocaleDateString()}
                       </td>
                     </tr>
-                  ) : refunds.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                        No refund requests
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Refund Requests */}
+        <div className="bg-och-midnight border border-och-steel/20 rounded-xl overflow-hidden">
+          <div className="p-6 border-b border-och-steel/20">
+            <h2 className="text-xl font-bold text-white">Refund Requests</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-och-midnight border-b border-och-steel/20">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-och-steel uppercase">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-och-steel uppercase">
+                    Reason
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-och-steel uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-och-steel uppercase">
+                    Date
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-och-steel/20">
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-och-steel">
+                      Loading refunds...
+                    </td>
+                  </tr>
+                ) : refunds.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-och-steel">
+                      No refund requests
+                    </td>
+                  </tr>
+                ) : (
+                  refunds.map((refund) => (
+                    <tr key={refund.id} className="hover:bg-och-midnight/80">
+                      <td className="px-6 py-4 whitespace-nowrap font-semibold text-white">
+                        {formatCurrency(refund.amount)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-och-steel max-w-xs truncate">
+                        {refund.reason}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[refund.status]}`}>
+                          {refund.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-och-steel">
+                        {new Date(refund.created_at).toLocaleDateString()}
                       </td>
                     </tr>
-                  ) : (
-                    refunds.map((refund) => (
-                      <tr key={refund.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900">
-                          {formatCurrency(refund.amount)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
-                          {refund.reason}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[refund.status]}`}>
-                            {refund.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(refund.created_at).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
   )
 }
-
