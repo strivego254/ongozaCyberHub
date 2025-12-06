@@ -3,7 +3,8 @@ Programs views package.
 """
 from .standard_views import (
     ProgramViewSet, TrackViewSet, CohortViewSet,
-    ProgramRuleViewSet, CertificateViewSet
+    ProgramRuleViewSet, CertificateViewSet,
+    director_dashboard
 )
 from .director_views import (
     DirectorProgramViewSet, DirectorTrackViewSet, DirectorCohortViewSet,
@@ -17,5 +18,6 @@ __all__ = [
     'DirectorProgramViewSet', 'DirectorTrackViewSet', 'DirectorCohortViewSet',
     'DirectorMentorViewSet', 'DirectorDashboardViewSet',
     'DirectorProgramRuleViewSet',
+    'director_dashboard',
 ]
 

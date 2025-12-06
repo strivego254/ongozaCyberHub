@@ -134,7 +134,72 @@ class ProgramsClient {
    * Used by the "View Programs" view in director dashboard
    */
   async getPrograms(): Promise<Program[]> {
-    return apiGateway.get('/programs/')
+    try {
+      console.log('📡 Fetching programs from /api/v1/programs/')
+      const data = await apiGateway.get<any>('/programs/')
+      console.log('📡 API Response:', {
+        type: typeof data,
+        isArray: Array.isArray(data),
+        hasResults: data?.results !== undefined,
+        hasData: data?.data !== undefined,
+        count: Array.isArray(data) ? data.length : data?.results?.length || data?.count || 'N/A',
+        totalCount: data?.count,
+        hasNext: data?.next,
+        keys: Object.keys(data || {}),
+        data: data
+      })
+      
+      // Handle paginated response (DRF default pagination)
+      if (data?.results && Array.isArray(data.results)) {
+        const programs = data.results
+        console.log(`✅ Found ${programs.length} programs in paginated response (total: ${data.count || programs.length})`)
+        
+        // If there are more pages, fetch them all
+        if (data.next) {
+          console.log('📄 Multiple pages detected, fetching all pages...')
+          let allPrograms = [...programs]
+          let nextUrl = data.next
+          
+          while (nextUrl) {
+            // Extract path from full URL
+            const url = new URL(nextUrl)
+            const path = url.pathname + url.search
+            console.log(`📄 Fetching next page: ${path}`)
+            
+            const nextData = await apiGateway.get<any>(path.replace('/api/v1', ''))
+            if (nextData?.results && Array.isArray(nextData.results)) {
+              allPrograms = [...allPrograms, ...nextData.results]
+              nextUrl = nextData.next
+            } else {
+              break
+            }
+          }
+          
+          console.log(`✅ Fetched all ${allPrograms.length} programs across all pages`)
+          return allPrograms
+        }
+        
+        return programs
+      }
+      
+      // Handle direct array response
+      if (Array.isArray(data)) {
+        console.log(`✅ Found ${data.length} programs in array response`)
+        return data
+      }
+      
+      // Handle data wrapper
+      if (data?.data && Array.isArray(data.data)) {
+        console.log(`✅ Found ${data.data.length} programs in data wrapper`)
+        return data.data
+      }
+      
+      console.warn('⚠️ Unexpected response format, returning empty array')
+      return []
+    } catch (error: any) {
+      console.error('❌ Error in getPrograms:', error)
+      throw error
+    }
   }
 
   async getProgram(id: string): Promise<Program> {
@@ -146,7 +211,7 @@ class ProgramsClient {
   }
 
   async updateProgram(id: string, data: Partial<Program>): Promise<Program> {
-    return apiGateway.put(`/programs/${id}/`, data)
+    return apiGateway.patch(`/programs/${id}/`, data)
   }
 
   async deleteProgram(id: string): Promise<void> {
@@ -169,7 +234,7 @@ class ProgramsClient {
   }
 
   async updateTrack(id: string, data: Partial<Track>): Promise<Track> {
-    return apiGateway.put(`/tracks/${id}/`, data)
+    return apiGateway.patch(`/tracks/${id}/`, data)
   }
 
   async deleteTrack(id: string): Promise<void> {
@@ -194,7 +259,7 @@ class ProgramsClient {
   }
 
   async updateCohort(id: string, data: Partial<Cohort>): Promise<Cohort> {
-    return apiGateway.put(`/cohorts/${id}/`, data)
+    return apiGateway.patch(`/cohorts/${id}/`, data)
   }
 
   async deleteCohort(id: string): Promise<void> {

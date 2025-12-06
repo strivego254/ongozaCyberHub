@@ -1,12 +1,15 @@
 'use client'
 
 import { RouteGuard } from '@/components/auth/RouteGuard'
-import AdminClient from './admin-client'
+import { AdminLayout } from '@/components/admin/AdminLayout'
+import OverviewClient from './overview-client'
 
 export default function AdminDashboard() {
   return (
     <RouteGuard>
-      <AdminClient />
+      <AdminLayout>
+        <OverviewClient />
+      </AdminLayout>
     </RouteGuard>
   )
 }

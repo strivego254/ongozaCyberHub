@@ -18,10 +18,26 @@ export function usePrograms() {
     setIsLoading(true)
     setError(null)
     try {
+      console.log('🔄 Loading programs from API...')
       const data = await programsClient.getPrograms()
-      setPrograms(Array.isArray(data) ? data : [])
+      console.log('✅ Programs loaded:', {
+        isArray: Array.isArray(data),
+        count: Array.isArray(data) ? data.length : 0,
+        data: data
+      })
+      
+      if (Array.isArray(data)) {
+      setPrograms(data)
+        console.log(`✅ Set ${data.length} programs in state`)
+      } else {
+        console.warn('⚠️ API returned non-array data:', data)
+        setPrograms([])
+        setError('Invalid response format from server')
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to load programs')
+      console.error('❌ Failed to load programs:', err)
+      const errorMessage = err?.message || err?.data?.detail || 'Failed to load programs'
+      setError(errorMessage)
       setPrograms([])
     } finally {
       setIsLoading(false)

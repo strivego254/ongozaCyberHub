@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/hooks/useAuth'
 import { apiGateway } from '@/services/apiGateway'
+import type { User } from '@/services/types'
 
 interface AuditLog {
   id: number
@@ -25,6 +26,9 @@ export default function DirectorSettingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'avatar'>('profile')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   
   const [formData, setFormData] = useState({
     first_name: '',
@@ -37,9 +41,18 @@ export default function DirectorSettingsPage() {
     language: 'en',
   })
 
+  const [passwordData, setPasswordData] = useState({
+    old_password: '',
+    new_password: '',
+    confirm_password: '',
+  })
+
+  // Track if we should update form data from user (after save)
+  const [shouldUpdateForm, setShouldUpdateForm] = useState(false)
+
   useEffect(() => {
     if (user) {
-      setFormData({
+      const newFormData = {
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         email: user.email || '',
@@ -48,9 +61,21 @@ export default function DirectorSettingsPage() {
         country: user.country || '',
         timezone: user.timezone || 'UTC',
         language: user.language || 'en',
-      })
+      }
+      
+      // Update form data if:
+      // 1. We just saved (shouldUpdateForm is true) - to show updated values
+      // 2. Form is empty/initial (first load) - to populate form
+      // Always update after save to show the latest values
+      if (shouldUpdateForm || !formData.first_name) {
+        setFormData(newFormData)
+        if (shouldUpdateForm) {
+          setShouldUpdateForm(false)
+        }
+      }
     }
-  }, [user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, shouldUpdateForm])
 
   useEffect(() => {
     loadAuditLogs()
@@ -81,15 +106,123 @@ export default function DirectorSettingsPage() {
     setIsSaving(true)
     setSaveStatus(null)
     try {
-      await apiGateway.patch(`/users/${user.id}/`, formData)
+      // Update user via API
+      const updatedUser = await apiGateway.patch(`/users/${user.id}/`, formData)
+      
+      // Update form data immediately from API response
+      if (updatedUser) {
+        const userData = updatedUser as User
+        setFormData({
+          first_name: userData.first_name || '',
+          last_name: userData.last_name || '',
+          email: userData.email || '',
+          bio: userData.bio || '',
+          phone_number: userData.phone_number || '',
+          country: userData.country || '',
+          timezone: userData.timezone || 'UTC',
+          language: userData.language || 'en',
+        })
+      }
+      
       setSaveStatus('Account updated successfully')
+      
+      // Reload user to get full profile with roles, etc.
       await reloadUser()
+      
       setTimeout(() => setSaveStatus(null), 3000)
     } catch (error: any) {
       setSaveStatus(`Error: ${error.message || 'Failed to update account'}`)
       setTimeout(() => setSaveStatus(null), 5000)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handlePasswordChange = async () => {
+    if (!passwordData.old_password || !passwordData.new_password) {
+      setSaveStatus('Error: All password fields are required')
+      setTimeout(() => setSaveStatus(null), 5000)
+      return
+    }
+
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      setSaveStatus('Error: New passwords do not match')
+      setTimeout(() => setSaveStatus(null), 5000)
+      return
+    }
+
+    if (passwordData.new_password.length < 8) {
+      setSaveStatus('Error: Password must be at least 8 characters long')
+      setTimeout(() => setSaveStatus(null), 5000)
+      return
+    }
+
+    setIsSaving(true)
+    setSaveStatus(null)
+    try {
+      await apiGateway.post('/users/change_password/', {
+        old_password: passwordData.old_password,
+        new_password: passwordData.new_password,
+      })
+      setSaveStatus('Password changed successfully')
+      setPasswordData({
+        old_password: '',
+        new_password: '',
+        confirm_password: '',
+      })
+      await reloadUser()
+      setTimeout(() => setSaveStatus(null), 3000)
+    } catch (error: any) {
+      setSaveStatus(`Error: ${error.message || error.detail || 'Failed to change password'}`)
+      setTimeout(() => setSaveStatus(null), 5000)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      setSaveStatus('Error: Invalid file type. Please upload JPEG, PNG, GIF, or WebP')
+      setTimeout(() => setSaveStatus(null), 5000)
+      return
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setSaveStatus('Error: File size exceeds 5MB limit')
+      setTimeout(() => setSaveStatus(null), 5000)
+      return
+    }
+
+    setUploadingAvatar(true)
+    setSaveStatus(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('avatar', file)
+
+      const response = await apiGateway.post('/users/upload_avatar/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+
+      setSaveStatus('Profile picture updated successfully')
+      await reloadUser()
+      setTimeout(() => setSaveStatus(null), 3000)
+    } catch (error: any) {
+      setSaveStatus(`Error: ${error.message || error.detail || 'Failed to upload avatar'}`)
+      setTimeout(() => setSaveStatus(null), 5000)
+    } finally {
+      setUploadingAvatar(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -121,173 +254,357 @@ export default function DirectorSettingsPage() {
     <div className="min-h-screen bg-och-midnight p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-och-orange">Account Settings</h1>
-          <p className="text-och-steel">Manage your account information and view update history</p>
+          <h1 className="text-4xl font-bold mb-2 text-och-mint">Account Settings</h1>
+          <p className="text-och-steel">Manage your account information, security, and preferences</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Account Info - Takes 2 columns */}
+          {/* Main Content - Takes 2 columns */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Current Account Info */}
-            <Card>
-              <h2 className="text-2xl font-bold mb-4 text-white">Account Information</h2>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Tab Navigation */}
+            <div className="flex gap-2 border-b border-och-steel/20">
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`px-4 py-2 font-medium transition-colors ${
+                  activeTab === 'profile'
+                    ? 'text-och-mint border-b-2 border-och-mint'
+                    : 'text-och-steel hover:text-white'
+                }`}
+              >
+                Profile Info
+              </button>
+              <button
+                onClick={() => setActiveTab('password')}
+                className={`px-4 py-2 font-medium transition-colors ${
+                  activeTab === 'password'
+                    ? 'text-och-mint border-b-2 border-och-mint'
+                    : 'text-och-steel hover:text-white'
+                }`}
+              >
+                Password
+              </button>
+              <button
+                onClick={() => setActiveTab('avatar')}
+                className={`px-4 py-2 font-medium transition-colors ${
+                  activeTab === 'avatar'
+                    ? 'text-och-mint border-b-2 border-och-mint'
+                    : 'text-och-steel hover:text-white'
+                }`}
+              >
+                Profile Picture
+              </button>
+            </div>
+
+            {/* Profile Info Tab */}
+            {activeTab === 'profile' && (
+              <Card>
+                <h2 className="text-2xl font-bold mb-4 text-white">Account Information</h2>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-och-steel mb-2">
+                        First Name
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.first_name}
+                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-och-steel mb-2">
+                        Last Name
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.last_name}
+                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-och-steel mb-2">
-                      First Name
+                      Email
                     </label>
                     <input
-                      type="text"
-                      value={formData.first_name}
-                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                     />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-och-steel mb-2">
-                      Last Name
+                      Phone Number
                     </label>
                     <input
-                      type="text"
-                      value={formData.last_name}
-                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                      type="tel"
+                      value={formData.phone_number}
+                      onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
                       className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      placeholder="+1234567890"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-och-steel mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-och-steel mb-2">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone_number}
-                    onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
-                    placeholder="+1234567890"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-och-steel mb-2">
-                    Bio
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
-                    placeholder="Tell us about yourself..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-och-steel mb-2">
-                      Country
+                      Bio
                     </label>
-                    <input
-                      type="text"
-                      value={formData.country}
-                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                    <textarea
+                      rows={4}
+                      value={formData.bio}
+                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                       className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
-                      placeholder="US"
-                      maxLength={2}
+                      placeholder="Tell us about yourself..."
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-och-steel mb-2">
-                      Timezone
-                    </label>
-                    <select
-                      value={formData.timezone}
-                      onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-och-steel mb-2">
+                        Country
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.country}
+                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                        placeholder="US"
+                        maxLength={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-och-steel mb-2">
+                        Timezone
+                      </label>
+                      <select
+                        value={formData.timezone}
+                        onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      >
+                        <option value="UTC">UTC</option>
+                        <option value="America/New_York">America/New_York</option>
+                        <option value="America/Chicago">America/Chicago</option>
+                        <option value="America/Denver">America/Denver</option>
+                        <option value="America/Los_Angeles">America/Los_Angeles</option>
+                        <option value="Europe/London">Europe/London</option>
+                        <option value="Europe/Paris">Europe/Paris</option>
+                        <option value="Asia/Tokyo">Asia/Tokyo</option>
+                        <option value="Africa/Nairobi">Africa/Nairobi</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-och-steel mb-2">
+                        Language
+                      </label>
+                      <select
+                        value={formData.language}
+                        onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      >
+                        <option value="en">English</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="sw">Swahili</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {saveStatus && (
+                    <div
+                      className={`p-3 rounded-lg ${
+                        saveStatus.includes('Error')
+                          ? 'bg-och-orange/20 border border-och-orange text-och-orange'
+                          : 'bg-och-mint/20 border border-och-mint text-och-mint'
+                      }`}
                     >
-                      <option value="UTC">UTC</option>
-                      <option value="America/New_York">America/New_York</option>
-                      <option value="America/Chicago">America/Chicago</option>
-                      <option value="America/Denver">America/Denver</option>
-                      <option value="America/Los_Angeles">America/Los_Angeles</option>
-                      <option value="Europe/London">Europe/London</option>
-                      <option value="Europe/Paris">Europe/Paris</option>
-                      <option value="Asia/Tokyo">Asia/Tokyo</option>
-                      <option value="Africa/Nairobi">Africa/Nairobi</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-och-steel mb-2">
-                      Language
-                    </label>
-                    <select
-                      value={formData.language}
-                      onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      {saveStatus}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <Button
+                      variant="mint"
+                      onClick={handleSave}
+                      disabled={isSaving}
                     >
-                      <option value="en">English</option>
-                      <option value="es">Spanish</option>
-                      <option value="fr">French</option>
-                      <option value="sw">Swahili</option>
-                    </select>
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (user) {
+                          setFormData({
+                            first_name: user.first_name || '',
+                            last_name: user.last_name || '',
+                            email: user.email || '',
+                            bio: user.bio || '',
+                            phone_number: user.phone_number || '',
+                            country: user.country || '',
+                            timezone: user.timezone || 'UTC',
+                            language: user.language || 'en',
+                          })
+                        }
+                      }}
+                    >
+                      Reset
+                    </Button>
                   </div>
                 </div>
+              </Card>
+            )}
 
-                {saveStatus && (
-                  <div
-                    className={`p-3 rounded-lg ${
-                      saveStatus.includes('Error')
-                        ? 'bg-och-orange/20 border border-och-orange text-och-orange'
-                        : 'bg-och-mint/20 border border-och-mint text-och-mint'
-                    }`}
-                  >
-                    {saveStatus}
+            {/* Password Change Tab */}
+            {activeTab === 'password' && (
+              <Card>
+                <h2 className="text-2xl font-bold mb-4 text-white">Change Password</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-och-steel mb-2">
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordData.old_password}
+                      onChange={(e) =>
+                        setPasswordData({ ...passwordData, old_password: e.target.value })
+                      }
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      placeholder="Enter current password"
+                    />
                   </div>
-                )}
 
-                <div className="flex gap-3">
-                  <Button
-                    variant="orange"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      if (user) {
-                        setFormData({
-                          first_name: user.first_name || '',
-                          last_name: user.last_name || '',
-                          email: user.email || '',
-                          bio: user.bio || '',
-                          phone_number: user.phone_number || '',
-                          country: user.country || '',
-                          timezone: user.timezone || 'UTC',
-                          language: user.language || 'en',
+                  <div>
+                    <label className="block text-sm font-medium text-och-steel mb-2">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordData.new_password}
+                      onChange={(e) =>
+                        setPasswordData({ ...passwordData, new_password: e.target.value })
+                      }
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      placeholder="Enter new password (min 8 characters)"
+                    />
+                    <p className="text-xs text-och-steel mt-1">
+                      Password must be at least 8 characters long
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-och-steel mb-2">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordData.confirm_password}
+                      onChange={(e) =>
+                        setPasswordData({ ...passwordData, confirm_password: e.target.value })
+                      }
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+
+                  {saveStatus && (
+                    <div
+                      className={`p-3 rounded-lg ${
+                        saveStatus.includes('Error')
+                          ? 'bg-och-orange/20 border border-och-orange text-och-orange'
+                          : 'bg-och-mint/20 border border-och-mint text-och-mint'
+                      }`}
+                    >
+                      {saveStatus}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <Button
+                      variant="mint"
+                      onClick={handlePasswordChange}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? 'Changing Password...' : 'Change Password'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setPasswordData({
+                          old_password: '',
+                          new_password: '',
+                          confirm_password: '',
                         })
                       }
-                    }}
-                  >
-                    Reset
-                  </Button>
+                    >
+                      Clear
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            )}
+
+            {/* Profile Picture Tab */}
+            {activeTab === 'avatar' && (
+              <Card>
+                <h2 className="text-2xl font-bold mb-4 text-white">Profile Picture</h2>
+                <div className="space-y-4">
+                  {/* Current Avatar */}
+                  <div className="flex items-center gap-6">
+                    <div className="relative">
+                      {user?.avatar_url ? (
+                        <img
+                          src={user.avatar_url}
+                          alt="Profile"
+                          className="w-32 h-32 rounded-full object-cover border-2 border-och-mint"
+                        />
+                      ) : (
+                        <div className="w-32 h-32 rounded-full bg-och-defender/20 border-2 border-och-defender flex items-center justify-center">
+                          <span className="text-4xl text-och-steel">
+                            {user?.first_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-och-steel mb-2">
+                        Upload a new profile picture. Supported formats: JPEG, PNG, GIF, WebP (max 5MB)
+                      </p>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                      />
+                      <Button
+                        variant="defender"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAvatar}
+                      >
+                        {uploadingAvatar ? 'Uploading...' : 'Choose File'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {saveStatus && (
+                    <div
+                      className={`p-3 rounded-lg ${
+                        saveStatus.includes('Error')
+                          ? 'bg-och-orange/20 border border-och-orange text-och-orange'
+                          : 'bg-och-mint/20 border border-och-mint text-och-mint'
+                      }`}
+                    >
+                      {saveStatus}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
 
             {/* Account Updates History */}
             <Card>
@@ -350,6 +667,23 @@ export default function DirectorSettingsPage() {
             <Card>
               <h2 className="text-2xl font-bold mb-4 text-white">Current Account</h2>
               <div className="space-y-4">
+                {/* Profile Picture Preview */}
+                <div className="flex justify-center">
+                  {user?.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt="Profile"
+                      className="w-24 h-24 rounded-full object-cover border-2 border-och-mint"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-och-defender/20 border-2 border-och-defender flex items-center justify-center">
+                      <span className="text-2xl text-och-steel">
+                        {user?.first_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <p className="text-sm text-och-steel mb-1">User ID</p>
                   <p className="text-white font-mono text-sm">{user?.id}</p>
@@ -357,6 +691,12 @@ export default function DirectorSettingsPage() {
                 <div>
                   <p className="text-sm text-och-steel mb-1">Email</p>
                   <p className="text-white">{user?.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-och-steel mb-1">Full Name</p>
+                  <p className="text-white">
+                    {user?.first_name || ''} {user?.last_name || ''}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-och-steel mb-1">Account Status</p>
@@ -418,24 +758,6 @@ export default function DirectorSettingsPage() {
             </Card>
 
             <Card>
-              <h2 className="text-2xl font-bold mb-4 text-white">Quick Actions</h2>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
-                  Change Password
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  Manage MFA
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  View API Keys
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  Export Data
-                </Button>
-              </div>
-            </Card>
-
-            <Card>
               <h2 className="text-2xl font-bold mb-4 text-white text-och-orange">Session</h2>
               <div className="space-y-4">
                 <div>
@@ -462,4 +784,3 @@ export default function DirectorSettingsPage() {
     </div>
   )
 }
-
