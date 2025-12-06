@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { RouteGuard } from '@/components/auth/RouteGuard'
+import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -262,33 +264,27 @@ export default function DirectorInboxPage() {
   const categories = Array.from(new Set(notifications.map((n) => n.category).filter(Boolean)))
 
   return (
-    <div className="min-h-screen bg-och-midnight">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-50 bg-och-midnight/95 backdrop-blur-sm border-b border-och-steel/20">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Inbox</h1>
-              <p className="text-sm text-och-steel">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
+    <RouteGuard>
+      <DirectorLayout>
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-4xl font-bold mb-2 text-och-defender">Inbox</h1>
+                <p className="text-och-steel">
+                  {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
+                </p>
+              </div>
               {unreadCount > 0 && (
                 <Button variant="outline" size="sm" onClick={markAllAsRead}>
                   Mark all read
                 </Button>
               )}
-              <Link href="/dashboard/director">
-                <Button variant="outline" size="sm">
-                  ← Back
-                </Button>
-              </Link>
             </div>
-          </div>
 
-          {/* Priority Pills - Instagram Story Style */}
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {/* Priority Pills */}
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => setFilter('all')}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
@@ -361,9 +357,9 @@ export default function DirectorInboxPage() {
             </button>
           </div>
 
-          {/* Category Filter */}
-          {categories.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pt-2 scrollbar-hide">
+            {/* Category Filter */}
+            {categories.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pt-2 scrollbar-hide">
               <button
                 onClick={() => setCategoryFilter('all')}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
@@ -388,12 +384,11 @@ export default function DirectorInboxPage() {
                 </button>
               ))}
             </div>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
 
-      {/* Feed Content */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
+          {/* Feed Content */}
+          <div className="py-6">
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -495,8 +490,9 @@ export default function DirectorInboxPage() {
             ))}
           </div>
         )}
-      </div>
-
+          </div>
+        </div>
+      </DirectorLayout>
       <style jsx>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
@@ -506,6 +502,6 @@ export default function DirectorInboxPage() {
           display: none;
         }
       `}</style>
-    </div>
+    </RouteGuard>
   )
 }
