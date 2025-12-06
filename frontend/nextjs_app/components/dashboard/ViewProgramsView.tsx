@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -11,10 +11,35 @@ import {
 } from '@/hooks/usePrograms'
 import type { Program } from '@/services/programsClient'
 
+// Helper function to safely format price
+const formatPrice = (price: number | string | undefined): string => {
+  if (price === undefined || price === null) return '0.00'
+  const numPrice = typeof price === 'number' ? price : parseFloat(String(price))
+  return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2)
+}
+
 export function ViewProgramsView() {
   const { programs, isLoading, error, reload } = usePrograms()
   const { updateProgram, isLoading: isUpdating } = useUpdateProgram()
   const { deleteProgram, isLoading: isDeleting } = useDeleteProgram()
+
+  // Debug: Log programs whenever they change
+  useEffect(() => {
+    console.log('📋 ViewProgramsView - Programs updated:', {
+      count: programs.length,
+      isLoading,
+      error,
+      programs: programs.map(p => ({ id: p.id, name: p.name, status: p.status }))
+    })
+  }, [programs, isLoading, error])
+
+  // Ensure programs are loaded when component mounts
+  useEffect(() => {
+    if (!isLoading && programs.length === 0 && !error) {
+      console.log('🔄 No programs found, reloading...')
+      reload()
+    }
+  }, [isLoading, programs.length, error, reload])
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Partial<Program>>({})
@@ -81,6 +106,7 @@ export function ViewProgramsView() {
         <div className="text-center py-12">
           <div className="inline-block animate-spin text-och-mint text-4xl mb-4">⏳</div>
           <p className="text-och-steel">Loading programs from database...</p>
+          <p className="text-och-steel text-sm mt-2">Fetching from /api/v1/programs/</p>
         </div>
       </Card>
     )
@@ -90,13 +116,22 @@ export function ViewProgramsView() {
     return (
       <Card>
         <div className="text-center py-8">
-          <p className="text-och-orange mb-2">Error loading programs: {error}</p>
+          <p className="text-och-orange mb-2 font-semibold">❌ Error loading programs</p>
+          <p className="text-och-steel mb-4">{error}</p>
           <p className="text-och-steel text-sm mb-4">
             Please check your connection and try again.
           </p>
-          <Button variant="outline" onClick={reload}>
-            Retry
-          </Button>
+          <div className="flex gap-3 justify-center">
+            <Button variant="outline" onClick={reload}>
+              🔄 Retry
+            </Button>
+            <Button variant="mint" onClick={() => {
+              console.log('🔄 Manual reload triggered')
+              reload()
+            }}>
+              Force Reload
+            </Button>
+          </div>
         </div>
       </Card>
     )
@@ -163,8 +198,15 @@ export function ViewProgramsView() {
             </select>
           </div>
         </div>
-        <div className="mt-4 text-sm text-och-steel">
-          Showing {filteredPrograms.length} of {programs.length} programs
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-och-steel">
+            Showing <strong className="text-white">{filteredPrograms.length}</strong> of <strong className="text-white">{programs.length}</strong> programs
+          </div>
+          {programs.length > 0 && (
+            <div className="text-xs text-och-steel">
+              Last updated: {new Date().toLocaleTimeString()}
+            </div>
+          )}
         </div>
       </Card>
 
@@ -176,9 +218,27 @@ export function ViewProgramsView() {
             <p className="text-och-steel mb-2">
               {searchQuery || filterCategory !== 'all' || filterStatus !== 'all'
                 ? 'No programs match your filters'
-                : 'No programs found in database'}
+                : programs.length === 0
+                ? 'No programs found in database'
+                : 'No programs match your current filters'}
             </p>
-            {searchQuery || filterCategory !== 'all' || filterStatus !== 'all' ? (
+            {programs.length === 0 ? (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm text-och-steel">
+                  Total programs in database: {programs.length}
+                </p>
+                <Button
+                  variant="mint"
+                  onClick={() => {
+                    console.log('🔄 Reloading programs...')
+                    reload()
+                  }}
+                  className="mt-4"
+                >
+                  🔄 Reload Programs
+                </Button>
+              </div>
+            ) : searchQuery || filterCategory !== 'all' || filterStatus !== 'all' ? (
               <Button
                 variant="outline"
                 onClick={() => {
@@ -348,7 +408,7 @@ export function ViewProgramsView() {
                         </span>
                         <span>
                           <strong className="text-white">Price:</strong> {program.currency}{' '}
-                          {program.default_price.toFixed(2)}
+                          {formatPrice(program.default_price)}
                         </span>
                         <span>
                           <strong className="text-white">Created:</strong>{' '}
@@ -383,4 +443,5 @@ export function ViewProgramsView() {
     </div>
   )
 }
+
 

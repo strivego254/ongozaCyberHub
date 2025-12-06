@@ -10,12 +10,12 @@ from django.db.models import Q, Count, Avg, Sum, F, Case, When, IntegerField
 from django.utils import timezone
 from datetime import timedelta
 from programs.models import (
-    Program, Track, Specialization, Cohort, Enrollment,
+    Program, Track, Milestone, Module, Specialization, Cohort, Enrollment,
     CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
 )
 from programs.serializers import (
-    ProgramSerializer, TrackSerializer, SpecializationSerializer,
-    CohortSerializer, EnrollmentSerializer, CalendarEventSerializer,
+    ProgramSerializer, ProgramDetailSerializer, TrackSerializer, MilestoneSerializer, ModuleSerializer,
+    SpecializationSerializer, CohortSerializer, EnrollmentSerializer, CalendarEventSerializer,
     MentorAssignmentSerializer, ProgramRuleSerializer, CertificateSerializer,
     CohortDashboardSerializer, WaitlistSerializer
 )
@@ -184,28 +184,48 @@ def director_dashboard(request):
 
 
 class ProgramViewSet(viewsets.ModelViewSet):
-    """ViewSet for Program model."""
+    """ViewSet for Program model with full CRUD support."""
     queryset = Program.objects.all()
     serializer_class = ProgramSerializer
     permission_classes = [IsAuthenticated]
     
+    def get_serializer_class(self):
+        """Use detail serializer for retrieve action."""
+        if self.action == 'retrieve':
+            return ProgramDetailSerializer
+        return ProgramSerializer
+    
     def get_queryset(self):
-        """Filter programs based on user permissions."""
+        """Filter programs based on user permissions and query params."""
         user = self.request.user
-        if user.is_staff:
-            return Program.objects.all()
-        # Directors can see programs they direct (via tracks)
-        # Also allow programs with no tracks if the director has created tracks elsewhere
-        # (this allows seeing newly created programs before tracks are added)
-        director_has_tracks = user.directed_tracks.exists()
-        if director_has_tracks:
-            # Director has tracks, show programs they direct OR programs with no tracks
-            return Program.objects.filter(
-                Q(tracks__director=user) | Q(tracks__isnull=True)
-            ).distinct()
-        else:
-            # New director with no tracks yet, show all programs (they can create tracks)
-            return Program.objects.all()
+        queryset = Program.objects.all()
+        
+        # Filter by category
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+        
+        # Filter by status
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        # Search by name
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(description__icontains=search)
+            )
+        
+        # Permission filtering
+        if not user.is_staff:
+            director_has_tracks = user.directed_tracks.exists()
+            if director_has_tracks:
+                queryset = queryset.filter(
+                    Q(tracks__director=user) | Q(tracks__isnull=True)
+                ).distinct()
+        
+        return queryset.order_by('-created_at')
 
 
 class TrackViewSet(viewsets.ModelViewSet):
@@ -218,15 +238,56 @@ class TrackViewSet(viewsets.ModelViewSet):
         """Filter tracks based on user permissions."""
         user = self.request.user
         program_id = self.request.query_params.get('program_id')
+        track_type = self.request.query_params.get('track_type')
         queryset = Track.objects.all()
         
         if program_id:
             queryset = queryset.filter(program_id=program_id)
         
+        if track_type:
+            queryset = queryset.filter(track_type=track_type)
+        
         if not user.is_staff:
             queryset = queryset.filter(Q(director=user) | Q(program__tracks__director=user)).distinct()
         
         return queryset
+
+
+class MilestoneViewSet(viewsets.ModelViewSet):
+    """ViewSet for Milestone model."""
+    queryset = Milestone.objects.all()
+    serializer_class = MilestoneSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filter milestones by track."""
+        track_id = self.request.query_params.get('track_id')
+        queryset = Milestone.objects.all()
+        
+        if track_id:
+            queryset = queryset.filter(track_id=track_id)
+        
+        return queryset.order_by('track', 'order')
+
+
+class ModuleViewSet(viewsets.ModelViewSet):
+    """ViewSet for Module model."""
+    queryset = Module.objects.all()
+    serializer_class = ModuleSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filter modules by milestone or track."""
+        milestone_id = self.request.query_params.get('milestone_id')
+        track_id = self.request.query_params.get('track_id')
+        queryset = Module.objects.all()
+        
+        if milestone_id:
+            queryset = queryset.filter(milestone_id=milestone_id)
+        elif track_id:
+            queryset = queryset.filter(milestone__track_id=track_id)
+        
+        return queryset.order_by('milestone', 'order')
 
 
 class CohortViewSet(viewsets.ModelViewSet):

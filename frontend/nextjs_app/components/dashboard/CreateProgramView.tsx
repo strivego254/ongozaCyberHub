@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/Button'
 import { useCreateProgram, usePrograms } from '@/hooks/usePrograms'
 import type { Program } from '@/services/programsClient'
 
+// Helper function to safely format price
+const formatPrice = (price: number | string | undefined): string => {
+  if (price === undefined || price === null) return '0.00'
+  const numPrice = typeof price === 'number' ? price : parseFloat(String(price))
+  return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2)
+}
+
 export function CreateProgramView() {
   const { createProgram, isLoading: isCreating, error: createError } = useCreateProgram()
   const { programs, reload } = usePrograms()
@@ -269,7 +276,7 @@ export function CreateProgramView() {
                     <p className="text-white font-semibold">{program.name}</p>
                     <p className="text-xs text-och-steel">
                       {program.category} • {program.duration_months} months •{' '}
-                      {program.currency} {program.default_price.toFixed(2)}
+                      {program.currency} {formatPrice(program.default_price)}
                     </p>
                   </div>
                   <span
@@ -295,4 +302,5 @@ export function CreateProgramView() {
     </div>
   )
 }
+
 

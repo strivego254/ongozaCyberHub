@@ -30,16 +30,22 @@ export function DirectorSidebar({ activeView, onViewChange }: DirectorSidebarPro
       onClick: () => onViewChange('dashboard'),
     },
     {
+      id: 'inbox',
+      label: 'Inbox',
+      icon: '🔔',
+      href: '/dashboard/director/inbox',
+    },
+    {
+      id: 'view-programs',
+      label: 'Programs',
+      icon: '📋',
+      onClick: () => onViewChange('view-programs'),
+    },
+    {
       id: 'create-program',
       label: 'Create Program',
       icon: '➕',
       onClick: () => onViewChange('create-program'),
-    },
-    {
-      id: 'view-programs',
-      label: 'View Programs',
-      icon: '📋',
-      onClick: () => onViewChange('view-programs'),
     },
     {
       id: 'cohorts',

@@ -12,6 +12,13 @@ import {
 } from '@/hooks/usePrograms'
 import type { Program } from '@/services/programsClient'
 
+// Helper function to safely format price
+const formatPrice = (price: number | string | undefined): string => {
+  if (price === undefined || price === null) return '0.00'
+  const numPrice = typeof price === 'number' ? price : parseFloat(String(price))
+  return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2)
+}
+
 interface ProgramsManagementProps {
   onCreateNew?: () => void
   showCreateFormByDefault?: boolean
@@ -399,7 +406,7 @@ export function ProgramsManagement({
                     <div className="flex gap-4 text-sm text-och-steel">
                       <span>Duration: {program.duration_months} months</span>
                       <span>
-                        Price: {program.currency} {program.default_price.toFixed(2)}
+                        Price: {program.currency} {formatPrice(program.default_price)}
                       </span>
                       <span>
                         Created: {new Date(program.created_at).toLocaleDateString()}

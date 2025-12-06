@@ -16,6 +16,17 @@ interface Notification {
   onAction?: () => void
 }
 
+interface Notification {
+  id: string
+  type: 'info' | 'warning' | 'success' | 'error' | 'alert' | 'request' | 'review'
+  title: string
+  message: string
+  severity?: 'critical' | 'high' | 'medium' | 'low'
+  timestamp: string
+  actionUrl?: string
+  onAction?: () => void
+}
+
 interface ActionCenterProps {
   notifications?: Notification[]
   pendingRequests?: Array<{
@@ -79,6 +90,14 @@ export function ActionCenter({
         return '👤'
       case 'cohort_placement':
         return '📍'
+      case 'info':
+        return 'ℹ️'
+      case 'warning':
+        return '⚠️'
+      case 'success':
+        return '✅'
+      case 'error':
+        return '❌'
       default:
         return '🔔'
     }
@@ -232,17 +251,49 @@ export function ActionCenter({
       {/* Notifications */}
       {notifications.length > 0 && (
         <Card>
-          <h3 className="text-lg font-semibold text-white mb-3">Notifications</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <span>🔔</span>
+              Notifications ({notifications.length})
+            </h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Mark all as read
+                notifications.forEach((n) => n.onAction?.())
+              }}
+            >
+              Mark all read
+            </Button>
+          </div>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {notifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`p-3 rounded-lg border ${getSeverityColor(notification.severity)}`}
+                className={`p-3 rounded-lg border ${getSeverityColor(notification.severity)} cursor-pointer hover:opacity-80 transition-opacity`}
+                onClick={notification.onAction}
               >
                 <div className="flex items-start gap-3">
                   <span className="text-xl">{getTypeIcon(notification.type)}</span>
                   <div className="flex-1">
-                    <p className="font-semibold text-white">{notification.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-white">{notification.title}</p>
+                      {notification.severity && (
+                        <Badge
+                          variant={
+                            notification.severity === 'critical'
+                              ? 'orange'
+                              : notification.severity === 'high'
+                              ? 'orange'
+                              : 'defender'
+                          }
+                          className="text-xs"
+                        >
+                          {notification.severity}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-och-steel mt-1">{notification.message}</p>
                     <p className="text-xs text-och-steel mt-2">
                       {new Date(notification.timestamp).toLocaleString()}
@@ -267,4 +318,6 @@ export function ActionCenter({
     </div>
   )
 }
+
+
 

@@ -169,7 +169,7 @@ export const djangoClient = {
      * Update user profile
      */
     async updateUser(id: number, data: Partial<User>): Promise<User> {
-      return apiGateway.patch(`/users/${id}`, data);
+      return apiGateway.patch(`/users/${id}/`, data);
     },
   },
 
