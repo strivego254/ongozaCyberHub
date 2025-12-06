@@ -3,23 +3,65 @@ Serializers for Programs app.
 """
 from rest_framework import serializers
 from .models import (
-    Program, Track, Specialization, Cohort, Enrollment,
+    Program, Track, Milestone, Module, Specialization, Cohort, Enrollment,
     CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
 )
 
 
-class ProgramSerializer(serializers.ModelSerializer):
+# Define serializers in dependency order: Module -> Milestone -> Track -> Program
+
+class ModuleSerializer(serializers.ModelSerializer):
+    milestone_name = serializers.CharField(source='milestone.name', read_only=True)
+    applicable_track_names = serializers.SerializerMethodField()
+    
     class Meta:
-        model = Program
+        model = Module
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_applicable_track_names(self, obj):
+        return [track.name for track in obj.applicable_tracks.all()]
+
+
+class MilestoneSerializer(serializers.ModelSerializer):
+    track_name = serializers.CharField(source='track.name', read_only=True)
+    modules = ModuleSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Milestone
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class TrackSerializer(serializers.ModelSerializer):
     program_name = serializers.CharField(source='program.name', read_only=True)
+    milestones = MilestoneSerializer(many=True, read_only=True)
     
     class Meta:
         model = Track
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ProgramSerializer(serializers.ModelSerializer):
+    tracks = TrackSerializer(many=True, read_only=True)
+    tracks_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Program
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_tracks_count(self, obj):
+        return obj.tracks.count()
+
+
+class ProgramDetailSerializer(serializers.ModelSerializer):
+    """Detailed serializer with nested tracks, milestones, and modules."""
+    tracks = TrackSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Program
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
 

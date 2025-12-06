@@ -1,15 +1,43 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { usePrograms } from '@/hooks/usePrograms'
+import { usePrograms, useDeleteProgram } from '@/hooks/usePrograms'
+import { programsClient } from '@/services/programsClient'
 import Link from 'next/link'
 
 export default function ProgramsPage() {
-  const { programs, isLoading } = usePrograms()
+  const { programs, isLoading, reload } = usePrograms()
+  const { deleteProgram, isLoading: isDeleting } = useDeleteProgram()
+  const [filterCategory, setFilterCategory] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredPrograms = useMemo(() => {
+    return programs.filter((program) => {
+      if (filterCategory !== 'all' && program.category !== filterCategory) return false
+      if (filterStatus !== 'all' && program.status !== filterStatus) return false
+      if (searchQuery && !program.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
+          !program.description?.toLowerCase().includes(searchQuery.toLowerCase())) return false
+      return true
+    })
+  }, [programs, filterCategory, filterStatus, searchQuery])
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      return
+    }
+    try {
+      await deleteProgram(id)
+      await reload()
+    } catch (err) {
+      console.error('Failed to delete program:', err)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -30,28 +58,79 @@ export default function ProgramsPage() {
     <RouteGuard>
       <DirectorLayout>
         <div className="max-w-7xl mx-auto">
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold mb-2 text-och-defender">Programs & Cohorts</h1>
-              <p className="text-och-steel">Manage programs, tracks, and cohorts</p>
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-4xl font-bold mb-2 text-och-defender">Programs & Cohorts</h1>
+                <p className="text-och-steel">Manage programs, tracks, and cohorts</p>
+              </div>
+              <div className="flex gap-3">
+                <Link href="/dashboard/director/programs/new">
+                  <Button variant="defender" size="sm">
+                    + Create Program
+                  </Button>
+                </Link>
+                <Link href="/dashboard/director/cohorts/new">
+                  <Button variant="outline" size="sm">
+                    + Create Cohort
+                  </Button>
+                </Link>
+              </div>
             </div>
-            <div className="flex gap-3">
-              <Link href="/dashboard/director/programs/new">
-                <Button variant="defender" size="sm">
-                  + Create Program
-                </Button>
-              </Link>
-              <Link href="/dashboard/director/cohorts/new">
-                <Button variant="outline" size="sm">
-                  + Create Cohort
-                </Button>
-              </Link>
-            </div>
+
+            {/* Filters */}
+            <Card>
+              <div className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Search</label>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search programs..."
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Category</label>
+                    <select
+                      value={filterCategory}
+                      onChange={(e) => setFilterCategory(e.target.value)}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    >
+                      <option value="all">All Categories</option>
+                      <option value="technical">Technical</option>
+                      <option value="leadership">Leadership</option>
+                      <option value="mentorship">Mentorship</option>
+                      <option value="executive">Executive</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Status</label>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div className="mb-4 text-och-steel">
+            Showing {filteredPrograms.length} of {programs.length} programs
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {programs && programs.length > 0 ? (
-              programs.map((program: any) => (
+            {filteredPrograms && filteredPrograms.length > 0 ? (
+              filteredPrograms.map((program: any) => (
                 <Card key={program.id}>
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-3">
@@ -78,14 +157,23 @@ export default function ProgramsPage() {
                     <div className="flex gap-2">
                       <Link href={`/dashboard/director/programs/${program.id}`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full">
-                          View Details
+                          View
                         </Button>
                       </Link>
                       <Link href={`/dashboard/director/programs/${program.id}/edit`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">
+                        <Button variant="defender" size="sm" className="w-full">
                           Edit
                         </Button>
                       </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(program.id, program.name)}
+                        disabled={isDeleting}
+                        className="text-och-orange hover:text-och-orange/80 hover:border-och-orange"
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </Card>

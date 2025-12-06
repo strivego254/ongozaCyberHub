@@ -6,9 +6,11 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ProgramViewSet, TrackViewSet, CohortViewSet,
     ProgramRuleViewSet, CertificateViewSet,
+    MilestoneViewSet, ModuleViewSet,
     DirectorProgramViewSet, DirectorTrackViewSet, DirectorCohortViewSet,
     DirectorMentorViewSet, DirectorDashboardViewSet,
-    DirectorProgramRuleViewSet, director_dashboard
+    DirectorProgramRuleViewSet, ProgramManagementViewSet,
+    director_dashboard
 )
 from .director_dashboard_views import (
     director_dashboard_summary,
@@ -18,7 +20,10 @@ from .director_dashboard_views import (
 
 router = DefaultRouter()
 router.register(r'programs', ProgramViewSet, basename='program')
+router.register(r'programs-management', ProgramManagementViewSet, basename='program-management')
 router.register(r'tracks', TrackViewSet, basename='track')
+router.register(r'milestones', MilestoneViewSet, basename='milestone')
+router.register(r'modules', ModuleViewSet, basename='module')
 router.register(r'cohorts', CohortViewSet, basename='cohort')
 router.register(r'rules', ProgramRuleViewSet, basename='rule')
 router.register(r'certificates', CertificateViewSet, basename='certificate')
