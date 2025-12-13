@@ -46,24 +46,168 @@ class TrackSerializer(serializers.ModelSerializer):
 class ProgramSerializer(serializers.ModelSerializer):
     tracks = TrackSerializer(many=True, read_only=True)
     tracks_count = serializers.SerializerMethodField()
+    categories = serializers.ListField(
+        child=serializers.ChoiceField(choices=Program.PROGRAM_CATEGORY_CHOICES),
+        required=False,
+        allow_empty=True,
+        help_text='List of categories'
+    )
+    category = serializers.ChoiceField(
+        choices=Program.PROGRAM_CATEGORY_CHOICES,
+        required=False,
+        help_text='Primary category (auto-set from categories if not provided)'
+    )
     
     class Meta:
         model = Program
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
     
+    def validate(self, data):
+        """Ensure either category or categories is provided."""
+        categories = data.get('categories', [])
+        category = data.get('category')
+        
+        # If categories provided but no category, set category from first
+        if categories and not category:
+            data['category'] = categories[0]
+        # If category provided but no categories, set categories from category
+        elif category and not categories:
+            data['categories'] = [category]
+        # If neither provided, use default
+        elif not category and not categories:
+            data['category'] = 'technical'
+            data['categories'] = ['technical']
+        
+        return data
+    
     def get_tracks_count(self, obj):
         return obj.tracks.count()
+    
+    def create(self, validated_data):
+        """Handle categories array and ensure backward compatibility with category field."""
+        categories = validated_data.pop('categories', None)
+        category = validated_data.get('category')
+        
+        # If categories provided, use first as primary category for backward compatibility
+        if categories:
+            validated_data['category'] = categories[0]
+            program = super().create(validated_data)
+            program.categories = categories
+            program.save()
+        # If only category provided (backward compatibility), populate categories array
+        elif category:
+            program = super().create(validated_data)
+            program.categories = [category]
+            program.save()
+        else:
+            # Default to empty categories if neither provided
+            program = super().create(validated_data)
+            program.categories = []
+            program.save()
+        return program
+    
+    def update(self, instance, validated_data):
+        """Handle categories array and ensure backward compatibility with category field."""
+        categories = validated_data.pop('categories', None)
+        category = validated_data.get('category', None)
+        
+        # If categories provided, use first as primary category for backward compatibility
+        if categories is not None:
+            if categories:
+                validated_data['category'] = categories[0]
+                instance.categories = categories
+            else:
+                # If empty array, keep existing category but clear categories
+                instance.categories = []
+        # If only category provided (backward compatibility), update categories array
+        elif category and category != instance.category:
+            instance.categories = [category]
+        
+        program = super().update(instance, validated_data)
+        return program
 
 
 class ProgramDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer with nested tracks, milestones, and modules."""
     tracks = TrackSerializer(many=True, read_only=True)
+    categories = serializers.ListField(
+        child=serializers.ChoiceField(choices=Program.PROGRAM_CATEGORY_CHOICES),
+        required=False,
+        allow_empty=True,
+        help_text='List of categories'
+    )
+    category = serializers.ChoiceField(
+        choices=Program.PROGRAM_CATEGORY_CHOICES,
+        required=False,
+        help_text='Primary category (auto-set from categories if not provided)'
+    )
     
     class Meta:
         model = Program
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate(self, data):
+        """Ensure either category or categories is provided."""
+        categories = data.get('categories', [])
+        category = data.get('category')
+        
+        # If categories provided but no category, set category from first
+        if categories and not category:
+            data['category'] = categories[0]
+        # If category provided but no categories, set categories from category
+        elif category and not categories:
+            data['categories'] = [category]
+        # If neither provided, use default
+        elif not category and not categories:
+            data['category'] = 'technical'
+            data['categories'] = ['technical']
+        
+        return data
+    
+    def create(self, validated_data):
+        """Handle categories array and ensure backward compatibility with category field."""
+        categories = validated_data.pop('categories', None)
+        category = validated_data.get('category')
+        
+        # If categories provided, use first as primary category for backward compatibility
+        if categories:
+            validated_data['category'] = categories[0]
+            program = super().create(validated_data)
+            program.categories = categories
+            program.save()
+        # If only category provided (backward compatibility), populate categories array
+        elif category:
+            program = super().create(validated_data)
+            program.categories = [category]
+            program.save()
+        else:
+            # Default to empty categories if neither provided
+            program = super().create(validated_data)
+            program.categories = []
+            program.save()
+        return program
+    
+    def update(self, instance, validated_data):
+        """Handle categories array and ensure backward compatibility with category field."""
+        categories = validated_data.pop('categories', None)
+        category = validated_data.get('category', None)
+        
+        # If categories provided, use first as primary category for backward compatibility
+        if categories is not None:
+            if categories:
+                validated_data['category'] = categories[0]
+                instance.categories = categories
+            else:
+                # If empty array, keep existing category but clear categories
+                instance.categories = []
+        # If only category provided (backward compatibility), update categories array
+        elif category and category != instance.category:
+            instance.categories = [category]
+        
+        program = super().update(instance, validated_data)
+        return program
 
 
 class SpecializationSerializer(serializers.ModelSerializer):

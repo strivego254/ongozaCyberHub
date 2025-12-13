@@ -9,8 +9,14 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
     """Serializer for subscription plans."""
     class Meta:
         model = SubscriptionPlan
-        fields = ['id', 'name', 'price_monthly', 'features', 'max_missions_monthly', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = [
+            'id', 'name', 'tier', 'price_monthly', 'features',
+            'ai_coach_daily_limit', 'portfolio_item_limit',
+            'missions_access_type', 'mentorship_access',
+            'talentscope_access', 'marketplace_contact',
+            'enhanced_access_days', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class UserSubscriptionSerializer(serializers.ModelSerializer):

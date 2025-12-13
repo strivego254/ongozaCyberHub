@@ -1,77 +1,144 @@
 #!/usr/bin/env python
 """
-Fix all migration state inconsistencies.
-Removes incorrectly applied migrations so we can apply in correct order.
+Fix migration state when database tables already exist.
+Fakes all migrations for tables that already exist in the database.
 """
 import os
 import sys
 import django
 
+# Setup Django
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.development')
 django.setup()
 
+from django.core.management import call_command
 from django.db import connection
+from django.apps import apps
 
-def fix_migration_state():
-    """Remove incorrectly applied migrations."""
+def check_table_exists(table_name):
+    """Check if a table exists in the database."""
     with connection.cursor() as cursor:
-        # List all student_dashboard migrations
         cursor.execute("""
-            SELECT id, app, name 
-            FROM django_migrations 
-            WHERE app = 'student_dashboard' 
-            ORDER BY name;
-        """)
-        current = cursor.fetchall()
-        
-        print("Current student_dashboard migrations in database:")
-        for id, app, name in current:
-            print(f"  ID: {id} - {name}")
-        
-        # Remove any RLS policies migrations that shouldn't be there
-        print("\nCleaning up migration state...")
-        
-        # Remove 0002_add_rls_policies if it exists (should be 0003)
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = %s
+            );
+        """, [table_name])
+        return cursor.fetchone()[0]
+
+def get_all_tables():
+    """Get all tables in the database."""
+    with connection.cursor() as cursor:
         cursor.execute("""
-            DELETE FROM django_migrations 
-            WHERE app = 'student_dashboard' 
-            AND name = '0002_add_rls_policies';
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_type = 'BASE TABLE'
+            ORDER BY table_name;
         """)
-        removed1 = cursor.rowcount
-        
-        # Remove 0003_add_rls_policies if it exists (will be reapplied)
-        cursor.execute("""
-            DELETE FROM django_migrations 
-            WHERE app = 'student_dashboard' 
-            AND name = '0003_add_rls_policies';
-        """)
-        removed2 = cursor.rowcount
-        
-        print(f"Removed {removed1 + removed2} incorrect migration record(s)")
-        
-        # Verify final state
-        cursor.execute("""
-            SELECT app, name 
-            FROM django_migrations 
-            WHERE app = 'student_dashboard' 
-            ORDER BY name;
-        """)
-        after = cursor.fetchall()
-        print("\nFinal student_dashboard migrations in database:")
-        for app, name in after:
-            print(f"  - {name}")
-        
-        if len(after) == 0 or (len(after) == 1 and after[0][1] == '0001_initial'):
-            print("\n✅ Migration state cleaned! You can now run: python manage.py migrate")
-        else:
-            print(f"\n⚠️  Still have {len(after)} migration(s) in database")
+        return [row[0] for row in cursor.fetchall()]
+
+def get_app_for_table(table_name):
+    """Try to determine which app a table belongs to."""
+    # Map common Django tables
+    django_tables = {
+        'django_admin_log': 'admin',
+        'django_content_type': 'contenttypes',
+        'django_migrations': 'migrations',
+        'django_session': 'sessions',
+        'auth_group': 'auth',
+        'auth_group_permissions': 'auth',
+        'auth_permission': 'auth',
+        'auth_user': 'auth',
+        'auth_user_groups': 'auth',
+        'auth_user_user_permissions': 'auth',
+    }
+    
+    if table_name in django_tables:
+        return django_tables[table_name]
+    
+    # Try to find app by model
+    for app_config in apps.get_app_configs():
+        for model in app_config.get_models():
+            if hasattr(model, '_meta') and model._meta.db_table == table_name:
+                return app_config.label
+    
+    return None
+
+def main():
+    print("=" * 70)
+    print("Fixing Migration State - Faking Migrations for Existing Tables")
+    print("=" * 70)
+    print()
+    
+    # Get all existing tables
+    existing_tables = get_all_tables()
+    print(f"Found {len(existing_tables)} tables in database")
+    print()
+    
+    # Django core apps that should be faked
+    django_core_apps = [
+        'admin',
+        'auth',
+        'contenttypes',
+        'sessions',
+    ]
+    
+    # Fake Django core migrations
+    print("Step 1: Faking Django core migrations...")
+    for app in django_core_apps:
+        try:
+            print(f"  Faking {app} migrations...", end=' ')
+            call_command('migrate', app, '--fake', verbosity=0)
+            print("✅")
+        except Exception as e:
+            print(f"⚠️  {e}")
+    
+    print()
+    
+    # Fake organizations if table exists
+    if check_table_exists('organizations'):
+        print("Step 2: Faking organizations migrations...")
+        try:
+            call_command('migrate', 'organizations', '--fake', verbosity=2)
+            print("✅ Organizations migrations faked")
+        except Exception as e:
+            print(f"⚠️  Organizations: {e}")
+        print()
+    
+    # Fake users if table exists
+    if check_table_exists('users'):
+        print("Step 3: Faking users migrations...")
+        try:
+            call_command('migrate', 'users', '--fake', verbosity=2)
+            print("✅ Users migrations faked")
+        except Exception as e:
+            print(f"⚠️  Users: {e}")
+        print()
+    
+    # Now try to run real migrations
+    print("Step 4: Running remaining migrations...")
+    print("-" * 70)
+    try:
+        call_command('migrate', verbosity=2)
+        print()
+        print("=" * 70)
+        print("✅ All migrations completed successfully!")
+        print("=" * 70)
+        return True
+    except Exception as e:
+        print()
+        print("=" * 70)
+        print("❌ Migration failed")
+        print("=" * 70)
+        print(f"Error: {e}")
+        print()
+        print("You may need to fake additional migrations manually:")
+        print("  python manage.py migrate <app_name> --fake")
+        return False
 
 if __name__ == '__main__':
-    try:
-        fix_migration_state()
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    success = main()
+    sys.exit(0 if success else 1)

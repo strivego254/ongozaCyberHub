@@ -27,7 +27,12 @@ class Program(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200)
-    category = models.CharField(max_length=20, choices=PROGRAM_CATEGORY_CHOICES)
+    category = models.CharField(max_length=20, choices=PROGRAM_CATEGORY_CHOICES, help_text='Primary category (kept for backward compatibility)')
+    categories = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of categories: ["technical", "leadership", "mentorship", "executive"]'
+    )
     description = models.TextField(blank=True)
     duration_months = models.IntegerField(validators=[MinValueValidator(1)])
     default_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -44,6 +49,9 @@ class Program(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
+        if self.categories:
+            cats = ', '.join(self.categories)
+            return f"{self.name} ({cats})"
         return f"{self.name} ({self.category})"
 
 

@@ -200,10 +200,14 @@ class ProgramViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Program.objects.all()
         
-        # Filter by category
+        # Filter by category (check both category field and categories array)
         category = self.request.query_params.get('category')
         if category:
-            queryset = queryset.filter(category=category)
+            # Check if category matches the primary category field OR is in the categories array
+            # For PostgreSQL JSONField, __contains checks if the JSON array contains the value
+            queryset = queryset.filter(
+                Q(category=category) | Q(categories__contains=[category])
+            )
         
         # Filter by status
         status_filter = self.request.query_params.get('status')

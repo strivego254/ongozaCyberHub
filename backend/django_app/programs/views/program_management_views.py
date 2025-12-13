@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from django.db.models import Q
 from django.db import transaction
+from django.conf import settings
 from programs.models import Program, Track, Milestone, Module
 from programs.serializers import (
     ProgramSerializer, ProgramDetailSerializer,
@@ -29,10 +30,13 @@ class ProgramManagementViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Program.objects.all()
         
-        # Filter by category
+        # Filter by category (check both category field and categories array)
         category = self.request.query_params.get('category')
         if category:
-            queryset = queryset.filter(category=category)
+            # Check if category matches the primary category field OR is in the categories array
+            queryset = queryset.filter(
+                Q(category=category) | Q(categories__contains=[category])
+            )
         
         # Filter by status
         status_filter = self.request.query_params.get('status')
@@ -76,7 +80,11 @@ class ProgramManagementViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 # Create program
                 program_serializer = self.get_serializer(data=data)
-                program_serializer.is_valid(raise_exception=True)
+                if not program_serializer.is_valid():
+                    return Response(
+                        {'error': 'Validation failed', 'details': program_serializer.errors},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
                 program = program_serializer.save()
                 
                 # Create tracks with milestones and modules
@@ -85,7 +93,11 @@ class ProgramManagementViewSet(viewsets.ModelViewSet):
                     track_data['program'] = program.id
                     
                     track_serializer = TrackSerializer(data=track_data)
-                    track_serializer.is_valid(raise_exception=True)
+                    if not track_serializer.is_valid():
+                        return Response(
+                            {'error': 'Track validation failed', 'details': track_serializer.errors},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
                     track = track_serializer.save()
                     
                     # Create milestones with modules
@@ -94,7 +106,11 @@ class ProgramManagementViewSet(viewsets.ModelViewSet):
                         milestone_data['track'] = track.id
                         
                         milestone_serializer = MilestoneSerializer(data=milestone_data)
-                        milestone_serializer.is_valid(raise_exception=True)
+                        if not milestone_serializer.is_valid():
+                            return Response(
+                                {'error': 'Milestone validation failed', 'details': milestone_serializer.errors},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
                         milestone = milestone_serializer.save()
                         
                         # Create modules
@@ -103,7 +119,11 @@ class ProgramManagementViewSet(viewsets.ModelViewSet):
                             module_data['milestone'] = milestone.id
                             
                             module_serializer = ModuleSerializer(data=module_data)
-                            module_serializer.is_valid(raise_exception=True)
+                            if not module_serializer.is_valid():
+                                return Response(
+                                    {'error': 'Module validation failed', 'details': module_serializer.errors},
+                                    status=status.HTTP_400_BAD_REQUEST
+                                )
                             module = module_serializer.save()
                             
                             # Set Many-to-Many relationships for cross-track content
