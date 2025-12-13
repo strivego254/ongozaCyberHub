@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'mentorship',
     'profiler',
     'coaching',
+    'curriculum',
     'missions',
     'subscriptions',
     'mentorship_coordination',

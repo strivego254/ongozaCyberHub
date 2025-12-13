@@ -133,9 +133,7 @@ Artifacts: {[f"{a.type}: {a.filename or a.url}" for a in artifacts]}
         # Update submission and create AI feedback
         with transaction.atomic():
             submission.ai_score = ai_score
-            submission.status = 'in_ai_review'
             submission.ai_reviewed_at = timezone.now()
-            submission.save()
             
             # Create or update AI feedback
             ai_feedback, created = AIFeedback.objects.get_or_create(
@@ -158,23 +156,16 @@ Artifacts: {[f"{a.type}: {a.filename or a.url}" for a in artifacts]}
                 ai_feedback.full_feedback = full_feedback
                 ai_feedback.save()
             
-            # Update status based on tier
-            user_tier = get_user_tier(submission.user.id)
-            if user_tier == 'professional_7':
-                submission.status = 'ai_reviewed'  # Wait for mentor review
-            else:
-                # Auto-approve for non-7-tier
-                submission.status = 'approved'
-                submission.reviewed_at = timezone.now()
-            
+            # Update status to ai_reviewed (ready for mentor review if tier 7)
+            submission.status = 'ai_reviewed'
             submission.save()
             
-            # Invalidate cache
-            cache_key = f'mission_funnel:{submission.user.id}'
-            cache.delete(cache_key)
-            
-            # Auto-link to portfolio if approved
-            if submission.status == 'approved':
+            # Auto-link to portfolio if approved (for non-tier-7 auto-approval)
+            user_tier = get_user_tier(submission.user.id)
+            if user_tier == 'professional_7':
+                # Tier 7 waits for mentor review
+                pass
+            elif submission.status == 'approved':
                 try:
                     from portfolio.models import PortfolioItem
                     portfolio_item, created = PortfolioItem.objects.get_or_create(

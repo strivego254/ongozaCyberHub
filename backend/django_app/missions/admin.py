@@ -21,8 +21,8 @@ class MissionSubmissionAdmin(admin.ModelAdmin):
 
 @admin.register(MissionArtifact)
 class MissionArtifactAdmin(admin.ModelAdmin):
-    list_display = ['type', 'filename', 'submission', 'size_bytes', 'created_at']
-    list_filter = ['type', 'created_at']
+    list_display = ['kind', 'filename', 'submission', 'size_bytes', 'created_at']
+    list_filter = ['kind', 'created_at']
     search_fields = ['filename', 'submission__mission__title']
 
 

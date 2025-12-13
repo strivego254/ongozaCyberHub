@@ -79,6 +79,8 @@ class Mission(models.Model):
 class MissionSubmission(models.Model):
     """User submission for a mission."""
     STATUS_CHOICES = [
+        ('not_started', 'Not Started'),
+        ('in_progress', 'In Progress'),
         ('draft', 'Draft'),
         ('submitted', 'Submitted'),
         ('ai_reviewed', 'AI Reviewed'),
@@ -107,7 +109,7 @@ class MissionSubmission(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default='draft',
+        default='not_started',
         db_index=True
     )
     ai_score = models.DecimalField(
@@ -155,7 +157,7 @@ class MissionSubmission(models.Model):
 
 class MissionArtifact(models.Model):
     """Artifact (file, link, video) for mission submission."""
-    TYPE_CHOICES = [
+    KIND_CHOICES = [
         ('file', 'File'),
         ('github', 'GitHub'),
         ('notebook', 'Notebook'),
@@ -170,10 +172,11 @@ class MissionArtifact(models.Model):
         related_name='artifacts',
         db_index=True
     )
-    type = models.CharField(
+    kind = models.CharField(
         max_length=20,
-        choices=TYPE_CHOICES,
-        db_index=True
+        choices=KIND_CHOICES,
+        db_index=True,
+        help_text='Type of artifact'
     )
     url = models.URLField(max_length=500, help_text='S3 signed URL, GitHub link, or video URL')
     filename = models.CharField(max_length=255, blank=True)
@@ -184,12 +187,12 @@ class MissionArtifact(models.Model):
     class Meta:
         db_table = 'mission_artifacts'
         indexes = [
-            models.Index(fields=['submission', 'type']),
+            models.Index(fields=['submission', 'kind']),
             models.Index(fields=['submission', 'created_at']),
         ]
     
     def __str__(self):
-        return f"Artifact: {self.type} ({self.submission.mission.code})"
+        return f"Artifact: {self.kind} ({self.submission.mission.code})"
 
 
 class AIFeedback(models.Model):

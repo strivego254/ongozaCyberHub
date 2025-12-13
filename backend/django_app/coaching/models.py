@@ -11,10 +11,9 @@ from users.models import User
 
 class Habit(models.Model):
     """User habit for daily/weekly practice."""
-    CATEGORY_CHOICES = [
-        ('learn', 'Learn'),
-        ('practice', 'Practice'),
-        ('reflect', 'Reflect'),
+    FREQUENCY_CHOICES = [
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -25,15 +24,13 @@ class Habit(models.Model):
         db_index=True
     )
     name = models.CharField(max_length=255)
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
-    target_frequency = models.IntegerField(
-        default=1,
-        validators=[MinValueValidator(1)],
-        help_text='Times per week'
+    is_core = models.BooleanField(default=False, help_text='Learn/Practice/Reflect = True')
+    frequency = models.CharField(
+        max_length=20,
+        choices=FREQUENCY_CHOICES,
+        default='daily',
+        help_text='Daily or weekly frequency'
     )
-    streak_current = models.IntegerField(default=0, validators=[MinValueValidator(0)])
-    streak_longest = models.IntegerField(default=0, validators=[MinValueValidator(0)])
-    last_completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -48,6 +45,11 @@ class Habit(models.Model):
 
 class HabitLog(models.Model):
     """Log entry for habit completion."""
+    STATUS_CHOICES = [
+        ('done', 'Done'),
+        ('skipped', 'Skipped'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     habit = models.ForeignKey(
         Habit,
@@ -61,25 +63,29 @@ class HabitLog(models.Model):
         related_name='habit_logs',
         db_index=True
     )
-    completed_at = models.DateTimeField(default=timezone.now, db_index=True)
-    notes = models.TextField(blank=True)
+    log_date = models.DateField(db_index=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='done'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         db_table = 'habitlogs'
         indexes = [
-            models.Index(fields=['user', 'completed_at']),
-            models.Index(fields=['habit', 'completed_at']),
+            models.Index(fields=['user', 'log_date']),
+            models.Index(fields=['habit', 'log_date']),
         ]
-        # Note: Unique constraint per day handled at application level
-        # Database-level constraint would require date_trunc which is PostgreSQL-specific
+        unique_together = [['habit', 'log_date']]
     
     def __str__(self):
-        return f"Log: {self.habit.name} - {self.completed_at.date()}"
+        return f"Log: {self.habit.name} - {self.log_date}"
 
 
 class Goal(models.Model):
     """User goal (daily/weekly/monthly)."""
-    TYPE_CHOICES = [
+    SCOPE_CHOICES = [
         ('daily', 'Daily'),
         ('weekly', 'Weekly'),
         ('monthly', 'Monthly'),
@@ -87,7 +93,7 @@ class Goal(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('completed', 'Completed'),
-        ('overdue', 'Overdue'),
+        ('abandoned', 'Abandoned'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -98,19 +104,14 @@ class Goal(models.Model):
         db_index=True
     )
     title = models.CharField(max_length=255)
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES)
     description = models.TextField(blank=True)
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    target_date = models.DateField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default='active',
         db_index=True
-    )
-    target_date = models.DateTimeField(null=True, blank=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-    mentor_feedback = models.TextField(
-        blank=True,
-        help_text='Premium tier only'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -127,6 +128,12 @@ class Goal(models.Model):
 
 class Reflection(models.Model):
     """User reflection with AI sentiment analysis."""
+    SENTIMENT_CHOICES = [
+        ('positive', 'Positive'),
+        ('neutral', 'Neutral'),
+        ('negative', 'Negative'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         User,
@@ -134,20 +141,18 @@ class Reflection(models.Model):
         related_name='reflections',
         db_index=True
     )
-    prompt = models.TextField()
-    response = models.TextField()
-    sentiment_score = models.DecimalField(
-        max_digits=4,
-        decimal_places=2,
+    content = models.TextField()
+    ai_sentiment = models.CharField(
+        max_length=20,
+        choices=SENTIMENT_CHOICES,
         null=True,
         blank=True,
-        validators=[MinValueValidator(-0.5), MaxValueValidator(0.5)],
-        help_text='AI computed -0.5 to +0.5'
+        help_text='AI computed sentiment'
     )
-    behavior_tags = models.JSONField(
+    ai_tags = models.JSONField(
         default=list,
         blank=True,
-        help_text='["discipline", "growth_mindset"]'
+        help_text='["overwhelmed", "confident"]'
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     
