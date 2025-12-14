@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { usePrograms, useDeleteProgram } from '@/hooks/usePrograms'
 import { programsClient } from '@/services/programsClient'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
 
 export default function ProgramsPage() {
   const { programs, isLoading, reload } = usePrograms()
@@ -16,6 +17,17 @@ export default function ProgramsPage() {
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  
+  // Listen for program creation events to refresh the list
+  useEffect(() => {
+    const handleProgramCreated = () => {
+      console.log('🔄 Program created event received, reloading programs list...')
+      reload()
+    }
+    
+    window.addEventListener('programCreated', handleProgramCreated)
+    return () => window.removeEventListener('programCreated', handleProgramCreated)
+  }, [reload])
 
   const filteredPrograms = useMemo(() => {
     return programs.filter((program) => {
@@ -134,11 +146,29 @@ export default function ProgramsPage() {
                 <Card key={program.id}>
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-3">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="text-xl font-bold text-white mb-1">{program.name}</h3>
-                        <p className="text-sm text-och-steel">{program.description}</p>
+                        <div className="text-sm text-och-steel prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown
+                            components={{
+                              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                              h1: ({ children }) => <h1 className="text-lg font-bold text-white mb-2">{children}</h1>,
+                              h2: ({ children }) => <h2 className="text-base font-bold text-white mb-2">{children}</h2>,
+                              h3: ({ children }) => <h3 className="text-sm font-bold text-white mb-1">{children}</h3>,
+                              ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                              li: ({ children }) => <li className="text-och-steel">{children}</li>,
+                              strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                              em: ({ children }) => <em className="italic">{children}</em>,
+                              code: ({ children }) => <code className="bg-och-midnight/50 px-1 py-0.5 rounded text-och-defender text-xs">{children}</code>,
+                              a: ({ href, children }) => <a href={href} className="text-och-defender hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                            }}
+                          >
+                            {program.description || ''}
+                          </ReactMarkdown>
+                        </div>
                       </div>
-                      <Badge variant="defender">{program.status || 'active'}</Badge>
+                      <Badge variant="defender" className="ml-3">{program.status || 'active'}</Badge>
                     </div>
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm">

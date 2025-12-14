@@ -160,8 +160,14 @@ export const djangoClient = {
 
     /**
      * List users (admin only)
+     * @param params - Optional query parameters including page, page_size, and role
      */
-    async listUsers(params?: { page?: number; page_size?: number }): Promise<{ results: User[]; count: number }> {
+    async listUsers(params?: { 
+      page?: number
+      page_size?: number
+      role?: string
+      search?: string
+    }): Promise<{ results: User[]; count: number; next?: string | null; previous?: string | null }> {
       return apiGateway.get('/users', { params });
     },
 
@@ -170,6 +176,20 @@ export const djangoClient = {
      */
     async updateUser(id: number, data: Partial<User>): Promise<User> {
       return apiGateway.patch(`/users/${id}/`, data);
+    },
+
+    /**
+     * Delete user
+     */
+    async deleteUser(id: number): Promise<void> {
+      return apiGateway.delete(`/users/${id}/`);
+    },
+
+    /**
+     * Get user by ID
+     */
+    async getUser(id: number): Promise<User> {
+      return apiGateway.get(`/users/${id}/`);
     },
   },
 

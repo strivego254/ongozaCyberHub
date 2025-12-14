@@ -1,15 +1,16 @@
 'use client'
 
 import { RouteGuard } from '@/components/auth/RouteGuard'
-import MentorsClient from './mentors-client'
+import MentorsListClient from './mentors-list-client'
 
 export default function MentorsPage() {
   return (
     <RouteGuard>
-      <MentorsClient />
+      <MentorsListClient />
     </RouteGuard>
   )
 }
+
 
 
 

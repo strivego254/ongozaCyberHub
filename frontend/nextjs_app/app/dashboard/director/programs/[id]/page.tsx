@@ -11,8 +11,32 @@ import { useParams } from 'next/navigation'
 
 export default function ProgramDetailPage() {
   const params = useParams()
-  const programId = params.id as string
+  const programId = params?.id as string | undefined
+  
+  // Safety check
+  if (!programId) {
+    return (
+      <RouteGuard>
+        <DirectorLayout>
+          <Card className="border-och-orange/50">
+            <div className="p-6 text-center">
+              <p className="text-och-orange mb-4">Invalid program ID</p>
+              <Link href="/dashboard/director/programs">
+                <Button variant="outline">Back to Programs</Button>
+              </Link>
+            </div>
+          </Card>
+        </DirectorLayout>
+      </RouteGuard>
+    )
+  }
+
   const { program, isLoading, error } = useProgram(programId)
+
+  // Debug logging
+  if (typeof window !== 'undefined') {
+    console.log('ProgramDetailPage:', { programId, isLoading, error, hasProgram: !!program, program })
+  }
 
   if (isLoading) {
     return (
@@ -29,13 +53,35 @@ export default function ProgramDetailPage() {
     )
   }
 
-  if (error || !program) {
+  if (error) {
+    console.error('ProgramDetailPage error:', error)
+    return (
+      <RouteGuard>
+        <DirectorLayout>
+          <Card className="border-och-orange/50">
+            <div className="p-6 text-center">
+              <p className="text-och-orange mb-2">Error loading program</p>
+              <p className="text-sm text-och-steel mb-4">{error}</p>
+              <div className="flex gap-3 justify-center">
+                <Link href="/dashboard/director/programs">
+                  <Button variant="outline">Back to Programs</Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        </DirectorLayout>
+      </RouteGuard>
+    )
+  }
+
+  if (!program) {
     return (
       <RouteGuard>
         <DirectorLayout>
           <Card className="border-och-orange/50">
             <div className="p-6 text-center">
               <p className="text-och-orange mb-4">Program not found</p>
+              <p className="text-sm text-och-steel mb-4">Program ID: {programId}</p>
               <Link href="/dashboard/director/programs">
                 <Button variant="outline">Back to Programs</Button>
               </Link>

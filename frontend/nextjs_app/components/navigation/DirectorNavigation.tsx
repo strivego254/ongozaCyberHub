@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
     priority: 'high',
     children: [
       { label: 'All Programs', href: '/dashboard/director/programs', icon: '📋' },
+      { label: 'All Tracks', href: '/dashboard/director/tracks', icon: '🛤️' },
       { label: 'Create Program', href: '/dashboard/director/programs/new', icon: '➕' },
       { label: 'Create Cohort', href: '/dashboard/director/cohorts/new', icon: '📅' },
       { label: 'Manage Cohorts', href: '/dashboard/director/cohorts', icon: '👥' },
@@ -46,7 +47,8 @@ const navItems: NavItem[] = [
     icon: '🤝',
     priority: 'high',
     children: [
-      { label: 'Assign Mentors', href: '/dashboard/director/mentors', icon: '👥' },
+      { label: 'View All Mentors', href: '/dashboard/director/mentors', icon: '👥' },
+      { label: 'Assign Mentors', href: '/dashboard/director/mentors/assign', icon: '➕' },
       { label: 'Auto-Matching', href: '/dashboard/director/mentorship/matching', icon: '🔀' },
       { label: 'Mentor Reviews', href: '/dashboard/director/mentorship/reviews', icon: '⭐' },
       { label: 'Cycle Configuration', href: '/dashboard/director/mentorship/cycles', icon: '🔄' },

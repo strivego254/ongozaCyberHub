@@ -3,9 +3,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
 import { apiGateway } from '@/services/apiGateway'
 import { useUsers } from '@/hooks/useUsers'
 import { TrackDistributionChart } from '@/components/admin/TrackDistributionChart'
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface AuditLog {
   id: number
@@ -17,14 +19,17 @@ interface AuditLog {
   actor_identifier: string
 }
 
+type TimePeriod = '7d' | '1m' | '6m' | '1y'
+
 export default function OverviewClient() {
   const { users, totalCount, isLoading: usersLoading } = useUsers({ page: 1, page_size: 100 })
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('7d')
 
   useEffect(() => {
     loadInitialData()
-  }, [])
+  }, [timePeriod])
 
   const loadInitialData = async () => {
     try {
@@ -37,10 +42,36 @@ export default function OverviewClient() {
     }
   }
 
+  const getRangeParam = (period: TimePeriod): string => {
+    switch (period) {
+      case '7d':
+        return 'week'
+      case '1m':
+        return 'month'
+      case '6m':
+        return 'month' // Backend supports month, we'll fetch more data
+      case '1y':
+        return 'year'
+      default:
+        return 'week'
+    }
+  }
+
   const loadAuditLogs = async () => {
     try {
+      let params: any = { page_size: 1000 } // Get more data for better charts
+      
+      if (timePeriod === '6m') {
+        // For 6 months, we need to calculate start_date manually
+        const sixMonthsAgo = new Date()
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+        params.start_date = sixMonthsAgo.toISOString()
+      } else {
+        params.range = getRangeParam(timePeriod)
+      }
+      
       const data = await apiGateway.get<{ results: AuditLog[] } | AuditLog[]>('/audit-logs/', {
-        params: { range: 'week', page_size: 50 }
+        params
       })
       const logsArray = Array.isArray(data) ? data : (data?.results || [])
       setAuditLogs(logsArray)
@@ -84,6 +115,102 @@ export default function OverviewClient() {
 
     return { total: auditLogs.length, success, failure, today }
   }, [auditLogs])
+
+  // Process activity data for time series chart
+  const activityChartData = useMemo(() => {
+    if (auditLogs.length === 0) return []
+
+    // Group logs by date
+    const activityByDate: { [key: string]: number } = {}
+    const now = new Date()
+    let startDate: Date
+    let intervalDays: number
+
+    // Calculate date range based on selected period
+    switch (timePeriod) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        intervalDays = 1
+        break
+      case '1m':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        intervalDays = 1
+        break
+      case '6m':
+        startDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000)
+        intervalDays = 7 // Weekly intervals for 6 months
+        break
+      case '1y':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+        intervalDays = 30 // Monthly intervals for 1 year
+        break
+      default:
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        intervalDays = 1
+    }
+
+    // Initialize all dates in range with 0
+    const chartData: Array<{ date: string; activity: number; label: string }> = []
+    const currentDate = new Date(startDate)
+    
+    while (currentDate <= now) {
+      const dateStr = currentDate.toISOString().split('T')[0]
+      let label = ''
+      
+      if (timePeriod === '7d' || timePeriod === '1m') {
+        label = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      } else if (timePeriod === '6m') {
+        label = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      } else {
+        label = currentDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+      }
+      
+      chartData.push({
+        date: dateStr,
+        activity: 0,
+        label
+      })
+      
+      currentDate.setDate(currentDate.getDate() + intervalDays)
+    }
+
+    // Count activities per date
+    auditLogs.forEach((log) => {
+      const logDate = new Date(log.timestamp)
+      
+      // Find the appropriate interval bucket
+      for (let i = 0; i < chartData.length; i++) {
+        const itemDate = new Date(chartData[i].date)
+        const nextDate = i < chartData.length - 1 
+          ? new Date(chartData[i + 1].date) 
+          : new Date(now.getTime() + intervalDays * 24 * 60 * 60 * 1000)
+        
+        if (logDate >= itemDate && logDate < nextDate) {
+          chartData[i].activity++
+          break
+        }
+      }
+    })
+
+    // Filter out future dates and ensure we have data
+    return chartData.filter(item => new Date(item.date) <= now)
+  }, [auditLogs, timePeriod])
+
+  // Custom tooltip for activity chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload
+      return (
+        <div className="bg-och-midnight border border-och-steel/20 rounded-lg p-3 shadow-lg">
+          <p className="text-white font-semibold mb-1">{data.label}</p>
+          <p className="text-och-steel text-sm">
+            <span className="text-och-mint font-medium">{data.activity}</span> activities
+          </p>
+        </div>
+      )
+    }
+    return null
+  }
 
   // Track distribution stats
   const trackDistribution = useMemo(() => {
@@ -217,24 +344,93 @@ export default function OverviewClient() {
             </div>
           </div>
 
+          {/* User Activity Chart */}
+          <Card className="mb-6">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">User Activity</h2>
+                  <p className="text-och-steel text-sm">Platform activity over time</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={timePeriod === '7d' ? 'defender' : 'outline'}
+                    size="sm"
+                    onClick={() => setTimePeriod('7d')}
+                  >
+                    7 Days
+                  </Button>
+                  <Button
+                    variant={timePeriod === '1m' ? 'defender' : 'outline'}
+                    size="sm"
+                    onClick={() => setTimePeriod('1m')}
+                  >
+                    1 Month
+                  </Button>
+                  <Button
+                    variant={timePeriod === '6m' ? 'defender' : 'outline'}
+                    size="sm"
+                    onClick={() => setTimePeriod('6m')}
+                  >
+                    6 Months
+                  </Button>
+                  <Button
+                    variant={timePeriod === '1y' ? 'defender' : 'outline'}
+                    size="sm"
+                    onClick={() => setTimePeriod('1y')}
+                  >
+                    1 Year
+                  </Button>
+                </div>
+              </div>
+              
+              {isLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-och-mint"></div>
+                </div>
+              ) : activityChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={350}>
+                  <AreaChart data={activityChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorActivity" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#33FFC1" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#33FFC1" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                    <XAxis 
+                      dataKey="label" 
+                      stroke="#64748B"
+                      style={{ fontSize: '12px' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis 
+                      stroke="#64748B"
+                      style={{ fontSize: '12px' }}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey="activity"
+                      stroke="#33FFC1"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorActivity)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-64 text-och-steel">
+                  <p>No activity data available for the selected period</p>
+                </div>
+              )}
+            </div>
+          </Card>
+          
           {/* Analytics Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-3">User Activity (Last 7 Days)</h3>
-              <SimpleBarChart
-                data={[
-                  auditStats.today,
-                  Math.floor(auditStats.total / 7),
-                  Math.floor(auditStats.total / 7),
-                  Math.floor(auditStats.total / 7),
-                  Math.floor(auditStats.total / 7),
-                  Math.floor(auditStats.total / 7),
-                  Math.floor(auditStats.total / 7),
-                ]}
-                labels={['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']}
-                color="#33FFC1"
-              />
-            </div>
             <div>
               <h3 className="text-lg font-semibold text-white mb-3">User Roles Distribution</h3>
               <SimpleBarChart
@@ -248,6 +444,29 @@ export default function OverviewClient() {
                 color="#0648A8"
               />
             </div>
+            <Card>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Activity Summary</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-och-midnight/50 rounded-lg">
+                    <span className="text-och-steel">Total Activities</span>
+                    <span className="text-white font-semibold text-lg">{auditStats.total}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-och-midnight/50 rounded-lg">
+                    <span className="text-och-steel">Successful</span>
+                    <Badge variant="mint">{auditStats.success}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-och-midnight/50 rounded-lg">
+                    <span className="text-och-steel">Failed</span>
+                    <Badge variant="orange">{auditStats.failure}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-och-midnight/50 rounded-lg">
+                    <span className="text-och-steel">Today</span>
+                    <Badge variant="defender">{auditStats.today}</Badge>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       </Card>

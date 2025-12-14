@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
@@ -11,6 +11,7 @@ import { useCohort, useCohortDashboard } from '@/hooks/usePrograms'
 import { programsClient, type CalendarEvent, type Enrollment, type MentorAssignment } from '@/services/programsClient'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 export default function CohortDetailPage() {
   const params = useParams()
@@ -23,6 +24,87 @@ export default function CohortDetailPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [mentors, setMentors] = useState<MentorAssignment[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  // Calculate derived values - moved before early returns to satisfy Rules of Hooks
+  const activeEnrollments = enrollments.filter(e => e.status === 'active')
+  const seatPool = cohort?.seat_pool as any || { paid: 0, scholarship: 0, sponsored: 0 }
+  const seatUtilization = cohort?.seat_utilization || (activeEnrollments.length / (cohort?.seat_cap || 1) * 100)
+  const completionRate = cohort?.completion_rate || 0
+
+  // Prepare seat allocation data for pie chart - moved before early returns
+  const seatAllocationData = useMemo(() => {
+    if (!cohort) return []
+    
+    const paid = seatPool.paid || 0
+    const scholarship = seatPool.scholarship || 0
+    const sponsored = seatPool.sponsored || 0
+    const total = paid + scholarship + sponsored
+    const available = Math.max(0, (cohort.seat_cap || 0) - total)
+
+    return [
+      {
+        name: 'Paid Seats',
+        value: paid,
+        color: '#10B981', // mint green
+        percentage: total > 0 ? ((paid / total) * 100).toFixed(1) : '0'
+      },
+      {
+        name: 'Scholarship Seats',
+        value: scholarship,
+        color: '#F59E0B', // gold/orange
+        percentage: total > 0 ? ((scholarship / total) * 100).toFixed(1) : '0'
+      },
+      {
+        name: 'Sponsored Seats',
+        value: sponsored,
+        color: '#3B82F6', // defender blue
+        percentage: total > 0 ? ((sponsored / total) * 100).toFixed(1) : '0'
+      },
+      ...(available > 0 ? [{
+        name: 'Available Seats',
+        value: available,
+        color: '#6B7280', // steel gray
+        percentage: ((available / (cohort.seat_cap || 1)) * 100).toFixed(1)
+      }] : [])
+    ].filter(item => item.value > 0)
+  }, [seatPool, cohort?.seat_cap, cohort])
+
+  // Custom tooltip for pie chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0]
+      return (
+        <div className="bg-och-midnight border border-och-steel/20 rounded-lg p-3 shadow-lg">
+          <p className="text-white font-semibold">{data.name}</p>
+          <p className="text-och-mint text-sm">
+            {data.value} seats ({data.payload.percentage}%)
+          </p>
+        </div>
+      )
+    }
+    return null
+  }
+
+  // Custom label for pie chart
+  const CustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    const RADIAN = Math.PI / 180
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5
+    const x = cx + radius * Math.cos(-midAngle * RADIAN)
+    const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        className="text-xs font-medium"
+      >
+        {percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : ''}
+      </text>
+    )
+  }
 
   useEffect(() => {
     const loadData = async () => {
@@ -77,11 +159,6 @@ export default function CohortDetailPage() {
       </RouteGuard>
     )
   }
-
-  const activeEnrollments = enrollments.filter(e => e.status === 'active')
-  const seatUtilization = cohort.seat_utilization || (activeEnrollments.length / (cohort.seat_cap || 1) * 100)
-  const completionRate = cohort.completion_rate || 0
-  const seatPool = cohort.seat_pool as any || { paid: 0, scholarship: 0, sponsored: 0 }
 
   return (
     <RouteGuard>
@@ -190,42 +267,77 @@ export default function CohortDetailPage() {
               {/* Seat Pool Breakdown */}
               <Card>
                 <div className="p-6">
-                  <h2 className="text-xl font-bold text-white mb-4">Seat Pool Breakdown</h2>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-och-steel">Paid Seats</span>
-                        <span className="text-white">{seatPool.paid || 0}</span>
+                  <h2 className="text-xl font-bold text-white mb-4">Seat Allocation</h2>
+                  
+                  {seatAllocationData.length > 0 ? (
+                    <>
+                      <div className="mb-4">
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={seatAllocationData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={CustomLabel}
+                              outerRadius={100}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {seatAllocationData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend
+                              verticalAlign="bottom"
+                              height={36}
+                              formatter={(value, entry: any) => (
+                                <span className="text-och-steel text-sm">
+                                  {value}: {entry.payload.value} seats ({entry.payload.percentage}%)
+                                </span>
+                              )}
+                              iconType="circle"
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
                       </div>
-                      <ProgressBar 
-                        value={((seatPool.paid || 0) / (cohort.seat_cap || 1)) * 100} 
-                        variant="mint" 
-                        className="h-2"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-och-steel">Scholarship Seats</span>
-                        <span className="text-white">{seatPool.scholarship || 0}</span>
+                      
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-3 gap-3 pt-4 border-t border-och-steel/20">
+                        {seatAllocationData.map((item) => (
+                          <div key={item.name} className="text-center">
+                            <div 
+                              className="w-3 h-3 rounded-full mx-auto mb-1"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            <p className="text-xs text-och-steel">{item.name}</p>
+                            <p className="text-sm font-bold text-white">{item.value}</p>
+                            <p className="text-xs text-och-steel">{item.percentage}%</p>
+                          </div>
+                        ))}
                       </div>
-                      <ProgressBar 
-                        value={((seatPool.scholarship || 0) / (cohort.seat_cap || 1)) * 100} 
-                        variant="gold" 
-                        className="h-2"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-och-steel">Sponsored Seats</span>
-                        <span className="text-white">{seatPool.sponsored || 0}</span>
+                      
+                      <div className="mt-4 pt-4 border-t border-och-steel/20">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-och-steel">Total Allocated:</span>
+                          <span className="text-white font-semibold">
+                            {(seatPool.paid || 0) + (seatPool.scholarship || 0) + (seatPool.sponsored || 0)} / {cohort.seat_cap}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm mt-1">
+                          <span className="text-och-steel">Available:</span>
+                          <span className="text-white font-semibold">
+                            {Math.max(0, (cohort.seat_cap || 0) - ((seatPool.paid || 0) + (seatPool.scholarship || 0) + (seatPool.sponsored || 0)))}
+                          </span>
+                        </div>
                       </div>
-                      <ProgressBar 
-                        value={((seatPool.sponsored || 0) / (cohort.seat_cap || 1)) * 100} 
-                        variant="defender" 
-                        className="h-2"
-                      />
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-och-steel">
+                      <p>No seat allocation data available</p>
                     </div>
-                  </div>
+                  )}
                 </div>
               </Card>
 
@@ -334,9 +446,11 @@ export default function CohortDetailPage() {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-white">Mentors ({mentors.length})</h2>
-                    <Button variant="outline" size="sm">
-                      Assign
-                    </Button>
+                    <Link href={`/dashboard/director/cohorts/${cohortId}/assign-mentors`}>
+                      <Button variant="defender" size="sm">
+                        Assign Mentors
+                      </Button>
+                    </Link>
                   </div>
                   <div className="space-y-2">
                     {mentors.map((mentor) => (

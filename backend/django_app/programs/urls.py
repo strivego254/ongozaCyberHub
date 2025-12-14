@@ -12,6 +12,7 @@ from .views import (
     DirectorProgramRuleViewSet, ProgramManagementViewSet,
     director_dashboard
 )
+from .views.calendar_views import CalendarEventViewSet
 from .director_dashboard_views import (
     director_dashboard_summary,
     director_cohorts_list,
@@ -27,6 +28,8 @@ router.register(r'modules', ModuleViewSet, basename='module')
 router.register(r'cohorts', CohortViewSet, basename='cohort')
 router.register(r'rules', ProgramRuleViewSet, basename='rule')
 router.register(r'certificates', CertificateViewSet, basename='certificate')
+# Calendar events (must come after cohorts to avoid URL conflicts)
+router.register(r'calendar-events', CalendarEventViewSet, basename='calendar-event')
 
 # Director-specific endpoints
 director_router = DefaultRouter()
@@ -46,6 +49,17 @@ urlpatterns = [
     path('director/dashboard/cohorts/', director_cohorts_list, name='director-cohorts-list'),
     path('director/dashboard/cohorts/<uuid:cohort_id>/', director_cohort_detail, name='director-cohort-detail'),
     
+    # Tracks under programs path: /api/v1/programs/tracks/
+    # Must use a specific path pattern to avoid conflicting with /programs/{id}/
+    path('programs/tracks/', TrackViewSet.as_view({'get': 'list', 'post': 'create'}), name='program-tracks-list'),
+    path('programs/tracks/<uuid:pk>/', TrackViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'patch': 'partial_update',
+        'delete': 'destroy'
+    }), name='program-track-detail'),
+    
+    # All other routes (includes /programs/ and /programs/{id}/ for ProgramViewSet)
     path('', include(router.urls)),
     path('director/', include(director_router.urls)),
 ]

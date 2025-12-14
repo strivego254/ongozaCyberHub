@@ -1,7 +1,8 @@
 """
 URL configuration for Missions MXP.
 """
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import get_recommended_missions, submit_mission, mission_status
 from .views_student import (
     get_mission_funnel,
@@ -12,11 +13,17 @@ from .views_student import (
     save_mission_draft,
     submit_for_mentor_review,
 )
+from .views_director import MissionViewSet
 
 app_name = 'missions'
 
+# Router for director mission management (CRUD operations)
+# This registers /missions/ for list/create and /missions/{id}/ for detail/update/delete
+router = DefaultRouter()
+router.register(r'missions', MissionViewSet, basename='mission')
+
 urlpatterns = [
-    # Legacy endpoints
+    # Specific endpoints that need to come before router to avoid conflicts
     path('missions/recommended', get_recommended_missions, name='recommended'),
     path('missions/<uuid:mission_id>/submit', submit_mission, name='submit'),
     path('missions/status', mission_status, name='status'),
@@ -29,5 +36,8 @@ urlpatterns = [
     path('student/missions/<uuid:mission_id>/draft', save_mission_draft, name='student-draft'),
     path('student/missions/submissions/<uuid:submission_id>/artifacts', upload_mission_artifacts, name='student-artifacts'),
     path('student/missions/submissions/<uuid:submission_id>/submit-mentor', submit_for_mentor_review, name='student-submit-mentor'),
+    
+    # Director mission management (CRUD operations) - Router comes last
+    path('', include(router.urls)),
 ]
 

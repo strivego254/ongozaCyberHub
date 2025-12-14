@@ -72,7 +72,7 @@ def main():
     print("Fixing Migration State - Faking Migrations for Existing Tables")
     print("=" * 70)
     print()
-    
+        
     # Get all existing tables
     existing_tables = get_all_tables()
     print(f"Found {len(existing_tables)} tables in database")

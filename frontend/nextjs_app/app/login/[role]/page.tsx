@@ -66,6 +66,26 @@ function LoginForm() {
     // This prevents redirect loops during login
     if (isAuthenticated && user && !isLoading) {
       const redirectTo = searchParams.get('redirect');
+      
+      // If logging in through director login, verify user has director or admin role
+      if (role === 'director' && redirectTo?.startsWith('/dashboard/director')) {
+        const userRoles = user?.roles || []
+        const isAdmin = userRoles.some((ur: any) => {
+          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+          return roleName?.toLowerCase().trim() === 'admin'
+        })
+        const isProgramDirector = userRoles.some((ur: any) => {
+          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+          const normalized = roleName?.toLowerCase().trim()
+          return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
+        })
+        
+        if (!isAdmin && !isProgramDirector) {
+          setError('You do not have permission to access the Program Director dashboard. Please login with an account that has program_director or admin role.')
+          return
+        }
+      }
+      
       if (redirectTo && redirectTo.startsWith('/dashboard')) {
         router.push(redirectTo);
       } else {
@@ -74,7 +94,7 @@ function LoginForm() {
         router.push(dashboardRoute);
       }
     }
-  }, [isAuthenticated, user, router, searchParams, isLoading, isLoggingIn]);
+  }, [isAuthenticated, user, router, searchParams, isLoading, isLoggingIn, role]);
 
   const currentPersona = PERSONAS[role as keyof typeof PERSONAS] || PERSONAS.student;
 
@@ -105,6 +125,29 @@ function LoginForm() {
       // Determine redirect route based on user role
       let route = '/dashboard/student';
       const redirectTo = searchParams.get('redirect');
+
+      // Get current user for role checking
+      const currentUser = user || result?.user;
+      const userRoles = currentUser?.roles || []
+      
+      // If logging in through director login and redirecting to director route, verify role
+      if (role === 'director' && redirectTo?.startsWith('/dashboard/director')) {
+        const isAdmin = userRoles.some((ur: any) => {
+          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+          return roleName?.toLowerCase().trim() === 'admin'
+        })
+        const isProgramDirector = userRoles.some((ur: any) => {
+          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+          const normalized = roleName?.toLowerCase().trim()
+          return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
+        })
+        
+        if (!isAdmin && !isProgramDirector) {
+          setError('You do not have permission to access the Program Director dashboard. Your account must have program_director or admin role.');
+          setIsLoggingIn(false);
+          return;
+        }
+      }
 
       // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
       if (redirectTo && redirectTo.startsWith('/dashboard')) {

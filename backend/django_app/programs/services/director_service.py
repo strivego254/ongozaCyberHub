@@ -30,12 +30,21 @@ class DirectorService:
         ).distinct()
     
     @staticmethod
-    def get_director_tracks(user: User, program_id: Optional[str] = None) -> List[Track]:
+    def get_director_tracks(user: User, program_id: Optional[str] = None) -> 'QuerySet[Track]':
         """Get all tracks where user is a director."""
-        queryset = Track.objects.filter(director=user)
+        # For admin users, return all tracks (they can see everything)
+        if user.is_staff:
+            queryset = Track.objects.all()
+        else:
+            # Directors can see tracks they direct OR tracks in programs they direct
+            queryset = Track.objects.filter(
+                Q(director=user) | Q(program__tracks__director=user)
+            ).distinct()
+        
         if program_id:
             queryset = queryset.filter(program_id=program_id)
-        return queryset.distinct()
+        
+        return queryset
     
     @staticmethod
     def get_director_cohorts(user: User, status: Optional[str] = None) -> List[Cohort]:

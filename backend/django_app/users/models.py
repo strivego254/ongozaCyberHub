@@ -193,6 +193,7 @@ class Role(models.Model):
         ('mentee', 'Mentee'),
         ('student', 'Student'),
         ('finance', 'Finance'),
+        ('finance_admin', 'Finance Admin'),
         ('sponsor_admin', 'Sponsor/Employer Admin'),
         ('analyst', 'Analyst'),
     ]

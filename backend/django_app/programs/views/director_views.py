@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.http import HttpResponse
 from django.db import transaction
 
-from programs.models import Program, Track, Cohort, Enrollment, MentorAssignment, ProgramRule
+from programs.models import Program, Track, Cohort, Enrollment, MentorAssignment, ProgramRule, Milestone
 from programs.services.director_service import DirectorService
 from programs.services.calendar_service import CalendarService
 from programs.services.certificate_service import CertificateService
@@ -56,10 +56,24 @@ class DirectorTrackViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        """Get tracks where user is a director."""
+        """Get tracks where user is a director with prefetched related data."""
+        from django.db.models import Prefetch
+        
         user = self.request.user
         program_id = self.request.query_params.get('program_id')
-        return DirectorService.get_director_tracks(user, program_id)
+        
+        # Get base queryset from DirectorService
+        queryset = DirectorService.get_director_tracks(user, program_id)
+        
+        # Prefetch related data for better performance
+        queryset = queryset.select_related('program', 'director').prefetch_related(
+            Prefetch('milestones', queryset=Milestone.objects.prefetch_related(
+                Prefetch('modules')
+            ).order_by('order')),
+            Prefetch('specializations')
+        )
+        
+        return queryset.order_by('program__name', 'name')
     
     def perform_create(self, serializer):
         """Create track."""

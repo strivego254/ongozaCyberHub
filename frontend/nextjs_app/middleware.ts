@@ -17,10 +17,13 @@ export function middleware(request: NextRequest) {
   // Check if route is protected
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
+  const isDirectorRoute = pathname.startsWith('/dashboard/director');
 
   // Redirect to login if accessing protected route without token
   if (isProtectedRoute && !hasToken) {
-    const loginUrl = new URL('/login/student', request.url);
+    // Redirect to director login for director routes, otherwise student login
+    const loginPath = isDirectorRoute ? '/login/director' : '/login/student';
+    const loginUrl = new URL(loginPath, request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }

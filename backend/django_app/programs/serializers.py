@@ -36,11 +36,18 @@ class MilestoneSerializer(serializers.ModelSerializer):
 class TrackSerializer(serializers.ModelSerializer):
     program_name = serializers.CharField(source='program.name', read_only=True)
     milestones = MilestoneSerializer(many=True, read_only=True)
+    specializations = serializers.SerializerMethodField()
     
     class Meta:
         model = Track
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_specializations(self, obj):
+        """Get specializations for this track."""
+        if hasattr(obj, 'specializations'):
+            return SpecializationSerializer(obj.specializations.all(), many=True).data
+        return []
 
 
 class ProgramSerializer(serializers.ModelSerializer):
@@ -65,6 +72,11 @@ class ProgramSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Ensure either category or categories is provided."""
+        # Validate name field - check for empty strings
+        name = data.get('name')
+        if not name or (isinstance(name, str) and name.strip() == ''):
+            raise serializers.ValidationError({'name': 'This field may not be blank.'})
+        
         categories = data.get('categories', [])
         category = data.get('category')
         
@@ -150,6 +162,29 @@ class ProgramDetailSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Ensure either category or categories is provided."""
+        # Validate name field - check for empty strings
+        name = data.get('name')
+        if not name or (isinstance(name, str) and name.strip() == ''):
+            raise serializers.ValidationError({'name': 'This field may not be blank.'})
+        
+        # Convert empty string to None for URLField to avoid validation errors
+        missions_registry_link = data.get('missions_registry_link')
+        if missions_registry_link == '':
+            data['missions_registry_link'] = None
+        
+        # Ensure outcomes is a list
+        outcomes = data.get('outcomes')
+        if outcomes is None:
+            data['outcomes'] = []
+        elif not isinstance(outcomes, list):
+            # Convert to list if it's not already
+            data['outcomes'] = [outcomes] if outcomes else []
+        
+        # Ensure structure is a dict
+        structure = data.get('structure')
+        if structure is None:
+            data['structure'] = {}
+        
         categories = data.get('categories', [])
         category = data.get('category')
         
@@ -229,6 +264,48 @@ class CohortSerializer(serializers.ModelSerializer):
         model = Cohort
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate(self, data):
+        """Validate cohort data."""
+        # Validate name field - check for empty strings
+        name = data.get('name')
+        if not name or (isinstance(name, str) and name.strip() == ''):
+            raise serializers.ValidationError({'name': 'This field may not be blank.'})
+        
+        # Validate track field
+        track = data.get('track')
+        if not track:
+            raise serializers.ValidationError({'track': 'This field is required.'})
+        
+        # Convert empty string to None for UUIDField to avoid validation errors
+        calendar_template_id = data.get('calendar_template_id')
+        if calendar_template_id == '':
+            data['calendar_template_id'] = None
+        
+        # Validate dates
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({
+                'end_date': 'End date must be after start date.'
+            })
+        
+        # Validate seat_pool if provided
+        seat_pool = data.get('seat_pool', {})
+        if isinstance(seat_pool, dict):
+            seat_cap = data.get('seat_cap', 0)
+            total_allocated = (
+                seat_pool.get('paid', 0) +
+                seat_pool.get('scholarship', 0) +
+                seat_pool.get('sponsored', 0)
+            )
+            if total_allocated > seat_cap:
+                raise serializers.ValidationError({
+                    'seat_pool': f'Total allocated seats ({total_allocated}) cannot exceed seat capacity ({seat_cap}).'
+                })
+        
+        return data
     
     def get_enrolled_count(self, obj):
         return obj.enrollments.filter(status='active').count()

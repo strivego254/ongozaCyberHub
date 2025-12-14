@@ -234,3 +234,8 @@ class PaymentSettingsViewSet(viewsets.ModelViewSet):
         
         return PaymentSettingsSerializer
 
+
+
+
+
+

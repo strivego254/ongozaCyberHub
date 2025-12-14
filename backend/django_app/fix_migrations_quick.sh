@@ -59,3 +59,8 @@ else
     python manage.py migrate
 fi
 
+
+
+
+
+

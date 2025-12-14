@@ -6,7 +6,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { programsClient, type Program, type Track, type Cohort, type ProgramRule, type CohortDashboard, type DirectorDashboard } from '@/services/programsClient'
+import { programsClient, type Program, type Track, type Cohort, type ProgramRule, type CohortDashboard, type DirectorDashboard, type Specialization, type Milestone, type Module } from '@/services/programsClient'
 
 // Programs
 export function usePrograms() {
@@ -46,7 +46,7 @@ export function usePrograms() {
 
   useEffect(() => {
     loadPrograms()
-  }, [loadPrograms])
+  }, [])
 
   return { programs, isLoading, error, reload: loadPrograms }
 }
@@ -57,14 +57,41 @@ export function useProgram(id: string) {
   const [error, setError] = useState<string | null>(null)
 
   const loadProgram = useCallback(async () => {
-    if (!id) return
+    if (!id) {
+      console.warn('useProgram: No ID provided')
+      setIsLoading(false)
+      return
+    }
     setIsLoading(true)
     setError(null)
     try {
+      console.log(`🔄 Loading program ${id}...`)
       const data = await programsClient.getProgram(id)
-      setProgram(data)
+      console.log(`✅ Program loaded:`, { 
+        hasData: !!data, 
+        dataType: typeof data,
+        keys: data ? Object.keys(data) : [],
+        data 
+      })
+      
+      if (data) {
+        setProgram(data)
+      } else {
+        console.warn('⚠️ API returned null/undefined data')
+        setError('Program data is empty')
+        setProgram(null)
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to load program')
+      console.error(`❌ Failed to load program ${id}:`, err)
+      console.error('Error details:', {
+        message: err?.message,
+        response: err?.response,
+        status: err?.response?.status,
+        data: err?.response?.data
+      })
+      const errorMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.message || 'Failed to load program'
+      setError(errorMessage)
+      setProgram(null)
     } finally {
       setIsLoading(false)
     }
@@ -149,10 +176,24 @@ export function useTracks(programId?: string) {
     setIsLoading(true)
     setError(null)
     try {
+      console.log('🔄 Loading tracks from API...', { programId })
       const data = await programsClient.getTracks(programId)
+      console.log('✅ Tracks loaded:', {
+        isArray: Array.isArray(data),
+        count: Array.isArray(data) ? data.length : 0,
+        data: data
+      })
       setTracks(Array.isArray(data) ? data : [])
     } catch (err: any) {
-      setError(err.message || 'Failed to load tracks')
+      console.error('❌ Failed to load tracks:', err)
+      console.error('Error details:', {
+        message: err?.message,
+        response: err?.response,
+        status: err?.response?.status,
+        data: err?.response?.data
+      })
+      const errorMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.message || 'Failed to load tracks'
+      setError(errorMessage)
       setTracks([])
     } finally {
       setIsLoading(false)
@@ -164,6 +205,59 @@ export function useTracks(programId?: string) {
   }, [loadTracks])
 
   return { tracks, isLoading, error, reload: loadTracks }
+}
+
+export function useTrack(id: string) {
+  const [track, setTrack] = useState<Track | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadTrack = useCallback(async () => {
+    if (!id) {
+      console.warn('useTrack: No ID provided')
+      setIsLoading(false)
+      return
+    }
+    setIsLoading(true)
+    setError(null)
+    try {
+      console.log(`🔄 Loading track ${id}...`)
+      const data = await programsClient.getTrack(id)
+      console.log(`✅ Track loaded:`, { 
+        hasData: !!data, 
+        dataType: typeof data,
+        keys: data ? Object.keys(data) : [],
+        data 
+      })
+      
+      if (data) {
+        setTrack(data)
+      } else {
+        console.warn('⚠️ API returned null/undefined data')
+        setError('Track data is empty')
+        setTrack(null)
+      }
+    } catch (err: any) {
+      console.error(`❌ Failed to load track ${id}:`, err)
+      console.error('Error details:', {
+        message: err?.message,
+        response: err?.response,
+        status: err?.response?.status,
+        data: err?.response?.data
+      })
+      const errorMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.message || 'Failed to load track'
+      setError(errorMessage)
+      setTrack(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => {
+    loadTrack()
+  }, [loadTrack])
+
+  return { track, isLoading, error, reload: loadTrack }
 }
 
 export function useCreateTrack() {
@@ -228,9 +322,23 @@ export function useDeleteTrack() {
   return { deleteTrack, isLoading, error }
 }
 
-// Cohorts
-export function useCohorts(trackId?: string, status?: string) {
+// Cohorts with pagination
+export function useCohorts(params?: {
+  trackId?: string
+  status?: string
+  page?: number
+  pageSize?: number
+}) {
   const [cohorts, setCohorts] = useState<Cohort[]>([])
+  const [pagination, setPagination] = useState<{
+    count: number
+    next: string | null
+    previous: string | null
+  }>({
+    count: 0,
+    next: null,
+    previous: null
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -238,21 +346,47 @@ export function useCohorts(trackId?: string, status?: string) {
     setIsLoading(true)
     setError(null)
     try {
-      const data = await programsClient.getCohorts(trackId, status)
-      setCohorts(Array.isArray(data) ? data : [])
+      const data = await programsClient.getCohorts(params)
+      // Handle both paginated response and direct array (for backward compatibility)
+      if (data && typeof data === 'object' && 'results' in data) {
+        setCohorts(Array.isArray(data.results) ? data.results : [])
+        setPagination({
+          count: data.count || 0,
+          next: data.next || null,
+          previous: data.previous || null
+        })
+      } else if (Array.isArray(data)) {
+        // Fallback for non-paginated responses
+        setCohorts(data)
+        setPagination({
+          count: data.length,
+          next: null,
+          previous: null
+        })
+      } else {
+        setCohorts([])
+        setPagination({ count: 0, next: null, previous: null })
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load cohorts')
       setCohorts([])
+      setPagination({ count: 0, next: null, previous: null })
     } finally {
       setIsLoading(false)
     }
-  }, [trackId, status])
+  }, [params?.trackId, params?.status, params?.page, params?.pageSize])
 
   useEffect(() => {
     loadCohorts()
   }, [loadCohorts])
 
-  return { cohorts, isLoading, error, reload: loadCohorts }
+  return { 
+    cohorts, 
+    pagination,
+    isLoading, 
+    error, 
+    reload: loadCohorts 
+  }
 }
 
 export function useCohort(id: string) {
@@ -304,7 +438,7 @@ export function useCohortDashboard(cohortId: string) {
     loadDashboard()
   }, [loadDashboard])
 
-  return { dashboard: dashboard, isLoading, error, reload: loadDashboard }
+  return { dashboard, isLoading, error, reload: loadDashboard }
 }
 
 export function useCreateCohort() {
@@ -380,9 +514,10 @@ export function useProgramRules(programId?: string) {
     setError(null)
     try {
       const data = await programsClient.getProgramRules(programId)
-      setRules(data)
+      setRules(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err.message || 'Failed to load rules')
+      setRules([])
     } finally {
       setIsLoading(false)
     }
@@ -403,10 +538,11 @@ export function useCreateProgramRule() {
     setIsLoading(true)
     setError(null)
     try {
-      const result = await programsClient.createProgramRule(data)
-      return result
+      const rule = await programsClient.createProgramRule(data)
+      return rule
     } catch (err: any) {
-      setError(err.message || 'Failed to create rule')
+      const errorMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.message || 'Failed to create program rule'
+      setError(errorMessage)
       throw err
     } finally {
       setIsLoading(false)
@@ -424,10 +560,11 @@ export function useUpdateProgramRule() {
     setIsLoading(true)
     setError(null)
     try {
-      const result = await programsClient.updateProgramRule(id, data)
-      return result
+      const rule = await programsClient.updateProgramRule(id, data)
+      return rule
     } catch (err: any) {
-      setError(err.message || 'Failed to update rule')
+      const errorMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.message || 'Failed to update program rule'
+      setError(errorMessage)
       throw err
     } finally {
       setIsLoading(false)
@@ -435,6 +572,27 @@ export function useUpdateProgramRule() {
   }, [])
 
   return { updateRule, isLoading, error }
+}
+
+export function useDeleteProgramRule() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteRule = useCallback(async (id: string) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await programsClient.deleteProgramRule(id)
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.message || 'Failed to delete program rule'
+      setError(errorMessage)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  return { deleteRule, isLoading, error }
 }
 
 // Director Dashboard
@@ -447,10 +605,15 @@ export function useDirectorDashboard() {
     setIsLoading(true)
     setError(null)
     try {
+      console.log('🔄 Loading director dashboard...')
       const data = await programsClient.getDirectorDashboard()
+      console.log('✅ Director dashboard loaded:', data)
       setDashboard(data)
     } catch (err: any) {
-      setError(err.message || 'Failed to load director dashboard')
+      console.error('❌ Failed to load director dashboard:', err)
+      const errorMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.message || 'Failed to load director dashboard'
+      setError(errorMessage)
+      setDashboard(null)
     } finally {
       setIsLoading(false)
     }

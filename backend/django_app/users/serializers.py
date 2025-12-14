@@ -51,14 +51,21 @@ class UserSerializer(serializers.ModelSerializer):
             'preferred_learning_style',
             'career_goals',
             'cyber_exposure_level',
+            # Mentor fields
+            'is_mentor',
+            'mentor_capacity_weekly',
+            'mentor_availability',
+            'mentor_specialties',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'account_status', 'email_verified']
     
     def get_roles(self, obj):
-        """Get user roles with scope information."""
+        """Get user roles with scope information and user_role ID for revocation."""
         return [
             {
+                'id': role.id,
                 'role': role.role.name,
+                'role_id': role.role.id,
                 'scope': role.scope,
                 'scope_ref': str(role.scope_ref) if role.scope_ref else None,
             }

@@ -29,9 +29,22 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
   useEffect(() => {
     if (user) {
       loadRoles()
-      setUserRoles(user.roles || [])
+      // Load fresh user data to ensure we have role IDs
+      loadUserData()
     }
   }, [user])
+
+  const loadUserData = async () => {
+    if (!user) return
+    try {
+      const updatedUser = await apiGateway.get(`/users/${user.id}`)
+      setUserRoles(updatedUser.roles || [])
+    } catch (error) {
+      console.error('Failed to load user data:', error)
+      // Fallback to user.roles if API call fails
+      setUserRoles(user.roles || [])
+    }
+  }
 
   const loadRoles = async () => {
     try {
@@ -48,20 +61,49 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
 
     setIsLoading(true)
     try {
-      await apiGateway.post(`/users/${user.id}/roles`, {
+      const response = await apiGateway.post(`/users/${user.id}/roles`, {
         role_id: selectedRole,
         scope: 'global',
       })
-      await onUpdate()
+      
+      // Reload user data to get updated roles with IDs
+      const updatedUser = await apiGateway.get(`/users/${user.id}`)
+      setUserRoles(updatedUser.roles || [])
       setSelectedRole(null)
+      
+      // Show appropriate message
+      if (response.detail) {
+        if (response.detail.includes('already assigned')) {
+          // Role already exists - just refresh UI silently
+          console.log('Role already assigned to user')
+        } else {
+          alert('Role assigned successfully')
+        }
+      } else {
+        alert('Role assigned successfully')
+      }
+      
+      // Call onUpdate to refresh parent component
+      await onUpdate()
     } catch (error: any) {
-      alert(`Failed to assign role: ${error.message}`)
+      console.error('Role assignment error:', error)
+      let errorMessage = 'Unknown error'
+      
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail
+      } else if (error.message) {
+        errorMessage = error.message
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
+      alert(`Failed to assign role: ${errorMessage}`)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleRevokeRole = async (userRoleId: number) => {
+  const handleRevokeRole = async (userRoleId: number | string) => {
     if (!user) return
 
     if (!confirm('Are you sure you want to revoke this role?')) return
@@ -69,9 +111,28 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
     setIsLoading(true)
     try {
       await apiGateway.delete(`/users/${user.id}/roles/${userRoleId}`)
+      
+      // Reload user data to get updated roles
+      const updatedUser = await apiGateway.get(`/users/${user.id}`)
+      setUserRoles(updatedUser.roles || [])
+      
+      alert('Role revoked successfully')
+      
+      // Call onUpdate to refresh parent component
       await onUpdate()
     } catch (error: any) {
-      alert(`Failed to revoke role: ${error.message}`)
+      console.error('Role revocation error:', error)
+      let errorMessage = 'Unknown error'
+      
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail
+      } else if (error.message) {
+        errorMessage = error.message
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
+      alert(`Failed to revoke role: ${errorMessage}`)
     } finally {
       setIsLoading(false)
     }
@@ -146,8 +207,8 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleRevokeRole(role.id || idx)}
-                      disabled={isLoading}
+                      onClick={() => handleRevokeRole(role.id)}
+                      disabled={isLoading || !role.id}
                     >
                       Revoke
                     </Button>
@@ -164,13 +225,14 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
               <select
                 value={selectedRole || ''}
                 onChange={(e) => setSelectedRole(Number(e.target.value) || null)}
-                className="flex-1 px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                className="flex-1 px-4 py-2.5 bg-och-midnight/80 border border-och-steel/30 rounded-lg text-white focus:outline-none focus:border-och-defender focus:ring-1 focus:ring-och-defender cursor-pointer transition-all"
               >
-                <option value="">Select a role...</option>
+                <option value="" className="bg-och-midnight text-white">Select a role...</option>
                 {roles
-                  .filter((r) => !userRoles.some((ur: any) => ur.role === r.name))
+                  .filter((r) => !userRoles.some((ur: any) => ur.role === r.name || ur.role_id === r.id))
+                  .sort((a, b) => a.display_name.localeCompare(b.display_name))
                   .map((role) => (
-                    <option key={role.id} value={role.id}>
+                    <option key={role.id} value={role.id} className="bg-och-midnight text-white">
                       {role.display_name} - {role.description}
                     </option>
                   ))}
@@ -202,6 +264,7 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
     </div>
   )
 }
+
 
 
 

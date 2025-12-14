@@ -27,6 +27,18 @@ const navItems: NavItem[] = [
       { label: 'Mentees & Students', href: '/dashboard/admin/users/mentees', icon: '🎓' },
     ]
   },
+  {
+    label: 'Subscriptions',
+    href: '/dashboard/admin/subscriptions',
+    icon: '💳',
+    children: [
+      { label: 'Plans & Tiers', href: '/dashboard/admin/subscriptions/plans', icon: '📦' },
+      { label: 'User Subscriptions', href: '/dashboard/admin/subscriptions/users', icon: '👤' },
+      { label: 'Payment Gateways', href: '/dashboard/admin/subscriptions/gateways', icon: '🌐' },
+      { label: 'Transactions', href: '/dashboard/admin/subscriptions/transactions', icon: '💰' },
+      { label: 'Rules & Settings', href: '/dashboard/admin/subscriptions/rules', icon: '⚙️' },
+    ]
+  },
   { label: 'Roles & Permissions', href: '/dashboard/admin/roles', icon: '🔐' },
   { label: 'Audit Logs', href: '/dashboard/admin/audit', icon: '📋' },
   { label: 'Platform Settings', href: '/dashboard/admin/settings', icon: '⚙️' },

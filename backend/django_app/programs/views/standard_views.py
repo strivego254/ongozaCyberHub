@@ -223,11 +223,25 @@ class ProgramViewSet(viewsets.ModelViewSet):
         
         # Permission filtering
         if not user.is_staff:
-            director_has_tracks = user.directed_tracks.exists()
-            if director_has_tracks:
-                queryset = queryset.filter(
-                    Q(tracks__director=user) | Q(tracks__isnull=True)
-                ).distinct()
+            # Check if user has program_director or admin role
+            from users.models import UserRole, Role
+            director_roles = Role.objects.filter(name__in=['program_director', 'admin'])
+            has_program_director_role = UserRole.objects.filter(
+                user=user,
+                role__in=director_roles,
+                is_active=True
+            ).exists()
+            
+            if has_program_director_role:
+                # Program directors can see all programs (they may create programs without assigning themselves as track directors)
+                pass  # No filtering needed
+            else:
+                # Regular users can only see programs where they are directors of tracks
+                director_has_tracks = user.directed_tracks.exists()
+                if director_has_tracks:
+                    queryset = queryset.filter(
+                        Q(tracks__director=user) | Q(tracks__isnull=True)
+                    ).distinct()
         
         return queryset.order_by('-created_at')
 
@@ -239,11 +253,23 @@ class TrackViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        """Filter tracks based on user permissions."""
+        """Filter tracks based on user permissions and prefetch related data."""
+        from django.db.models import Prefetch
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
         user = self.request.user
         program_id = self.request.query_params.get('program_id')
         track_type = self.request.query_params.get('track_type')
-        queryset = Track.objects.all()
+        
+        # Prefetch related data for better performance
+        queryset = Track.objects.select_related('program', 'director').prefetch_related(
+            Prefetch('milestones', queryset=Milestone.objects.prefetch_related(
+                Prefetch('modules')
+            ).order_by('order')),
+            Prefetch('specializations')
+        )
         
         if program_id:
             queryset = queryset.filter(program_id=program_id)
@@ -251,10 +277,37 @@ class TrackViewSet(viewsets.ModelViewSet):
         if track_type:
             queryset = queryset.filter(track_type=track_type)
         
+        # Permission filtering: Allow access if user is staff, director of track, or has program_director role
         if not user.is_staff:
-            queryset = queryset.filter(Q(director=user) | Q(program__tracks__director=user)).distinct()
+            # Check if user has program_director or admin role
+            from users.models import UserRole, Role
+            director_roles = Role.objects.filter(name__in=['program_director', 'admin'])
+            has_program_director_role = UserRole.objects.filter(
+                user=user,
+                role__in=director_roles,
+                is_active=True
+            ).exists()
+            
+            logger.info(f"TrackViewSet: User {user.id} has_program_director_role: {has_program_director_role}, program_id: {program_id}")
+            
+            if has_program_director_role:
+                # Program directors can see all tracks in programs they have access to
+                # If filtering by program_id, they can see all tracks in that program
+                # (Permission to view the program itself is checked at the program level)
+                logger.info(f"TrackViewSet: Program director user, returning all tracks for program {program_id}")
+            else:
+                # Regular users can only see tracks they are directors of
+                queryset = queryset.filter(
+                    Q(director=user) | 
+                    Q(program__tracks__director=user)
+                ).distinct()
+                logger.info(f"TrackViewSet: Filtered queryset count: {queryset.count()}")
+        else:
+            logger.info(f"TrackViewSet: Staff user, returning all tracks")
         
-        return queryset
+        result = queryset.order_by('program__name', 'name')
+        logger.info(f"TrackViewSet: Final queryset count: {result.count()}")
+        return result
 
 
 class MilestoneViewSet(viewsets.ModelViewSet):
@@ -299,6 +352,35 @@ class CohortViewSet(viewsets.ModelViewSet):
     queryset = Cohort.objects.all()
     serializer_class = CohortSerializer
     permission_classes = [IsAuthenticated]
+    
+    def create(self, request, *args, **kwargs):
+        """Create cohort with logging."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        data = request.data.copy()
+        # Log incoming data (excluding potentially large fields)
+        data_preview = {k: v for k, v in data.items() if k not in ['seat_pool']}
+        logger.info(f"Creating cohort with data keys: {list(data.keys())}")
+        logger.info(f"Creating cohort with data values: {data_preview}")
+        
+        serializer = self.get_serializer(data=data)
+        if not serializer.is_valid():
+            logger.error(f"Cohort validation failed: {serializer.errors}")
+            logger.error(f"Received data: {data_preview}")
+            return Response(
+                {
+                    'error': 'Validation failed',
+                    'details': serializer.errors,
+                    'received_data': data_preview
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        logger.info(f"Cohort created successfully: {serializer.data.get('id')} - {serializer.data.get('name')}")
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
     def get_queryset(self):
         """Filter cohorts based on user permissions."""

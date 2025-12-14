@@ -7,6 +7,13 @@ from .models import Mission, MissionSubmission, MissionArtifact, AIFeedback
 
 class MissionSerializer(serializers.ModelSerializer):
     """Serializer for missions."""
+    
+    # Explicitly define required fields for better error messages
+    code = serializers.CharField(max_length=50, required=True)
+    title = serializers.CharField(max_length=255, required=True)
+    difficulty = serializers.ChoiceField(choices=Mission.DIFFICULTY_CHOICES, required=True)
+    type = serializers.ChoiceField(choices=Mission.TYPE_CHOICES, required=False, default='lab')
+    
     class Meta:
         model = Mission
         fields = [
@@ -15,6 +22,24 @@ class MissionSerializer(serializers.ModelSerializer):
             'competencies', 'requirements', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+    
+    def validate_code(self, value):
+        """Validate mission code."""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Mission code cannot be empty.')
+        return value.strip()
+    
+    def validate_title(self, value):
+        """Validate mission title."""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Mission title cannot be empty.')
+        return value.strip()
+    
+    def validate_track_id(self, value):
+        """Convert empty string to None for UUID field."""
+        if value == '':
+            return None
+        return value
 
 
 class MissionArtifactSerializer(serializers.ModelSerializer):

@@ -4,34 +4,42 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { djangoClient } from '@/services/djangoClient';
 import type { User } from '@/services/types';
 
-export function useUsers(params?: { page?: number; page_size?: number }) {
+export interface UseUsersParams {
+  page?: number;
+  page_size?: number;
+  role?: string;
+  search?: string;
+}
+
+export function useUsers(params?: UseUsersParams) {
   const [users, setUsers] = useState<User[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchUsers() {
-      try {
-        setIsLoading(true);
-        const response = await djangoClient.users.listUsers(params);
-        setUsers(response.results);
-        setTotalCount(response.count);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load users');
-        setUsers([]);
-      } finally {
-        setIsLoading(false);
-      }
+  const fetchUsers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await djangoClient.users.listUsers(params);
+      setUsers(response.results || []);
+      setTotalCount(response.count || 0);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load users');
+      setUsers([]);
+      setTotalCount(0);
+    } finally {
+      setIsLoading(false);
     }
+  }, [params?.page, params?.page_size, params?.role, params?.search]);
 
+  useEffect(() => {
     fetchUsers();
-  }, [params?.page, params?.page_size]);
+  }, [fetchUsers]);
 
   const updateUser = async (id: number, data: Partial<User>) => {
     try {
@@ -44,20 +52,17 @@ export function useUsers(params?: { page?: number; page_size?: number }) {
     }
   };
 
+  const refetch = useCallback(() => {
+    return fetchUsers();
+  }, [fetchUsers]);
+
   return {
     users,
     totalCount,
     isLoading,
     error,
     updateUser,
-    refetch: () => {
-      setIsLoading(true);
-      return djangoClient.users.listUsers(params).then(response => {
-        setUsers(response.results);
-        setTotalCount(response.count);
-        setIsLoading(false);
-      });
-    },
+    refetch,
   };
 }
 

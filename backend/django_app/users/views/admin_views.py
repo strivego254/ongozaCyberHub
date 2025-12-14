@@ -48,7 +48,21 @@ class UserRoleAssignmentView(viewsets.ViewSet):
     
     def create(self, request, id=None):
         """Assign role to user."""
-        # TODO: Check permissions (only admin/director can assign roles)
+        # Check permissions (only admin or program_director can assign roles)
+        if not request.user.is_staff:
+            director_role = Role.objects.filter(name='program_director').first()
+            is_director = UserRole.objects.filter(
+                user=request.user,
+                role=director_role,
+                is_active=True
+            ).exists() if director_role else False
+            
+            if not is_director:
+                return Response(
+                    {'detail': 'Only administrators and program directors can assign roles'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
         try:
             user = User.objects.get(id=id)
         except User.DoesNotExist:
@@ -61,6 +75,12 @@ class UserRoleAssignmentView(viewsets.ViewSet):
         scope = request.data.get('scope', 'global')
         scope_ref = request.data.get('scope_ref')
         
+        if not role_id:
+            return Response(
+                {'detail': 'role_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         try:
             role = Role.objects.get(id=role_id)
         except Role.DoesNotExist:
@@ -69,13 +89,58 @@ class UserRoleAssignmentView(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        user_role = UserRole.objects.create(
+        # Check if role assignment already exists (check all unique_together combinations)
+        existing_user_role = UserRole.objects.filter(
             user=user,
             role=role,
             scope=scope,
             scope_ref=scope_ref,
-            assigned_by=request.user,
-        )
+            is_active=True
+        ).first()
+        
+        # Also check legacy unique_together fields
+        if not existing_user_role and scope == 'global':
+            existing_user_role = UserRole.objects.filter(
+                user=user,
+                role=role,
+                cohort_id__isnull=True,
+                track_key__isnull=True,
+                org_id__isnull=True,
+                is_active=True
+            ).first()
+        
+        if existing_user_role:
+            return Response({
+                'detail': 'Role already assigned to this user',
+                'user_role': {
+                    'id': existing_user_role.id,
+                    'role': role.name,
+                    'scope': existing_user_role.scope,
+                    'scope_ref': str(existing_user_role.scope_ref) if existing_user_role.scope_ref else None,
+                }
+            }, status=status.HTTP_200_OK)
+        
+        # Create new role assignment
+        try:
+            user_role = UserRole.objects.create(
+                user=user,
+                role=role,
+                scope=scope,
+                scope_ref=scope_ref,
+                assigned_by=request.user,
+            )
+        except Exception as e:
+            # Handle unique constraint violations gracefully
+            error_msg = str(e)
+            if 'unique' in error_msg.lower() or 'duplicate' in error_msg.lower():
+                return Response(
+                    {'detail': 'This role is already assigned to the user with the same scope'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response(
+                {'detail': f'Failed to assign role: {error_msg}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         return Response({
             'detail': 'Role assigned successfully',
@@ -89,6 +154,21 @@ class UserRoleAssignmentView(viewsets.ViewSet):
     
     def destroy(self, request, id=None, role_id=None):
         """Revoke role from user."""
+        # Check permissions (only admin or program_director can revoke roles)
+        if not request.user.is_staff:
+            director_role = Role.objects.filter(name='program_director').first()
+            is_director = UserRole.objects.filter(
+                user=request.user,
+                role=director_role,
+                is_active=True
+            ).exists() if director_role else False
+            
+            if not is_director:
+                return Response(
+                    {'detail': 'Only administrators and program directors can revoke roles'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
         # role_id is the user_role id, id is the user id
         try:
             user_role = UserRole.objects.get(id=role_id, user_id=id)

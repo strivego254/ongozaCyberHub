@@ -9,6 +9,7 @@ export interface Program {
   id?: string
   name: string
   category: 'technical' | 'leadership' | 'mentorship' | 'executive'
+  categories?: ('technical' | 'leadership' | 'mentorship' | 'executive')[]
   description: string
   duration_months: number
   default_price: number
@@ -53,6 +54,18 @@ export interface Milestone {
   updated_at?: string
 }
 
+export interface Specialization {
+  id?: string
+  track?: string
+  track_name?: string
+  name: string
+  description: string
+  missions: string[]
+  duration_weeks: number
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Track {
   id?: string
   program?: string
@@ -63,7 +76,8 @@ export interface Track {
   description: string
   competencies: Record<string, any>
   missions: string[]
-  director: string | null
+  director: string | number | null
+  specializations?: Specialization[]
   milestones?: Milestone[]
   created_at?: string
   updated_at?: string
@@ -108,13 +122,16 @@ export interface CalendarEvent {
   id: string
   cohort: string
   cohort_name?: string
-  type: 'orientation' | 'session' | 'submission' | 'holiday' | 'closure'
+  type: 'orientation' | 'mentorship' | 'session' | 'project_review' | 'submission' | 'holiday' | 'closure'
   title: string
   description: string
   start_ts: string
   end_ts: string
-  location: string
-  link: string
+  location?: string
+  link?: string
+  timezone?: string
+  milestone_id?: string
+  completion_tracked?: boolean
   status: 'scheduled' | 'done' | 'cancelled'
   created_at: string
   updated_at: string
@@ -299,33 +316,45 @@ class ProgramsClient {
 
   // Tracks
   async getTracks(programId?: string): Promise<Track[]> {
-    const params = programId ? { program_id: programId } : {}
-    const queryString = programId ? `?program_id=${programId}` : ''
-    return apiGateway.get(`/tracks/${queryString}`)
+    // Endpoint: /api/v1/programs/tracks/ 
+    const path = programId ? `/programs/tracks/?program_id=${programId}` : '/programs/tracks/'
+    return apiGateway.get(path)
   }
 
   async getTrack(id: string): Promise<Track> {
-    return apiGateway.get(`/tracks/${id}/`)
+    return apiGateway.get(`/programs/tracks/${id}/`)
   }
 
   async createTrack(data: Partial<Track>): Promise<Track> {
-    return apiGateway.post('/tracks/', data)
+    return apiGateway.post('/programs/tracks/', data)
   }
 
   async updateTrack(id: string, data: Partial<Track>): Promise<Track> {
-    return apiGateway.patch(`/tracks/${id}/`, data)
+    return apiGateway.patch(`/programs/tracks/${id}/`, data)
   }
 
   async deleteTrack(id: string): Promise<void> {
-    return apiGateway.delete(`/tracks/${id}/`)
+    return apiGateway.delete(`/programs/tracks/${id}/`)
   }
 
   // Cohorts
-  async getCohorts(trackId?: string, status?: string): Promise<Cohort[]> {
-    const params: string[] = []
-    if (trackId) params.push(`track_id=${trackId}`)
-    if (status) params.push(`status=${status}`)
-    const queryString = params.length > 0 ? `?${params.join('&')}` : ''
+  async getCohorts(params?: {
+    trackId?: string
+    status?: string
+    page?: number
+    pageSize?: number
+  }): Promise<{
+    results: Cohort[]
+    count: number
+    next: string | null
+    previous: string | null
+  }> {
+    const queryParams: string[] = []
+    if (params?.trackId) queryParams.push(`track_id=${params.trackId}`)
+    if (params?.status) queryParams.push(`status=${params.status}`)
+    if (params?.page) queryParams.push(`page=${params.page}`)
+    if (params?.pageSize) queryParams.push(`page_size=${params.pageSize}`)
+    const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : ''
     return apiGateway.get(`/cohorts/${queryString}`)
   }
 
@@ -358,6 +387,14 @@ class ProgramsClient {
     return apiGateway.post(`/cohorts/${cohortId}/calendar/`, data)
   }
 
+  async updateCalendarEvent(eventId: string, data: Partial<CalendarEvent>): Promise<CalendarEvent> {
+    return apiGateway.patch(`/programs/calendar-events/${eventId}/`, data)
+  }
+
+  async deleteCalendarEvent(eventId: string): Promise<void> {
+    return apiGateway.delete(`/programs/calendar-events/${eventId}/`)
+  }
+
   // Enrollments
   async getCohortEnrollments(cohortId: string): Promise<Enrollment[]> {
     return apiGateway.get(`/cohorts/${cohortId}/enrollments/`)
@@ -376,13 +413,27 @@ class ProgramsClient {
     return apiGateway.post(`/cohorts/${cohortId}/mentors/`, data)
   }
 
+  async updateMentorAssignment(assignmentId: string, data: Partial<MentorAssignment>): Promise<MentorAssignment> {
+    // Use the same endpoint as reassignMentor but allow updating role or other fields
+    return apiGateway.patch(`/mentor-assignments/${assignmentId}/`, data)
+  }
+
   async removeMentorAssignment(assignmentId: string): Promise<void> {
     return apiGateway.delete(`/mentor-assignments/${assignmentId}/`)
   }
 
   async listMentors(searchQuery?: string): Promise<any[]> {
-    const queryString = searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''
-    return apiGateway.get(`/mentors/${queryString}`)
+    // Fetch users with mentor role from the users API
+    const params: Record<string, string> = { role: 'mentor', page_size: '200' }
+    if (searchQuery) {
+      params.search = searchQuery
+    }
+    const response = await apiGateway.get<{ results: any[]; count: number } | any[]>('/users', { params })
+    // Handle both array and paginated response formats
+    if (Array.isArray(response)) {
+      return response
+    }
+    return response.results || []
   }
 
   async getMentorAnalytics(mentorId: string): Promise<any> {
@@ -414,6 +465,64 @@ class ProgramsClient {
     return apiGateway.post(`/cohorts/${cohortId}/notifications/`, notification)
   }
 
+  // Mentorship Cycle Configuration
+  async saveMentorshipCycle(cohortId: string, cycleData: {
+    duration_weeks: number
+    frequency: 'weekly' | 'bi-weekly' | 'monthly'
+    milestones: string[]
+    goals: string[]
+    program_type?: string
+  }): Promise<any> {
+    return apiGateway.post(`/cohorts/${cohortId}/mentorship-cycle/`, cycleData)
+  }
+
+  // Mission Review Oversight
+  async getMissionReviews(cohortId?: string, premiumOnly?: boolean): Promise<any[]> {
+    const params: Record<string, string> = {}
+    if (cohortId) params.cohort_id = cohortId
+    if (premiumOnly) params.premium_only = 'true'
+    const queryString = new URLSearchParams(params).toString()
+    return apiGateway.get(`/mission-reviews/${queryString ? `?${queryString}` : ''}`)
+  }
+
+  // Session Management
+  async getCohortSessions(cohortId: string): Promise<any[]> {
+    return apiGateway.get(`/cohorts/${cohortId}/sessions/`)
+  }
+
+  // Goal Tracking
+  async getCohortGoals(cohortId: string): Promise<any[]> {
+    return apiGateway.get(`/cohorts/${cohortId}/goals/`)
+  }
+
+  // Rubric Management
+  async getTrackRubrics(trackId: string): Promise<any[]> {
+    return apiGateway.get(`/tracks/${trackId}/rubrics/`)
+  }
+
+  async createRubric(trackId: string, rubricData: any): Promise<any> {
+    return apiGateway.post(`/tracks/${trackId}/rubrics/`, rubricData)
+  }
+
+  // Conflict Resolution
+  async getMentorConflicts(): Promise<any[]> {
+    return apiGateway.get(`/mentors/conflicts/`)
+  }
+
+  async resolveConflict(conflictId: string, resolution: any): Promise<any> {
+    return apiGateway.post(`/mentors/conflicts/${conflictId}/resolve/`, resolution)
+  }
+
+  // Audit Trail
+  async getMentorshipAuditLogs(filters: { start_date?: string; end_date?: string; action_type?: string }): Promise<any[]> {
+    const params = new URLSearchParams()
+    if (filters.start_date) params.append('start_date', filters.start_date)
+    if (filters.end_date) params.append('end_date', filters.end_date)
+    if (filters.action_type) params.append('action_type', filters.action_type)
+    const queryString = params.toString()
+    return apiGateway.get(`/mentorship/audit-logs/${queryString ? `?${queryString}` : ''}`)
+  }
+
   // Program Rules
   async getProgramRules(programId?: string): Promise<ProgramRule[]> {
     const queryString = programId ? `?program_id=${programId}` : ''
@@ -426,6 +535,10 @@ class ProgramsClient {
 
   async updateProgramRule(id: string, data: Partial<ProgramRule>): Promise<ProgramRule> {
     return apiGateway.put(`/rules/${id}/`, data)
+  }
+
+  async deleteProgramRule(id: string): Promise<void> {
+    return apiGateway.delete(`/rules/${id}/`)
   }
 
   // Auto-graduation

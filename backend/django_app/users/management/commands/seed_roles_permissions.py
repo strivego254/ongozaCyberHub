@@ -180,6 +180,16 @@ class Command(BaseCommand):
                 ],
             },
             {
+                'name': 'finance_admin',
+                'display_name': 'Finance Admin',
+                'description': 'Full finance administration access; manage billing, invoices, refunds, and financial reports',
+                'permissions': [
+                    'read_billing', 'update_billing', 'manage_billing',
+                    'create_invoice', 'read_invoice', 'update_invoice', 'list_invoices', 'delete_invoice',
+                    'read_user',  # Limited access for billing purposes
+                ],
+            },
+            {
                 'name': 'sponsor_admin',
                 'display_name': 'Sponsor/Employer Admin',
                 'description': 'Manage sponsored users, view permitted profiles per consent',
