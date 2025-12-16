@@ -125,6 +125,18 @@ def start_mission(request, mission_id):
     except Mission.DoesNotExist:
         return Response({'error': 'Mission not found'}, status=status.HTTP_404_NOT_FOUND)
     
+    # Coaching OS Gatekeeping: Check if user can start mission
+    try:
+        from coaching.integrations import can_start_mission
+        can_start, error_message = can_start_mission(user, mission_id)
+        if not can_start:
+            return Response(
+                {'error': error_message, 'gate': 'coaching'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except ImportError:
+        logger.warning("Coaching integrations not available, skipping gatekeeping")
+    
     # Check if mission already in progress
     existing_progress = MissionProgress.objects.filter(
         user=user,

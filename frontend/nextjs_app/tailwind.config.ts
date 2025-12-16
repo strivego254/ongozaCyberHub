@@ -55,6 +55,7 @@ const config: Config = {
       animation: {
         'glow': 'glow 2s ease-in-out infinite alternate',
         'pulse-glow': 'pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'flicker': 'flicker 1.5s ease-in-out infinite',
       },
       keyframes: {
         glow: {
@@ -64,6 +65,10 @@ const config: Config = {
         'pulse-glow': {
           '0%, 100%': { opacity: '1', boxShadow: '0 0 10px rgba(3, 72, 168, 0.5)' },
           '50%': { opacity: '0.8', boxShadow: '0 0 20px rgba(3, 72, 168, 0.8)' },
+        },
+        flicker: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
         },
       },
     },

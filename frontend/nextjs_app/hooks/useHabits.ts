@@ -1,86 +1,47 @@
-'use client'
+/**
+ * Habit-Specific Hook
+ * Logic for habit tracking and streaks
+ */
+import { useMemo } from 'react'
+import { useCoachingStore } from '@/lib/coaching/store'
+import { calculateStreak, getToday } from '@/lib/coaching/utils'
+import type { Habit, HabitLog } from '@/lib/coaching/types'
 
-import { useState, useEffect, useCallback } from 'react'
-import { habitsClient } from '@/services/habitsClient'
-import type { Habit, DailyGoal, HabitReflection } from '@/services/types/habits'
-
-export function useHabits(menteeId: string | undefined) {
-  const [habits, setHabits] = useState<Habit[]>([])
-  const [goals, setGoals] = useState<DailyGoal[]>([])
-  const [latestReflection, setLatestReflection] = useState<HabitReflection | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const loadData = useCallback(async () => {
-    if (!menteeId) return
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const [habitsData, goalsData, reflectionData] = await Promise.all([
-        habitsClient.getTodayHabits(menteeId),
-        habitsClient.getTodayGoals(menteeId),
-        habitsClient.getLatestReflection(menteeId),
-      ])
-
-      setHabits(habitsData)
-      setGoals(goalsData)
-      setLatestReflection(reflectionData)
-    } catch (err: any) {
-      setError(err.message || 'Failed to load habits data')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [menteeId])
-
-  const toggleHabit = useCallback(async (habitId: string, completed: boolean) => {
-    if (!menteeId) return
-
-    try {
-      const updated = await habitsClient.updateHabit(menteeId, habitId, completed)
-      setHabits(prev => prev.map(h => h.id === habitId ? updated : h))
-    } catch (err: any) {
-      throw new Error(err.message || 'Failed to update habit')
-    }
-  }, [menteeId])
-
-  const completeGoal = useCallback(async (goalId: string) => {
-    if (!menteeId) return
-
-    try {
-      const updated = await habitsClient.completeGoal(menteeId, goalId)
-      setGoals(prev => prev.map(g => g.id === goalId ? updated : g))
-    } catch (err: any) {
-      throw new Error(err.message || 'Failed to complete goal')
-    }
-  }, [menteeId])
-
-  const submitReflection = useCallback(async (content: string) => {
-    if (!menteeId) return
-
-    try {
-      const reflection = await habitsClient.submitReflection(menteeId, content)
-      setLatestReflection(reflection)
-      return reflection
-    } catch (err: any) {
-      throw new Error(err.message || 'Failed to submit reflection')
-    }
-  }, [menteeId])
-
-  useEffect(() => {
-    loadData()
-  }, [loadData])
-
+export function useHabits() {
+  const { habits, habitLogs, logHabit } = useCoachingStore()
+  
+  const todayHabits = useMemo(() => {
+    const today = getToday()
+    return habits.filter(h => h.isActive).map(habit => {
+      const logs = habitLogs.filter(log => log.habitId === habit.id)
+      const todayLog = logs.find(log => log.date === today)
+      const streakData = calculateStreak(habit, logs)
+      
+      return {
+        ...habit,
+        todayStatus: todayLog?.status || ('pending' as const),
+        streakData,
+        logs,
+      }
+    })
+  }, [habits, habitLogs])
+  
+  const handleLogHabit = async (habitId: string, status: HabitLog['status']) => {
+    await logHabit(habitId, status)
+  }
+  
+  const getHabitStreak = (habitId: string) => {
+    const habit = habits.find(h => h.id === habitId)
+    if (!habit) return null
+    
+    const logs = habitLogs.filter(log => log.habitId === habitId)
+    return calculateStreak(habit, logs)
+  }
+  
   return {
     habits,
-    goals,
-    latestReflection,
-    isLoading,
-    error,
-    reload: loadData,
-    toggleHabit,
-    completeGoal,
-    submitReflection,
+    todayHabits,
+    logHabit: handleLogHabit,
+    getHabitStreak,
   }
 }

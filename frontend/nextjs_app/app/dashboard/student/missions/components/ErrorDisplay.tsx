@@ -40,7 +40,7 @@ export function ErrorDisplay({ error, title = 'Error', onRetry }: ErrorDisplayPr
               Retry
             </Button>
           )}
-          <Button variant="steel" onClick={() => window.location.reload()}>
+          <Button variant="outline" onClick={() => window.location.reload()}>
             Reload Page
           </Button>
         </div>

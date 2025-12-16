@@ -1,3 +1,7 @@
+/**
+ * Coaching OS Dashboard Page
+ * Main entry point for the Coaching OS experience
+ */
 'use client'
 
 import { useEffect } from 'react'
@@ -23,6 +27,7 @@ export default function CoachingPage() {
       setError(null)
       
       try {
+        // Load all data in parallel (userId handled by auth in API)
         const [habits, goals, reflections, metrics, habitLogs] = await Promise.all([
           habitsAPI.getAll().catch(() => []),
           goalsAPI.getAll().catch(() => []),
@@ -34,6 +39,7 @@ export default function CoachingPage() {
             completedGoals: 0,
             reflectionCount: 0,
           })),
+          // Load logs for all habits
           Promise.all(
             (await habitsAPI.getAll()).map(habit => 
               habitsAPI.getLogs(habit.id).catch(() => [])
@@ -46,6 +52,9 @@ export default function CoachingPage() {
         setReflections(reflections)
         setMetrics(metrics)
         setHabitLogs(habitLogs)
+        
+        // Core habits are created automatically when Profiler is completed
+        // No need to initialize here
       } catch (error) {
         console.error('Failed to load coaching data:', error)
         setError('Failed to load coaching data. Please refresh the page.')
@@ -58,6 +67,7 @@ export default function CoachingPage() {
   }, [setHabits, setGoals, setReflections, setMetrics, setHabitLogs, setLoading, setError])
   
   const handleNavigate = (section: 'habits' | 'goals' | 'reflect' | 'coach') => {
+    // Scroll to section or open modal
     const element = document.getElementById(`coaching-${section}`)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' })
@@ -71,3 +81,4 @@ export default function CoachingPage() {
     </div>
   )
 }
+

@@ -26,6 +26,7 @@ import { useMissionStore } from '../lib/store/missionStore'
 import { MissionCardEnhanced } from './MissionCardEnhanced'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
 import type { Mission } from '../types'
 
 interface MissionDashboardKanbanProps {
@@ -34,10 +35,42 @@ interface MissionDashboardKanbanProps {
 }
 
 const columns = [
-  { id: 'locked', label: '🔒 Locked', color: 'gray', bgColor: 'bg-slate-50', borderColor: 'border-slate-200' },
-  { id: 'available', label: '▶️ Available', color: 'blue', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
-  { id: 'in_progress', label: '⚡ In Progress', color: 'yellow', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200' },
-  { id: 'completed', label: '✅ Completed', color: 'green', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
+  { 
+    id: 'locked', 
+    label: '🔒 Locked', 
+    color: 'steel', 
+    bgColor: 'bg-dashboard-card/50', 
+    borderColor: 'border-och-steel/30',
+    accentColor: 'text-och-steel',
+    glowColor: 'rgba(168, 176, 184, 0.2)'
+  },
+  { 
+    id: 'available', 
+    label: '▶️ Available', 
+    color: 'primary', 
+    bgColor: 'bg-dashboard-card/60', 
+    borderColor: 'border-mission-primary/40',
+    accentColor: 'text-mission-primary',
+    glowColor: 'rgba(59, 130, 246, 0.3)'
+  },
+  { 
+    id: 'in_progress', 
+    label: '⚡ In Progress', 
+    color: 'warning', 
+    bgColor: 'bg-dashboard-card/60', 
+    borderColor: 'border-mission-warning/40',
+    accentColor: 'text-mission-warning',
+    glowColor: 'rgba(245, 158, 11, 0.3)'
+  },
+  { 
+    id: 'completed', 
+    label: '✅ Completed', 
+    color: 'success', 
+    bgColor: 'bg-dashboard-card/60', 
+    borderColor: 'border-mission-success/40',
+    accentColor: 'text-mission-success',
+    glowColor: 'rgba(16, 185, 129, 0.3)'
+  },
 ]
 
 export function MissionDashboardKanban({ track = 'defender', tier = 'beginner' }: MissionDashboardKanbanProps) {
@@ -151,7 +184,7 @@ export function MissionDashboardKanban({ track = 'defender', tier = 'beginner' }
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6">
         {columns.map((col) => (
-          <div key={col.id} className="h-[400px] bg-slate-100 rounded-xl animate-pulse" />
+          <div key={col.id} className="h-[400px] bg-dashboard-card/30 rounded-xl animate-pulse border border-och-steel/20" />
         ))}
       </div>
     )
@@ -176,21 +209,21 @@ export function MissionDashboardKanban({ track = 'defender', tier = 'beginner' }
   if (!data) {
     return (
       <div className="p-6">
-        <Card className="p-6 text-center">
-          <p className="text-slate-600">No mission data available</p>
+        <Card className="p-6 text-center glass-card border-och-steel/30">
+          <p className="text-och-steel">No mission data available</p>
         </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-dashboard-bg p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-slate-700 bg-clip-text text-transparent mb-2">
+        <h1 className="text-3xl font-black bg-gradient-to-r from-och-mint via-dashboard-accent to-och-mint bg-clip-text text-transparent mb-2">
           Mission Control Center
         </h1>
-        <p className="text-slate-600">
-          Track: <span className="font-semibold capitalize">{track}</span> • Tier: <span className="font-semibold capitalize">{tier}</span>
+        <p className="text-och-steel">
+          Track: <span className="font-semibold text-och-mint capitalize">{track}</span> • Tier: <span className="font-semibold text-och-mint capitalize">{tier}</span>
         </p>
       </div>
 
@@ -206,14 +239,25 @@ export function MissionDashboardKanban({ track = 'defender', tier = 'beginner' }
             return (
               <div
                 key={column.id}
-                className={`p-4 rounded-xl border-2 ${column.borderColor} ${column.bgColor} min-h-[400px]`}
+                className={`p-4 rounded-xl border-2 ${column.borderColor} ${column.bgColor} min-h-[400px] backdrop-blur-sm glass-card`}
+                style={{
+                  boxShadow: `0 4px 20px ${column.glowColor}, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
+                }}
                 role="region"
                 aria-label={`${column.label} missions`}
               >
-                <h3 className="text-lg font-bold mb-4 flex items-center">
-                  <span className={`w-3 h-3 rounded-full bg-${column.color}-500 mr-2`} />
+                <h3 className={`text-lg font-bold mb-4 flex items-center ${column.accentColor}`}>
+                  <span 
+                    className={`w-3 h-3 rounded-full mr-2`}
+                    style={{ 
+                      backgroundColor: column.id === 'locked' ? '#A8B0B8' : 
+                                      column.id === 'available' ? '#3B82F6' :
+                                      column.id === 'in_progress' ? '#F59E0B' : '#10B981',
+                      boxShadow: `0 0 8px ${column.glowColor}`
+                    }}
+                  />
                   {column.label}
-                  <Badge variant="steel" className="ml-2">
+                  <Badge variant="steel" className="ml-2 bg-och-midnight/50 text-och-steel border-och-steel/30">
                     {missions.length}
                   </Badge>
                 </h3>
@@ -243,7 +287,7 @@ export function MissionDashboardKanban({ track = 'defender', tier = 'beginner' }
                     </div>
                   </SortableContext>
                 ) : (
-                  <div className="text-center text-slate-400 py-8">
+                  <div className="text-center text-och-steel/50 py-8">
                     <p className="text-sm">No missions</p>
                   </div>
                 )}

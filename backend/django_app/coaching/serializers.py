@@ -1,78 +1,74 @@
 """
-Serializers for Coaching OS.
+Coaching OS serializers for API responses.
 """
 from rest_framework import serializers
-from .models import Habit, HabitLog, Goal, Reflection
+from .models import Habit, HabitLog, Goal, Reflection, AICoachSession, AICoachMessage
 
 
 class HabitSerializer(serializers.ModelSerializer):
-    """Serializer for habits."""
     class Meta:
         model = Habit
         fields = [
-            'id', 'name', 'category', 'target_frequency',
-            'streak_current', 'streak_longest', 'last_completed_at',
-            'created_at'
+            'id', 'user_id', 'name', 'type', 'frequency',
+            'streak', 'longest_streak', 'is_active',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'streak_current', 'streak_longest', 'last_completed_at', 'created_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class HabitLogSerializer(serializers.ModelSerializer):
-    """Serializer for habit logs."""
+    habit = HabitSerializer(read_only=True)
+    habit_id = serializers.UUIDField(write_only=True, required=False)
+    
     class Meta:
         model = HabitLog
-        fields = ['id', 'habit', 'completed_at', 'notes']
-        read_only_fields = ['id', 'completed_at']
-
-
-class CreateHabitSerializer(serializers.Serializer):
-    """Serializer for creating/logging habits."""
-    name = serializers.CharField(required=True)
-    category = serializers.ChoiceField(choices=['learn', 'practice', 'reflect'], required=True)
-    log_today = serializers.BooleanField(default=False)
+        fields = [
+            'id', 'habit_id', 'habit', 'user_id', 'date', 'status',
+            'notes', 'logged_at'
+        ]
+        read_only_fields = ['id', 'logged_at']
 
 
 class GoalSerializer(serializers.ModelSerializer):
-    """Serializer for goals."""
     class Meta:
         model = Goal
         fields = [
-            'id', 'title', 'description', 'type', 'status',
-            'target_date', 'completed_at', 'mentor_feedback', 'created_at'
+            'id', 'user_id', 'type', 'title', 'description',
+            'progress', 'target', 'current', 'status',
+            'mentor_feedback', 'subscription_tier', 'due_date',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'status', 'completed_at', 'created_at']
-
-
-class CreateGoalSerializer(serializers.Serializer):
-    """Serializer for creating goals."""
-    title = serializers.CharField(required=True)
-    description = serializers.CharField(required=False, allow_blank=True)
-    type = serializers.ChoiceField(choices=['daily', 'weekly', 'monthly'], required=True)
-    target_date = serializers.DateTimeField(required=False, allow_null=True)
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class ReflectionSerializer(serializers.ModelSerializer):
-    """Serializer for reflections."""
     class Meta:
         model = Reflection
         fields = [
-            'id', 'prompt', 'response', 'sentiment_score',
-            'behavior_tags', 'created_at'
+            'id', 'user_id', 'date', 'content', 'sentiment',
+            'emotion_tags', 'ai_insights', 'word_count',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'sentiment_score', 'behavior_tags', 'created_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-class CreateReflectionSerializer(serializers.Serializer):
-    """Serializer for creating reflections."""
-    prompt = serializers.CharField(required=True)
-    response = serializers.CharField(required=True)
+class AICoachMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AICoachMessage
+        fields = [
+            'id', 'session_id', 'role', 'content', 'context',
+            'metadata', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
 
 
-class CoachingSummarySerializer(serializers.Serializer):
-    """Serializer for coaching summary."""
-    habit_completion = serializers.DecimalField(max_digits=4, decimal_places=2)
-    streak_current = serializers.IntegerField()
-    goals_active = serializers.IntegerField()
-    goals_completed = serializers.IntegerField()
-    period = serializers.CharField()
-
+class AICoachSessionSerializer(serializers.ModelSerializer):
+    messages = AICoachMessageSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = AICoachSession
+        fields = [
+            'id', 'user_id', 'session_type', 'prompt_count',
+            'messages', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
