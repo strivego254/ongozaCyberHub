@@ -119,3 +119,42 @@ export interface MentorReview {
   reviewer_name?: string
 }
 
+// MXP-specific types
+export type MXPTrack = 'defender' | 'offensive' | 'grc' | 'innovation' | 'leadership'
+export type MXPTier = 'beginner' | 'intermediate' | 'advanced' | 'mastery' | 'capstone'
+export type MXPStatus = 'locked' | 'available' | 'in_progress' | 'submitted' | 'ai_reviewed' | 'mentor_review' | 'approved' | 'failed' | 'revision_requested'
+export type FinalStatus = 'pass' | 'fail' | 'pending'
+
+export interface Subtask {
+  id: number
+  title: string
+  description: string
+  dependencies?: number[] // Array of subtask IDs that must be completed first
+  evidence_schema?: {
+    required: boolean
+    file_types?: string[]
+    max_files?: number
+  }
+  estimated_minutes?: number
+}
+
+export interface MissionProgress {
+  id: string
+  mission_id: string
+  user_id: string
+  status: MXPStatus
+  current_subtask: number
+  subtasks_progress: Record<string, {
+    completed: boolean
+    evidence: string[]
+    notes: string
+  }>
+  started_at?: string
+  submitted_at?: string
+  ai_score?: number
+  mentor_score?: number
+  final_status?: FinalStatus
+  reflection?: string
+  progress_percentage?: number
+}
+

@@ -111,7 +111,7 @@ export default function MentorReviewsPage() {
               return analytics.reviews.map((review: any) => ({
                 id: review.id || `${mentor.id}-${review.reviewed_at}`,
                 mentor_id: String(mentor.id),
-                mentor_name: mentor.name || `${mentor.first_name || ''} ${mentor.last_name || ''}`.trim() || mentor.email,
+                 mentor_name: `${mentor.first_name || ''} ${mentor.last_name || ''}`.trim() || mentor.email,
                 mentor_email: mentor.email,
                 cohort_id: review.cohort_id,
                 cohort_name: review.cohort_name,
@@ -268,7 +268,7 @@ export default function MentorReviewsPage() {
                   <option value="all">All Mentors</option>
                   {mentors.map((mentor) => (
                     <option key={mentor.id} value={String(mentor.id)}>
-                      {mentor.name || mentor.email}
+                      {`${mentor.first_name || ''} ${mentor.last_name || ''}`.trim() || mentor.email}
                     </option>
                   ))}
                 </select>

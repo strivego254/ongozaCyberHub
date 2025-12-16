@@ -13,6 +13,9 @@ export default function ProgramDetailPage() {
   const params = useParams()
   const programId = params?.id as string | undefined
   
+  // Call hook before any conditional returns
+  const { program, isLoading, error } = useProgram(programId || '')
+  
   // Safety check
   if (!programId) {
     return (
@@ -30,8 +33,6 @@ export default function ProgramDetailPage() {
       </RouteGuard>
     )
   }
-
-  const { program, isLoading, error } = useProgram(programId)
 
   // Debug logging
   if (typeof window !== 'undefined') {

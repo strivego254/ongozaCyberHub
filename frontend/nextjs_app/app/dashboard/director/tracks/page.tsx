@@ -100,7 +100,7 @@ export default function TracksPage() {
       for (const track of tracks) {
         if (track.id) {
           try {
-            const cohorts = await programsClient.getCohorts(track.id)
+            const cohorts = await programsClient.getCohorts({ trackId: String(track.id) })
             counts[track.id] = Array.isArray(cohorts) ? cohorts.length : 0
           } catch (err) {
             console.error(`Failed to load cohorts for track ${track.id}:`, err)
@@ -259,7 +259,7 @@ export default function TracksPage() {
                       <div>
                         <span className="text-och-steel">Status:</span>
                         <Badge 
-                          variant={selectedProgram.status === 'active' ? 'defender' : selectedProgram.status === 'archived' ? 'secondary' : 'outline'}
+                          variant={selectedProgram.status === 'active' ? 'defender' : selectedProgram.status === 'archived' ? 'steel' : 'steel'}
                           className="ml-2"
                         >
                           {selectedProgram.status || 'N/A'}

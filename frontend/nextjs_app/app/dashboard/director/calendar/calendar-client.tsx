@@ -302,10 +302,10 @@ export default function CalendarClient() {
               {selectedCohort && (
                 <div className="mt-3 text-sm text-och-steel">
                   <p>
-                    <span className="font-medium">Program:</span> {selectedCohort.program_name || 'N/A'}
+                    <span className="font-medium">Program:</span> {(selectedCohort as any).program_name || 'N/A'}
                   </p>
                   <p>
-                    <span className="font-medium">Track:</span> {selectedCohort.track_name || 'N/A'}
+                    <span className="font-medium">Track:</span> {(selectedCohort as any).track_name || 'N/A'}
                   </p>
                   <p>
                     <span className="font-medium">Duration:</span>{' '}
@@ -598,7 +598,7 @@ export default function CalendarClient() {
                                   {event.status}
                                 </Badge>
                                 {event.completion_tracked && (
-                                  <Badge variant="outline">Completion Tracked</Badge>
+                                  <Badge variant="steel">Completion Tracked</Badge>
                                 )}
                               </div>
                               <h3 className="text-white font-semibold text-lg mb-1">{event.title}</h3>

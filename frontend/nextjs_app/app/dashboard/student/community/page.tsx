@@ -47,7 +47,7 @@ export default function CommunityPage() {
                       <span>{post.views} views</span>
                     </div>
                     <div className="flex gap-2">
-                      {post.tags.map((tag) => (
+                      {post.tags.map((tag: string) => (
                         <Badge key={tag} variant="steel" className="text-xs">
                           {tag}
                         </Badge>

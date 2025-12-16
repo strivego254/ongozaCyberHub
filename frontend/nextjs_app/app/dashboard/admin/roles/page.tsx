@@ -144,7 +144,16 @@ export default function RolesPage() {
       setIsLoading(true)
       const data = await djangoClient.roles.listRoles()
       const rolesArray = Array.isArray(data) ? data : (data?.results || [])
-      setRoles(rolesArray)
+      // Map to ensure all required Role fields are present
+      const mappedRoles: Role[] = rolesArray.map((role: any) => ({
+        id: role.id,
+        name: role.name,
+        display_name: role.display_name,
+        description: role.description || '',
+        role_type: role.role_type || 'custom',
+        is_system: role.is_system || false,
+      }))
+      setRoles(mappedRoles)
     } catch (error) {
       console.error('Failed to load roles:', error)
       setRoles([])

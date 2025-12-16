@@ -376,7 +376,7 @@ export default function CohortsPage() {
                                 variant={
                                   cohort.status === 'running' ? 'mint' :
                                   cohort.status === 'active' ? 'defender' :
-                                  cohort.status === 'closed' ? 'outline' :
+                                  cohort.status === 'closed' ? 'steel' :
                                   'orange'
                                 }
                               >

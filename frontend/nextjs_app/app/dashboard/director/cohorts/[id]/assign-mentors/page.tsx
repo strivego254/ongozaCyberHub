@@ -313,7 +313,7 @@ export default function AssignMentorsPage() {
                                   variant={
                                     assignment.role === 'primary' ? 'defender' :
                                     assignment.role === 'support' ? 'mint' :
-                                    'outline'
+                                    'steel'
                                   }
                                 >
                                   {assignment.role || 'support'}

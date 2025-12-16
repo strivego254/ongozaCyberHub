@@ -202,7 +202,7 @@ export default function MentorsListClient() {
 
   // Filter mentors by cohort/program/track (client-side filtering for now)
   const filteredMentors = useMemo(() => {
-    let filtered = mentors
+    const filtered = mentors
 
     // Note: Cohort/program/track filtering would ideally be done server-side
     // For now, we'll do client-side filtering if mentor assignments data is available

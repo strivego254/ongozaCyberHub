@@ -34,8 +34,8 @@ export default function PlansManagementClient() {
   const loadPlans = async () => {
     try {
       setIsLoading(true)
-      const response = await apiGateway.get('/api/v1/subscriptions/admin/plans/')
-      setPlans(response.data)
+      const response = await apiGateway.get('/api/v1/subscriptions/admin/plans/') as { data: any[] }
+      setPlans(response.data || [])
     } catch (error) {
       console.error('Failed to load plans:', error)
     } finally {

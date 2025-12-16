@@ -13,7 +13,7 @@ export default function DirectorClient() {
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null)
   
   const { programs, isLoading: programsLoading } = usePrograms()
-  const { cohorts, isLoading: cohortsLoading } = useCohorts(undefined, 'active')
+  const { cohorts, isLoading: cohortsLoading } = useCohorts({ status: 'active' })
   const { dashboard: dashboardData, isLoading: dashboardLoading } = useCohortDashboard(
     selectedCohortId || ''
   )

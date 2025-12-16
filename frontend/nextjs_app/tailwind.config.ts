@@ -9,6 +9,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        'mission-success': '#10B981',
+        'mission-warning': '#F59E0B',
+        'mission-critical': '#EF4444',
+        'mission-primary': '#3B82F6',
+        'mission-recipe': '#059669',
         och: {
           midnight: '#0A0A0C',
           defender: '#0648A8',
@@ -28,6 +33,15 @@ const config: Config = {
             800: '#343A40',
             900: '#212529',
           },
+        },
+        dashboard: {
+          bg: '#0a0f1e',
+          card: '#1e293b',
+          accent: '#00d4ff',
+          success: '#10b981',
+          warning: '#f59e0b',
+          error: '#ef4444',
+          glass: 'rgba(30,41,59,0.8)',
         },
       },
       backgroundImage: {

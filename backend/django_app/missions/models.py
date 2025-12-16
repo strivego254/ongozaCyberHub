@@ -9,12 +9,29 @@ from users.models import User
 
 
 class Mission(models.Model):
-    """Mission template."""
-    DIFFICULTY_CHOICES = [
+    """Mission template - MXP Core Model."""
+    TRACK_CHOICES = [
+        ('defender', 'Defender'),
+        ('offensive', 'Offensive'),
+        ('grc', 'GRC'),
+        ('innovation', 'Innovation'),
+        ('leadership', 'Leadership'),
+    ]
+    
+    TIER_CHOICES = [
         ('beginner', 'Beginner'),
         ('intermediate', 'Intermediate'),
         ('advanced', 'Advanced'),
+        ('mastery', 'Mastery'),
         ('capstone', 'Capstone'),
+    ]
+    
+    DIFFICULTY_CHOICES = [
+        ('novice', 'Novice'),
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+        ('elite', 'Elite'),
     ]
     
     TYPE_CHOICES = [
@@ -28,6 +45,29 @@ class Mission(models.Model):
     code = models.CharField(max_length=50, unique=True, db_index=True, help_text='Mission code like "SIEM-03"')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    story = models.TextField(blank=True, help_text='Narrative context for the mission')
+    objectives = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Array of mission objectives'
+    )
+    subtasks = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Array of subtasks with dependencies and evidence_schema'
+    )
+    track = models.CharField(
+        max_length=20,
+        choices=TRACK_CHOICES,
+        db_index=True,
+        help_text='Track: defender, offensive, grc, innovation, leadership'
+    )
+    tier = models.CharField(
+        max_length=20,
+        choices=TIER_CHOICES,
+        db_index=True,
+        help_text='Tier: beginner, intermediate, advanced, mastery, capstone'
+    )
     difficulty = models.CharField(
         max_length=20,
         choices=DIFFICULTY_CHOICES,
@@ -41,17 +81,31 @@ class Mission(models.Model):
     )
     track_id = models.UUIDField(null=True, blank=True, db_index=True)
     track_key = models.CharField(max_length=50, blank=True, db_index=True, help_text='Track key like "soc_analyst"')
-    est_hours = models.IntegerField(
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(1)],
-        help_text='Estimated hours to complete'
-    )
-    estimated_time_minutes = models.IntegerField(
+    estimated_duration_minutes = models.IntegerField(
         null=True,
         blank=True,
         validators=[MinValueValidator(1)],
         help_text='Estimated minutes to complete'
+    )
+    est_hours = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text='Estimated hours to complete (legacy)'
+    )
+    requires_mentor_review = models.BooleanField(
+        default=False,
+        help_text='Requires premium mentor review'
+    )
+    recipe_recommendations = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Array of recipe IDs for micro-skills'
+    )
+    success_criteria = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Rubric criteria for scoring'
     )
     competencies = models.JSONField(
         default=list,
@@ -63,6 +117,7 @@ class Mission(models.Model):
         blank=True,
         help_text='Mission requirements template, file types, etc.'
     )
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

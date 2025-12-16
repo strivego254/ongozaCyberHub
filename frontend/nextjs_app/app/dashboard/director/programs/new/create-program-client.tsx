@@ -15,6 +15,7 @@ interface TrackFormData extends Omit<Track, 'id' | 'created_at' | 'updated_at' |
 }
 
 interface SpecializationFormData extends Omit<Specialization, 'id' | 'created_at' | 'updated_at' | 'track'> {
+  _temp?: boolean
 }
 
 interface ProgramRuleFormData {

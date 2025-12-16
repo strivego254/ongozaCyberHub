@@ -44,7 +44,7 @@ export default function CreateCohortClient() {
   
   const [step, setStep] = useState<'core' | 'capacity' | 'schedule' | 'rules' | 'review'>('core')
   
-  const [formData, setFormData] = useState<Partial<Cohort>>({
+  const [formData, setFormData] = useState<Partial<Cohort> & { seat_pool?: { paid: number; scholarship: number; sponsored: number }; coordinator?: any }>({
     name: '',
     start_date: '',
     end_date: '',
@@ -52,7 +52,7 @@ export default function CreateCohortClient() {
     seat_cap: 20,
     mentor_ratio: 0.1,
     status: 'draft',
-    seat_pool: { paid: 0, scholarship: 0, sponsored: 0 },
+    seat_pool: { paid: 0, scholarship: 0, sponsored: 0 } as any,
     coordinator: null,
   })
 
@@ -463,7 +463,7 @@ export default function CreateCohortClient() {
                         </div>
                         <div>
                           <span className="text-och-steel">Status:</span>
-                          <Badge variant={selectedProgram.status === 'active' ? 'defender' : 'outline'} className="ml-2">
+                          <Badge variant={selectedProgram.status === 'active' ? 'defender' : 'steel'} className="ml-2">
                             {selectedProgram.status}
                           </Badge>
                         </div>
@@ -638,15 +638,15 @@ export default function CreateCohortClient() {
                   </select>
                   <div className="mt-2 flex items-center gap-2 text-xs">
                     <span className="text-och-steel">Lifecycle:</span>
-                    <Badge variant={formData.status === 'draft' ? 'defender' : 'outline'}>draft</Badge>
+                    <Badge variant={formData.status === 'draft' ? 'defender' : 'steel'}>draft</Badge>
                     <span className="text-och-steel">→</span>
-                    <Badge variant={formData.status === 'active' ? 'defender' : 'outline'}>active</Badge>
+                    <Badge variant={formData.status === 'active' ? 'defender' : 'steel'}>active</Badge>
                     <span className="text-och-steel">→</span>
-                    <Badge variant={formData.status === 'running' ? 'defender' : 'outline'}>running</Badge>
+                    <Badge variant={formData.status === 'running' ? 'defender' : 'steel'}>running</Badge>
                     <span className="text-och-steel">→</span>
-                    <Badge variant="outline">closing</Badge>
+                    <Badge variant="steel">closing</Badge>
                     <span className="text-och-steel">→</span>
-                    <Badge variant="outline">closed</Badge>
+                    <Badge variant="steel">closed</Badge>
                   </div>
                   <p className="text-xs text-och-steel mt-2">
                     New cohorts typically start as <strong>draft</strong>. Move to <strong>active</strong> when ready for enrollment, 
@@ -868,7 +868,7 @@ export default function CreateCohortClient() {
                       <div className="space-y-2">
                         {selectedTrack.milestones.map((milestone, idx) => (
                           <div key={milestone.id} className="flex items-start gap-2 p-2 bg-och-midnight/50 rounded text-xs">
-                            <Badge variant="outline" className="flex-shrink-0">{idx + 1}</Badge>
+                            <Badge variant="steel" className="flex-shrink-0">{idx + 1}</Badge>
                             <div className="flex-1">
                               <span className="text-white font-medium">{milestone.name}</span>
                               {milestone.description && (
@@ -1282,7 +1282,7 @@ export default function CreateCohortClient() {
                       {selectedSpecializationId && selectedTrack?.specializations && (
                         <div className="ml-8 flex items-center gap-2">
                           <span className="text-och-steel">→</span>
-                          <Badge variant="outline">Specialization</Badge>
+                          <Badge variant="steel">Specialization</Badge>
                           <span className="text-white text-sm">
                             {selectedTrack.specializations.find(s => s.id === selectedSpecializationId)?.name || 'N/A'}
                           </span>
@@ -1297,7 +1297,7 @@ export default function CreateCohortClient() {
                       <p><span className="text-och-steel">Cohort Name:</span> <span className="text-white font-medium">{formData.name}</span></p>
                       <p><span className="text-och-steel">Duration:</span> <span className="text-white">{formData.start_date} to {formData.end_date}</span></p>
                       <p><span className="text-och-steel">Delivery Mode:</span> <span className="text-white capitalize">{formData.mode}</span></p>
-                      <p><span className="text-och-steel">Initial Status:</span> <Badge variant={formData.status === 'draft' ? 'defender' : 'outline'}>{formData.status}</Badge></p>
+                      <p><span className="text-och-steel">Initial Status:</span> <Badge variant={formData.status === 'draft' ? 'defender' : 'steel'}>{formData.status}</Badge></p>
                     </div>
                   </div>
 

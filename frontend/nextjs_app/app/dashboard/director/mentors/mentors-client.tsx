@@ -170,6 +170,10 @@ export default function MentorsClient() {
   const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [auditFilters, setAuditFilters] = useState({ start_date: '', end_date: '', action_type: '' })
 
+  // Mentor Analytics
+  const [mentorAnalytics, setMentorAnalytics] = useState<MentorAnalytics | null>(null)
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false)
+
   useEffect(() => {
     loadMentors()
   }, [searchQuery])
@@ -252,14 +256,15 @@ export default function MentorsClient() {
   }
 
   const loadMentorAnalytics = async (mentorId: string) => {
-    setLoadingAnalytics(true)
+    setIsLoadingAnalytics(true)
     try {
       const data = await programsClient.getMentorAnalytics(mentorId)
       setMentorAnalytics(data)
     } catch (err) {
       console.error('Failed to load mentor analytics:', err)
+      setMentorAnalytics(null)
     } finally {
-      setLoadingAnalytics(false)
+      setIsLoadingAnalytics(false)
     }
   }
 
@@ -338,7 +343,6 @@ export default function MentorsClient() {
       )
       alert(`Successfully assigned ${result.assignments.length} mentors`)
       setAssignmentMode('list')
-      await reloadCohorts()
       await loadMentors()
     } catch (err: any) {
       alert(err.message || 'Failed to auto-match mentors')
@@ -361,7 +365,6 @@ export default function MentorsClient() {
       })
       alert('Mentor assigned successfully')
       setAssignmentMode('list')
-      await reloadCohorts()
       await loadMentors()
     } catch (err: any) {
       alert(err.message || 'Failed to assign mentor')
@@ -378,9 +381,8 @@ export default function MentorsClient() {
     try {
       await programsClient.removeMentorAssignment(assignmentId)
       await loadMentors()
-      await reloadCohorts()
-      if (mentorAnalytics && selectedMentor) {
-        await loadMentorAnalytics(String(selectedMentor.id))
+      if (mentorAnalytics && selectedMentorId) {
+        await loadMentorAnalytics(selectedMentorId)
       }
     } catch (err: any) {
       alert(err.message || 'Failed to remove assignment')
@@ -399,8 +401,8 @@ export default function MentorsClient() {
       setReassigningAssignmentId(null)
       setNewMentorId('')
       await loadMentors()
-      if (mentorAnalytics && selectedMentor) {
-        await loadMentorAnalytics(String(selectedMentor.id))
+      if (mentorAnalytics && selectedMentorId) {
+        await loadMentorAnalytics(selectedMentorId)
       }
     } catch (err: any) {
       alert(err.message || 'Failed to reassign mentor')
@@ -423,8 +425,8 @@ export default function MentorsClient() {
       setClosingCohortId(null)
       setClosingMentorId(null)
       await loadMentors()
-      if (mentorAnalytics && selectedMentor) {
-        await loadMentorAnalytics(String(selectedMentor.id))
+      if (mentorAnalytics && selectedMentorId) {
+        await loadMentorAnalytics(selectedMentorId)
       }
     } catch (err: any) {
       alert(err.message || 'Failed to approve cycle closure')
@@ -998,7 +1000,7 @@ export default function MentorsClient() {
                   <div
                     key={mentor.id}
                     onClick={() => {
-                      setSelectedMentor(mentor)
+                      setSelectedMentorId(String(mentor.id))
                       loadMentorAnalytics(String(mentor.id))
                     }}
                     className="cursor-pointer"
@@ -1114,24 +1116,27 @@ export default function MentorsClient() {
         )}
 
         {/* Mentor Analytics Modal/Sidebar */}
-        {selectedMentor && mentorAnalytics && (
+        {selectedMentorId && mentorAnalytics && (() => {
+          const selectedMentor = mentors.find(m => String(m.id) === selectedMentorId)
+          if (!selectedMentor) return null
+          return (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <Card className="max-w-5xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-white mb-1">{selectedMentor.name}</h2>
-                    <p className="text-och-steel">{selectedMentor.email}</p>
+                    <h2 className="text-2xl font-bold text-white mb-1">{selectedMentor?.name || selectedMentor?.email || 'Mentor'}</h2>
+                    <p className="text-och-steel">{selectedMentor?.email || ''}</p>
                   </div>
                   <Button variant="outline" onClick={() => {
-                    setSelectedMentor(null)
+                    setSelectedMentorId('')
                     setMentorAnalytics(null)
                   }}>
                     Close
                   </Button>
                 </div>
 
-                {loadingAnalytics ? (
+                {isLoadingAnalytics ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-och-defender mx-auto mb-4"></div>
                     <p className="text-och-steel">Loading analytics...</p>
@@ -1264,7 +1269,7 @@ export default function MentorsClient() {
                                     className="flex-1 px-3 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white text-sm focus:outline-none focus:border-och-defender"
                                   >
                                     <option value="">Select mentor...</option>
-                                    {mentors.filter(m => m.id !== selectedMentor.id).map((mentor) => (
+                                    {mentors.filter(m => String(m.id) !== selectedMentorId).map((mentor) => (
                                       <option key={mentor.id} value={mentor.id}>
                                         {mentor.name || `${mentor.first_name || ''} ${mentor.last_name || ''}`.trim() || mentor.email} ({(mentor.capacity_utilization || 0).toFixed(0)}% capacity)
                                       </option>
@@ -1340,7 +1345,7 @@ export default function MentorsClient() {
                                       try {
                                         await programsClient.updateMenteeGoal(goal.mentee_id, goal.goal_id, JSON.parse(updates))
                                         alert('Goal updated successfully')
-                                        await loadMentorAnalytics(String(selectedMentor.id))
+                                        await loadMentorAnalytics(selectedMentorId)
                                       } catch (err) {
                                         alert('Failed to update goal')
                                       }
@@ -1375,7 +1380,7 @@ export default function MentorsClient() {
                                   size="sm"
                                   onClick={() => {
                                     setClosingCohortId(assignment.cohort_id)
-                                    setClosingMentorId(String(selectedMentor.id))
+                                    setClosingMentorId(selectedMentorId)
                                   }}
                                 >
                                   Approve Closure
@@ -1405,7 +1410,8 @@ export default function MentorsClient() {
               </div>
             </Card>
           </div>
-        )}
+          )
+        })()}
 
         {/* Cycle Closure Confirmation Modal */}
         {closingCohortId && closingMentorId && (

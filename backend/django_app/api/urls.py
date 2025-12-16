@@ -40,6 +40,7 @@ urlpatterns = [
     
     # Student Dashboard endpoints
     path('student/', include('student_dashboard.urls')),
+    path('student/dashboard/', include('dashboard.urls')),
     
     # Mentorship endpoints
     path('', include('mentorship.urls')),

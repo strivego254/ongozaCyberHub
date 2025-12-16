@@ -55,8 +55,8 @@ export default function EditCohortPage() {
       })
 
       // Set seat pool if available
-      if (cohort.seat_pool && typeof cohort.seat_pool === 'object') {
-        const pool = cohort.seat_pool as any
+      if ((cohort as any).seat_pool && typeof (cohort as any).seat_pool === 'object') {
+        const pool = (cohort as any).seat_pool as any
         setSeatPool({
           paid: pool.paid || 0,
           scholarship: pool.scholarship || 0,
@@ -72,6 +72,11 @@ export default function EditCohortPage() {
 
     if (!formData.name || !formData.start_date || !formData.end_date) {
       setError('Please fill in all required fields')
+      return
+    }
+
+    if (!cohort) {
+      setError('Cohort data is not available')
       return
     }
 

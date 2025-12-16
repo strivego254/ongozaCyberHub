@@ -27,7 +27,7 @@ export default function CohortDetailPage() {
 
   // Calculate derived values - moved before early returns to satisfy Rules of Hooks
   const activeEnrollments = enrollments.filter(e => e.status === 'active')
-  const seatPool = cohort?.seat_pool as any || { paid: 0, scholarship: 0, sponsored: 0 }
+  const seatPool = (cohort as any)?.seat_pool || { paid: 0, scholarship: 0, sponsored: 0 }
   const seatUtilization = cohort?.seat_utilization || (activeEnrollments.length / (cohort?.seat_cap || 1) * 100)
   const completionRate = cohort?.completion_rate || 0
 

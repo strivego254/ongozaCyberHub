@@ -11,6 +11,10 @@ import { MissionFunnel } from './components/MissionFunnel'
 import { RecommendedMissions } from './components/RecommendedMissions'
 import { MissionList } from './components/MissionList'
 import { MissionDetail } from './components/MissionDetail'
+import { MissionDashboard } from './components/MissionDashboard'
+import { MissionDashboardKanban } from './components/MissionDashboardKanban'
+import { MissionDashboardKanbanErrorBoundary } from './components/MissionDashboardKanbanErrorBoundary'
+import { ErrorDisplay } from './components/ErrorDisplay'
 import type { Mission, MissionSubmission, AIFeedback, MentorReview } from './types'
 
 interface MissionFunnelData {
@@ -32,6 +36,7 @@ export default function MissionsClient() {
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [kanbanError, setKanbanError] = useState<string | null>(null)
   const [filters, setFilters] = useState({
     status: 'all' as string,
     difficulty: 'all' as string,
@@ -210,6 +215,10 @@ export default function MissionsClient() {
     )
   }
 
+  // Get user's track from enrollment or default to 'defender'
+  const userTrack = funnelData?.track_name?.toLowerCase() || 'defender'
+  const userTier = 'beginner' // TODO: Get from user subscription
+
   return (
     <div className="w-full py-6 px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -220,14 +229,21 @@ export default function MissionsClient() {
         </p>
       </div>
 
-      {/* Mission Funnel */}
+      {/* Mission Funnel - Keep for overview */}
       {funnelData && (
         <div className="mb-8">
           <MissionFunnel data={funnelData} />
         </div>
       )}
 
-      {/* Recommended/Urgent Missions */}
+      {/* NEW MXP Mission Dashboard - Kanban View */}
+      <div className="mb-8">
+        <MissionDashboardKanbanErrorBoundary>
+          <MissionDashboardKanban track={userTrack} tier={userTier} />
+        </MissionDashboardKanbanErrorBoundary>
+      </div>
+
+      {/* Legacy Recommended/Urgent Missions - Keep for backward compatibility */}
       {recommendedMissions.length > 0 && (
         <div className="mb-8">
           <RecommendedMissions
@@ -238,8 +254,11 @@ export default function MissionsClient() {
         </div>
       )}
 
-      {/* Filters and Mission List */}
+      {/* Legacy Filters and Mission List - Keep for backward compatibility */}
       <div className="mb-8">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-white mb-4">All Missions</h2>
+        </div>
         <MissionList
           missions={filteredMissions}
           filters={filters}

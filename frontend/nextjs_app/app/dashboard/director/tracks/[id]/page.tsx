@@ -33,7 +33,7 @@ export default function TrackDetailPage() {
       if (!trackId) return
       setLoadingCohorts(true)
       try {
-        const data = await programsClient.getCohorts(trackId)
+        const data = await programsClient.getCohorts({ trackId })
         setCohorts(Array.isArray(data) ? data : [])
       } catch (err) {
         console.error('Failed to load cohorts:', err)
@@ -318,7 +318,7 @@ export default function TrackDetailPage() {
                         <div className="flex flex-wrap gap-2">
                           {track.missions && track.missions.length > 0 ? (
                             track.missions.map((missionId: string, idx: number) => (
-                              <Badge key={idx} variant="outline">{missionId}</Badge>
+                              <Badge key={idx} variant="steel">{missionId}</Badge>
                             ))
                           ) : (
                             <p className="text-och-steel">No missions linked</p>
@@ -366,7 +366,7 @@ export default function TrackDetailPage() {
                               <h3 className="text-white font-semibold">{milestone.name}</h3>
                               <p className="text-sm text-och-steel mt-1">{milestone.description}</p>
                             </div>
-                            <Badge variant="outline">Order: {milestone.order}</Badge>
+                            <Badge variant="steel">Order: {milestone.order}</Badge>
                           </div>
                           {milestone.duration_weeks && (
                             <p className="text-xs text-och-steel mb-2">Duration: {milestone.duration_weeks} weeks</p>

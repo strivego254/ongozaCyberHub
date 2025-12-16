@@ -180,15 +180,15 @@ export default function MentorDetailPage() {
       setMentor({
         id: user.id,
         email: user.email,
-        name: user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
         first_name: user.first_name,
         last_name: user.last_name,
         username: user.username,
-        is_mentor: user.is_mentor,
-        mentor_capacity_weekly: user.mentor_capacity_weekly,
-        mentor_availability: user.mentor_availability,
-        mentor_specialties: user.mentor_specialties,
-        roles: user.roles,
+        is_mentor: (user as any).is_mentor ?? false,
+        mentor_capacity_weekly: (user as any).mentor_capacity_weekly,
+        mentor_availability: (user as any).mentor_availability,
+        mentor_specialties: (user as any).mentor_specialties,
+        roles: user.roles as any,
         account_status: user.account_status,
         is_active: user.is_active,
       })
@@ -259,7 +259,7 @@ export default function MentorDetailPage() {
               cohort_details: cohortDetails,
               track: track,
               program: program,
-              enrollment_count: cohortDetails?.enrollments_count || 0,
+              enrollment_count: cohortDetails?.enrolled_count || 0,
             })
           }
         } catch (err) {

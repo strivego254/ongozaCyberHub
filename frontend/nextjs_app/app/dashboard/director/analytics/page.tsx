@@ -69,7 +69,7 @@ export default function AnalyticsPage() {
       if (Array.isArray(logs)) {
       setAuditLogs(logs)
       } else if (logs && typeof logs === 'object' && 'results' in logs) {
-        setAuditLogs(Array.isArray(logs.results) ? logs.results : [])
+        setAuditLogs(Array.isArray((logs as any).results) ? (logs as any).results : [])
       } else {
         setAuditLogs([])
       }
@@ -127,7 +127,7 @@ export default function AnalyticsPage() {
     })
   }
 
-  const getActionBadgeVariant = (action: string) => {
+  const getActionBadgeVariant = (action: string): 'defender' | 'mint' | 'gold' | 'orange' | 'steel' => {
     switch (action) {
       case 'create':
         return 'mint'
@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
       case 'delete':
         return 'orange'
       default:
-        return 'outline'
+        return 'steel'
     }
   }
 

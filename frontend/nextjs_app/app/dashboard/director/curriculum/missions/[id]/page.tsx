@@ -164,9 +164,10 @@ export default function MissionDetailPage() {
   const loadMissionAnalytics = async (missionData?: MissionTemplate) => {
     const missionToUse = missionData || mission
     if (!missionToUse) return
-      
+    
+    try {
       // Fetch submissions
-      const submissionsResponse = await missionsClient.getMissionSubmissions?.(missionId) || 
+      const submissionsResponse = await missionsClient.getMissionSubmissions?.(missionId) ||
         await fetch(`/api/v1/missions/${missionId}/submissions/`).then(r => r.json()).catch(() => ({ submissions: [] }))
       
       const submissions = submissionsResponse.submissions || []
