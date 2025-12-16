@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { apiGateway } from '@/services/apiGateway'
 import { useMissionStore } from '../lib/store/missionStore'
 import { MissionCardEnhanced } from './MissionCardEnhanced'
+import { MissionBlockerBanner } from '@/components/ui/coaching/MissionBlockerBanner'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -93,8 +94,10 @@ export function MissionDashboardKanban({ track = 'defender', tier = 'beginner' }
       try {
         const response = await apiGateway.get<{
           available_missions: Mission[]
+          locked_missions?: Array<{ mission: Mission; gates: any[]; warnings: any[] }>
           in_progress_missions: Array<{ id: string; mission: Mission; status: string }>
           completed_missions: Array<{ id: string; mission: Mission; final_status: string }>
+          coaching_eligibility?: any
         }>(`/missions/dashboard?track=${track}&tier=${tier}`)
         return response
       } catch (error: any) {
@@ -113,8 +116,14 @@ export function MissionDashboardKanban({ track = 'defender', tier = 'beginner' }
 
   useEffect(() => {
     if (data) {
+      const lockedMissions = (data.locked_missions || []).map((item: any) => ({
+        ...item.mission,
+        status: 'locked' as const,
+        gates: item.gates,
+        warnings: item.warnings,
+      }))
       setMissionsByColumn({
-        locked: [],
+        locked: lockedMissions,
         available: data.available_missions.map((m) => ({ ...m, status: 'available' as const })),
         in_progress: data.in_progress_missions.map((p: any) => ({
           ...p.mission,
@@ -226,6 +235,13 @@ export function MissionDashboardKanban({ track = 'defender', tier = 'beginner' }
           Track: <span className="font-semibold text-och-mint capitalize">{track}</span> • Tier: <span className="font-semibold text-och-mint capitalize">{tier}</span>
         </p>
       </div>
+
+      {/* Coaching Eligibility Banner */}
+      {data?.coaching_eligibility && (
+        <div className="mb-6">
+          <MissionBlockerBanner eligibility={data.coaching_eligibility} />
+        </div>
+      )}
 
       <DndContext
         sensors={sensors}

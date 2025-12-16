@@ -44,17 +44,49 @@ def mission_dashboard(request):
     enrollment = Enrollment.objects.filter(user=user, status='active').first()
     user_track = enrollment.track_key if enrollment else track
     
-    # Get available missions (unlocked)
-    available_missions = Mission.objects.filter(
+    # Get all missions for this track/tier
+    all_missions = Mission.objects.filter(
         track=track,
         tier=tier,
         is_active=True
-    ).exclude(
-        id__in=MissionProgress.objects.filter(
-            user=user,
-            status__in=['in_progress', 'submitted', 'approved', 'failed']
-        ).values_list('mission_id', flat=True)
     )
+    
+    # Check coaching eligibility
+    coaching_eligibility = None
+    available_missions = []
+    locked_missions = []
+    
+    try:
+        from coaching.integrations import check_mission_eligibility
+        coaching_eligibility = check_mission_eligibility(user)
+        
+        for mission in all_missions:
+            # Check if already in progress
+            existing = MissionProgress.objects.filter(
+                user=user,
+                mission=mission,
+                status__in=['in_progress', 'submitted', 'approved', 'failed']
+            ).exists()
+            
+            if existing:
+                continue
+            
+            if coaching_eligibility['eligible']:
+                available_missions.append(mission)
+            else:
+                locked_missions.append({
+                    'mission': mission,
+                    'gates': coaching_eligibility['gates'],
+                    'warnings': coaching_eligibility['warnings']
+                })
+    except ImportError:
+        # Fallback if coaching not available
+        available_missions = all_missions.exclude(
+            id__in=MissionProgress.objects.filter(
+                user=user,
+                status__in=['in_progress', 'submitted', 'approved', 'failed']
+            ).values_list('mission_id', flat=True)
+        )
     
     # Get in-progress missions
     in_progress = MissionProgress.objects.filter(
@@ -73,8 +105,8 @@ def mission_dashboard(request):
     
     # Get next mission (Profiler-guided - placeholder)
     next_mission = None
-    if available_missions.exists():
-        next_mission = available_missions.first().id
+    if available_missions:
+        next_mission = available_missions[0].id
     
     # Check tier lock
     tier_lock = False
@@ -83,6 +115,13 @@ def mission_dashboard(request):
     
     return Response({
         'available_missions': MissionSerializer(available_missions, many=True).data,
+        'locked_missions': [
+            {
+                'mission': MissionSerializer(item['mission']).data,
+                'gates': item['gates'],
+                'warnings': item['warnings']
+            } for item in locked_missions
+        ],
         'in_progress_missions': [
             {
                 'id': str(progress.id),
@@ -108,6 +147,7 @@ def mission_dashboard(request):
         'next_mission': str(next_mission) if next_mission else None,
         'tier_lock': tier_lock,
         'user_tier': user_tier,
+        'coaching_eligibility': coaching_eligibility,
     })
 
 
@@ -125,13 +165,19 @@ def start_mission(request, mission_id):
     except Mission.DoesNotExist:
         return Response({'error': 'Mission not found'}, status=status.HTTP_404_NOT_FOUND)
     
-    # Coaching OS Gatekeeping: Check if user can start mission
+    # Coaching OS Gatekeeping: Check mission eligibility
     try:
-        from coaching.integrations import can_start_mission
-        can_start, error_message = can_start_mission(user, mission_id)
-        if not can_start:
+        from coaching.integrations import check_mission_eligibility
+        eligibility = check_mission_eligibility(user, mission_id)
+        if not eligibility['eligible']:
             return Response(
-                {'error': error_message, 'gate': 'coaching'},
+                {
+                    'error': 'Mission locked by coaching requirements',
+                    'gate': 'coaching',
+                    'gates': eligibility['gates'],
+                    'warnings': eligibility['warnings'],
+                    'coachingScore': eligibility['coachingScore'],
+                },
                 status=status.HTTP_403_FORBIDDEN
             )
     except ImportError:
@@ -426,6 +472,20 @@ def mentor_review_submission(request, progress_id):
         progress.mentor_score = mentor_score
         progress.final_status = pass_fail
         progress.status = 'approved' if pass_fail == 'pass' else 'failed'
+        
+        # Sync mission completion to Coaching OS
+        if pass_fail == 'pass':
+            try:
+                from coaching.integrations import sync_mission_to_coaching
+                score = float(progress.ai_score) if progress.ai_score else 80.0
+                sync_mission_to_coaching(
+                    user=user,
+                    mission_id=str(progress.mission.id),
+                    mission_title=progress.mission.title,
+                    score=score
+                )
+            except Exception as e:
+                logger.error(f"Failed to sync mission to coaching: {e}")
         progress.mentor_reviewed_at = timezone.now()
         progress.save()
         
