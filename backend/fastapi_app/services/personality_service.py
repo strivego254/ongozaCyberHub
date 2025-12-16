@@ -16,7 +16,7 @@ class PersonalityService:
     def __init__(self):
         self.django_api_url = settings.DJANGO_API_URL
     
-    async def get_user_progress(self, user_id: int) -> List[dict]:
+    async def get_user_progress(self, user_id: int) -> list[dict]:
         """
         Fetch user progress from Django API.
         """
@@ -32,7 +32,7 @@ class PersonalityService:
     async def analyze_personality(
         self,
         user_id: int,
-        progress_data: Optional[List[ProgressResponse]] = None,
+        progress_data: Optional[list[ProgressResponse]] = None,
     ) -> PersonalityAnalysisResponse:
         """
         Analyze user personality based on progress data.
