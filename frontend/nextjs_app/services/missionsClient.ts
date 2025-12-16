@@ -20,6 +20,36 @@ export interface MissionTemplate {
   competencies?: string[]
   requirements?: Record<string, any>
   created_at?: string
+  // OCH Admin fields (stored in requirements JSON for now)
+  status?: 'draft' | 'approved' | 'published' | 'retired'
+  assessment_mode?: 'auto' | 'manual' | 'hybrid'
+  requires_mentor_review?: boolean
+  story_narrative?: string
+  subtasks?: Array<{
+    id: string
+    title: string
+    description?: string
+    order: number
+    required: boolean
+    dependencies?: string[] // IDs of subtasks that must be completed first
+  }>
+  evidence_upload_schema?: {
+    file_types?: string[]
+    max_file_size_mb?: number
+    required_artifacts?: Array<{
+      type: 'file' | 'github' | 'notebook' | 'video' | 'screenshot'
+      required: boolean
+      description?: string
+    }>
+  }
+  time_constraint_hours?: number // For time-bound missions (24 hours to 7 days)
+  competency_coverage?: Array<{
+    competency_id: string
+    competency_name: string
+    weight_percentage: number // Must sum to 100
+  }>
+  rubric_id?: string
+  module_id?: string
 }
 
 export const missionsClient = {
@@ -32,10 +62,74 @@ export const missionsClient = {
     difficulty?: string
     type?: string
     search?: string
+    status?: string
     page?: number
     page_size?: number
   }): Promise<{ results: MissionTemplate[]; count: number; next?: string | null; previous?: string | null }> {
-    return apiGateway.get('/missions/', { params })
+    try {
+      console.log('📡 Fetching missions from /api/v1/missions/', params)
+      const data = await apiGateway.get<any>('/missions/', { params })
+      console.log('📡 Missions API Response:', {
+        type: typeof data,
+        isArray: Array.isArray(data),
+        hasResults: data?.results !== undefined,
+        hasCount: data?.count !== undefined,
+        hasTotal: data?.total !== undefined,
+        resultsCount: Array.isArray(data?.results) ? data.results.length : data?.results?.length || 0,
+        count: data?.count || data?.total || 0,
+        page: data?.page,
+        hasNext: data?.next,
+        hasPrevious: data?.previous,
+      })
+      
+      // Handle paginated response (DRF default pagination)
+      if (data?.results !== undefined) {
+        const missions = Array.isArray(data.results) ? data.results : []
+        const totalCount = data.count !== undefined ? data.count : (data.total !== undefined ? data.total : missions.length)
+        
+        console.log(`✅ Found ${missions.length} missions in paginated response (total: ${totalCount})`)
+        if (missions.length > 0) {
+          console.log('Sample mission:', {
+            id: missions[0].id,
+            code: missions[0].code,
+            title: missions[0].title,
+            difficulty: missions[0].difficulty,
+            type: missions[0].type,
+            track_id: missions[0].track_id,
+            track_key: missions[0].track_key,
+          })
+        }
+        
+        return {
+          results: missions,
+          count: totalCount,
+          next: data.next || null,
+          previous: data.previous || null,
+        }
+      }
+      
+      // Handle direct array response (fallback)
+      if (Array.isArray(data)) {
+        console.log(`✅ Found ${data.length} missions in direct array response`)
+        return {
+          results: data,
+          count: data.length,
+          next: null,
+          previous: null,
+        }
+      }
+      
+      console.warn('⚠️ Unexpected missions response format:', data)
+      return {
+        results: [],
+        count: 0,
+        next: null,
+        previous: null,
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch missions:', error)
+      throw error
+    }
   },
 
   /**

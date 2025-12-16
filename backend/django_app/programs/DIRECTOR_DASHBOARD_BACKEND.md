@@ -78,7 +78,7 @@ Returns paginated cohort list:
   "previous": null,
   "results": [
     {
-      "cohort_id": "uuid",
+      "cohort_id": "uuid",n
       "cohort_name": "Cyber Builders Jan 2026",
       "track_name": "Cyber Defense",
       "seats_total": 50,

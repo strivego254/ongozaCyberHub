@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { usePrograms, useCohorts, useTracks } from '@/hooks/usePrograms'
-import { programsClient } from '@/services/programsClient'
+import { usePrograms, useCohorts, useTracks, useCohort, useTrack } from '@/hooks/usePrograms'
+import { programsClient, type Milestone } from '@/services/programsClient'
 import Link from 'next/link'
 
 const CalendarIcon = () => (
@@ -42,28 +42,44 @@ interface AssessmentWindow {
   cohort_name?: string
   start_date: string
   end_date: string
-  type: 'mission' | 'capstone' | 'portfolio' | 'milestone' | 'final'
+  start_datetime?: string // Full datetime with time
+  end_datetime?: string // Full datetime with time
+  timezone?: string
+  type: 'profiler' | 'mission' | 'capstone' | 'portfolio' | 'milestone' | 'final'
   status: 'scheduled' | 'active' | 'completed' | 'cancelled'
+  milestone_id?: string
+  milestone_name?: string
+  recurrence_rule?: string // RRULE for recurring assessments
   requirements?: {
     min_submissions?: number
     passing_score?: number
     mandatory?: boolean
   }
+  reminder_hours_before?: number // Hours before deadline to send reminder
   created_at?: string
 }
 
 export default function AssessmentsPage() {
   const { programs } = usePrograms()
-  const { tracks } = useTracks()
+  const [selectedProgramId, setSelectedProgramId] = useState<string>('')
+  // Fetch tracks for the selected program
+  const { tracks, isLoading: tracksLoading } = useTracks(selectedProgramId || undefined)
   const { cohorts, isLoading: cohortsLoading } = useCohorts({ page: 1, pageSize: 9999 })
 
-  const [selectedProgramId, setSelectedProgramId] = useState<string>('')
   const [selectedCohortId, setSelectedCohortId] = useState<string>('')
+  const { cohort: selectedCohortData, isLoading: loadingCohortData } = useCohort(selectedCohortId || '')
+  const { track: selectedTrackData, isLoading: loadingTrackData } = useTrack(selectedCohortData?.track || '')
+
   const [assessmentWindows, setAssessmentWindows] = useState<AssessmentWindow[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingAssessment, setEditingAssessment] = useState<AssessmentWindow | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Get user's timezone or default to UTC
+  const userTimezone = useMemo(() => {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  }, [])
 
   const [formData, setFormData] = useState<Partial<AssessmentWindow>>({
     name: '',
@@ -71,8 +87,14 @@ export default function AssessmentsPage() {
     cohort_id: '',
     start_date: '',
     end_date: '',
+    start_datetime: '',
+    end_datetime: '',
+    timezone: userTimezone,
     type: 'mission',
     status: 'scheduled',
+    milestone_id: '',
+    recurrence_rule: '',
+    reminder_hours_before: 48,
     requirements: {
       min_submissions: 1,
       passing_score: 70,
@@ -80,12 +102,16 @@ export default function AssessmentsPage() {
     },
   })
 
-  const filteredCohorts = selectedProgramId
+  // Filter cohorts based on selected program's tracks
+  const filteredCohorts = selectedProgramId && tracks.length > 0
     ? cohorts.filter(c => {
+        // Check if cohort's track belongs to the selected program
         const track = tracks.find(t => t.id === c.track)
-        return track && String(track.program) === selectedProgramId
+        return track !== undefined
       })
-    : cohorts
+    : selectedProgramId
+    ? [] // If program is selected but no tracks loaded yet, show empty
+    : cohorts // If no program selected, show all cohorts
 
   useEffect(() => {
     if (selectedCohortId) {
@@ -104,7 +130,8 @@ export default function AssessmentsPage() {
       const calendarEvents = await programsClient.getCohortCalendar(selectedCohortId)
       
       // Filter calendar events that are assessment-related
-      const assessmentTypes = ['project_review', 'submission']
+      // Include orientation for profiler, submission for missions, project_review for capstone
+      const assessmentTypes = ['orientation', 'project_review', 'submission', 'closure']
       const assessments = calendarEvents
         .filter(event => assessmentTypes.includes(event.type))
         .map(event => {
@@ -115,15 +142,29 @@ export default function AssessmentsPage() {
             'cancelled': 'cancelled',
           }
           
-          // Map calendar event type back to assessment type
-          const typeMap: Record<string, 'mission' | 'capstone' | 'portfolio' | 'milestone' | 'final'> = {
+          // Map calendar event type to assessment type
+          const typeMap: Record<string, 'profiler' | 'mission' | 'capstone' | 'portfolio' | 'milestone' | 'final'> = {
+            'orientation': 'profiler', // Profiler window is typically during orientation
             'submission': 'mission',
             'project_review': 'capstone',
+            'closure': 'final',
           }
 
-          // Extract date portion from datetime strings
+          // Extract date and datetime from event
           const startDate = event.start_ts ? (event.start_ts.includes('T') ? event.start_ts.split('T')[0] : event.start_ts) : ''
           const endDate = event.end_ts ? (event.end_ts.includes('T') ? event.end_ts.split('T')[0] : event.end_ts) : ''
+          
+          // Format datetime for datetime-local input (YYYY-MM-DDTHH:mm)
+          const formatForDatetimeInput = (isoString: string) => {
+            if (!isoString) return ''
+            const date = new Date(isoString)
+            const year = date.getFullYear()
+            const month = String(date.getMonth() + 1).padStart(2, '0')
+            const day = String(date.getDate()).padStart(2, '0')
+            const hours = String(date.getHours()).padStart(2, '0')
+            const minutes = String(date.getMinutes()).padStart(2, '0')
+            return `${year}-${month}-${day}T${hours}:${minutes}`
+          }
 
           return {
             id: event.id,
@@ -133,10 +174,14 @@ export default function AssessmentsPage() {
             cohort_name: cohorts.find(c => c.id === selectedCohortId)?.name,
             start_date: startDate,
             end_date: endDate,
+            start_datetime: formatForDatetimeInput(event.start_ts),
+            end_datetime: formatForDatetimeInput(event.end_ts),
+            timezone: event.timezone || 'UTC',
             type: typeMap[event.type] || 'mission',
             status: statusMap[event.status] || 'scheduled',
+            milestone_id: event.milestone_id || undefined,
             requirements: {
-              mandatory: (event as any).completion_tracked || false,
+              mandatory: event.completion_tracked || false,
             },
             created_at: event.created_at,
           } as AssessmentWindow
@@ -153,14 +198,25 @@ export default function AssessmentsPage() {
 
   const handleCreateAssessment = () => {
     setEditingAssessment(null)
+    // Pre-fill with cohort dates if available
+    const cohort = selectedCohortData
+    const defaultStart = cohort?.start_date ? new Date(cohort.start_date).toISOString().slice(0, 16) : ''
+    const defaultEnd = cohort?.end_date ? new Date(cohort.end_date).toISOString().slice(0, 16) : ''
+    
     setFormData({
       name: '',
       description: '',
       cohort_id: selectedCohortId,
-      start_date: '',
-      end_date: '',
+      start_date: cohort?.start_date ? cohort.start_date.split('T')[0] : '',
+      end_date: cohort?.end_date ? cohort.end_date.split('T')[0] : '',
+      start_datetime: defaultStart,
+      end_datetime: defaultEnd,
+      timezone: userTimezone,
       type: 'mission',
       status: 'scheduled',
+      milestone_id: '',
+      recurrence_rule: '',
+      reminder_hours_before: 48,
       requirements: {
         min_submissions: 1,
         passing_score: 70,
@@ -172,19 +228,39 @@ export default function AssessmentsPage() {
 
   const handleEditAssessment = (assessment: AssessmentWindow) => {
     setEditingAssessment(assessment)
-    // Ensure dates are in YYYY-MM-DD format for date inputs
+    // Ensure dates are properly formatted
+    const formatForDateInput = (dateStr: string) => {
+      if (!dateStr) return ''
+      return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr
+    }
+    
+    const formatForDatetimeInput = (dateStr: string) => {
+      if (!dateStr) return ''
+      const date = new Date(dateStr)
+      if (isNaN(date.getTime())) return ''
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day}T${hours}:${minutes}`
+    }
+    
     setFormData({
       ...assessment,
-      start_date: assessment.start_date ? (assessment.start_date.includes('T') ? assessment.start_date.split('T')[0] : assessment.start_date) : '',
-      end_date: assessment.end_date ? (assessment.end_date.includes('T') ? assessment.end_date.split('T')[0] : assessment.end_date) : '',
+      start_date: formatForDateInput(assessment.start_date),
+      end_date: formatForDateInput(assessment.end_date),
+      start_datetime: assessment.start_datetime || formatForDatetimeInput(assessment.start_date),
+      end_datetime: assessment.end_datetime || formatForDatetimeInput(assessment.end_date),
+      timezone: assessment.timezone || userTimezone,
     })
     setShowCreateForm(true)
   }
 
   const handleSaveAssessment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name || !formData.cohort_id || !formData.start_date || !formData.end_date) {
-      alert('Please fill in all required fields')
+    if (!formData.name || !formData.cohort_id || !formData.start_datetime || !formData.end_datetime) {
+      alert('Please fill in all required fields including date and time')
       return
     }
 
@@ -192,11 +268,12 @@ export default function AssessmentsPage() {
     try {
       // Map assessment type to calendar event type
       const eventTypeMap: Record<string, string> = {
+        'profiler': 'orientation', // Profiler window uses orientation event type
         'mission': 'submission',
         'capstone': 'project_review',
         'portfolio': 'submission',
         'milestone': 'submission',
-        'final': 'project_review',
+        'final': 'closure',
       }
 
       // Map assessment status to calendar event status
@@ -207,15 +284,30 @@ export default function AssessmentsPage() {
         'cancelled': 'cancelled',
       }
 
-      const calendarEventData = {
+      // Convert datetime-local input to ISO string
+      const startDateTime = formData.start_datetime ? new Date(formData.start_datetime).toISOString() : new Date(formData.start_date!).toISOString()
+      const endDateTime = formData.end_datetime ? new Date(formData.end_datetime).toISOString() : new Date(formData.end_date!).toISOString()
+
+      const calendarEventData: any = {
         cohort: formData.cohort_id,
         title: formData.name,
         description: formData.description || '',
         type: eventTypeMap[formData.type || 'mission'],
-        start_ts: new Date(formData.start_date!).toISOString(),
-        end_ts: new Date(formData.end_date!).toISOString(),
+        start_ts: startDateTime,
+        end_ts: endDateTime,
+        timezone: formData.timezone || userTimezone,
         status: statusMap[formData.status || 'scheduled'] || 'scheduled',
         completion_tracked: formData.requirements?.mandatory || false,
+      }
+
+      // Include milestone_id if provided
+      if (formData.milestone_id) {
+        calendarEventData.milestone_id = formData.milestone_id
+      }
+
+      // Include recurrence rule if provided (for future implementation)
+      if (formData.recurrence_rule) {
+        calendarEventData.recurrence_rule = formData.recurrence_rule
       }
 
       if (editingAssessment?.id) {
@@ -231,7 +323,8 @@ export default function AssessmentsPage() {
       loadAssessmentWindows() // Reload the list
     } catch (err: any) {
       console.error('Failed to save assessment window:', err)
-      alert(err?.response?.data?.detail || err?.message || 'Failed to save assessment window')
+      const errorMessage = err?.response?.data?.detail || err?.response?.data?.error || err?.message || 'Failed to save assessment window'
+      alert(errorMessage)
     } finally {
       setIsSaving(false)
     }
@@ -252,6 +345,7 @@ export default function AssessmentsPage() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
+      case 'profiler': return 'defender'
       case 'mission': return 'mint'
       case 'capstone': return 'defender'
       case 'portfolio': return 'gold'
@@ -260,6 +354,12 @@ export default function AssessmentsPage() {
       default: return 'steel'
     }
   }
+
+  // Get available milestones for the selected track
+  const availableMilestones = useMemo(() => {
+    if (!selectedTrackData?.milestones) return []
+    return selectedTrackData.milestones.sort((a: Milestone, b: Milestone) => (a.order || 0) - (b.order || 0))
+  }, [selectedTrackData])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -305,19 +405,30 @@ export default function AssessmentsPage() {
                   <select
                     value={selectedProgramId}
                     onChange={(e) => {
-                      setSelectedProgramId(e.target.value)
+                      const programId = e.target.value
+                      setSelectedProgramId(programId)
                       setSelectedCohortId('')
                       setAssessmentWindows([])
+                      // Tracks will be automatically fetched via useTracks hook
                     }}
                     className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                   >
-                    <option value="">All Programs</option>
+                    <option value="">Select a program</option>
                     {programs.map((program) => (
                       <option key={program.id} value={String(program.id)}>
                         {program.name}
                       </option>
                     ))}
                   </select>
+                  {selectedProgramId && tracksLoading && (
+                    <p className="text-xs text-och-steel mt-1">Loading tracks...</p>
+                  )}
+                  {selectedProgramId && !tracksLoading && tracks.length === 0 && (
+                    <p className="text-xs text-och-steel mt-1">No tracks found for this program</p>
+                  )}
+                  {selectedProgramId && !tracksLoading && tracks.length > 0 && (
+                    <p className="text-xs text-och-steel mt-1">{tracks.length} track(s) available</p>
+                  )}
                 </div>
 
                 <div>
@@ -326,19 +437,69 @@ export default function AssessmentsPage() {
                     value={selectedCohortId}
                     onChange={(e) => setSelectedCohortId(e.target.value)}
                     className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
-                    disabled={!selectedProgramId}
+                    disabled={!selectedProgramId || tracksLoading}
                   >
-                    <option value="">Select a cohort</option>
-                    {filteredCohorts.map((cohort) => (
+                    <option value="">
+                      {!selectedProgramId 
+                        ? 'Select a program first' 
+                        : tracksLoading 
+                        ? 'Loading tracks...' 
+                        : filteredCohorts.length === 0
+                        ? 'No cohorts available'
+                        : 'Select a cohort'}
+                    </option>
+                    {filteredCohorts.map((cohort) => {
+                      const track = tracks.find(t => t.id === cohort.track)
+                      return (
                       <option key={cohort.id} value={cohort.id}>
-                        {cohort.name}
+                          {cohort.name} {track ? `(${track.name})` : ''}
                       </option>
-                    ))}
+                      )
+                    })}
                   </select>
+                  {selectedProgramId && !tracksLoading && filteredCohorts.length > 0 && (
+                    <p className="text-xs text-och-steel mt-1">
+                      {filteredCohorts.length} cohort(s) available
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
           </Card>
+
+          {/* Cohort Timeline Context */}
+          {selectedCohortId && selectedCohortData && (
+            <Card className="mb-6 border-och-defender/30">
+              <div className="p-4">
+                <h3 className="text-sm font-semibold text-och-defender mb-3">Cohort Timeline</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-och-steel">Start Date:</span>
+                    <span className="text-white font-medium ml-2">
+                      {selectedCohortData.start_date ? new Date(selectedCohortData.start_date).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-och-steel">End Date:</span>
+                    <span className="text-white font-medium ml-2">
+                      {selectedCohortData.end_date ? new Date(selectedCohortData.end_date).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-och-steel">Status:</span>
+                    <Badge variant="defender" className="ml-2">{selectedCohortData.status}</Badge>
+                  </div>
+                  <div>
+                    <span className="text-och-steel">Mode:</span>
+                    <span className="text-white font-medium ml-2 capitalize">{selectedCohortData.mode}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-och-steel mt-3">
+                  All assessment windows must fall within the cohort timeline ({selectedCohortData.start_date ? new Date(selectedCohortData.start_date).toLocaleDateString() : 'N/A'} - {selectedCohortData.end_date ? new Date(selectedCohortData.end_date).toLocaleDateString() : 'N/A'})
+                </p>
+              </div>
+            </Card>
+          )}
 
           {/* Assessment Windows List */}
           {selectedCohortId && (
@@ -384,17 +545,51 @@ export default function AssessmentsPage() {
                             )}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                               <div>
-                                <span className="text-och-steel">Start Date:</span>
+                                <span className="text-och-steel">Start:</span>
                                 <span className="text-white font-medium ml-2">
-                                  {new Date(assessment.start_date).toLocaleDateString()}
+                                  {assessment.start_datetime 
+                                    ? new Date(assessment.start_datetime).toLocaleString('en-US', {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        timeZoneName: 'short'
+                                      })
+                                    : new Date(assessment.start_date).toLocaleDateString()}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-och-steel">End Date:</span>
+                                <span className="text-och-steel">End:</span>
                                 <span className="text-white font-medium ml-2">
-                                  {new Date(assessment.end_date).toLocaleDateString()}
+                                  {assessment.end_datetime 
+                                    ? new Date(assessment.end_datetime).toLocaleString('en-US', {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        timeZoneName: 'short'
+                                      })
+                                    : new Date(assessment.end_date).toLocaleDateString()}
                                 </span>
                               </div>
+                              {assessment.timezone && (
+                                <div>
+                                  <span className="text-och-steel">Timezone:</span>
+                                  <span className="text-white font-medium ml-2 text-xs">
+                                    {assessment.timezone}
+                                  </span>
+                                </div>
+                              )}
+                              {assessment.milestone_id && (
+                                <div>
+                                  <span className="text-och-steel">Milestone:</span>
+                                  <span className="text-white font-medium ml-2 text-xs">
+                                    {assessment.milestone_name || 'Linked'}
+                                  </span>
+                                </div>
+                              )}
                               {assessment.requirements?.passing_score && (
                                 <div>
                                   <span className="text-och-steel">Passing Score:</span>
@@ -478,24 +673,68 @@ export default function AssessmentsPage() {
                       />
                     </div>
 
+                    {/* Timezone Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Timezone * <span className="text-och-steel text-xs">(All events use this timezone)</span>
+                      </label>
+                      <select
+                        value={formData.timezone}
+                        onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                        required
+                      >
+                        <option value="UTC">UTC (Coordinated Universal Time)</option>
+                        <option value="America/New_York">America/New_York (EST/EDT)</option>
+                        <option value="America/Chicago">America/Chicago (CST/CDT)</option>
+                        <option value="America/Denver">America/Denver (MST/MDT)</option>
+                        <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                        <option value="Europe/London">Europe/London (GMT/BST)</option>
+                        <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+                        <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                        <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                        <option value="Africa/Nairobi">Africa/Nairobi (EAT)</option>
+                      </select>
+                      <p className="text-xs text-och-steel mt-1">Selected: {formData.timezone}</p>
+                    </div>
+
+                    {/* DateTime Inputs */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-white mb-2">Start Date *</label>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Start Date & Time * <span className="text-och-steel text-xs">(Window opens)</span>
+                        </label>
                         <input
-                          type="date"
-                          value={formData.start_date}
-                          onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                          type="datetime-local"
+                          value={formData.start_datetime}
+                          onChange={(e) => {
+                            const datetime = e.target.value
+                            setFormData({ 
+                              ...formData, 
+                              start_datetime: datetime,
+                              start_date: datetime ? datetime.split('T')[0] : formData.start_date
+                            })
+                          }}
                           className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-white mb-2">End Date *</label>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          End Date & Time * <span className="text-och-steel text-xs">(Window closes)</span>
+                        </label>
                         <input
-                          type="date"
-                          value={formData.end_date}
-                          onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                          type="datetime-local"
+                          value={formData.end_datetime}
+                          onChange={(e) => {
+                            const datetime = e.target.value
+                            setFormData({ 
+                              ...formData, 
+                              end_datetime: datetime,
+                              end_date: datetime ? datetime.split('T')[0] : formData.end_date
+                            })
+                          }}
                           className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                           required
                         />
@@ -504,19 +743,26 @@ export default function AssessmentsPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-white mb-2">Type *</label>
+                        <label className="block text-sm font-medium text-white mb-2">Assessment Type *</label>
                         <select
                           value={formData.type}
                           onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
                           className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                           required
                         >
-                          <option value="mission">Mission</option>
-                          <option value="capstone">Capstone</option>
-                          <option value="portfolio">Portfolio</option>
-                          <option value="milestone">Milestone</option>
+                          <option value="profiler">Profiler (Tier 0) Window</option>
+                          <option value="mission">Mission Deadline</option>
+                          <option value="capstone">Capstone Submission</option>
+                          <option value="portfolio">Portfolio Review</option>
+                          <option value="milestone">Milestone Assessment</option>
                           <option value="final">Final Assessment</option>
                         </select>
+                        <p className="text-xs text-och-steel mt-1">
+                          {formData.type === 'profiler' && 'Mandatory initial assessment window for Current Self-Assessment and Future-You Projection'}
+                          {formData.type === 'mission' && 'Time-bound mission submission deadline (24 hours to 7 days)'}
+                          {formData.type === 'capstone' && 'Critical closure milestone for capstone project submission'}
+                          {formData.type === 'milestone' && 'Assessment linked to track milestone'}
+                        </p>
                       </div>
 
                       <div>
@@ -535,8 +781,49 @@ export default function AssessmentsPage() {
                       </div>
                     </div>
 
+                    {/* Milestone Link */}
+                    {availableMilestones.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Link to Track Milestone <span className="text-och-steel text-xs">(Optional)</span>
+                        </label>
+                        <select
+                          value={formData.milestone_id || ''}
+                          onChange={(e) => setFormData({ ...formData, milestone_id: e.target.value || undefined })}
+                          className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                        >
+                          <option value="">No milestone link</option>
+                          {availableMilestones.map((milestone: Milestone) => (
+                            <option key={milestone.id} value={milestone.id}>
+                              {milestone.name} (Order: {milestone.order})
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-och-steel mt-1">
+                          Link this assessment window to a specific track milestone for better tracking
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Recurrence Rule (for future implementation) */}
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Recurrence Rule <span className="text-och-steel text-xs">(RRULE - Optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.recurrence_rule || ''}
+                        onChange={(e) => setFormData({ ...formData, recurrence_rule: e.target.value })}
+                        placeholder="e.g., FREQ=WEEKLY;INTERVAL=2;BYDAY=MO"
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                      />
+                      <p className="text-xs text-och-steel mt-1">
+                        Use RRULE format for recurring assessments (e.g., weekly mentorship reviews)
+                      </p>
+                    </div>
+
                     <div className="p-4 bg-och-midnight/30 rounded-lg">
-                      <h4 className="text-sm font-medium text-white mb-3">Requirements</h4>
+                      <h4 className="text-sm font-medium text-white mb-3">Requirements & Configuration</h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs text-och-steel mb-1">Minimum Submissions</label>
@@ -576,7 +863,7 @@ export default function AssessmentsPage() {
                           />
                         </div>
                       </div>
-                      <div className="mt-3">
+                      <div className="mt-3 space-y-2">
                         <label className="flex items-center gap-2">
                           <input
                             type="checkbox"
@@ -592,8 +879,23 @@ export default function AssessmentsPage() {
                             }
                             className="rounded border-och-steel/20 bg-och-midnight/50 text-och-mint focus:ring-och-mint"
                           />
-                          <span className="text-sm text-white">Mandatory</span>
+                          <span className="text-sm text-white">Mandatory (Track completion)</span>
                         </label>
+                        <div>
+                          <label className="block text-xs text-och-steel mb-1">Reminder Hours Before Deadline</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="168"
+                            value={formData.reminder_hours_before || 48}
+                            onChange={(e) => setFormData({ ...formData, reminder_hours_before: parseInt(e.target.value) || 48 })}
+                            className="w-full px-3 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white text-sm focus:outline-none focus:border-och-mint"
+                            placeholder="48"
+                          />
+                          <p className="text-xs text-och-steel mt-1">
+                            System will send reminders (Email/SMS/In-App) this many hours before the deadline
+                          </p>
+                        </div>
                       </div>
                     </div>
 
@@ -601,7 +903,7 @@ export default function AssessmentsPage() {
                       <Button
                         variant="defender"
                         type="submit"
-                        disabled={isSaving || !formData.name || !formData.start_date || !formData.end_date}
+                        disabled={isSaving || !formData.name || !formData.start_datetime || !formData.end_datetime || !formData.timezone}
                       >
                         {isSaving ? 'Saving...' : editingAssessment ? 'Update' : 'Create'}
                       </Button>

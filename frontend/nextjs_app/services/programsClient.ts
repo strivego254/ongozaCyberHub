@@ -278,11 +278,70 @@ class ProgramsClient {
   // Milestones
   async getMilestones(trackId?: string): Promise<Milestone[]> {
     const queryString = trackId ? `?track_id=${trackId}` : ''
-    return apiGateway.get(`/milestones/${queryString}`)
+    try {
+      console.log(`📡 Fetching milestones from /api/v1/milestones/${queryString}`)
+      const data = await apiGateway.get<any>(`/milestones/${queryString}`)
+      console.log('📡 Milestones API Response:', {
+        type: typeof data,
+        isArray: Array.isArray(data),
+        hasResults: data?.results !== undefined,
+        count: Array.isArray(data) ? data.length : data?.results?.length || data?.count || 'N/A',
+        trackId: trackId
+      })
+      
+      // Handle paginated response (DRF default pagination)
+      if (data?.results && Array.isArray(data.results)) {
+        const milestones = data.results
+        console.log(`✅ Found ${milestones.length} milestones in paginated response (total: ${data.count || milestones.length})`)
+        
+        // If there are more pages, fetch them all
+        if (data.next) {
+          console.log('📄 Multiple pages detected, fetching all pages...')
+          let allMilestones = [...milestones]
+          let nextUrl = data.next
+          
+          while (nextUrl) {
+            // Extract path from full URL
+            const url = new URL(nextUrl)
+            const path = url.pathname + url.search
+            console.log(`📄 Fetching next page: ${path}`)
+            
+            const nextData = await apiGateway.get<any>(path.replace('/api/v1', ''))
+            if (nextData?.results && Array.isArray(nextData.results)) {
+              allMilestones = [...allMilestones, ...nextData.results]
+              nextUrl = nextData.next
+            } else {
+              break
+            }
+          }
+          
+          console.log(`✅ Fetched all ${allMilestones.length} milestones across all pages`)
+          return allMilestones
+        }
+        
+        return milestones
+      }
+      
+      // Handle direct array response
+      if (Array.isArray(data)) {
+        console.log(`✅ Found ${data.length} milestones in direct array response`)
+        return data
+      }
+      
+      console.warn('⚠️ Unexpected milestones response format:', data)
+      return []
+    } catch (error) {
+      console.error('❌ Failed to fetch milestones:', error)
+      throw error
+    }
   }
 
   async createMilestone(data: Partial<Milestone>): Promise<Milestone> {
     return apiGateway.post('/milestones/', data)
+  }
+
+  async getMilestone(id: string): Promise<Milestone> {
+    return apiGateway.get(`/milestones/${id}/`)
   }
 
   async updateMilestone(id: string, data: Partial<Milestone>): Promise<Milestone> {
@@ -299,7 +358,64 @@ class ProgramsClient {
     if (milestoneId) params.push(`milestone_id=${milestoneId}`)
     if (trackId) params.push(`track_id=${trackId}`)
     const queryString = params.length > 0 ? `?${params.join('&')}` : ''
-    return apiGateway.get(`/modules/${queryString}`)
+    
+    try {
+      console.log(`📡 Fetching modules from /api/v1/modules/${queryString}`)
+      const data = await apiGateway.get<any>(`/modules/${queryString}`)
+      console.log('📡 Modules API Response:', {
+        type: typeof data,
+        isArray: Array.isArray(data),
+        hasResults: data?.results !== undefined,
+        count: Array.isArray(data) ? data.length : data?.results?.length || data?.count || 'N/A',
+        milestoneId: milestoneId,
+        trackId: trackId
+      })
+      
+      // Handle paginated response (DRF default pagination)
+      if (data?.results && Array.isArray(data.results)) {
+        const modules = data.results
+        console.log(`✅ Found ${modules.length} modules in paginated response (total: ${data.count || modules.length})`)
+        
+        // If there are more pages, fetch them all
+        if (data.next) {
+          console.log('📄 Multiple pages detected, fetching all pages...')
+          let allModules = [...modules]
+          let nextUrl = data.next
+          
+          while (nextUrl) {
+            // Extract path from full URL
+            const url = new URL(nextUrl)
+            const path = url.pathname + url.search
+            console.log(`📄 Fetching next page: ${path}`)
+            
+            const nextData = await apiGateway.get<any>(path.replace('/api/v1', ''))
+            if (nextData?.results && Array.isArray(nextData.results)) {
+              allModules = [...allModules, ...nextData.results]
+              nextUrl = nextData.next
+            } else {
+              break
+            }
+          }
+          
+          console.log(`✅ Fetched all ${allModules.length} modules across all pages`)
+          return allModules
+        }
+        
+        return modules
+      }
+      
+      // Handle direct array response
+      if (Array.isArray(data)) {
+        console.log(`✅ Found ${data.length} modules in direct array response`)
+        return data
+      }
+      
+      console.warn('⚠️ Unexpected modules response format:', data)
+      return []
+    } catch (error) {
+      console.error('❌ Failed to fetch modules:', error)
+      throw error
+    }
   }
 
   async createModule(data: Partial<Module>): Promise<Module> {

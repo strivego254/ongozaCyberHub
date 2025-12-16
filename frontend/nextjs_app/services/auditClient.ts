@@ -27,11 +27,13 @@ export interface AuditLogFilters {
   start_date?: string
   end_date?: string
   actor?: string
+  result?: 'success' | 'failure' | 'partial'
 }
 
 class AuditClient {
   /**
    * Get audit logs with optional filters
+   * Handles both paginated and non-paginated responses
    */
   async getAuditLogs(filters?: AuditLogFilters): Promise<AuditLog[]> {
     const params = new URLSearchParams()
@@ -54,36 +56,67 @@ class AuditClient {
     if (filters?.actor) {
       params.append('actor', filters.actor)
     }
+    if (filters?.result) {
+      params.append('result', filters.result)
+    }
     
     const queryString = params.toString()
     const url = queryString ? `/audit-logs/?${queryString}` : '/audit-logs/'
     
-    return apiGateway.get(url)
+    const response = await apiGateway.get<any>(url)
+    
+    // Handle paginated response (DRF default pagination)
+    if (response && typeof response === 'object' && 'results' in response) {
+      return Array.isArray(response.results) ? response.results : []
+    }
+    
+    // Handle direct array response
+    if (Array.isArray(response)) {
+      return response
+    }
+    
+    // Fallback to empty array
+    return []
   }
 
   /**
    * Get director-specific actions (programs, cohorts, tracks)
+   * Fetches logs for all director-related resource types and combines them
    */
-  async getDirectorActions(filters?: Omit<AuditLogFilters, 'resource_type'>): Promise<AuditLog[]> {
+  async getDirectorActions(filters?: Omit<AuditLogFilters, 'resource_type'> & { resource_type?: string }): Promise<AuditLog[]> {
     // Get actions for programs, cohorts, tracks, and related resources
-    const resourceTypes = ['program', 'cohort', 'track', 'milestone', 'module', 'enrollment', 'mentor_assignment']
+    // If a specific resource_type is provided in filters, use only that; otherwise fetch all
+    const resourceTypes = filters?.resource_type 
+      ? [filters.resource_type]
+      : ['program', 'cohort', 'track', 'milestone', 'module', 'enrollment', 'mentor_assignment', 'mission']
     
     const allLogs: AuditLog[] = []
     
-    // Fetch logs for each resource type
-    for (const resourceType of resourceTypes) {
+    // Fetch logs for each resource type in parallel for better performance
+    const fetchPromises = resourceTypes.map(async (resourceType) => {
       try {
         const logs = await this.getAuditLogs({
           ...filters,
           resource_type: resourceType,
         })
-        allLogs.push(...logs)
+        return Array.isArray(logs) ? logs : []
       } catch (err) {
         console.error(`Failed to fetch ${resourceType} logs:`, err)
+        return []
       }
-    }
+    })
     
-    // Sort by timestamp descending
+    // Wait for all requests to complete
+    const results = await Promise.all(fetchPromises)
+    
+    // Flatten and combine all logs
+    results.forEach(logs => {
+      if (Array.isArray(logs)) {
+        allLogs.push(...logs)
+      }
+    })
+    
+    // Sort by timestamp descending (most recent first)
     return allLogs.sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     )

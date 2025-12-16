@@ -10,25 +10,42 @@ import { useDirectorDashboard } from '@/hooks/usePrograms'
 import { auditClient, type AuditLog } from '@/services/auditClient'
 
 export default function AnalyticsPage() {
-  const { dashboard, isLoading: dashboardLoading } = useDirectorDashboard()
+  const { dashboard, isLoading: dashboardLoading, error: dashboardError, reload: reloadDashboard } = useDirectorDashboard()
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'year'>('month')
+  const [error, setError] = useState<string | null>(null)
+  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'year' | 'custom'>('month')
   const [actionFilter, setActionFilter] = useState<string>('all')
   const [resourceFilter, setResourceFilter] = useState<string>('all')
+  const [resultFilter, setResultFilter] = useState<string>('all')
+  const [actorFilter, setActorFilter] = useState<string>('')
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
 
   useEffect(() => {
     loadDirectorActions()
     setCurrentPage(1) // Reset to first page when filters change
-  }, [dateRange, actionFilter, resourceFilter])
+  }, [dateRange, actionFilter, resourceFilter, resultFilter, actorFilter, startDate, endDate, sortOrder])
 
   const loadDirectorActions = async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const filters: any = {
-        range: dateRange,
+        range: dateRange === 'custom' ? undefined : dateRange,
+      }
+      
+      // Add custom date range if selected
+      if (dateRange === 'custom') {
+        if (startDate) {
+          filters.start_date = startDate
+        }
+        if (endDate) {
+          filters.end_date = endDate
+        }
       }
       
       if (actionFilter !== 'all') {
@@ -39,10 +56,28 @@ export default function AnalyticsPage() {
         filters.resource_type = resourceFilter
       }
       
+      if (resultFilter !== 'all') {
+        filters.result = resultFilter
+      }
+      
+      if (actorFilter.trim()) {
+        filters.actor = actorFilter.trim()
+      }
+      
       const logs = await auditClient.getDirectorActions(filters)
+      // Handle both array and paginated response
+      if (Array.isArray(logs)) {
       setAuditLogs(logs)
-    } catch (err) {
+      } else if (logs && typeof logs === 'object' && 'results' in logs) {
+        setAuditLogs(Array.isArray(logs.results) ? logs.results : [])
+      } else {
+        setAuditLogs([])
+      }
+    } catch (err: any) {
       console.error('Failed to load director actions:', err)
+      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to load director actions. Please try again.'
+      setError(errorMessage)
+      setAuditLogs([])
     } finally {
       setIsLoading(false)
     }
@@ -50,12 +85,45 @@ export default function AnalyticsPage() {
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    
+    // Show relative time for recent entries
+    if (diffMins < 1) {
+      return 'Just now'
+    } else if (diffMins < 60) {
+      return `${diffMins}m ago`
+    } else if (diffHours < 24) {
+      return `${diffHours}h ago`
+    } else if (diffDays < 7) {
+      return `${diffDays}d ago`
+    }
+    
+    // For older entries, show full date and time
     return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
+    })
+  }
+
+  const getFullTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp)
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short',
     })
   }
 
@@ -81,6 +149,7 @@ export default function AnalyticsPage() {
       module: 'Module',
       enrollment: 'Enrollment',
       mentor_assignment: 'Mentor Assignment',
+      mission: 'Mission',
     }
     return labels[resourceType] || resourceType
   }
@@ -96,16 +165,24 @@ export default function AnalyticsPage() {
   }
 
   const filteredLogs = useMemo(() => {
-    return auditLogs.filter(log => {
-      if (actionFilter !== 'all' && log.action !== actionFilter) {
-        return false
-      }
-      if (resourceFilter !== 'all' && log.resource_type !== resourceFilter) {
-        return false
-      }
-      return true
+    let logs = [...auditLogs]
+    
+    // Apply client-side filters (for actor search)
+    if (actorFilter.trim()) {
+      logs = logs.filter(log => 
+        log.actor_identifier.toLowerCase().includes(actorFilter.toLowerCase().trim())
+      )
+    }
+    
+    // Sort by timestamp
+    logs.sort((a, b) => {
+      const dateA = new Date(a.timestamp).getTime()
+      const dateB = new Date(b.timestamp).getTime()
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
     })
-  }, [auditLogs, actionFilter, resourceFilter])
+    
+    return logs
+  }, [auditLogs, actorFilter, sortOrder])
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage)
@@ -219,22 +296,64 @@ export default function AnalyticsPage() {
           {/* Filters */}
           <Card className="mb-6">
             <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-5 h-5 text-och-steel" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <h3 className="text-lg font-semibold text-white">Filters</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
                     Date Range
                   </label>
                   <select
                     value={dateRange}
-                    onChange={(e) => setDateRange(e.target.value as any)}
+                    onChange={(e) => {
+                      setDateRange(e.target.value as any)
+                      if (e.target.value !== 'custom') {
+                        setStartDate('')
+                        setEndDate('')
+                      }
+                    }}
                     className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
                   >
                     <option value="today">Today</option>
                     <option value="week">Last 7 Days</option>
                     <option value="month">Last 30 Days</option>
                     <option value="year">Last Year</option>
+                    <option value="custom">Custom Range</option>
                   </select>
                 </div>
+                
+                {dateRange === 'custom' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                      />
+                    </div>
+                  </>
+                )}
+                
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
                     Action Type
@@ -251,6 +370,7 @@ export default function AnalyticsPage() {
                     <option value="read">Viewed</option>
                   </select>
                 </div>
+                
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
                     Resource Type
@@ -268,9 +388,76 @@ export default function AnalyticsPage() {
                     <option value="module">Modules</option>
                     <option value="enrollment">Enrollments</option>
                     <option value="mentor_assignment">Mentor Assignments</option>
+                    <option value="mission">Missions</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Result
+                  </label>
+                  <select
+                    value={resultFilter}
+                    onChange={(e) => setResultFilter(e.target.value)}
+                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                  >
+                    <option value="all">All Results</option>
+                    <option value="success">Success</option>
+                    <option value="failure">Failure</option>
+                    <option value="partial">Partial</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Actor (Search)
+                  </label>
+                  <input
+                    type="text"
+                    value={actorFilter}
+                    onChange={(e) => setActorFilter(e.target.value)}
+                    placeholder="Search by email or identifier..."
+                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white placeholder-och-steel focus:outline-none focus:border-och-defender"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Sort Order
+                  </label>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as any)}
+                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
                   </select>
                 </div>
               </div>
+              
+              {/* Clear Filters Button */}
+              {(dateRange !== 'month' || actionFilter !== 'all' || resourceFilter !== 'all' || resultFilter !== 'all' || actorFilter.trim() || startDate || endDate) && (
+                <div className="flex items-center justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDateRange('month')
+                      setActionFilter('all')
+                      setResourceFilter('all')
+                      setResultFilter('all')
+                      setActorFilter('')
+                      setStartDate('')
+                      setEndDate('')
+                      setSortOrder('newest')
+                      setCurrentPage(1)
+                    }}
+                  >
+                    Clear All Filters
+                  </Button>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -281,7 +468,9 @@ export default function AnalyticsPage() {
                 <div>
                   <h2 className="text-xl font-bold text-white">Director Actions Log</h2>
                   <p className="text-sm text-och-steel mt-1">
-                    Showing {startIndex + 1}-{Math.min(endIndex, filteredLogs.length)} of {filteredLogs.length} actions
+                    {filteredLogs.length > 0 
+                      ? `Showing ${startIndex + 1}-${Math.min(endIndex, filteredLogs.length)} of ${filteredLogs.length} actions`
+                      : 'No actions to display'}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -305,7 +494,17 @@ export default function AnalyticsPage() {
                 </div>
               </div>
               
-              {isLoading ? (
+              {error ? (
+                <div className="text-center py-12">
+                  <div className="mb-4">
+                    <p className="text-och-orange text-lg font-semibold mb-2">Error loading actions</p>
+                    <p className="text-och-steel text-sm mb-4">{error}</p>
+                    <Button variant="defender" size="sm" onClick={loadDirectorActions}>
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              ) : isLoading ? (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-och-defender mx-auto mb-4"></div>
                   <p className="text-och-steel">Loading actions...</p>
@@ -313,6 +512,7 @@ export default function AnalyticsPage() {
               ) : filteredLogs.length === 0 ? (
                 <div className="text-center py-12 text-och-steel">
                   <p>No actions found for the selected filters</p>
+                  <p className="text-sm mt-2">Try adjusting your filters or date range</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -335,8 +535,15 @@ export default function AnalyticsPage() {
                           key={log.id}
                           className="border-b border-och-steel/10 hover:bg-och-midnight/50 transition-colors"
                         >
-                          <td className="p-3 text-och-steel text-sm whitespace-nowrap">
+                          <td className="p-3 text-och-steel text-sm">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-white" title={getFullTimestamp(log.timestamp)}>
                             {formatTimestamp(log.timestamp)}
+                              </span>
+                              <span className="text-xs text-och-steel mt-1">
+                                {getFullTimestamp(log.timestamp)}
+                              </span>
+                            </div>
                           </td>
                           <td className="p-3">
                             <Badge variant={getActionBadgeVariant(log.action)}>
@@ -460,11 +667,45 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Dashboard Metrics (if available) */}
-          {dashboard && (
+          {dashboardLoading ? (
             <Card className="mt-6">
               <div className="p-6">
-                <h2 className="text-xl font-bold text-white mb-4">Cohort Analytics</h2>
-                {dashboard.cohort_table && dashboard.cohort_table.length > 0 ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-och-defender mx-auto mb-4"></div>
+                  <p className="text-och-steel">Loading cohort analytics...</p>
+                </div>
+              </div>
+            </Card>
+          ) : dashboardError ? (
+            <Card className="mt-6">
+              <div className="p-6">
+                <div className="text-center py-8">
+                  <p className="text-och-orange text-lg font-semibold mb-2">Error loading dashboard data</p>
+                  <p className="text-och-steel text-sm mb-4">{dashboardError}</p>
+                  <Button variant="defender" size="sm" onClick={reloadDashboard}>
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ) : dashboard && dashboard.cohort_table && dashboard.cohort_table.length > 0 ? (
+            <Card className="mt-6">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">Cohort Analytics</h2>
+                  {dashboard.hero_metrics && (
+                    <div className="flex gap-4 text-sm">
+                      <div>
+                        <span className="text-och-steel">Active Cohorts: </span>
+                        <span className="text-white font-semibold">{dashboard.hero_metrics.active_cohorts}</span>
+                      </div>
+                      <div>
+                        <span className="text-och-steel">Seat Utilization: </span>
+                        <span className="text-white font-semibold">{dashboard.hero_metrics.seat_utilization?.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
@@ -485,7 +726,13 @@ export default function AnalyticsPage() {
                               {cohort.seats_used}/{cohort.seats_total}
                             </td>
                             <td className="p-3">
-                              <Badge variant="defender">{cohort.readiness || 'N/A'}%</Badge>
+                            <Badge variant="defender">
+                              {cohort.readiness_delta !== undefined 
+                                ? `${cohort.readiness_delta.toFixed(1)}%` 
+                                : cohort.readiness 
+                                ? `${cohort.readiness}%` 
+                                : 'N/A'}
+                            </Badge>
                             </td>
                             <td className="p-3">
                               <Badge
@@ -505,14 +752,18 @@ export default function AnalyticsPage() {
                       </tbody>
                     </table>
                   </div>
-                ) : (
+              </div>
+            </Card>
+          ) : dashboard ? (
+            <Card className="mt-6">
+              <div className="p-6">
+                <h2 className="text-xl font-bold text-white mb-4">Cohort Analytics</h2>
                   <div className="text-center py-8 text-och-steel">
                     <p>No cohort data available</p>
                   </div>
-                )}
               </div>
             </Card>
-          )}
+          ) : null}
         </div>
       </DirectorLayout>
     </RouteGuard>

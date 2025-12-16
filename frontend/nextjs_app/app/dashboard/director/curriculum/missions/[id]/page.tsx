@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
@@ -10,8 +10,27 @@ import { Badge } from '@/components/ui/Badge'
 import { missionsClient, type MissionTemplate } from '@/services/missionsClient'
 import { programsClient } from '@/services/programsClient'
 import { djangoClient } from '@/services/djangoClient'
+import { usePrograms, useTracks } from '@/hooks/usePrograms'
 import Link from 'next/link'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+
+const EditIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+)
+
+const PlusIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  </svg>
+)
 
 const ArrowLeftIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,19 +96,74 @@ export default function MissionDetailPage() {
   const missionId = params.id as string
 
   const [analytics, setAnalytics] = useState<MissionAnalytics | null>(null)
+  const [mission, setMission] = useState<MissionTemplate | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [missionForm, setMissionForm] = useState<Partial<MissionTemplate>>({})
+  
+  // Get tracks for track selection
+  const { tracks } = useTracks(mission?.track_id ? undefined : undefined)
 
   useEffect(() => {
-    loadMissionAnalytics()
+    loadMissionData()
   }, [missionId])
 
-  const loadMissionAnalytics = async () => {
+  const loadMissionData = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
-      // Fetch mission details
-      const mission = await missionsClient.getMission(missionId)
+      // Load mission details first
+      const missionData = await missionsClient.getMission(missionId)
+      setMission(missionData)
+      
+      // Extract OCH Admin fields from requirements
+      const reqs = missionData.requirements || {}
+      setMissionForm({
+        code: missionData.code,
+        title: missionData.title,
+        description: missionData.description,
+        difficulty: missionData.difficulty,
+        type: missionData.type,
+        track_id: missionData.track_id,
+        track_key: missionData.track_key,
+        est_hours: missionData.est_hours,
+        estimated_time_minutes: missionData.estimated_time_minutes,
+        competencies: missionData.competencies || [],
+        requirements: reqs,
+        // OCH Admin fields
+        status: missionData.status || reqs.status || 'draft',
+        assessment_mode: missionData.assessment_mode || reqs.assessment_mode || 'hybrid',
+        requires_mentor_review: missionData.requires_mentor_review ?? reqs.requires_mentor_review ?? false,
+        story_narrative: missionData.story_narrative || reqs.story_narrative || '',
+        subtasks: missionData.subtasks || reqs.subtasks || [],
+        evidence_upload_schema: missionData.evidence_upload_schema || reqs.evidence_upload_schema || {
+          file_types: [],
+          max_file_size_mb: 10,
+          required_artifacts: [],
+        },
+        time_constraint_hours: missionData.time_constraint_hours || reqs.time_constraint_hours,
+        competency_coverage: missionData.competency_coverage || reqs.competency_coverage || [],
+        rubric_id: missionData.rubric_id || reqs.rubric_id,
+        module_id: missionData.module_id || reqs.module_id,
+      })
+      
+      // Then load analytics
+      await loadMissionAnalytics(missionData)
+    } catch (err: any) {
+      console.error('Failed to load mission:', err)
+      setError(err?.response?.data?.detail || err?.message || 'Failed to load mission')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [missionId])
+
+  const loadMissionAnalytics = async (missionData?: MissionTemplate) => {
+    const missionToUse = missionData || mission
+    if (!missionToUse) return
       
       // Fetch submissions
       const submissionsResponse = await missionsClient.getMissionSubmissions?.(missionId) || 
@@ -240,7 +314,7 @@ export default function MissionDetailPage() {
         .sort((a, b) => a.date.localeCompare(b.date))
 
       setAnalytics({
-        mission,
+        mission: missionToUse,
         total_submissions: totalSubmissions,
         submissions_by_status: submissionsByStatus,
         average_ai_score: averageAiScore,
@@ -253,9 +327,82 @@ export default function MissionDetailPage() {
       })
     } catch (err: any) {
       console.error('Failed to load mission analytics:', err)
-      setError(err?.response?.data?.detail || err?.message || 'Failed to load mission analytics')
+      // Don't set error here, just log it - analytics failure shouldn't block the page
+    }
+  }
+
+  const handleSaveMission = async () => {
+    if (!missionForm.code || !missionForm.title) {
+      alert('Mission code and title are required')
+      return
+    }
+
+    // Validate competency coverage weights sum to 100
+    if (missionForm.competency_coverage && missionForm.competency_coverage.length > 0) {
+      const totalWeight = missionForm.competency_coverage.reduce((sum, cov) => sum + (cov.weight_percentage || 0), 0)
+      if (Math.abs(totalWeight - 100) > 0.01) {
+        alert(`Competency coverage weights must sum to 100%. Current total: ${totalWeight.toFixed(2)}%`)
+        return
+      }
+    }
+
+    setIsSaving(true)
+    try {
+      // Prepare mission data - store OCH Admin fields in requirements JSON
+      const missionData: any = {
+        code: missionForm.code.trim(),
+        title: missionForm.title.trim(),
+        description: missionForm.description || '',
+        difficulty: missionForm.difficulty,
+        type: missionForm.type,
+        track_id: missionForm.track_id || null,
+        track_key: missionForm.track_key || '',
+        est_hours: missionForm.est_hours,
+        estimated_time_minutes: missionForm.estimated_time_minutes,
+        competencies: missionForm.competencies || [],
+        // Store OCH Admin fields in requirements JSON
+        requirements: {
+          ...(missionForm.requirements || {}),
+          status: missionForm.status || 'draft',
+          assessment_mode: missionForm.assessment_mode || 'hybrid',
+          requires_mentor_review: missionForm.requires_mentor_review ?? false,
+          story_narrative: missionForm.story_narrative || '',
+          subtasks: missionForm.subtasks || [],
+          evidence_upload_schema: missionForm.evidence_upload_schema || {
+            file_types: [],
+            max_file_size_mb: 10,
+            required_artifacts: [],
+          },
+          time_constraint_hours: missionForm.time_constraint_hours,
+          competency_coverage: missionForm.competency_coverage || [],
+          rubric_id: missionForm.rubric_id,
+          module_id: missionForm.module_id,
+        },
+      }
+
+      await missionsClient.updateMission(missionId, missionData)
+      setIsEditing(false)
+      await loadMissionData()
+    } catch (error: any) {
+      console.error('Failed to save mission:', error)
+      const errorMessage = error?.response?.data?.detail || error?.response?.data?.error || error?.message || 'Failed to save mission'
+      alert(errorMessage)
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeleteMission = async () => {
+    if (!confirm('Are you sure you want to delete this mission? This action cannot be undone and will affect all submissions.')) {
+      return
+    }
+
+    try {
+      await missionsClient.deleteMission(missionId)
+      router.push('/dashboard/director/curriculum/missions')
+    } catch (error: any) {
+      console.error('Failed to delete mission:', error)
+      alert(error?.response?.data?.detail || error?.message || 'Failed to delete mission')
     }
   }
 

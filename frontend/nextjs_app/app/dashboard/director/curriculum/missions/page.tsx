@@ -72,6 +72,7 @@ export default function MissionsManagementPage() {
   const [selectedTrackFilter, setSelectedTrackFilter] = useState<string>('all')
   const [selectedDifficultyFilter, setSelectedDifficultyFilter] = useState<string>('all')
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all')
   
   // Form states
   const [showMissionForm, setShowMissionForm] = useState(false)
@@ -90,6 +91,19 @@ export default function MissionsManagementPage() {
     estimated_time_minutes: undefined,
     competencies: [],
     requirements: {},
+    // OCH Admin fields
+    status: 'draft',
+    assessment_mode: 'hybrid',
+    requires_mentor_review: false,
+    story_narrative: '',
+    subtasks: [],
+    evidence_upload_schema: {
+      file_types: [],
+      max_file_size_mb: 10,
+      required_artifacts: [],
+    },
+    time_constraint_hours: undefined,
+    competency_coverage: [],
   })
 
   // Debounce search
@@ -104,7 +118,7 @@ export default function MissionsManagementPage() {
   // Load missions when filters change
   useEffect(() => {
     loadMissions()
-  }, [currentPage, debouncedSearch, selectedTrackFilter, selectedDifficultyFilter, selectedTypeFilter])
+  }, [currentPage, debouncedSearch, selectedTrackFilter, selectedDifficultyFilter, selectedTypeFilter, selectedStatusFilter])
 
   // Use tracks from program detail if available, otherwise use tracks endpoint
   const availableTracks = useMemo(() => {
@@ -147,13 +161,29 @@ export default function MissionsManagementPage() {
         params.type = selectedTypeFilter
       }
 
+      if (selectedStatusFilter !== 'all') {
+        params.status = selectedStatusFilter
+      }
+
       const response = await missionsClient.getAllMissions(params)
+      console.log('✅ Missions loaded:', {
+        count: response.results?.length || 0,
+        total: response.count || 0,
+        page: currentPage,
+        hasNext: !!response.next,
+        hasPrevious: !!response.previous,
+      })
+      
       setMissions(response.results || [])
       setTotalCount(response.count || 0)
-    } catch (error) {
-      console.error('Failed to load missions:', error)
+    } catch (error: any) {
+      console.error('❌ Failed to load missions:', error)
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Failed to load missions'
+      console.error('Error details:', errorMessage)
       setMissions([])
       setTotalCount(0)
+      // Optionally show error to user
+      // alert(`Failed to load missions: ${errorMessage}`)
     } finally {
       setIsLoading(false)
     }
@@ -173,12 +203,27 @@ export default function MissionsManagementPage() {
       estimated_time_minutes: undefined,
       competencies: [],
       requirements: {},
+      // OCH Admin fields
+      status: 'draft',
+      assessment_mode: 'hybrid',
+      requires_mentor_review: false,
+      story_narrative: '',
+      subtasks: [],
+      evidence_upload_schema: {
+        file_types: [],
+        max_file_size_mb: 10,
+        required_artifacts: [],
+      },
+      time_constraint_hours: undefined,
+      competency_coverage: [],
     })
     setShowMissionForm(true)
   }
 
   const handleEditMission = (mission: MissionTemplate) => {
     setEditingMission(mission)
+    // Extract OCH Admin fields from requirements if they exist there
+    const reqs = mission.requirements || {}
     setMissionForm({
       code: mission.code,
       title: mission.title,
@@ -190,7 +235,22 @@ export default function MissionsManagementPage() {
       est_hours: mission.est_hours,
       estimated_time_minutes: mission.estimated_time_minutes,
       competencies: mission.competencies || [],
-      requirements: mission.requirements || {},
+      requirements: reqs,
+      // OCH Admin fields - check both direct fields and requirements JSON
+      status: mission.status || reqs.status || 'draft',
+      assessment_mode: mission.assessment_mode || reqs.assessment_mode || 'hybrid',
+      requires_mentor_review: mission.requires_mentor_review ?? reqs.requires_mentor_review ?? false,
+      story_narrative: mission.story_narrative || reqs.story_narrative || '',
+      subtasks: mission.subtasks || reqs.subtasks || [],
+      evidence_upload_schema: mission.evidence_upload_schema || reqs.evidence_upload_schema || {
+        file_types: [],
+        max_file_size_mb: 10,
+        required_artifacts: [],
+      },
+      time_constraint_hours: mission.time_constraint_hours || reqs.time_constraint_hours,
+      competency_coverage: mission.competency_coverage || reqs.competency_coverage || [],
+      rubric_id: mission.rubric_id || reqs.rubric_id,
+      module_id: mission.module_id || reqs.module_id,
     })
     setShowMissionForm(true)
   }
@@ -201,19 +261,71 @@ export default function MissionsManagementPage() {
       return
     }
 
+    // Validate competency coverage weights sum to 100
+    if (missionForm.competency_coverage && missionForm.competency_coverage.length > 0) {
+      const totalWeight = missionForm.competency_coverage.reduce((sum, cov) => sum + (cov.weight_percentage || 0), 0)
+      if (Math.abs(totalWeight - 100) > 0.01) {
+        alert(`Competency coverage weights must sum to 100%. Current total: ${totalWeight.toFixed(2)}%`)
+        return
+      }
+    }
+
     setIsSaving(true)
     try {
+      // Prepare mission data - store OCH Admin fields in requirements JSON
+      const missionData: any = {
+        code: missionForm.code.trim(),
+        title: missionForm.title.trim(),
+        description: missionForm.description || '',
+        difficulty: missionForm.difficulty,
+        type: missionForm.type,
+        track_id: missionForm.track_id || null,
+        track_key: missionForm.track_key || '',
+        est_hours: missionForm.est_hours,
+        estimated_time_minutes: missionForm.estimated_time_minutes,
+        competencies: missionForm.competencies || [],
+        // Store OCH Admin fields in requirements JSON
+        requirements: {
+          ...(missionForm.requirements || {}),
+          status: missionForm.status || 'draft',
+          assessment_mode: missionForm.assessment_mode || 'hybrid',
+          requires_mentor_review: missionForm.requires_mentor_review ?? false,
+          story_narrative: missionForm.story_narrative || '',
+          subtasks: missionForm.subtasks || [],
+          evidence_upload_schema: missionForm.evidence_upload_schema || {
+            file_types: [],
+            max_file_size_mb: 10,
+            required_artifacts: [],
+          },
+          time_constraint_hours: missionForm.time_constraint_hours,
+          competency_coverage: missionForm.competency_coverage || [],
+          rubric_id: missionForm.rubric_id,
+          module_id: missionForm.module_id,
+        },
+      }
+
       if (editingMission?.id) {
-        await missionsClient.updateMission(editingMission.id, missionForm)
+        await missionsClient.updateMission(editingMission.id, missionData)
       } else {
-        await missionsClient.createMission(missionForm)
+        await missionsClient.createMission(missionData)
       }
       setShowMissionForm(false)
       setEditingMission(null)
-      loadMissions()
+      // Clear filters that might exclude the newly created mission
+      // Reset to first page and reload missions
+      setCurrentPage(1)
+      // Don't clear all filters, but ensure we can see the new mission
+      // If we have track filter set, keep it; otherwise clear type/difficulty filters
+      if (selectedTrackFilter === 'all') {
+        setSelectedTypeFilter('all')
+        setSelectedDifficultyFilter('all')
+        setSelectedStatusFilter('all')
+      }
+      await loadMissions()
     } catch (error: any) {
       console.error('Failed to save mission:', error)
-      alert(error?.response?.data?.detail || error?.message || 'Failed to save mission')
+      const errorMessage = error?.response?.data?.detail || error?.response?.data?.error || error?.message || 'Failed to save mission'
+      alert(errorMessage)
     } finally {
       setIsSaving(false)
     }
@@ -226,7 +338,13 @@ export default function MissionsManagementPage() {
 
     try {
       await missionsClient.deleteMission(missionId)
-      loadMissions()
+      // Reload missions - adjust page if needed
+      const newTotalCount = totalCount - 1
+      const newTotalPages = Math.ceil(newTotalCount / ITEMS_PER_PAGE)
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages)
+      }
+      await loadMissions()
     } catch (error: any) {
       console.error('Failed to delete mission:', error)
       alert(error?.response?.data?.detail || error?.message || 'Failed to delete mission')
@@ -291,6 +409,20 @@ export default function MissionsManagementPage() {
     }
   }
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft': return 'steel'
+      case 'approved': return 'gold'
+      case 'published': return 'mint'
+      case 'retired': return 'orange'
+      default: return 'steel'
+    }
+  }
+
+  const getMissionStatus = (mission: MissionTemplate): string => {
+    return mission.status || mission.requirements?.status || 'draft'
+  }
+
   return (
     <RouteGuard>
       <DirectorLayout>
@@ -322,7 +454,7 @@ export default function MissionsManagementPage() {
                 <h2 className="text-lg font-semibold text-white">Filters</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
                 {/* Search */}
                 <div className="lg:col-span-2 relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-och-steel">
@@ -394,6 +526,19 @@ export default function MissionsManagementPage() {
                   <option value="project">Project</option>
                   <option value="capstone">Capstone</option>
                 </select>
+
+                {/* Status Filter */}
+                <select
+                  value={selectedStatusFilter}
+                  onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                  className="px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="approved">Approved</option>
+                  <option value="published">Published</option>
+                  <option value="retired">Retired</option>
+                </select>
               </div>
             </div>
           </Card>
@@ -406,8 +551,23 @@ export default function MissionsManagementPage() {
                   <p className="text-och-steel">
                     Showing <span className="text-white font-semibold">{missions.length}</span> of{' '}
                     <span className="text-white font-semibold">{totalCount}</span> missions
+                    {totalPages > 1 && (
+                      <span className="text-och-steel"> (Page {currentPage} of {totalPages})</span>
+                    )}
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadMissions()}
+                  disabled={isLoading}
+                  title="Refresh missions list"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span className="ml-2">Refresh</span>
+                </Button>
               </div>
 
               {isLoading ? (
@@ -422,14 +582,31 @@ export default function MissionsManagementPage() {
                   <RocketIcon />
                   <p className="text-och-steel text-lg mt-4 mb-2">No missions found</p>
                   <p className="text-och-steel text-sm mb-4">
-                    {debouncedSearch || selectedTrackFilter !== 'all' ? 'Try adjusting your filters' : 'Create your first mission to get started'}
+                    {debouncedSearch || selectedTrackFilter !== 'all' || selectedDifficultyFilter !== 'all' || selectedTypeFilter !== 'all' || selectedStatusFilter !== 'all' 
+                      ? 'No missions match your current filters. Try adjusting your filters or create a new mission.' 
+                      : 'Create your first mission to get started'}
                   </p>
-                  {!debouncedSearch && selectedTrackFilter === 'all' && (
+                  <div className="flex items-center justify-center gap-3">
+                    {(debouncedSearch || selectedTrackFilter !== 'all' || selectedDifficultyFilter !== 'all' || selectedTypeFilter !== 'all' || selectedStatusFilter !== 'all') && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearchQuery('')
+                          setSelectedTrackFilter('all')
+                          setSelectedDifficultyFilter('all')
+                          setSelectedTypeFilter('all')
+                          setSelectedStatusFilter('all')
+                          setCurrentPage(1)
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    )}
                     <Button variant="defender" onClick={handleCreateMission}>
                       <PlusIcon />
                       <span className="ml-2">Create Mission</span>
                     </Button>
-                  )}
+                  </div>
                 </div>
               ) : (
                 <>
@@ -455,8 +632,11 @@ export default function MissionsManagementPage() {
                         >
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
+                              <div className="flex items-center gap-3 mb-2 flex-wrap">
                                 <h3 className="text-lg font-semibold text-white">{mission.code}</h3>
+                                <Badge variant={getStatusColor(getMissionStatus(mission))}>
+                                  {getMissionStatus(mission)}
+                                </Badge>
                                 <Badge variant={getDifficultyColor(mission.difficulty)}>
                                   {mission.difficulty}
                                 </Badge>
@@ -465,6 +645,9 @@ export default function MissionsManagementPage() {
                                 </Badge>
                                 {track && (
                                   <Badge variant="steel">{track.name}</Badge>
+                                )}
+                                {mission.requirements?.requires_mentor_review && (
+                                  <Badge variant="gold">Mentor Review</Badge>
                                 )}
                               </div>
                               <h4 className="text-white font-medium mb-1">{mission.title}</h4>
@@ -727,8 +910,90 @@ export default function MissionsManagementPage() {
                       </div>
                     </div>
 
-                    {/* Competencies */}
+                    {/* Mission Status and Lifecycle */}
+                    <div className="border-t border-och-steel/20 pt-4">
+                      <h3 className="text-lg font-semibold text-white mb-4">Mission Lifecycle & Publishing</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
+                          <label className="block text-sm font-medium text-white mb-2">Status *</label>
+                          <select
+                            value={missionForm.status || 'draft'}
+                            onChange={(e) => setMissionForm({ ...missionForm, status: e.target.value as any })}
+                            className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                            required
+                          >
+                            <option value="draft">Draft</option>
+                            <option value="approved">Approved</option>
+                            <option value="published">Published</option>
+                            <option value="retired">Retired</option>
+                          </select>
+                          <p className="text-xs text-och-steel mt-1">Lifecycle: draft → approved → published → retired</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-white mb-2">Time Constraint (Hours)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="168"
+                            value={missionForm.time_constraint_hours || ''}
+                            onChange={(e) => setMissionForm({ ...missionForm, time_constraint_hours: e.target.value ? parseInt(e.target.value) : undefined })}
+                            placeholder="24-168 hours (1-7 days)"
+                            className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white placeholder-och-steel focus:outline-none focus:border-och-mint"
+                          />
+                          <p className="text-xs text-och-steel mt-1">For time-bound missions (24h to 7 days)</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Assessment Configuration */}
+                    <div className="border-t border-och-steel/20 pt-4">
+                      <h3 className="text-lg font-semibold text-white mb-4">Assessment Mechanics</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-white mb-2">Assessment Mode *</label>
+                          <select
+                            value={missionForm.assessment_mode || 'hybrid'}
+                            onChange={(e) => setMissionForm({ ...missionForm, assessment_mode: e.target.value as any })}
+                            className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                            required
+                          >
+                            <option value="auto">Auto (AI Only)</option>
+                            <option value="manual">Manual (Mentor Only)</option>
+                            <option value="hybrid">Hybrid (AI + Mentor)</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center pt-6">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={missionForm.requires_mentor_review ?? false}
+                              onChange={(e) => setMissionForm({ ...missionForm, requires_mentor_review: e.target.checked })}
+                              className="w-4 h-4 text-och-defender bg-och-midnight border-och-steel rounded focus:ring-och-defender"
+                            />
+                            <span className="text-sm text-white">Requires Mentor Review ($7 Premium)</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Story Narrative */}
+                    <div className="border-t border-och-steel/20 pt-4">
+                      <h3 className="text-lg font-semibold text-white mb-4">Mission Narrative</h3>
+                      <div>
+                        <label className="block text-sm font-medium text-white mb-2">Story Narrative</label>
+                        <textarea
+                          value={missionForm.story_narrative || ''}
+                          onChange={(e) => setMissionForm({ ...missionForm, story_narrative: e.target.value })}
+                          placeholder="Enter the mission story, context, and objectives..."
+                          className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white placeholder-och-steel focus:outline-none focus:border-och-mint"
+                          rows={5}
+                        />
+                        <p className="text-xs text-och-steel mt-1">Provide the narrative context and objectives for this mission</p>
+                      </div>
+                    </div>
+
+                    {/* Competencies */}
+                    <div className="border-t border-och-steel/20 pt-4">
                       <div className="flex items-center justify-between mb-2">
                         <label className="block text-sm font-medium text-white">Competencies (MCRR)</label>
                         <Button
@@ -763,6 +1028,46 @@ export default function MissionsManagementPage() {
                         {(!missionForm.competencies || missionForm.competencies.length === 0) && (
                           <p className="text-sm text-och-steel">No competencies added. Click "Add" to link competencies from MCRR.</p>
                         )}
+                      </div>
+                    </div>
+
+                    {/* Evidence Upload Schema */}
+                    <div className="border-t border-och-steel/20 pt-4">
+                      <h3 className="text-lg font-semibold text-white mb-4">Evidence Upload Requirements</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-white mb-2">Max File Size (MB)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={missionForm.evidence_upload_schema?.max_file_size_mb || 10}
+                            onChange={(e) => setMissionForm({
+                              ...missionForm,
+                              evidence_upload_schema: {
+                                ...missionForm.evidence_upload_schema,
+                                max_file_size_mb: parseInt(e.target.value) || 10,
+                              }
+                            })}
+                            className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-white mb-2">Allowed File Types</label>
+                          <input
+                            type="text"
+                            value={missionForm.evidence_upload_schema?.file_types?.join(', ') || ''}
+                            onChange={(e) => setMissionForm({
+                              ...missionForm,
+                              evidence_upload_schema: {
+                                ...missionForm.evidence_upload_schema,
+                                file_types: e.target.value.split(',').map(s => s.trim()).filter(s => s),
+                              }
+                            })}
+                            placeholder="e.g., pdf, zip, png, jpg"
+                            className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white placeholder-och-steel focus:outline-none focus:border-och-mint"
+                          />
+                          <p className="text-xs text-och-steel mt-1">Comma-separated list (e.g., pdf, zip, png, jpg)</p>
+                        </div>
                       </div>
                     </div>
 

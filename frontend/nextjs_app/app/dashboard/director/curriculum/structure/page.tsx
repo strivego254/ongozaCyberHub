@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { programsClient, type Program, type Track, type Milestone, type Module } from '@/services/programsClient'
 import { usePrograms, useTracks, useProgram } from '@/hooks/usePrograms'
+import Link from 'next/link'
 
 interface Lesson {
   id?: string
@@ -89,9 +90,14 @@ export default function CurriculumStructurePage() {
   
   const [selectedTrackId, setSelectedTrackId] = useState<string>('')
   const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [allMilestones, setAllMilestones] = useState<Milestone[]>([]) // Store all milestones for pagination
   const [modules, setModules] = useState<Module[]>([])
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Pagination state for milestones
+  const [milestonePage, setMilestonePage] = useState(1)
+  const [milestonesPerPage, setMilestonesPerPage] = useState(10)
   
   // Form states
   const [showMilestoneForm, setShowMilestoneForm] = useState(false)
@@ -123,37 +129,78 @@ export default function CurriculumStructurePage() {
     return tracks
   }, [tracks, selectedProgramId])
 
+  // Define loadMilestones before useEffect that uses it
+  const loadMilestones = useCallback(async () => {
+    if (!selectedTrackId) {
+      console.log('⚠️ Cannot load milestones: no track selected')
+      return
+    }
+    
+    console.log(`🔄 Loading milestones for track: ${selectedTrackId}`)
+    setIsLoading(true)
+    try {
+      const data = await programsClient.getMilestones(selectedTrackId)
+      console.log(`✅ Loaded ${data.length} milestones from backend`)
+      
+      const sortedMilestones = data.sort((a, b) => (a.order || 0) - (b.order || 0))
+      console.log(`✅ Sorted milestones by order:`, sortedMilestones.map(m => ({ id: m.id, name: m.name, order: m.order })))
+      
+      // Store all milestones for pagination
+      setAllMilestones(sortedMilestones)
+      
+      // Load modules for all milestones (not just paginated ones)
+      const allModules: Module[] = []
+      for (const milestone of sortedMilestones) {
+        if (milestone.id) {
+          try {
+          const milestoneModules = await programsClient.getModules(milestone.id)
+          allModules.push(...milestoneModules)
+            console.log(`✅ Loaded ${milestoneModules.length} modules for milestone ${milestone.name}`)
+          } catch (err) {
+            console.error(`❌ Failed to load modules for milestone ${milestone.id}:`, err)
+          }
+        }
+      }
+      setModules(allModules.sort((a, b) => (a.order || 0) - (b.order || 0)))
+      console.log(`✅ Total modules loaded: ${allModules.length}`)
+    } catch (error) {
+      console.error('❌ Failed to load milestones:', error)
+      setAllMilestones([])
+      setModules([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedTrackId])
+
   // Load milestones when track is selected
   useEffect(() => {
     if (selectedTrackId) {
       loadMilestones()
+      setMilestonePage(1) // Reset to first page when track changes
     } else {
       setMilestones([])
+      setAllMilestones([])
       setModules([])
     }
-  }, [selectedTrackId])
-
-  const loadMilestones = async () => {
-    setIsLoading(true)
-    try {
-      const data = await programsClient.getMilestones(selectedTrackId)
-      setMilestones(data.sort((a, b) => (a.order || 0) - (b.order || 0)))
-      
-      // Load modules for all milestones
-      const allModules: Module[] = []
-      for (const milestone of data) {
-        if (milestone.id) {
-          const milestoneModules = await programsClient.getModules(milestone.id)
-          allModules.push(...milestoneModules)
-        }
-      }
-      setModules(allModules.sort((a, b) => (a.order || 0) - (b.order || 0)))
-    } catch (error) {
-      console.error('Failed to load milestones:', error)
-    } finally {
-      setIsLoading(false)
+  }, [selectedTrackId, loadMilestones])
+  
+  // Calculate paginated milestones
+  const paginatedMilestones = useMemo(() => {
+    const startIndex = (milestonePage - 1) * milestonesPerPage
+    const endIndex = startIndex + milestonesPerPage
+    return allMilestones.slice(startIndex, endIndex)
+  }, [allMilestones, milestonePage, milestonesPerPage])
+  
+  const totalMilestonePages = Math.ceil(allMilestones.length / milestonesPerPage)
+  
+  // Adjust page if it becomes invalid after milestones change
+  useEffect(() => {
+    if (totalMilestonePages > 0 && milestonePage > totalMilestonePages) {
+      setMilestonePage(totalMilestonePages)
+    } else if (totalMilestonePages === 0 && milestonePage > 1) {
+      setMilestonePage(1)
     }
-  }
+  }, [totalMilestonePages, milestonePage])
 
   const handleMilestoneToggle = (milestoneId: string) => {
     const newExpanded = new Set(expandedMilestones)
@@ -167,10 +214,16 @@ export default function CurriculumStructurePage() {
 
   const handleCreateMilestone = () => {
     setEditingMilestone(null)
+    // Calculate next available order (find max order and add 1, or use 0 if no milestones)
+    const maxOrder = allMilestones.length > 0 
+      ? Math.max(...allMilestones.map(m => m.order || 0))
+      : -1
+    const nextOrder = maxOrder + 1
+    
     setMilestoneForm({
       name: '',
       description: '',
-      order: milestones.length,
+      order: nextOrder,
       duration_weeks: 4,
     })
     setShowMilestoneForm(true)
@@ -188,25 +241,116 @@ export default function CurriculumStructurePage() {
   }
 
   const handleSaveMilestone = async () => {
-    if (!selectedTrackId || !milestoneForm.name) return
+    if (!selectedTrackId || !milestoneForm.name) {
+      alert('Please select a track and provide a milestone name')
+      return
+    }
+
+    // Validate duration_weeks if provided
+    if (milestoneForm.duration_weeks !== undefined && milestoneForm.duration_weeks !== null && milestoneForm.duration_weeks < 1) {
+      alert('Duration weeks must be at least 1 if provided')
+      return
+    }
+
+    // Validate order
+    if (milestoneForm.order !== undefined && milestoneForm.order < 0) {
+      alert('Order must be a non-negative number')
+      return
+    }
+
+    // Check for duplicate order (only for new milestones, not when editing)
+    if (!editingMilestone?.id) {
+      const existingMilestoneWithOrder = allMilestones.find(
+        m => m.order === milestoneForm.order && String(m.track) === String(selectedTrackId)
+      )
+      if (existingMilestoneWithOrder) {
+        alert(`A milestone with order ${milestoneForm.order} already exists for this track. Please choose a different order number.`)
+        return
+      }
+    } else {
+      // When editing, check if another milestone (not the one being edited) has the same order
+      const existingMilestoneWithOrder = allMilestones.find(
+        m => m.order === milestoneForm.order && 
+             String(m.track) === String(selectedTrackId) &&
+             String(m.id) !== String(editingMilestone.id)
+      )
+      if (existingMilestoneWithOrder) {
+        alert(`A milestone with order ${milestoneForm.order} already exists for this track. Please choose a different order number.`)
+        return
+      }
+    }
 
     try {
+      const milestoneData: any = {
+        name: milestoneForm.name.trim(),
+        description: milestoneForm.description || '',
+          track: selectedTrackId,
+        order: milestoneForm.order ?? 0,
+      }
+
+      // Only include duration_weeks if it's a valid positive number
+      if (milestoneForm.duration_weeks && milestoneForm.duration_weeks >= 1) {
+        milestoneData.duration_weeks = milestoneForm.duration_weeks
+      }
+
       if (editingMilestone?.id) {
-        await programsClient.updateMilestone(editingMilestone.id, {
-          ...milestoneForm,
-          track: selectedTrackId,
-        })
+        await programsClient.updateMilestone(editingMilestone.id, milestoneData)
       } else {
-        await programsClient.createMilestone({
-          ...milestoneForm,
-          track: selectedTrackId,
-        })
+        await programsClient.createMilestone(milestoneData)
       }
       setShowMilestoneForm(false)
-      loadMilestones()
-    } catch (error) {
+      setEditingMilestone(null)
+      // Reload milestones to show the newly created one
+      await loadMilestones()
+      // Reset to first page if we're not already there
+      if (milestonePage !== 1) {
+        setMilestonePage(1)
+      }
+    } catch (error: any) {
       console.error('Failed to save milestone:', error)
-      alert('Failed to save milestone')
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to save milestone'
+      const errorData = error?.response?.data || error?.data
+      
+      if (errorData) {
+        // Handle non_field_errors (like unique constraint violations)
+        if (errorData.non_field_errors) {
+          const nonFieldErrors = Array.isArray(errorData.non_field_errors) 
+            ? errorData.non_field_errors.join(', ')
+            : String(errorData.non_field_errors)
+          errorMessage = nonFieldErrors
+          
+          // If it's a unique constraint error, suggest a solution
+          if (nonFieldErrors.includes('unique') || nonFieldErrors.includes('track') || nonFieldErrors.includes('order')) {
+            errorMessage += '. Please choose a different order number or edit the existing milestone with that order.'
+          }
+        } else if (errorData.detail) {
+          errorMessage = typeof errorData.detail === 'string' 
+            ? errorData.detail 
+            : JSON.stringify(errorData.detail)
+        } else if (errorData.error) {
+          errorMessage = typeof errorData.error === 'string'
+            ? errorData.error
+            : JSON.stringify(errorData.error)
+        } else if (typeof errorData === 'object') {
+          // Handle field-level validation errors
+          const fieldErrors = Object.entries(errorData)
+            .filter(([key]) => key !== 'non_field_errors') // Exclude non_field_errors as we handle it above
+            .map(([field, errors]: [string, any]) => {
+              const errorMsg = Array.isArray(errors) ? errors.join(', ') : String(errors)
+              return `${field}: ${errorMsg}`
+            })
+            .join('; ')
+          if (fieldErrors) {
+            errorMessage = fieldErrors
+          }
+        }
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      alert(`Error: ${errorMessage}`)
     }
   }
 
@@ -217,7 +361,8 @@ export default function CurriculumStructurePage() {
 
     try {
       await programsClient.deleteMilestone(milestoneId)
-      loadMilestones()
+      await loadMilestones()
+      // Note: Pagination will adjust automatically via useMemo when allMilestones updates
     } catch (error) {
       console.error('Failed to delete milestone:', error)
       alert('Failed to delete milestone')
@@ -256,19 +401,112 @@ export default function CurriculumStructurePage() {
   }
 
   const handleSaveModule = async () => {
-    if (!moduleForm.milestone || !moduleForm.name) return
+    if (!moduleForm.milestone || !moduleForm.name) {
+      alert('Please provide a module name and ensure milestone is set')
+      return
+    }
+
+    // Validate order
+    if (moduleForm.order !== undefined && moduleForm.order < 0) {
+      alert('Order must be a non-negative number')
+      return
+    }
+
+    // Check for duplicate order (only for new modules, not when editing)
+    if (!editingModule?.id) {
+      const milestoneModules = modules.filter(m => String(m.milestone) === String(moduleForm.milestone))
+      const existingModuleWithOrder = milestoneModules.find(
+        m => m.order === moduleForm.order
+      )
+      if (existingModuleWithOrder) {
+        alert(`A module with order ${moduleForm.order} already exists in this milestone. Please choose a different order number.`)
+        return
+      }
+    } else {
+      // When editing, check if another module (not the one being edited) has the same order
+      const milestoneModules = modules.filter(m => String(m.milestone) === String(moduleForm.milestone))
+      const existingModuleWithOrder = milestoneModules.find(
+        m => m.order === moduleForm.order && String(m.id) !== String(editingModule.id)
+      )
+      if (existingModuleWithOrder) {
+        alert(`A module with order ${moduleForm.order} already exists in this milestone. Please choose a different order number.`)
+        return
+      }
+    }
 
     try {
-      if (editingModule?.id) {
-        await programsClient.updateModule(editingModule.id, moduleForm)
+      // Prepare module data - ensure milestone is a string ID
+      const moduleData: any = {
+        name: moduleForm.name.trim(),
+        description: moduleForm.description || '',
+        milestone: String(moduleForm.milestone),
+        content_type: moduleForm.content_type || 'video',
+        order: moduleForm.order ?? 0,
+      }
+
+      // Only include optional fields if they have values
+      if (moduleForm.content_url && moduleForm.content_url.trim()) {
+        moduleData.content_url = moduleForm.content_url.trim()
       } else {
-        await programsClient.createModule(moduleForm)
+        moduleData.content_url = '' // Empty string is allowed (blank=True in model)
+      }
+
+      if (moduleForm.estimated_hours !== undefined && moduleForm.estimated_hours !== null) {
+        moduleData.estimated_hours = moduleForm.estimated_hours
+      }
+
+      if (moduleForm.skills && Array.isArray(moduleForm.skills) && moduleForm.skills.length > 0) {
+        moduleData.skills = moduleForm.skills
+      } else {
+        moduleData.skills = []
+      }
+
+      if (editingModule?.id) {
+        await programsClient.updateModule(editingModule.id, moduleData)
+      } else {
+        await programsClient.createModule(moduleData)
       }
       setShowModuleForm(false)
       loadMilestones()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save module:', error)
-      alert('Failed to save module')
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to save module'
+      const errorData = error?.response?.data || error?.data
+      
+      if (errorData) {
+        if (errorData.non_field_errors) {
+          const nonFieldErrors = Array.isArray(errorData.non_field_errors) 
+            ? errorData.non_field_errors.join(', ')
+            : String(errorData.non_field_errors)
+          errorMessage = nonFieldErrors
+          
+          if (nonFieldErrors.includes('unique') || nonFieldErrors.includes('milestone') || nonFieldErrors.includes('order')) {
+            errorMessage += '. Please choose a different order number or edit the existing module with that order.'
+          }
+        } else if (errorData.detail) {
+          errorMessage = typeof errorData.detail === 'string' 
+            ? errorData.detail 
+            : JSON.stringify(errorData.detail)
+        } else if (typeof errorData === 'object') {
+          // Handle field-level validation errors
+          const fieldErrors = Object.entries(errorData)
+            .filter(([key]) => key !== 'non_field_errors')
+            .map(([field, errors]: [string, any]) => {
+              const errorMsg = Array.isArray(errors) ? errors.join(', ') : String(errors)
+              return `${field}: ${errorMsg}`
+            })
+            .join('; ')
+          if (fieldErrors) {
+            errorMessage = fieldErrors
+          }
+        }
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      alert(`Error: ${errorMessage}`)
     }
   }
 
@@ -377,7 +615,17 @@ export default function CurriculumStructurePage() {
             <div className="space-y-4">
               {/* Milestones Header */}
               <div className="flex items-center justify-between">
+                <div>
                 <h2 className="text-2xl font-bold text-white">Milestones</h2>
+                  {selectedTrack && (
+                    <p className="text-sm text-och-steel mt-1">
+                      Showing milestones for <span className="text-och-mint font-medium">{selectedTrack.name}</span>
+                      {selectedProgram && (
+                        <span className="text-och-steel"> in <span className="text-och-mint font-medium">{selectedProgram.name}</span></span>
+                      )}
+                    </p>
+                  )}
+                </div>
                 <Button variant="defender" onClick={handleCreateMilestone}>
                   <PlusIcon />
                   <span className="ml-2">Add Milestone</span>
@@ -391,7 +639,7 @@ export default function CurriculumStructurePage() {
                     <p className="text-och-steel">Loading curriculum structure...</p>
                   </div>
                 </Card>
-              ) : milestones.length === 0 ? (
+              ) : allMilestones.length === 0 ? (
                 <Card>
                   <div className="p-6 text-center">
                     <p className="text-och-steel mb-4">No milestones defined yet</p>
@@ -402,7 +650,10 @@ export default function CurriculumStructurePage() {
                   </div>
                 </Card>
               ) : (
-                milestones.map((milestone) => {
+                <>
+                  {/* Milestones List with Pagination */}
+                  <div className="space-y-4">
+                    {paginatedMilestones.map((milestone) => {
                   const milestoneModules = getModulesForMilestone(String(milestone.id))
                   const isExpanded = expandedMilestones.has(String(milestone.id))
 
@@ -436,6 +687,11 @@ export default function CurriculumStructurePage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            <Link href={`/dashboard/director/curriculum/structure/milestones/${milestone.id}`}>
+                              <Button variant="defender" size="sm">
+                                Manage
+                              </Button>
+                            </Link>
                             <Button
                               variant="outline"
                               size="sm"
@@ -534,7 +790,77 @@ export default function CurriculumStructurePage() {
                       </div>
                     </Card>
                   )
-                })
+                })}
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  {totalMilestonePages > 1 && (
+                    <Card className="mt-4">
+                      <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="text-sm text-och-steel">
+                              Showing {((milestonePage - 1) * milestonesPerPage) + 1}-{Math.min(milestonePage * milestonesPerPage, allMilestones.length)} of {allMilestones.length} milestones
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-sm text-och-steel">Per page:</label>
+                              <select
+                                value={milestonesPerPage}
+                                onChange={(e) => {
+                                  setMilestonesPerPage(Number(e.target.value))
+                                  setMilestonePage(1)
+                                }}
+                                className="px-3 py-1 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white text-sm focus:outline-none focus:border-och-defender"
+                              >
+                                <option value={5}>5</option>
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setMilestonePage(1)}
+                              disabled={milestonePage === 1}
+                            >
+                              First
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setMilestonePage(prev => Math.max(1, prev - 1))}
+                              disabled={milestonePage === 1}
+                            >
+                              Previous
+                            </Button>
+                            <span className="text-sm text-och-steel px-3">
+                              Page {milestonePage} of {totalMilestonePages}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setMilestonePage(prev => Math.min(totalMilestonePages, prev + 1))}
+                              disabled={milestonePage === totalMilestonePages}
+                            >
+                              Next
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setMilestonePage(totalMilestonePages)}
+                              disabled={milestonePage === totalMilestonePages}
+                            >
+                              Last
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </>
               )}
             </div>
           )}

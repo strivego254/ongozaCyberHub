@@ -32,6 +32,34 @@ class MilestoneSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def validate(self, data):
+        """Validate milestone data."""
+        # Validate name field - check for empty strings
+        name = data.get('name')
+        if not name or (isinstance(name, str) and name.strip() == ''):
+            raise serializers.ValidationError({'name': 'This field may not be blank.'})
+        
+        # Validate track field
+        track = data.get('track')
+        if not track:
+            raise serializers.ValidationError({'track': 'This field is required.'})
+        
+        # Validate duration_weeks if provided
+        duration_weeks = data.get('duration_weeks')
+        if duration_weeks is not None and duration_weeks < 1:
+            raise serializers.ValidationError({
+                'duration_weeks': 'Duration must be at least 1 week if provided.'
+            })
+        
+        # Validate order if provided
+        order = data.get('order')
+        if order is not None and order < 0:
+            raise serializers.ValidationError({
+                'order': 'Order must be a non-negative integer.'
+            })
+        
+        return data
+
 
 class TrackSerializer(serializers.ModelSerializer):
     program_name = serializers.CharField(source='program.name', read_only=True)
