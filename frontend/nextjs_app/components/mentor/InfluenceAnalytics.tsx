@@ -41,7 +41,7 @@ export function InfluenceAnalytics() {
   ] : []
 
   // Get trend data from influence analytics if available
-  const trendData = (influence as any)?.trend_data || []
+  const trendData = influence?.trend_data || []
 
   // Custom tooltip style
   const CustomTooltip = ({ active, payload, label }: any) => {

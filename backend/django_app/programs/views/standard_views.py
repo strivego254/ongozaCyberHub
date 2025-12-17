@@ -526,12 +526,79 @@ class CohortViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         
         elif request.method == 'POST':
+            from django.contrib.auth import get_user_model
+            from programs.services.director_service import DirectorService
+            User = get_user_model()
+            
             data = request.data.copy()
-            data['cohort'] = cohort.id
+            data['cohort'] = cohort.id  # Use UUID object, DRF will handle it
+            
+            # Check if mentor is already assigned
+            mentor_id = data.get('mentor')
+            if not mentor_id:
+                return Response(
+                    {'mentor': ['This field is required.']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Convert mentor_id to integer if it's a string (User PK is BigAutoField)
+            try:
+                if isinstance(mentor_id, str):
+                    mentor_id = int(mentor_id)
+                data['mentor'] = mentor_id
+                
+                # Verify mentor exists
+                try:
+                    mentor = User.objects.get(id=mentor_id)
+                except User.DoesNotExist:
+                    return Response(
+                        {'mentor': [f'Mentor with ID {mentor_id} does not exist.']},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except (ValueError, TypeError):
+                return Response(
+                    {'mentor': ['Invalid mentor ID format.']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check for existing assignment (including inactive ones for unique constraint)
+            existing = MentorAssignment.objects.filter(
+                cohort=cohort,
+                mentor_id=mentor_id
+            ).first()
+            if existing:
+                if existing.active:
+                    return Response(
+                        {'error': 'This mentor is already assigned to this cohort.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                else:
+                    # Reactivate the existing assignment instead of creating a new one
+                    existing.active = True
+                    existing.role = data.get('role', 'support')
+                    existing.save()
+                    serializer = MentorAssignmentSerializer(existing)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+            
+            # Check permissions before validation
+            if not (request.user.is_staff or DirectorService.can_manage_cohort(request.user, cohort)):
+                return Response(
+                    {'error': 'You do not have permission to manage this cohort'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
             serializer = MentorAssignmentSerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            # Log validation errors for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'MentorAssignmentSerializer validation failed: {serializer.errors}')
+            logger.error(f'Data sent to serializer: {data}')
+            
+            # Return detailed validation errors
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=True, methods=['post'])

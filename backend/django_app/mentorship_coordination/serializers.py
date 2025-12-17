@@ -102,11 +102,52 @@ class CreateGroupSessionSerializer(serializers.Serializer):
     """Serializer for creating a group mentorship session."""
     title = serializers.CharField(max_length=200)
     description = serializers.CharField(required=False, allow_blank=True, default='')
-    scheduled_at = serializers.DateTimeField()
+    scheduled_at = serializers.CharField()  # Accept as string first, then parse in validation
     duration_minutes = serializers.IntegerField(default=60, min_value=15, max_value=240)
     meeting_type = serializers.ChoiceField(choices=[('zoom', 'Zoom'), ('google_meet', 'Google Meet'), ('in_person', 'In Person')], default='zoom')
     meeting_link = serializers.CharField(required=False, allow_blank=True, default='')
     track_assignment = serializers.CharField(required=False, allow_blank=True, max_length=100, default='')
+    
+    def validate_scheduled_at(self, value):
+        """Parse scheduled_at string and ensure it's timezone-aware."""
+        from django.utils import timezone
+        from datetime import datetime
+        
+        if not isinstance(value, str):
+            raise serializers.ValidationError("scheduled_at must be a string")
+        
+        # Handle Z suffix (UTC) - convert to +00:00 for fromisoformat
+        if value.endswith('Z'):
+            value = value[:-1] + '+00:00'
+        elif not ('+' in value or value.endswith('UTC')):
+            # If no timezone info, assume UTC
+            if 'T' in value:
+                value = value + '+00:00'
+        
+        try:
+            # Parse ISO format datetime
+            dt = datetime.fromisoformat(value)
+        except ValueError as e:
+            # Try alternative formats
+            try:
+                # Try with microseconds
+                dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except ValueError:
+                # Try parsing with strptime for common formats
+                for fmt in ['%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S']:
+                    try:
+                        dt = datetime.strptime(value.replace('Z', ''), fmt)
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    raise serializers.ValidationError(f"Invalid datetime format: {value}. Error: {str(e)}")
+        
+        # Ensure timezone-aware
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt)
+        
+        return dt
 
 
 class MissionReviewSerializer(serializers.Serializer):

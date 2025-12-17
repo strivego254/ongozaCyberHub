@@ -1,19 +1,31 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { usePrograms, useDeleteProgram } from '@/hooks/usePrograms'
-import { programsClient } from '@/services/programsClient'
+import { useCohorts, useDeleteProgram, useProgram, usePrograms, useUpdateCohort } from '@/hooks/usePrograms'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 
 export default function ProgramsPage() {
   const { programs, isLoading, reload } = usePrograms()
   const { deleteProgram, isLoading: isDeleting } = useDeleteProgram()
+  const { updateCohort, isLoading: isAssigning, error: assignApiError } = useUpdateCohort()
+  const { cohorts, isLoading: cohortsLoading, reload: reloadCohorts } = useCohorts({ page: 1, pageSize: 500 })
+  const [assignProgramId, setAssignProgramId] = useState<string>('')
+  const { program: assignProgramDetail, isLoading: assignProgramLoading } = useProgram(assignProgramId)
+  const [assignTrackId, setAssignTrackId] = useState<string>('')
+  const [assignCohortId, setAssignCohortId] = useState<string>('')
+  const [assignError, setAssignError] = useState<string | null>(null)
+  const [assignSuccess, setAssignSuccess] = useState<string | null>(null)
+  const [cohortSearchQuery, setCohortSearchQuery] = useState('')
+  const [showCohortDropdown, setShowCohortDropdown] = useState(false)
+  const cohortDropdownRef = useRef<HTMLDivElement | null>(null)
+  const cohortInputRef = useRef<HTMLInputElement | null>(null)
+
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -38,6 +50,78 @@ export default function ProgramsPage() {
       return true
     })
   }, [programs, filterCategory, filterStatus, searchQuery])
+
+  const assignTracks = useMemo(() => {
+    return Array.isArray(assignProgramDetail?.tracks) ? assignProgramDetail!.tracks! : []
+  }, [assignProgramDetail])
+
+  // Auto-select track if the program has a single track
+  useEffect(() => {
+    if (!assignProgramId) {
+      setAssignTrackId('')
+      return
+    }
+    if (assignTracks.length === 1 && assignTracks[0]?.id) {
+      setAssignTrackId(String(assignTracks[0].id))
+    } else if (assignTrackId && !assignTracks.some((t: any) => String(t.id) === String(assignTrackId))) {
+      setAssignTrackId('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignProgramId, assignTracks])
+
+  const selectedCohort = useMemo(() => {
+    return cohorts.find((c) => String(c.id) === String(assignCohortId)) || null
+  }, [cohorts, assignCohortId])
+
+  const filteredCohorts = useMemo(() => {
+    const q = cohortSearchQuery.trim().toLowerCase()
+    if (!q) return cohorts
+    return cohorts.filter((c) => {
+      const hay = `${c.name} ${c.track_name || ''} ${c.status || ''}`.toLowerCase()
+      return hay.includes(q)
+    })
+  }, [cohorts, cohortSearchQuery])
+
+  // Close cohort dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (!showCohortDropdown) return
+      if (cohortDropdownRef.current?.contains(target)) return
+      if (cohortInputRef.current?.contains(target)) return
+      setShowCohortDropdown(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showCohortDropdown])
+
+  const handleAssign = async () => {
+    setAssignError(null)
+    setAssignSuccess(null)
+
+    if (!assignProgramId) {
+      setAssignError('Select a program first.')
+      return
+    }
+    if (!assignCohortId) {
+      setAssignError('Select a cohort to assign.')
+      return
+    }
+    if (!assignTrackId) {
+      setAssignError('Select a track within the program (this is what links the cohort to the program).')
+      return
+    }
+
+    try {
+      await updateCohort(assignCohortId, { track: assignTrackId })
+      setAssignSuccess('Cohort updated successfully.')
+      // Refresh data shown on the page
+      reload()
+      reloadCohorts()
+    } catch (err: any) {
+      setAssignError(err?.message || assignApiError || 'Failed to assign program to cohort')
+    }
+  }
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
@@ -130,6 +214,175 @@ export default function ProgramsPage() {
                       <option value="inactive">Inactive</option>
                       <option value="archived">Archived</option>
                     </select>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Assign Program to Cohort */}
+            <Card className="mt-6 border-och-defender/30">
+              <div className="p-6">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Assign Program to Cohort</h2>
+                    <p className="text-sm text-och-steel mt-1">
+                      Cohorts attach to programs through tracks. This will update the cohort’s <span className="text-white font-semibold">track</span>.
+                    </p>
+                  </div>
+                </div>
+
+                {(assignError || assignApiError) && (
+                  <div className="mb-4 p-3 rounded-lg border border-och-orange/50 bg-och-orange/10 text-och-orange text-sm">
+                    {assignError || assignApiError}
+                  </div>
+                )}
+                {assignSuccess && (
+                  <div className="mb-4 p-3 rounded-lg border border-och-mint/50 bg-och-mint/10 text-och-mint text-sm">
+                    {assignSuccess}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Program</label>
+                    <select
+                      value={assignProgramId}
+                      onChange={(e) => {
+                        setAssignProgramId(e.target.value)
+                        setAssignSuccess(null)
+                        setAssignError(null)
+                      }}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    >
+                      <option value="">Select a program...</option>
+                      {programs.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Track (within program)</label>
+                    <select
+                      value={assignTrackId}
+                      onChange={(e) => {
+                        setAssignTrackId(e.target.value)
+                        setAssignSuccess(null)
+                        setAssignError(null)
+                      }}
+                      disabled={!assignProgramId || assignProgramLoading}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender disabled:opacity-50"
+                    >
+                      <option value="">
+                        {!assignProgramId
+                          ? 'Select a program first...'
+                          : assignProgramLoading
+                            ? 'Loading tracks...'
+                            : assignTracks.length === 0
+                              ? 'No tracks found for this program'
+                              : 'Select a track...'}
+                      </option>
+                      {assignTracks.map((t: any) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.key})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-white mb-2">Cohort</label>
+                    <input
+                      ref={cohortInputRef}
+                      type="text"
+                      value={selectedCohort ? selectedCohort.name : cohortSearchQuery}
+                      onChange={(e) => {
+                        setCohortSearchQuery(e.target.value)
+                        setShowCohortDropdown(true)
+                        if (assignCohortId) setAssignCohortId('')
+                        setAssignSuccess(null)
+                        setAssignError(null)
+                      }}
+                      onFocus={() => setShowCohortDropdown(true)}
+                      placeholder={cohortsLoading ? 'Loading cohorts...' : 'Search cohort by name, track, or status...'}
+                      disabled={cohortsLoading}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender disabled:opacity-50"
+                    />
+
+                    {showCohortDropdown && !cohortsLoading && (
+                      <div
+                        ref={cohortDropdownRef}
+                        className="absolute z-50 w-full mt-1 bg-och-midnight border border-och-steel/20 rounded-lg shadow-lg max-h-60 overflow-auto"
+                      >
+                        {filteredCohorts.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-och-steel">
+                            {cohortSearchQuery ? 'No cohorts found matching your search.' : 'No cohorts available.'}
+                          </div>
+                        ) : (
+                          <div className="py-1">
+                            {filteredCohorts.map((c) => (
+                              <div
+                                key={c.id}
+                                onClick={() => {
+                                  setAssignCohortId(String(c.id))
+                                  setCohortSearchQuery('')
+                                  setShowCohortDropdown(false)
+                                }}
+                                className="px-4 py-2 cursor-pointer hover:bg-och-midnight/80 transition-colors"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium text-white">{c.name}</div>
+                                    <div className="text-xs text-och-steel mt-0.5">
+                                      {c.track_name ? `Track: ${c.track_name}` : `Track ID: ${c.track}`} • {c.status}
+                                    </div>
+                                  </div>
+                                  <div className="ml-2">
+                                    <Badge variant={c.status === 'active' ? 'mint' : 'outline'} className="text-xs">
+                                      {c.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="text-xs text-och-steel">
+                    {cohortsLoading ? 'Loading cohorts…' : `${filteredCohorts.length} cohort(s) available`}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setAssignProgramId('')
+                        setAssignTrackId('')
+                        setAssignCohortId('')
+                        setCohortSearchQuery('')
+                        setShowCohortDropdown(false)
+                        setAssignError(null)
+                        setAssignSuccess(null)
+                      }}
+                      disabled={isAssigning}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      variant="defender"
+                      size="sm"
+                      onClick={handleAssign}
+                      disabled={isAssigning || !assignProgramId || !assignTrackId || !assignCohortId}
+                    >
+                      {isAssigning ? 'Assigning...' : 'Assign'}
+                    </Button>
                   </div>
                 </div>
               </div>

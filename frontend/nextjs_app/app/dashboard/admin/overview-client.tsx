@@ -59,7 +59,7 @@ export default function OverviewClient() {
 
   const loadAuditLogs = async () => {
     try {
-      let params: any = { page_size: 1000 } // Get more data for better charts
+      const params: any = { page_size: 1000 } // Get more data for better charts
       
       if (timePeriod === '6m') {
         // For 6 months, we need to calculate start_date manually
@@ -428,7 +428,7 @@ export default function OverviewClient() {
               )}
             </div>
           </Card>
-          
+
           {/* Analytics Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>

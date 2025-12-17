@@ -18,10 +18,19 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
   const [page, setPage] = useState(1)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'beginner' | 'intermediate' | 'advanced' | 'capstone'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'ai_reviewed'>('all')
   const { missions, totalCount, isLoading, error, updateMissionStatus } = useMentorMissions(mentorId, {
     status: 'pending_review',
     limit: 10,
     offset: (page - 1) * 10,
+  })
+
+  // Filter missions by difficulty and status
+  const filteredMissions = missions.filter(m => {
+    if (difficultyFilter !== 'all' && m.mission_difficulty !== difficultyFilter) return false
+    if (statusFilter !== 'all' && m.status !== statusFilter) return false
+    return true
   })
 
   const handleReview = (submission: MissionSubmission) => {
@@ -76,15 +85,51 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
     <Card className="mb-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Missions Pending Review</h2>
+          <h2 className="text-2xl font-bold text-white">Mission Review Inbox</h2>
           <p className="text-sm text-och-steel">
-            Grade missions, provide feedback, and approve submissions.
+            Your submission queue for <strong className="text-white">$7 Premium tier mentees</strong>. Review missions, provide deeper analysis, issue pass/fail grades, tag competencies, and use rubric scoring.
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleBulkApprove}>
             Bulk Approve
           </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-4 flex flex-wrap gap-3">
+        <div>
+          <label className="block text-xs text-och-steel mb-1">Mission Type</label>
+          <select
+            value={difficultyFilter}
+            onChange={(e) => {
+              setDifficultyFilter(e.target.value as any)
+              setPage(1)
+            }}
+            className="px-3 py-1.5 rounded-lg bg-och-midnight border border-och-steel/20 text-sm text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+          >
+            <option value="all">All Types</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+            <option value="capstone">Capstone</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-och-steel mb-1">Status</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as any)
+              setPage(1)
+            }}
+            className="px-3 py-1.5 rounded-lg bg-och-midnight border border-och-steel/20 text-sm text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+          >
+            <option value="all">All Status</option>
+            <option value="submitted">Submitted</option>
+            <option value="ai_reviewed">AI Reviewed</option>
+          </select>
         </div>
       </div>
 
@@ -102,56 +147,132 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
         <div className="text-och-orange text-sm">Error loading missions: {error}</div>
       )}
 
-      {!isLoading && !error && missions.length === 0 && (
+      {!isLoading && !error && filteredMissions.length === 0 && missions.length === 0 && (
         <div className="text-och-steel text-sm">No missions pending review.</div>
       )}
 
-      {!isLoading && !error && missions.length > 0 && (
+      {!isLoading && !error && missions.length > 0 && filteredMissions.length === 0 && (
+        <div className="text-och-steel text-sm">No missions match the selected filters.</div>
+      )}
+
+      {!isLoading && !error && filteredMissions.length > 0 && (
         <div className="space-y-3">
-          {missions.map((m) => (
+          {filteredMissions.map((m) => {
+            // Count evidence types
+            const submissionData = m.submission_data as any
+            const evidenceCount = {
+              files: m.submission_data?.files?.length || 0,
+              github: m.submission_data?.code_repository ? 1 : 0,
+              notebook: submissionData?.notebook_link ? 1 : 0,
+              video: submissionData?.video_url ? 1 : 0,
+              screenshot: submissionData?.screenshots?.length || 0,
+            }
+            const totalEvidence = Object.values(evidenceCount).reduce((a, b) => a + b, 0)
+            const missionDifficulty = (m as any).mission_difficulty || 'unknown'
+            const requiresRubric = (m as any).requires_rubric || false
+            const rubricId = (m as any).rubric_id
+            const aiFeedback = (m as any).ai_feedback
+
+            return (
             <div
               key={m.id}
-              className="p-3 bg-och-midnight/50 rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                className="p-4 bg-och-midnight/50 rounded-lg hover:bg-och-midnight/70 transition-colors border border-och-steel/20"
             >
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-white font-semibold text-sm">{m.mission_title}</span>
-                  <Badge variant="defender" className="text-[11px] capitalize">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className="text-white font-semibold">{m.mission_title}</span>
+                      <Badge 
+                        variant={
+                          missionDifficulty === 'capstone' ? 'orange' :
+                          missionDifficulty === 'advanced' ? 'defender' :
+                          missionDifficulty === 'intermediate' ? 'mint' : 'steel'
+                        } 
+                        className="text-[11px] capitalize"
+                      >
+                        {missionDifficulty}
+                      </Badge>
+                  <Badge 
+                    variant={
+                      m.status === 'submitted' ? 'steel' :
+                          m.status === 'in_review' ? 'defender' :
+                          m.status === 'approved' ? 'mint' :
+                          m.status === 'needs_revision' ? 'orange' : 'steel'
+                    } 
+                    className="text-[11px] capitalize"
+                  >
                     {m.status.replace('_', ' ')}
                   </Badge>
+                  {m.tier_requirement === 'professional' && (
+                    <Badge variant="gold" className="text-[11px]">$7 Premium</Badge>
+                      )}
+                      {requiresRubric && (
+                        <Badge variant="defender" className="text-[11px]">Rubric Required</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-och-steel mb-2">
+                      <span className="text-white font-medium">{m.mentee_name}</span> • 
+                      Submitted: {new Date(m.submitted_at).toLocaleString()}
+                      {(m.status === 'in_review' || aiFeedback) && (
+                        <span className="ml-2 text-och-mint">✓ AI Review Complete</span>
+                      )}
+                    </div>
+                    {/* Evidence Summary */}
+                    {totalEvidence > 0 && (
+                      <div className="flex items-center gap-3 text-xs text-och-steel mt-2">
+                        <span className="font-medium text-white">Evidence:</span>
+                        {evidenceCount.files > 0 && (
+                          <span className="flex items-center gap-1">
+                            📎 {evidenceCount.files} file{evidenceCount.files !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {evidenceCount.github > 0 && (
+                          <span className="flex items-center gap-1">
+                            🔗 GitHub
+                          </span>
+                        )}
+                        {evidenceCount.notebook > 0 && (
+                          <span className="flex items-center gap-1">
+                            📓 Notebook
+                          </span>
+                        )}
+                        {evidenceCount.video > 0 && (
+                          <span className="flex items-center gap-1">
+                            🎥 Video
+                          </span>
+                        )}
+                        {evidenceCount.screenshot > 0 && (
+                          <span className="flex items-center gap-1">
+                            📸 {evidenceCount.screenshot} screenshot{evidenceCount.screenshot !== 1 ? 's' : ''}
+                          </span>
+                  )}
                 </div>
-                <div className="text-xs text-och-steel">
-                  {m.mentee_name} • Submitted{' '}
-                  {new Date(m.submitted_at).toLocaleString()}
+                    )}
+                    {/* AI Feedback Preview */}
+                    {aiFeedback && (
+                      <div className="mt-2 p-2 bg-och-defender/10 border border-och-defender/30 rounded text-xs">
+                        <span className="text-och-steel font-medium">AI Feedback: </span>
+                        <span className="text-white">
+                          {typeof aiFeedback === 'string' 
+                            ? aiFeedback.substring(0, 100) + (aiFeedback.length > 100 ? '...' : '')
+                            : (aiFeedback as any)?.summary || 'Available (view in review)'}
+                        </span>
                 </div>
+                    )}
               </div>
-              <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
                 <Button variant="outline" size="sm" onClick={() => handleReview(m)}>
                   Review
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleRequestResubmission(m)}
-                  disabled={processingId === m.id}
-                >
-                  {processingId === m.id ? 'Processing...' : 'Request Resubmission'}
-                </Button>
-                <Button 
-                  variant="defender" 
-                  size="sm"
-                  onClick={() => handleApprove(m)}
-                  disabled={processingId === m.id}
-                >
-                  {processingId === m.id ? 'Processing...' : 'Approve'}
-                </Button>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
-      {totalCount > 10 && (
+      {filteredMissions.length > 0 && totalCount > 10 && (
         <div className="flex justify-end gap-2 mt-4 text-xs text-och-steel">
           <Button
             variant="outline"

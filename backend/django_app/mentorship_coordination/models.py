@@ -85,12 +85,16 @@ class MentorSession(models.Model):
     type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     start_time = models.DateTimeField(db_index=True)
     end_time = models.DateTimeField(db_index=True)
-    zoom_url = models.URLField(blank=True)
+    zoom_url = models.URLField(blank=True, help_text='Meeting link (Zoom, Google Meet, etc.)')
+    recording_url = models.URLField(blank=True, help_text='Session recording URL')
+    transcript_url = models.URLField(blank=True, help_text='Session transcript URL')
     calendar_event_id = models.CharField(max_length=200, blank=True)
-    notes = models.TextField(blank=True)
+    notes = models.TextField(blank=True, help_text='Basic session notes')
+    structured_notes = models.JSONField(default=dict, blank=True, help_text='Structured notes with takeaways, action items, etc.')
     outcomes = models.JSONField(default=dict, blank=True)  # {"action_items": [], "new_goals": []}
     attended = models.BooleanField(default=False)
     no_show_reason = models.TextField(blank=True)
+    is_closed = models.BooleanField(default=False, help_text='Session closed - notes locked')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -204,3 +208,63 @@ class MentorFlag(models.Model):
     
     def __str__(self):
         return f"{self.mentee.email} - {self.reason[:50]} ({self.severity})"
+
+
+class SessionAttendance(models.Model):
+    """Session attendance tracking with join/leave timestamps."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.ForeignKey(
+        MentorSession,
+        on_delete=models.CASCADE,
+        related_name='attendance_records',
+        db_index=True
+    )
+    mentee = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='session_attendances',
+        db_index=True
+    )
+    attended = models.BooleanField(default=False)
+    joined_at = models.DateTimeField(null=True, blank=True, help_text='When mentee joined the session')
+    left_at = models.DateTimeField(null=True, blank=True, help_text='When mentee left the session')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'sessionattendance'
+        unique_together = [['session', 'mentee']]
+        indexes = [
+            models.Index(fields=['session', 'attended']),
+            models.Index(fields=['mentee', 'session']),
+        ]
+    
+    def __str__(self):
+        return f"{self.mentee.email} - {self.session.title} ({'Attended' if self.attended else 'Absent'})"
+
+
+class SessionNotes(models.Model):
+    """Structured session notes with takeaways and action items."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.OneToOneField(
+        MentorSession,
+        on_delete=models.CASCADE,
+        related_name='session_notes_detail',
+        db_index=True
+    )
+    key_takeaways = models.JSONField(default=list, blank=True, help_text='List of key takeaways')
+    action_items = models.JSONField(default=list, blank=True, help_text='List of action items with assignees')
+    discussion_points = models.TextField(blank=True, help_text='Main discussion points')
+    next_steps = models.TextField(blank=True, help_text='Recommended next steps')
+    mentor_reflections = models.TextField(blank=True, help_text='Mentor reflections on the session')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'sessionnotes'
+        indexes = [
+            models.Index(fields=['session']),
+        ]
+    
+    def __str__(self):
+        return f"Notes for {self.session.title}"

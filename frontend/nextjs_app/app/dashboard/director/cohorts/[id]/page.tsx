@@ -346,9 +346,11 @@ export default function CohortDetailPage() {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-white">Enrollments ({enrollments.length})</h2>
-                    <Button variant="outline" size="sm">
-                      View All
-                    </Button>
+                    <Link href={`/dashboard/director/cohorts/${cohortId}/enrollments`}>
+                      <Button variant="defender" size="sm">
+                        Manage Enrollments
+                      </Button>
+                    </Link>
                   </div>
                   <div className="space-y-2">
                     {enrollments.slice(0, 5).map((enrollment) => (
@@ -480,9 +482,11 @@ export default function CohortDetailPage() {
                     <Button variant="outline" className="w-full justify-start" size="sm">
                       📅 Manage Calendar
                     </Button>
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      👥 Manage Enrollments
-                    </Button>
+                    <Link href={`/dashboard/director/cohorts/${cohortId}/enrollments`} className="w-full">
+                      <Button variant="outline" className="w-full justify-start" size="sm">
+                        👥 Manage Enrollments
+                      </Button>
+                    </Link>
                     <Button variant="outline" className="w-full justify-start" size="sm">
                       ⚙️ Program Rules
                     </Button>

@@ -520,6 +520,29 @@ class ProgramsClient {
     return apiGateway.post(`/cohorts/${cohortId}/enrollments/`, data)
   }
 
+  async updateEnrollment(enrollmentId: string, data: Partial<Enrollment>): Promise<Enrollment> {
+    // Note: This requires backend support. For now, we'll use the cohort enrollment endpoint
+    // TODO: Add proper enrollment detail endpoint in backend
+    // This is a temporary workaround - enrollment updates should go through cohort context
+    throw new Error('Enrollment update endpoint not yet implemented. Please use approve endpoint or update through cohort.')
+  }
+
+  async approveEnrollment(cohortId: string, enrollmentId: string): Promise<Enrollment> {
+    return apiGateway.post(`/programs/cohorts/${cohortId}/approve_enrollment/`, { enrollment_id: enrollmentId })
+  }
+
+  async bulkApproveEnrollments(cohortId: string, enrollmentIds: string[]): Promise<any> {
+    return apiGateway.post(`/programs/cohorts/${cohortId}/bulk_approve_enrollments/`, { enrollment_ids: enrollmentIds })
+  }
+
+  async getCohortWaitlist(cohortId: string): Promise<any[]> {
+    return apiGateway.get(`/cohorts/${cohortId}/waitlist/`)
+  }
+
+  async promoteFromWaitlist(cohortId: string, count?: number): Promise<any> {
+    return apiGateway.post(`/cohorts/${cohortId}/waitlist/`, { count: count || 1 })
+  }
+
   // Mentor Assignments
   async getCohortMentors(cohortId: string): Promise<MentorAssignment[]> {
     return apiGateway.get(`/cohorts/${cohortId}/mentors/`)

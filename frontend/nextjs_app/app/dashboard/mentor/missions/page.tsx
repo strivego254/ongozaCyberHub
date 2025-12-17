@@ -64,9 +64,22 @@ export default function MissionsPage() {
     <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-6 xl:px-8">
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2 text-och-mint">Mission Review</h1>
-        <p className="text-och-steel">
-          Review mission submissions and score capstone projects for Professional tier mentees.
+        <p className="text-och-steel mb-4">
+          As an OCH Mentor, your responsibility in Mission Review is critical. You perform human-in-the-loop validation 
+          for mentees on the $7 Premium tier, confirming skill mastery and guiding development according to the core 
+          philosophy: <span className="text-och-mint font-semibold">"We guide the transformation"</span>.
         </p>
+        <div className="bg-och-midnight/50 border border-och-steel/20 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-white mb-2">Your Mission Review Responsibilities:</h3>
+          <ul className="text-xs text-och-steel space-y-1 list-disc list-inside">
+            <li>Review submissions for <strong className="text-white">Professional tier ($7 Premium) mentees</strong> completing Intermediate, Advanced, Mastery, and Capstone missions</li>
+            <li>Provide <strong className="text-white">deeper analysis</strong> complementing AI feedback, issue pass/fail grades, and add written feedback</li>
+            <li><strong className="text-white">Tag technical competencies</strong> proven or missed to update mentee skill profiles (TalentScope Analytics)</li>
+            <li>Use <strong className="text-white">rubric-based scoring</strong> for Capstones and Advanced/Mastery missions</li>
+            <li>Recommend <strong className="text-white">next missions or recipes</strong> based on skill gaps detected</li>
+            <li>All actions are logged in the <strong className="text-white">immutable Activity Audit Trail</strong></li>
+          </ul>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -77,14 +90,14 @@ export default function MissionsPage() {
             <div>
               <h2 className="text-2xl font-bold text-white">Capstone Projects</h2>
               <p className="text-sm text-och-steel">
-                Score capstone projects pending review.
+                Score capstone projects using assigned rubrics. Capstones are complex projects required in the $7 Premium tier and Mastery Tracks.
               </p>
             </div>
             <button
               onClick={loadCapstones}
               className="px-4 py-2 bg-och-defender text-white rounded-lg hover:bg-opacity-90 text-sm"
             >
-              {loadingCapstones ? 'Loading...' : 'Load Capstones'}
+              {loadingCapstones ? 'Loading...' : 'Refresh Capstones'}
             </button>
           </div>
 
@@ -97,20 +110,28 @@ export default function MissionsPage() {
               {capstones.map((capstone) => (
                 <div
                   key={capstone.id}
-                  className="p-4 bg-och-midnight/50 rounded-lg flex justify-between items-center"
+                  className="p-4 bg-och-midnight/50 rounded-lg flex justify-between items-center hover:bg-och-midnight/70 transition-colors"
                 >
-                  <div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-lg font-semibold text-white">{capstone.title}</h3>
-                    <p className="text-sm text-och-steel mt-1">{capstone.mentee_name}</p>
-                    <p className="text-xs text-och-steel mt-1">
+                      <span className="px-2 py-1 bg-och-orange/20 text-och-orange text-xs rounded">Capstone</span>
+                    </div>
+                    <p className="text-sm text-och-steel mt-1">
+                      <span className="text-white font-medium">{capstone.mentee_name}</span> • 
                       Submitted: {new Date(capstone.submitted_at).toLocaleString()}
                     </p>
+                    {capstone.rubric_id && (
+                      <p className="text-xs text-och-mint mt-1">
+                        ✓ Rubric assigned for scoring
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={() => setSelectedCapstone(capstone)}
-                    className="px-4 py-2 bg-och-defender text-white rounded-lg hover:bg-opacity-90 text-sm"
+                    className="px-4 py-2 bg-och-defender text-white rounded-lg hover:bg-opacity-90 text-sm shrink-0"
                   >
-                    Score Capstone
+                    Score with Rubric
                   </button>
                 </div>
               ))}

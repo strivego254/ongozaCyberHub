@@ -242,3 +242,11 @@ class PaymentSettingsViewSet(viewsets.ModelViewSet):
 
 
 
+
+
+
+
+
+
+
+

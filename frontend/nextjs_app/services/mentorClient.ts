@@ -130,7 +130,17 @@ export const mentorClient = {
     status?: 'scheduled' | 'completed' | 'all'
     start_date?: string
     end_date?: string
-  }): Promise<GroupMentorshipSession[]> {
+    page?: number
+    page_size?: number
+  }): Promise<{
+    results: GroupMentorshipSession[]
+    count: number
+    page: number
+    page_size: number
+    total_pages: number
+    next: string | null
+    previous: string | null
+  }> {
     return apiGateway.get(`/mentors/${mentorId}/sessions`, { params })
   },
 
@@ -161,6 +171,16 @@ export const mentorClient = {
       joined_at?: string
       left_at?: string
     }>
+    structured_notes?: {
+      key_takeaways?: string[]
+      action_items?: Array<{ item: string; assignee?: string }>
+      discussion_points?: string
+      next_steps?: string
+      mentor_reflections?: string
+    }
+    scheduled_at?: string
+    duration_minutes?: number
+    is_closed?: boolean
   }): Promise<GroupMentorshipSession> {
     return apiGateway.patch(`/mentors/sessions/${sessionId}`, data)
   },

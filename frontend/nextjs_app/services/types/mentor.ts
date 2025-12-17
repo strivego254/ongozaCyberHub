@@ -137,6 +137,14 @@ export interface GroupMentorshipSession {
     joined_at?: string
     left_at?: string
   }>
+  structured_notes?: {
+    key_takeaways?: string[]
+    action_items?: Array<{ item: string; assignee?: string }>
+    discussion_points?: string
+    next_steps?: string
+    mentor_reflections?: string
+  }
+  is_closed?: boolean
   created_at: string
   updated_at: string
 }
@@ -218,6 +226,23 @@ export interface TalentScopeMentorView {
     date: string
     score: number
   }>
+  // Core Readiness Score and detailed data
+  core_readiness_score?: number
+  career_readiness_stage?: 'exploring' | 'building' | 'emerging' | 'ready'
+  learning_velocity?: number
+  estimated_readiness_window?: string
+  readiness_breakdown?: Record<string, number> // Breakdown by category (technical, practical, theoretical)
+  gap_analysis?: {
+    strengths: string[]
+    weaknesses: string[]
+    missing_skills: string[]
+    improvement_plan: string[]
+  }
+  professional_tier_data?: {
+    job_fit_score?: number
+    hiring_timeline_prediction?: string
+    track_benchmarks?: Record<string, any>
+  }
 }
 
 export interface MentorInfluenceIndex {
@@ -239,6 +264,10 @@ export interface MentorInfluenceIndex {
     start_date: string
     end_date: string
   }
+  trend_data?: Array<{
+    date: string
+    score: number
+  }>
 }
 
 export interface MentorAlert {

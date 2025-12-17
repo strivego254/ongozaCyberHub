@@ -384,27 +384,27 @@ export default function CreateCohortClient() {
                 return (
                   <div key={stepInfo.key} className="flex items-center gap-2 flex-shrink-0">
                     <div className="flex flex-col items-center">
-                      <div
+              <div
                         className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-semibold transition-all ${
                           isActive
                             ? 'bg-och-defender text-white shadow-lg scale-110'
                             : isCompleted
-                            ? 'bg-och-mint text-och-midnight'
-                            : 'bg-och-midnight/50 text-och-steel'
-                        }`}
-                      >
+                    ? 'bg-och-mint text-och-midnight'
+                    : 'bg-och-midnight/50 text-och-steel'
+                }`}
+              >
                         {isCompleted ? '✓' : stepInfo.icon}
-                      </div>
+              </div>
                       <span className={`text-xs font-medium mt-1 text-center whitespace-nowrap ${
                         isActive ? 'text-och-defender' : isCompleted ? 'text-och-mint' : 'text-och-steel'
-                      }`}>
+              }`}>
                         {stepInfo.label}
-                      </span>
-                    </div>
+              </span>
+            </div>
                     {idx < 4 && (
                       <div className={`w-8 h-0.5 mx-2 ${isCompleted ? 'bg-och-mint' : 'bg-och-steel/30'}`} />
                     )}
-                  </div>
+        </div>
                 )
               })}
             </div>
