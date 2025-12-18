@@ -101,4 +101,3 @@ class UserViewSet(viewsets.ModelViewSet):
         Get current user profile.
         """
         serializer = self.get_serializer(request.user)
-        return Response(serializer.data)

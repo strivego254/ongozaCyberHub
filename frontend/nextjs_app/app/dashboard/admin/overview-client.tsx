@@ -110,7 +110,6 @@ export default function OverviewClient() {
         active: roleDistribution.active_users,
         programDirectors: roleDistribution.role_distribution['program_director'] || 0,
         financeUsers: roleDistribution.role_distribution['finance'] || 0,
-        students: (roleDistribution.role_distribution['student'] || 0) + (roleDistribution.role_distribution['mentee'] || 0),
         mentors: roleDistribution.role_distribution['mentor'] || 0,
       }
     }
@@ -132,7 +131,6 @@ export default function OverviewClient() {
       active: activeUsers,
       programDirectors,
       financeUsers,
-      students,
       mentors: users.filter((u) => u.roles?.some((r: any) => r.role === 'mentor')).length,
     }
   }, [users, totalCount, roleDistribution])
@@ -471,7 +469,6 @@ export default function OverviewClient() {
                 data={[
                   stats.programDirectors,
                   stats.financeUsers,
-                  stats.students,
                   stats.mentors || 0,
                 ]}
                 labels={['Directors', 'Finance', 'Students', 'Mentors']}

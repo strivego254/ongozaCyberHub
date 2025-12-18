@@ -101,11 +101,11 @@ class Migration(migrations.Migration):
                 ),
             ],
             state_operations=[
-        migrations.AddField(
-            model_name='userlessonprogress',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
-        ),
+                migrations.AddField(
+                    model_name='userlessonprogress',
+                    name='id',
+                    field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+                ),
             ],
         ),
         migrations.SeparateDatabaseAndState(
@@ -176,10 +176,10 @@ class Migration(migrations.Migration):
                 ),
             ],
             state_operations=[
-        migrations.AddField(
-            model_name='usermoduleprogress',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+                migrations.AddField(
+                    model_name='usermoduleprogress',
+                    name='id',
+                    field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
                 ),
             ],
         ),

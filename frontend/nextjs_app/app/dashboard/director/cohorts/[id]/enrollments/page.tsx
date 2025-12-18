@@ -50,61 +50,6 @@ export default function CohortEnrollmentsPage() {
 
   // Student picker (fetch from backend users endpoint; directors can see all users)
   const [studentSearch, setStudentSearch] = useState('')
-  const [studentPage, setStudentPage] = useState(1)
-  const [allLoadedStudents, setAllLoadedStudents] = useState<any[]>([])
-  const [studentTotalCount, setStudentTotalCount] = useState(0)
-  const PAGE_SIZE = 100 // Fetch 100 at a time for better performance
-  const { users: currentPageUsers, totalCount: currentTotalCount, isLoading: usersLoading, error: usersError } = useUsers({
-    page: studentPage,
-    page_size: PAGE_SIZE,
-    search: studentSearch || undefined,
-    // Note: We filter by student/mentee role client-side since we need both
-  })
-  
-  // Accumulate students from all loaded pages
-  useEffect(() => {
-    if (currentPageUsers.length > 0) {
-      if (studentPage === 1) {
-        // Reset on first page or search change
-        setAllLoadedStudents(currentPageUsers)
-      } else {
-        // Append new page results, avoiding duplicates
-        setAllLoadedStudents(prev => {
-          const existingIds = new Set(prev.map(u => u.id))
-          const newUsers = currentPageUsers.filter(u => !existingIds.has(u.id))
-          return [...prev, ...newUsers]
-        })
-      }
-      setStudentTotalCount(currentTotalCount)
-    } else if (studentPage === 1) {
-      // Reset if no results
-      setAllLoadedStudents([])
-      setStudentTotalCount(0)
-    }
-  }, [currentPageUsers, studentPage, currentTotalCount])
-  
-  // Reset pagination when search changes
-  useEffect(() => {
-    setStudentPage(1)
-    setAllLoadedStudents([])
-  }, [studentSearch])
-  
-  const students = useMemo(() => {
-    // Filter to ensure only students/mentees (backend might return other roles too)
-    return allLoadedStudents.filter((u: any) => 
-      u.roles?.some((r: any) => r.role === 'student' || r.role === 'mentee')
-    )
-  }, [allLoadedStudents])
-  
-  // Check if there are more users to load
-  // We check if we haven't loaded all users yet based on total count
-  // Also check if we got a full page (which suggests there might be more)
-  const hasMoreUsers = allLoadedStudents.length < currentTotalCount && !usersLoading
-  const loadMoreStudents = () => {
-    if (!usersLoading && hasMoreUsers) {
-      setStudentPage(prev => prev + 1)
-    }
-  }
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
   const [assignSeatType, setAssignSeatType] = useState<'paid' | 'scholarship' | 'sponsored'>('paid')
   const [assignEnrollmentType, setAssignEnrollmentType] = useState<'director' | 'invite' | 'sponsor' | 'self'>('director')
@@ -131,18 +76,6 @@ export default function CohortEnrollmentsPage() {
     }
     loadData()
   }, [cohortId, cohort])
-
-  // Sync seat pool from cohort data
-  useEffect(() => {
-    if (cohort?.seat_pool && !showSeatPoolModal) {
-      const pool = cohort.seat_pool as any
-      setSeatPool({
-        paid: pool.paid || 0,
-        scholarship: pool.scholarship || 0,
-        sponsored: pool.sponsored || 0,
-      })
-    }
-  }, [cohort, showSeatPoolModal])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -265,71 +198,6 @@ export default function CohortEnrollmentsPage() {
       setSelectedEnrollments(new Set())
     } catch (err: any) {
       setError(err?.message || 'Failed to remove enrollments')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  // Handle seat pool update
-  const [seatPoolForm, setSeatPoolForm] = useState<{ paid: number; scholarship: number; sponsored: number }>({
-    paid: 0,
-    scholarship: 0,
-    sponsored: 0,
-  })
-  const [seatPoolError, setSeatPoolError] = useState<string | null>(null)
-  const [seatPoolSuccess, setSeatPoolSuccess] = useState<string | null>(null)
-
-  // Initialize seat pool form when cohort loads or modal opens
-  useEffect(() => {
-    if (showSeatPoolModal && cohort?.seat_pool) {
-      const pool = cohort.seat_pool as any
-      setSeatPoolForm({
-        paid: pool.paid || 0,
-        scholarship: pool.scholarship || 0,
-        sponsored: pool.sponsored || 0,
-      })
-    }
-  }, [showSeatPoolModal, cohort])
-
-  const handleUpdateSeatPool = async () => {
-    setSeatPoolError(null)
-    setSeatPoolSuccess(null)
-
-    // Validate total doesn't exceed seat cap
-    const total = seatPoolForm.paid + seatPoolForm.scholarship + seatPoolForm.sponsored
-    if (cohort && total > cohort.seat_cap) {
-      setSeatPoolError(`Total allocated seats (${total}) cannot exceed seat capacity (${cohort.seat_cap})`)
-      return
-    }
-
-    if (total < 0) {
-      setSeatPoolError('Seat allocations cannot be negative')
-      return
-    }
-
-    setIsProcessing(true)
-    try {
-      await programsClient.manageSeatPool(cohortId, seatPoolForm)
-      setSeatPoolSuccess('Seat pool updated successfully')
-      
-      // Reload cohort data to sync with backend
-      await reloadCohort()
-      
-      // Update local seat pool state
-      setSeatPool(seatPoolForm)
-      
-      // Close modal after 2 seconds
-      setTimeout(() => {
-        setShowSeatPoolModal(false)
-        setSeatPoolSuccess(null)
-      }, 2000)
-    } catch (err: any) {
-      console.error('Failed to update seat pool:', err)
-      const errorMessage = err?.response?.data?.error || 
-                           err?.response?.data?.seat_pool?.[0] ||
-                           err?.message || 
-                           'Failed to update seat pool. Please check your permissions and try again.'
-      setSeatPoolError(errorMessage)
     } finally {
       setIsProcessing(false)
     }
@@ -1133,23 +1001,6 @@ export default function CohortEnrollmentsPage() {
 
               <Card className="border-och-steel/20">
                 <div className="p-4">
-                  <div className="text-sm text-och-steel mb-3 flex items-center justify-between">
-                    <span>
-                      {usersLoading && studentPage === 1 
-                        ? 'Loading students...' 
-                        : `${students.length} student(s) found${currentTotalCount > allLoadedStudents.length ? ` (${currentTotalCount - allLoadedStudents.length} more available)` : ''}`}
-                    </span>
-                    {hasMoreUsers && (
-                      <Button
-                        variant="defender"
-                        size="sm"
-                        onClick={loadMoreStudents}
-                        disabled={usersLoading}
-                        className="text-xs"
-                      >
-                        {usersLoading ? 'Loading...' : `Load More (${currentTotalCount - allLoadedStudents.length} remaining)`}
-                      </Button>
-                    )}
                   </div>
                   <div className="max-h-[340px] overflow-auto divide-y divide-och-steel/10">
                     {students.map((u: any) => (
@@ -1180,161 +1031,12 @@ export default function CohortEnrollmentsPage() {
                         </div>
                       </div>
                     ))}
-                    {usersLoading && studentPage > 1 && (
-                      <div className="py-4 text-center text-och-steel text-sm">
-                        Loading more students...
-                      </div>
-                    )}
                     {!usersLoading && students.length === 0 && (
                       <div className="py-10 text-center text-och-steel">No students found.</div>
                     )}
                   </div>
                 </div>
               </Card>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Manage Seat Pool Modal */}
-      {showSeatPoolModal && cohort && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-md bg-och-midnight border border-och-steel/20 rounded-xl shadow-xl">
-            <div className="p-6 border-b border-och-steel/20 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white">Manage Seat Pool</h3>
-                <p className="text-sm text-och-steel mt-1">
-                  Allocate seats by type. Total cannot exceed {cohort.seat_cap} seats.
-                </p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => {
-                setShowSeatPoolModal(false)
-                setSeatPoolError(null)
-                setSeatPoolSuccess(null)
-              }} disabled={isProcessing}>
-                Close
-              </Button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {seatPoolError && (
-                <div className="p-3 rounded-lg border border-och-orange/50 bg-och-orange/10 text-och-orange text-sm">
-                  {seatPoolError}
-                </div>
-              )}
-              {seatPoolSuccess && (
-                <div className="p-3 rounded-lg border border-och-mint/50 bg-och-mint/10 text-och-mint text-sm">
-                  {seatPoolSuccess}
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Paid Seats
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={cohort.seat_cap}
-                    value={seatPoolForm.paid}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value) || 0
-                      setSeatPoolForm(prev => ({ ...prev, paid: value }))
-                      setSeatPoolError(null)
-                    }}
-                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Scholarship Seats
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={cohort.seat_cap}
-                    value={seatPoolForm.scholarship}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value) || 0
-                      setSeatPoolForm(prev => ({ ...prev, scholarship: value }))
-                      setSeatPoolError(null)
-                    }}
-                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Sponsored Seats
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={cohort.seat_cap}
-                    value={seatPoolForm.sponsored}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value) || 0
-                      setSeatPoolForm(prev => ({ ...prev, sponsored: value }))
-                      setSeatPoolError(null)
-                    }}
-                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
-                  />
-                </div>
-
-                <div className="pt-4 border-t border-och-steel/20">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-och-steel">Total Allocated</span>
-                    <span className={`text-lg font-bold ${
-                      seatPoolForm.paid + seatPoolForm.scholarship + seatPoolForm.sponsored > cohort.seat_cap
-                        ? 'text-och-orange'
-                        : seatPoolForm.paid + seatPoolForm.scholarship + seatPoolForm.sponsored === cohort.seat_cap
-                        ? 'text-och-mint'
-                        : 'text-white'
-                    }`}>
-                      {seatPoolForm.paid + seatPoolForm.scholarship + seatPoolForm.sponsored} / {cohort.seat_cap}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-och-steel">Available</span>
-                    <span className="text-sm font-medium text-white">
-                      {cohort.seat_cap - (seatPoolForm.paid + seatPoolForm.scholarship + seatPoolForm.sponsored)} seats
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowSeatPoolModal(false)
-                    setSeatPoolError(null)
-                    setSeatPoolSuccess(null)
-                  }}
-                  disabled={isProcessing}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="defender"
-                  size="sm"
-                  onClick={handleUpdateSeatPool}
-                  disabled={
-                    isProcessing ||
-                    seatPoolForm.paid + seatPoolForm.scholarship + seatPoolForm.sponsored > cohort.seat_cap ||
-                    seatPoolForm.paid < 0 ||
-                    seatPoolForm.scholarship < 0 ||
-                    seatPoolForm.sponsored < 0
-                  }
-                  className="flex-1"
-                >
-                  {isProcessing ? 'Updating...' : 'Update Seat Pool'}
-                </Button>
-              </div>
             </div>
           </div>
         </div>

@@ -490,10 +490,6 @@ class ProgramsClient {
     return apiGateway.patch(`/director/cohorts/${id}/`, data)
   }
 
-  async manageSeatPool(cohortId: string, seatPool: { paid: number; scholarship: number; sponsored: number }): Promise<Cohort> {
-    return apiGateway.post(`/director/cohorts/${cohortId}/manage_seat_pool/`, { seat_pool: seatPool })
-  }
-
   async deleteCohort(id: string): Promise<void> {
     return apiGateway.delete(`/cohorts/${id}/`)
   }
