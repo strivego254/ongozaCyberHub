@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { useCohorts, useTracks, usePrograms } from '@/hooks/usePrograms'
 import { programsClient, type Cohort, type Track, type MentorAssignment, type Milestone, type Module, type Enrollment } from '@/services/programsClient'
+import { mentorClient } from '@/services/mentorClient'
+import type { MenteeFlag } from '@/services/types/mentor'
 
 const ChevronDownIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,6 +35,7 @@ interface AssignmentWithDetails {
 
 export default function MentorCohortsTracksPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const mentorId = user?.id?.toString()
   
   const { cohorts, isLoading: cohortsLoading } = useCohorts({ page: 1, pageSize: 500 })
@@ -44,6 +49,15 @@ export default function MentorCohortsTracksPage() {
   const [expandedTracks, setExpandedTracks] = useState<Set<string>>(new Set())
   const [trackDetails, setTrackDetails] = useState<Record<string, { milestones: Milestone[]; modules: Module[] }>>({})
   const [cohortEnrollments, setCohortEnrollments] = useState<Record<string, { enrollments: Enrollment[]; loading: boolean }>>({})
+  const [selectedMentees, setSelectedMentees] = useState<Set<string>>(new Set())
+  const [showFlagModal, setShowFlagModal] = useState(false)
+  const [flagFormData, setFlagFormData] = useState({
+    flag_type: 'needs_attention' as 'struggling' | 'at_risk' | 'needs_attention' | 'technical_issue',
+    severity: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+    description: '',
+  })
+  const [submittingFlag, setSubmittingFlag] = useState(false)
+  const [flagError, setFlagError] = useState<string | null>(null)
 
   // Load mentor assignments
   useEffect(() => {
@@ -238,6 +252,85 @@ export default function MentorCohortsTracksPage() {
     return variants[seatType] || 'steel'
   }
 
+  const toggleMenteeSelection = (enrollmentId: string) => {
+    const newSelected = new Set(selectedMentees)
+    if (newSelected.has(enrollmentId)) {
+      newSelected.delete(enrollmentId)
+    } else {
+      newSelected.add(enrollmentId)
+    }
+    setSelectedMentees(newSelected)
+  }
+
+  const selectAllMentees = (cohortId: string) => {
+    const enrollmentData = cohortEnrollments[cohortId]
+    if (!enrollmentData) return
+    
+    const activeEnrollments = enrollmentData.enrollments.filter(
+      (e) => e.status === 'active' || e.status === 'completed'
+    )
+    const allIds = new Set(activeEnrollments.map(e => e.user || e.id))
+    setSelectedMentees(new Set([...selectedMentees, ...allIds]))
+  }
+
+  const deselectAllMentees = (cohortId: string) => {
+    const enrollmentData = cohortEnrollments[cohortId]
+    if (!enrollmentData) return
+    
+    const activeEnrollments = enrollmentData.enrollments.filter(
+      (e) => e.status === 'active' || e.status === 'completed'
+    )
+    const activeIds = new Set(activeEnrollments.map(e => e.user || e.id))
+    const newSelected = new Set(selectedMentees)
+    activeIds.forEach(id => newSelected.delete(id))
+    setSelectedMentees(newSelected)
+  }
+
+  const handleRaiseFlag = async () => {
+    if (!mentorId || selectedMentees.size === 0 || !flagFormData.description.trim()) {
+      setFlagError('Please select at least one mentee and provide a description')
+      return
+    }
+
+    setSubmittingFlag(true)
+    setFlagError(null)
+
+    try {
+      const promises = Array.from(selectedMentees).map(async (menteeId) => {
+        await mentorClient.flagMentee(mentorId, {
+          mentee_id: String(menteeId),
+          flag_type: flagFormData.flag_type,
+          severity: flagFormData.severity,
+          description: flagFormData.description.trim(),
+        })
+      })
+
+      await Promise.all(promises)
+
+      // Reset form and close modal
+      setFlagFormData({
+        flag_type: 'needs_attention',
+        severity: 'medium',
+        description: '',
+      })
+      setShowFlagModal(false)
+      setSelectedMentees(new Set())
+    } catch (err: any) {
+      console.error('Failed to raise flag:', err)
+      setFlagError(err?.message || 'Failed to raise flag. Please try again.')
+    } finally {
+      setSubmittingFlag(false)
+    }
+  }
+
+  const getMenteeId = (enrollment: Enrollment): string => {
+    return enrollment.user || enrollment.id || ''
+  }
+
+  const viewMenteeAnalytics = (menteeId: string) => {
+    router.push(`/dashboard/mentor/analytics/${menteeId}`)
+  }
+
   if (isLoading || cohortsLoading || tracksLoading || programsLoading) {
     return (
       <RouteGuard>
@@ -331,7 +424,39 @@ export default function MentorCohortsTracksPage() {
                     <div className="px-6 pb-6 space-y-4 border-t border-och-steel/20">
                       {/* Enrolled Students Section */}
                       <div className="pt-4">
-                        <h3 className="text-lg font-semibold text-white mb-4">Enrolled Students</h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-white">Enrolled Students</h3>
+                          {(() => {
+                            const enrollmentData = cohortEnrollments[cohort.id]
+                            if (!enrollmentData || enrollmentData.loading) return null
+                            const activeEnrollments = enrollmentData.enrollments.filter(
+                              (e) => e.status === 'active' || e.status === 'completed'
+                            )
+                            if (activeEnrollments.length === 0) return null
+                            const activeIds = new Set(activeEnrollments.map(e => getMenteeId(e)))
+                            const allSelected = activeIds.size > 0 && Array.from(activeIds).every(id => selectedMentees.has(id))
+                            return (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => allSelected ? deselectAllMentees(cohort.id) : selectAllMentees(cohort.id)}
+                                >
+                                  {allSelected ? 'Deselect All' : 'Select All'}
+                                </Button>
+                                {selectedMentees.size > 0 && (
+                                  <Button
+                                    variant="defender"
+                                    size="sm"
+                                    onClick={() => setShowFlagModal(true)}
+                                  >
+                                    Raise Flag ({selectedMentees.size})
+                                  </Button>
+                                )}
+                              </div>
+                            )
+                          })()}
+                        </div>
                         {(() => {
                           const enrollmentData = cohortEnrollments[cohort.id]
                           if (!enrollmentData) {
@@ -354,51 +479,72 @@ export default function MentorCohortsTracksPage() {
                           }
                           return (
                             <div className="space-y-3">
-                              {activeEnrollments.map((enrollment) => (
-                                <div
-                                  key={enrollment.id}
-                                  className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-3 mb-2">
-                                        <div>
-                                          <p className="text-white font-medium">
-                                            {enrollment.user_name || enrollment.user_email || enrollment.user}
-                                          </p>
-                                          {enrollment.user_email && enrollment.user_name && (
-                                            <p className="text-xs text-och-steel mt-1">{enrollment.user_email}</p>
-                                          )}
+                              {activeEnrollments.map((enrollment) => {
+                                const menteeId = getMenteeId(enrollment)
+                                const isSelected = selectedMentees.has(menteeId)
+                                return (
+                                  <div
+                                    key={enrollment.id}
+                                    className={`p-4 bg-och-midnight/50 rounded-lg border ${
+                                      isSelected ? 'border-och-mint/50 bg-och-mint/10' : 'border-och-steel/20'
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggleMenteeSelection(menteeId)}
+                                        className="mt-1 w-4 h-4 text-och-mint bg-och-midnight border-och-steel/30 rounded focus:ring-och-mint focus:ring-2"
+                                      />
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                          <div>
+                                            <p className="text-white font-medium">
+                                              {enrollment.user_name || enrollment.user_email || enrollment.user}
+                                            </p>
+                                            {enrollment.user_email && enrollment.user_name && (
+                                              <p className="text-xs text-och-steel mt-1">{enrollment.user_email}</p>
+                                            )}
+                                          </div>
+                                          <Badge variant={getEnrollmentStatusBadge(enrollment.status)}>
+                                            {enrollment.status.replace('_', ' ')}
+                                          </Badge>
+                                          <Badge variant={getSeatTypeBadge(enrollment.seat_type)}>
+                                            {enrollment.seat_type}
+                                          </Badge>
+                                          <Badge variant={getPaymentStatusBadge(enrollment.payment_status)}>
+                                            {enrollment.payment_status}
+                                          </Badge>
                                         </div>
-                                        <Badge variant={getEnrollmentStatusBadge(enrollment.status)}>
-                                          {enrollment.status.replace('_', ' ')}
-                                        </Badge>
-                                        <Badge variant={getSeatTypeBadge(enrollment.seat_type)}>
-                                          {enrollment.seat_type}
-                                        </Badge>
-                                        <Badge variant={getPaymentStatusBadge(enrollment.payment_status)}>
-                                          {enrollment.payment_status}
-                                        </Badge>
+                                        <div className="flex items-center gap-4 text-xs text-och-steel mt-2">
+                                          <span>
+                                            Joined: {new Date(enrollment.joined_at).toLocaleDateString()}
+                                          </span>
+                                          {enrollment.completed_at && (
+                                            <>
+                                              <span>•</span>
+                                              <span>
+                                                Completed: {new Date(enrollment.completed_at).toLocaleDateString()}
+                                              </span>
+                                            </>
+                                          )}
+                                          <span>•</span>
+                                          <span className="capitalize">{enrollment.enrollment_type}</span>
+                                        </div>
                                       </div>
-                                      <div className="flex items-center gap-4 text-xs text-och-steel mt-2">
-                                        <span>
-                                          Joined: {new Date(enrollment.joined_at).toLocaleDateString()}
-                                        </span>
-                                        {enrollment.completed_at && (
-                                          <>
-                                            <span>•</span>
-                                            <span>
-                                              Completed: {new Date(enrollment.completed_at).toLocaleDateString()}
-                                            </span>
-                                          </>
-                                        )}
-                                        <span>•</span>
-                                        <span className="capitalize">{enrollment.enrollment_type}</span>
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => viewMenteeAnalytics(menteeId)}
+                                        >
+                                          View Analytics
+                                        </Button>
                                       </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                )
+                              })}
                             </div>
                           )
                         })()}
@@ -635,7 +781,91 @@ export default function MentorCohortsTracksPage() {
             </div>
           </Card>
         )}
+
+        {/* Flag Modal */}
+        {showFlagModal && (
+          <div className="fixed inset-0 bg-och-midnight/90 z-50 flex items-center justify-center p-4">
+            <Card className="w-full max-w-md">
+              <div className="p-6">
+                <h2 className="text-xl font-bold text-white mb-4">Raise Flag for Selected Mentees</h2>
+                <p className="text-sm text-och-steel mb-4">
+                  Raising flag for {selectedMentees.size} mentee{selectedMentees.size !== 1 ? 's' : ''}
+                </p>
+                
+                {flagError && (
+                  <div className="mb-4 p-3 bg-och-orange/20 border border-och-orange/50 rounded text-sm text-och-orange">
+                    {flagError}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-och-steel mb-2">Flag Type</label>
+                    <select
+                      value={flagFormData.flag_type}
+                      onChange={(e) => setFlagFormData({ ...flagFormData, flag_type: e.target.value as any })}
+                      className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white focus:outline-none focus:ring-2 focus:ring-och-mint"
+                    >
+                      <option value="needs_attention">Needs Attention</option>
+                      <option value="struggling">Struggling</option>
+                      <option value="at_risk">At Risk</option>
+                      <option value="technical_issue">Technical Issue</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-och-steel mb-2">Severity</label>
+                    <select
+                      value={flagFormData.severity}
+                      onChange={(e) => setFlagFormData({ ...flagFormData, severity: e.target.value as any })}
+                      className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white focus:outline-none focus:ring-2 focus:ring-och-mint"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-och-steel mb-2">Description</label>
+                    <textarea
+                      value={flagFormData.description}
+                      onChange={(e) => setFlagFormData({ ...flagFormData, description: e.target.value })}
+                      rows={4}
+                      className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white focus:outline-none focus:ring-2 focus:ring-och-mint"
+                      placeholder="Describe the issue or concern..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mt-6">
+                  <Button
+                    variant="defender"
+                    onClick={handleRaiseFlag}
+                    disabled={submittingFlag || !flagFormData.description.trim()}
+                  >
+                    {submittingFlag ? 'Raising Flag...' : 'Raise Flag'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowFlagModal(false)
+                      setFlagError(null)
+                    }}
+                    disabled={submittingFlag}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </RouteGuard>
   )
 }
+
+
+

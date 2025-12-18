@@ -152,6 +152,26 @@ export const djangoClient = {
    */
   users: {
     /**
+     * Get comprehensive user profile with role-specific data
+     */
+    async getProfile(): Promise<User & { 
+      roles?: UserRole[]; 
+      primary_role?: UserRole;
+      consent_scopes?: any[];
+      entitlements?: string[];
+      role_specific_data?: any;
+    }> {
+      return apiGateway.get('/profile');
+    },
+
+    /**
+     * Update user profile
+     */
+    async updateProfile(data: Partial<User>): Promise<User> {
+      return apiGateway.patch('/profile', data);
+    },
+
+    /**
      * Get user by ID
      */
     async getUser(id: number): Promise<User> {
@@ -186,10 +206,38 @@ export const djangoClient = {
     },
 
     /**
-     * Get user by ID
+     * Get pending applications
      */
-    async getUser(id: number): Promise<User> {
-      return apiGateway.get(`/users/${id}/`);
+    async getPendingApplications(params?: {
+      page?: number
+      page_size?: number
+    }): Promise<{ results: User[]; count: number; page: number; page_size: number }> {
+      return apiGateway.get('/users/pending_applications/', { params });
+    },
+
+    /**
+     * Approve a pending application
+     */
+    async approveApplication(userId: number, assignRole?: string): Promise<{ detail: string; user: User }> {
+      return apiGateway.post(`/users/${userId}/approve/`, { assign_role: assignRole });
+    },
+
+    /**
+     * Reject a pending application
+     */
+    async rejectApplication(userId: number, reason?: string): Promise<{ detail: string }> {
+      return apiGateway.post(`/users/${userId}/reject/`, { reason });
+    },
+
+    /**
+     * Get role distribution statistics
+     */
+    async getRoleDistribution(): Promise<{
+      role_distribution: Record<string, number>;
+      total_users: number;
+      active_users: number;
+    }> {
+      return apiGateway.get('/users/role_distribution/');
     },
   },
 

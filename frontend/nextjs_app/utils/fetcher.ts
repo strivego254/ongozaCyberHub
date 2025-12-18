@@ -29,7 +29,7 @@ function getAuthToken(): string | null {
     return null;
   }
   // CSR: Get from localStorage first (since HttpOnly cookies can't be read)
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
   if (token) {
     return token;
   }

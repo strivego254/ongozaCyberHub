@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from users.models import Role, UserRole
+from users.utils.audit_utils import log_audit_event
 from .models import Mission, MissionSubmission
 from .serializers import MissionSerializer
 
@@ -32,20 +33,139 @@ class MissionViewSet(viewsets.ModelViewSet):
     serializer_class = MissionSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = MissionPagination
+    
+    def perform_create(self, serializer):
+        mission = serializer.save()
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='create',
+            resource_type='mission',
+            resource_id=str(mission.id),
+            metadata={'code': mission.code, 'title': mission.title},
+        )
+        return mission
+
+    def perform_update(self, serializer):
+        mission = self.get_object()
+        before = {'code': mission.code, 'title': mission.title, 'track_id': str(mission.track_id) if mission.track_id else None, 'track_key': mission.track_key}
+        updated = serializer.save()
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='update',
+            resource_type='mission',
+            resource_id=str(updated.id),
+            metadata={'before': before, 'updated_fields': list(serializer.validated_data.keys())},
+        )
+        return updated
+
+    def perform_destroy(self, instance):
+        meta = {'code': getattr(instance, 'code', None), 'title': getattr(instance, 'title', None)}
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='delete',
+            resource_type='mission',
+            resource_id=str(instance.id),
+            metadata=meta,
+        )
+        return super().perform_destroy(instance)
+
+    def _build_track_lookup(self, missions):
+        """Build a map of track_id -> {name, key, program_id, program_name} for serializer context."""
+        track_ids = {m.track_id for m in missions if getattr(m, 'track_id', None)}
+        if not track_ids:
+            return {}
+        try:
+            from programs.models import Track
+        except Exception:
+            return {}
+
+        tracks = (
+            Track.objects.select_related('program')
+            .filter(id__in=list(track_ids))
+        )
+        lookup = {}
+        for t in tracks:
+            lookup[str(t.id)] = {
+                'name': t.name,
+                'key': t.key,
+                'program_id': str(t.program_id) if t.program_id else None,
+                'program_name': t.program.name if getattr(t, 'program', None) else None,
+            }
+        return lookup
+
+    def list(self, request, *args, **kwargs):
+        """List missions with track/program labels resolved server-side for accurate UI."""
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            track_lookup = self._build_track_lookup(page)
+            serializer = self.get_serializer(
+                page,
+                many=True,
+                context={**self.get_serializer_context(), 'track_lookup': track_lookup},
+            )
+            return self.get_paginated_response(serializer.data)
+
+        track_lookup = self._build_track_lookup(queryset)
+        serializer = self.get_serializer(
+            queryset,
+            many=True,
+            context={**self.get_serializer_context(), 'track_lookup': track_lookup},
+        )
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a mission with track/program labels resolved server-side."""
+        instance = self.get_object()
+        track_lookup = self._build_track_lookup([instance])
+        serializer = self.get_serializer(
+            instance,
+            context={**self.get_serializer_context(), 'track_lookup': track_lookup},
+        )
+        return Response(serializer.data)
 
     def get_queryset(self):
         """Filter missions based on query parameters."""
         queryset = Mission.objects.all().order_by('-created_at')
+
+        # Filter by program_id (via Track model)
+        program_id = self.request.query_params.get('program_id')
+        if program_id:
+            try:
+                from programs.models import Track
+                track_ids = list(Track.objects.filter(program_id=program_id).values_list('id', flat=True))
+                track_keys = list(Track.objects.filter(program_id=program_id).values_list('key', flat=True))
+                if track_ids or track_keys:
+                    queryset = queryset.filter(
+                        Q(track_id__in=track_ids) | Q(track_key__in=track_keys)
+                    )
+            except Exception:
+                # If programs app isn't available for some reason, ignore program filter
+                pass
         
         # Filter by track_id
         track_id = self.request.query_params.get('track_id')
-        if track_id:
-            queryset = queryset.filter(track_id=track_id)
-        
         # Filter by track_key
         track_key = self.request.query_params.get('track_key')
-        if track_key:
+        if track_id and track_key:
+            # Support missions that may only have one of these fields populated
+            queryset = queryset.filter(Q(track_id=track_id) | Q(track_key=track_key))
+        elif track_id:
+            queryset = queryset.filter(track_id=track_id)
+        elif track_key:
             queryset = queryset.filter(track_key=track_key)
+        
+        # Filter by status (stored in requirements JSON)
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            if status_param == 'draft':
+                # Treat missing status as draft for backwards compatibility
+                queryset = queryset.filter(Q(requirements__status='draft') | Q(requirements__status__isnull=True))
+            else:
+                queryset = queryset.filter(requirements__status=status_param)
         
         # Filter by difficulty
         difficulty = self.request.query_params.get('difficulty')

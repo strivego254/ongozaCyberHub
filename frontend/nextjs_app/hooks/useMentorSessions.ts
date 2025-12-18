@@ -64,6 +64,7 @@ export function useMentorSessions(mentorId: string | undefined, params?: {
     meeting_type: 'zoom' | 'google_meet' | 'in_person'
     meeting_link?: string
     track_assignment?: string
+    cohort_id?: string
   }) => {
     if (!mentorId) {
       const errorMsg = 'Mentor ID is required to create a session'
@@ -78,7 +79,18 @@ export function useMentorSessions(mentorId: string | undefined, params?: {
       return newSession
     } catch (err: any) {
       console.error('useMentorSessions: Error creating session:', err)
-      const errorMsg = err.message || 'Failed to create session'
+      console.error('Error details:', {
+        message: err.message,
+        status: err.status,
+        data: err.data,
+        response: err.response,
+        stack: err.stack
+      })
+      // Log the full error object
+      if (err.data) {
+        console.error('Error data from backend:', err.data)
+      }
+      const errorMsg = err.message || err.data?.error || err.data?.details || 'Failed to create session'
       setError(errorMsg)
       throw err
     }

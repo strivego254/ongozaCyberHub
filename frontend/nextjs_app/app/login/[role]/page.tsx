@@ -126,18 +126,57 @@ function LoginForm() {
       let route = '/dashboard/student';
       const redirectTo = searchParams.get('redirect');
 
-      // Get current user for role checking
-      const currentUser = user || result?.user;
-      const userRoles = currentUser?.roles || []
+      // Wait for auth state to fully update and roles to be loaded
+      // The login function already fetches full user profile from /auth/me
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // If logging in through director login and redirecting to director route, verify role
-      if (role === 'director' && redirectTo?.startsWith('/dashboard/director')) {
+      // Reload user to ensure we have the latest data with roles
+      // The login function should have already updated the auth state, but we'll verify
+      let currentUser = result?.user;
+      
+      // Try to get the latest user from auth state (which should have roles from /auth/me)
+      // Wait a bit more if user is not yet available
+      let retries = 0;
+      while ((!currentUser || !currentUser.roles || currentUser.roles.length === 0) && retries < 5) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        currentUser = user || result?.user;
+        retries++;
+      }
+      
+      console.log('Current user for redirect:', currentUser);
+      console.log('User roles:', currentUser?.roles);
+      
+      // Fallback: Try to get dashboard route from cookie if user roles aren't available
+      let dashboardFromCookie: string | null = null;
+      if (typeof document !== 'undefined') {
+        const cookies = document.cookie.split(';');
+        const dashboardCookie = cookies.find(c => c.trim().startsWith('och_dashboard='));
+        if (dashboardCookie) {
+          dashboardFromCookie = dashboardCookie.split('=')[1]?.trim() || null;
+          console.log('📦 Dashboard route from cookie:', dashboardFromCookie);
+        }
+      }
+      
+      if (!currentUser || !currentUser.roles || currentUser.roles.length === 0) {
+        console.warn('⚠️ No user roles available, using cookie fallback');
+        if (dashboardFromCookie) {
+          route = dashboardFromCookie;
+          console.log('✅ Using dashboard route from cookie:', route);
+        } else {
+          console.error('❌ No user available and no cookie fallback, defaulting to student dashboard');
+          route = '/dashboard/student';
+        }
+      } else {
+        const userRoles = currentUser.roles || [];
+        
+        // If logging in through director login, verify role
+        if (role === 'director') {
         const isAdmin = userRoles.some((ur: any) => {
-          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+            const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
           return roleName?.toLowerCase().trim() === 'admin'
         })
         const isProgramDirector = userRoles.some((ur: any) => {
-          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+            const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
           const normalized = roleName?.toLowerCase().trim()
           return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
         })
@@ -153,19 +192,10 @@ function LoginForm() {
       if (redirectTo && redirectTo.startsWith('/dashboard')) {
         route = redirectTo;
         console.log('📍 Using redirect parameter:', route);
-      } else if (result?.user) {
-        // Wait a bit for auth state to update and roles to be loaded
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Try to get the latest user from auth state (which should have roles from /auth/me)
-        const currentUser = user || result.user;
-        console.log('Current user for redirect:', currentUser);
-        console.log('User roles:', currentUser?.roles);
-        
+        } else {
         // CRITICAL: Check for admin role first
-        const userRoles = currentUser?.roles || [];
         const isAdmin = userRoles.some((ur: any) => {
-          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+            const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
           return roleName?.toLowerCase().trim() === 'admin'
         })
         
@@ -177,10 +207,24 @@ function LoginForm() {
           route = getRedirectRoute(currentUser);
           console.log('✅ Login redirect route determined (non-admin):', route);
           console.log('User roles used for redirect:', userRoles);
+            
+            // Special handling for program_director - ensure it goes to director dashboard
+            const isProgramDirector = userRoles.some((ur: any) => {
+              const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+              const normalized = roleName?.toLowerCase().trim()
+              return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
+            })
+            
+            if (isProgramDirector) {
+              if (route !== '/dashboard/director') {
+                console.log('✅ Program Director detected - forcing redirect to /dashboard/director (was:', route, ')')
+                route = '/dashboard/director'
+              } else {
+                console.log('✅ Program Director detected - already redirecting to /dashboard/director')
+              }
+            }
+          }
         }
-      } else {
-        console.error('❌ No user in login result, defaulting to student dashboard');
-        route = '/dashboard/student';
       }
 
       console.log('🚀 Final redirect route:', route);
@@ -189,7 +233,7 @@ function LoginForm() {
       // The API route already set it, but we'll ensure it's in the browser
       document.cookie = `access_token=${token}; path=/; max-age=${60 * 15}; SameSite=Lax`;
       
-      // Small delay to ensure auth state is fully updated and cookies are set
+      // Additional delay to ensure auth state is fully updated and cookies are set
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // Use router.push instead of window.location.href to preserve React state
@@ -199,7 +243,13 @@ function LoginForm() {
       // Reset logging in flag after a short delay to allow redirect to happen
       setTimeout(() => setIsLoggingIn(false), 1000);
       
-      router.push(route);
+      // Use replace to avoid keeping the login page in history, then refresh to
+      // ensure middleware/server components see the newly-set cookies immediately.
+      router.replace(route);
+      
+      // Small delay before refresh to ensure navigation has started
+      await new Promise(resolve => setTimeout(resolve, 100));
+      router.refresh();
 
     } catch (err: any) {
       setIsLoggingIn(false);
@@ -350,7 +400,10 @@ function LoginForm() {
           <div className="mt-6">
             <SSOButtons
               mode="login"
-              onSuccess={() => router.push('/dashboard')}
+              onSuccess={() => {
+                router.replace('/dashboard')
+                router.refresh()
+              }}
               onError={(error) => setError(error)}
             />
           </div>

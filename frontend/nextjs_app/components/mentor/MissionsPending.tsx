@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -20,18 +20,28 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'beginner' | 'intermediate' | 'advanced' | 'capstone'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'ai_reviewed'>('all')
+  const [search, setSearch] = useState('')
+  const pageSize = 10
   const { missions, totalCount, isLoading, error, updateMissionStatus } = useMentorMissions(mentorId, {
     status: 'pending_review',
-    limit: 10,
-    offset: (page - 1) * 10,
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
   })
 
   // Filter missions by difficulty and status
-  const filteredMissions = missions.filter(m => {
-    if (difficultyFilter !== 'all' && m.mission_difficulty !== difficultyFilter) return false
-    if (statusFilter !== 'all' && m.status !== statusFilter) return false
-    return true
-  })
+  const filteredMissions = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return missions.filter((m: any) => {
+      const missionDifficulty = (m as any).mission_difficulty || 'unknown'
+      if (difficultyFilter !== 'all' && missionDifficulty !== difficultyFilter) return false
+      if (statusFilter !== 'all' && m.status !== statusFilter) return false
+      if (q) {
+        const hay = `${m.mission_title || ''} ${m.mentee_name || ''} ${m.mentee_email || ''}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [missions, difficultyFilter, statusFilter, search])
 
   const handleReview = (submission: MissionSubmission) => {
     if (onReviewClick) {
@@ -130,6 +140,18 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
             <option value="submitted">Submitted</option>
             <option value="ai_reviewed">AI Reviewed</option>
           </select>
+        </div>
+        <div className="flex-1 min-w-[220px]">
+          <label className="block text-xs text-och-steel mb-1">Search</label>
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(1)
+            }}
+            placeholder="Search mentee or mission..."
+            className="w-full px-3 py-1.5 rounded-lg bg-och-midnight border border-och-steel/20 text-sm text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+          />
         </div>
       </div>
 
@@ -290,6 +312,28 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
           >
             Next
           </Button>
+        </div>
+      )}
+
+      {/* Pagination (backend-driven) */}
+      {!isLoading && !error && totalCount > pageSize && (
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-och-steel/20">
+          <div className="text-xs text-och-steel">
+            Page {page} of {Math.ceil(totalCount / pageSize)}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= Math.ceil(totalCount / pageSize)}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       )}
     </Card>

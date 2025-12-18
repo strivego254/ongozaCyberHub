@@ -14,6 +14,7 @@ from .views.auth_views import (
     RefreshTokenView,
     LogoutView,
     MeView,
+    ProfileView,
     ConsentView,
 )
 from .views.password_reset_views import (
@@ -51,6 +52,8 @@ urlpatterns = [
     path('auth/logout/', LogoutView.as_view(), name='logout-slash'),
     path('auth/me', MeView.as_view(), name='me'),
     path('auth/me/', MeView.as_view(), name='me-slash'),
+    path('profile', ProfileView.as_view(), name='profile'),
+    path('profile/', ProfileView.as_view(), name='profile-slash'),
     path('auth/consents', ConsentView.as_view(), name='consents'),
     path('auth/consents/', ConsentView.as_view(), name='consents-slash'),
     path('auth/password/reset/request', PasswordResetRequestView.as_view(), name='password-reset-request'),
@@ -68,3 +71,5 @@ urlpatterns = [
     # User management endpoints
     path('', include(router.urls)),
 ]
+
+    # User management endpoints

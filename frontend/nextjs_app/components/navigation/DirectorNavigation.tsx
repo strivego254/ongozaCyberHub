@@ -17,6 +17,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Overview', href: '/dashboard/director', icon: '📊', priority: 'high' },
+  { label: 'Manage Programs', href: '/dashboard/director/programs', icon: '📋', priority: 'high' },
   { 
     label: 'Programs & Cohorts', 
     href: '/dashboard/director/programs', 

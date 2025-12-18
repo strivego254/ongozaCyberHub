@@ -77,6 +77,20 @@ def create_user_session(user, device_fingerprint, device_name=None, ip_address=N
     Create a user session with refresh token.
     Returns (access_token, refresh_token, session)
     """
+    # Validate user is active before creating tokens
+    if not user.is_active:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f'Attempted to create token for inactive user: {user.id}. If this is not intentional, consider checking the user\'s status before calling the `for_user` method.')
+        raise ValueError(f'Cannot create session for inactive user: {user.id}')
+    
+    # Validate user is active before creating tokens
+    if not user.is_active:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f'Attempted to create token for inactive user: {user.id}. If this is not intentional, consider checking the user\'s status before calling the `for_user` method.')
+        raise ValueError(f'Cannot create session for inactive user: {user.id}')
+    
     # Generate refresh token
     refresh = RefreshToken.for_user(user)
     refresh_token_str = str(refresh)

@@ -101,53 +101,71 @@ class CreateSessionSerializer(serializers.Serializer):
 class CreateGroupSessionSerializer(serializers.Serializer):
     """Serializer for creating a group mentorship session."""
     title = serializers.CharField(max_length=200)
-    description = serializers.CharField(required=False, allow_blank=True, default='')
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
     scheduled_at = serializers.CharField()  # Accept as string first, then parse in validation
-    duration_minutes = serializers.IntegerField(default=60, min_value=15, max_value=240)
-    meeting_type = serializers.ChoiceField(choices=[('zoom', 'Zoom'), ('google_meet', 'Google Meet'), ('in_person', 'In Person')], default='zoom')
-    meeting_link = serializers.CharField(required=False, allow_blank=True, default='')
-    track_assignment = serializers.CharField(required=False, allow_blank=True, max_length=100, default='')
+    duration_minutes = serializers.IntegerField(default=60, min_value=15, max_value=240, required=False)
+    meeting_type = serializers.ChoiceField(
+        choices=[('zoom', 'Zoom'), ('google_meet', 'Google Meet'), ('in_person', 'In Person')], 
+        default='zoom',
+        required=False
+    )
+    meeting_link = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    track_assignment = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=100, default='')
+    cohort_id = serializers.UUIDField(required=False, allow_null=True)
     
     def validate_scheduled_at(self, value):
         """Parse scheduled_at string and ensure it's timezone-aware."""
-        from django.utils import timezone
-        from datetime import datetime
+        from django.utils import timezone as django_timezone
+        from datetime import datetime, timezone as dt_timezone
         
         if not isinstance(value, str):
             raise serializers.ValidationError("scheduled_at must be a string")
         
-        # Handle Z suffix (UTC) - convert to +00:00 for fromisoformat
-        if value.endswith('Z'):
-            value = value[:-1] + '+00:00'
-        elif not ('+' in value or value.endswith('UTC')):
-            # If no timezone info, assume UTC
-            if 'T' in value:
-                value = value + '+00:00'
+        original_value = value
         
+        # Remove Z suffix and parse manually for better control
+        clean_value = value.replace('Z', '')
+        
+        # Try parsing with microseconds first
+        dt = None
         try:
-            # Parse ISO format datetime
-            dt = datetime.fromisoformat(value)
+            if '.' in clean_value:
+                # Has microseconds: 2026-02-02T06:00:00.000
+                dt = datetime.strptime(clean_value, '%Y-%m-%dT%H:%M:%S.%f')
+            else:
+                # No microseconds: 2026-02-02T06:00:00
+                dt = datetime.strptime(clean_value, '%Y-%m-%dT%H:%M:%S')
+            
+            # Make timezone-aware (UTC since original had Z)
+            if django_timezone.is_naive(dt):
+                dt = django_timezone.make_aware(dt, dt_timezone.utc)
+            
+            return dt
         except ValueError as e:
             # Try alternative formats
-            try:
-                # Try with microseconds
-                dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except ValueError:
-                # Try parsing with strptime for common formats
-                for fmt in ['%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S']:
-                    try:
-                        dt = datetime.strptime(value.replace('Z', ''), fmt)
-                        break
-                    except ValueError:
-                        continue
-                else:
-                    raise serializers.ValidationError(f"Invalid datetime format: {value}. Error: {str(e)}")
-        
-        # Ensure timezone-aware
-        if timezone.is_naive(dt):
-            dt = timezone.make_aware(dt)
-        
-        return dt
+            formats_to_try = [
+                ('%Y-%m-%dT%H:%M:%S.%f', clean_value if '.' in clean_value else None),
+                ('%Y-%m-%dT%H:%M:%S', clean_value),
+                ('%Y-%m-%d %H:%M:%S', clean_value.replace('T', ' ')),
+            ]
+            
+            for fmt, val in formats_to_try:
+                if val is None:
+                    continue
+                try:
+                    dt = datetime.strptime(val, fmt)
+                    if django_timezone.is_naive(dt):
+                        dt = django_timezone.make_aware(dt, dt_timezone.utc)
+                    return dt
+                except ValueError:
+                    continue
+            
+            # If all parsing attempts failed
+            raise serializers.ValidationError(
+                f"Invalid datetime format: '{original_value}'. "
+                f"Expected ISO 8601 format (e.g., '2026-02-02T06:00:00Z' or '2026-02-02T06:00:00.000Z'). "
+                f"Error: {str(e)}"
+            )
 
 
 class MissionReviewSerializer(serializers.Serializer):

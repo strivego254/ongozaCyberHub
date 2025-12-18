@@ -63,6 +63,8 @@ export function useAuth() {
       try {
         response = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
       });
@@ -118,6 +120,8 @@ export function useAuth() {
       
       // Store token immediately and verify it's stored
       localStorage.setItem('access_token', access_token);
+      // Backwards-compat for older clients in this repo still using `auth_token`
+      localStorage.setItem('auth_token', access_token);
       
       // Verify token is stored (with retry)
       let storedToken = localStorage.getItem('access_token');
@@ -125,6 +129,7 @@ export function useAuth() {
       while (!storedToken && retries < 3) {
         await new Promise(resolve => setTimeout(resolve, 50));
         localStorage.setItem('access_token', access_token);
+        localStorage.setItem('auth_token', access_token);
         storedToken = localStorage.getItem('access_token');
         retries++;
       }

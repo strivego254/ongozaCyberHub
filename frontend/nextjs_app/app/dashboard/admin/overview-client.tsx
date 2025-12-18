@@ -26,6 +26,11 @@ export default function OverviewClient() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('7d')
+  const [roleDistribution, setRoleDistribution] = useState<{
+    role_distribution: Record<string, number>;
+    total_users: number;
+    active_users: number;
+  } | null>(null)
 
   useEffect(() => {
     loadInitialData()
@@ -34,11 +39,26 @@ export default function OverviewClient() {
   const loadInitialData = async () => {
     try {
       setIsLoading(true)
-      await loadAuditLogs()
+      await Promise.all([
+        loadAuditLogs(),
+        loadRoleDistribution(),
+      ])
     } catch (error) {
       console.error('Failed to load overview data:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const loadRoleDistribution = async () => {
+    try {
+      const { djangoClient } = await import('@/services/djangoClient')
+      const data = await djangoClient.users.getRoleDistribution()
+      console.log('Role distribution data from backend:', data)
+      setRoleDistribution(data)
+    } catch (error) {
+      console.error('Failed to load role distribution:', error)
+      setRoleDistribution(null)
     }
   }
 
@@ -81,8 +101,21 @@ export default function OverviewClient() {
     }
   }
 
-  // Statistics
+  // Statistics - use backend data if available, otherwise fallback to client-side calculation
   const stats = useMemo(() => {
+    if (roleDistribution) {
+      // Use backend data for accurate counts
+      return {
+        total: roleDistribution.total_users,
+        active: roleDistribution.active_users,
+        programDirectors: roleDistribution.role_distribution['program_director'] || 0,
+        financeUsers: roleDistribution.role_distribution['finance'] || 0,
+        mentees: (roleDistribution.role_distribution['mentee'] || 0) + (roleDistribution.role_distribution['student'] || 0),
+        mentors: roleDistribution.role_distribution['mentor'] || 0,
+      }
+    }
+    
+    // Fallback to client-side calculation (may be inaccurate due to pagination)
     const programDirectors = users.filter((u) => 
       u.roles?.some((r: any) => r.role === 'program_director')
     ).length
@@ -100,8 +133,9 @@ export default function OverviewClient() {
       programDirectors,
       financeUsers,
       mentees,
+      mentors: users.filter((u) => u.roles?.some((r: any) => r.role === 'mentor')).length,
     }
-  }, [users, totalCount])
+  }, [users, totalCount, roleDistribution])
 
   // Audit log stats
   const auditStats = useMemo(() => {
@@ -438,7 +472,7 @@ export default function OverviewClient() {
                   stats.programDirectors,
                   stats.financeUsers,
                   stats.mentees,
-                  users.filter((u) => u.roles?.some((r: any) => r.role === 'mentor')).length,
+                  stats.mentors || 0,
                 ]}
                 labels={['Directors', 'Finance', 'Mentees', 'Mentors']}
                 color="#0648A8"

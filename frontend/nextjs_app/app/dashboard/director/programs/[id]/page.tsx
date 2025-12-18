@@ -31,7 +31,7 @@ export default function ProgramDetailPage() {
     )
   }
 
-  const { program, isLoading, error } = useProgram(programId)
+  const { program, isLoading, error, reload } = useProgram(programId)
 
   // Debug logging
   if (typeof window !== 'undefined') {
@@ -103,6 +103,9 @@ export default function ProgramDetailPage() {
                 <p className="text-och-steel">{program.description || 'No description'}</p>
               </div>
               <div className="flex gap-3">
+                <Button variant="outline" size="sm" onClick={reload} disabled={isLoading}>
+                  🔄 Refresh
+                </Button>
                 <Link href={`/dashboard/director/programs/${program.id}/edit`}>
                   <Button variant="defender" size="sm">
                     Edit Program

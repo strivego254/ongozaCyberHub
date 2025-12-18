@@ -230,10 +230,18 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        # Check account status
+        # Check account status and active status
         if user.account_status != 'active':
             return Response(
                 {'detail': f'Account is {user.account_status}. Please verify your email.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if user is active (Django's is_active flag)
+        if not user.is_active:
+            _log_audit_event(user, 'login', 'user', 'failure', {'reason': 'inactive_user'})
+            return Response(
+                {'detail': 'Account is inactive. Please contact support.'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -665,13 +673,29 @@ class MeView(APIView):
     
     def get(self, request):
         user = request.user
+        
+        # Check if user is active
+        if not user.is_active:
+            return Response(
+                {'detail': 'Account is inactive. Please contact support.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check account status
+        if user.account_status != 'active':
+            return Response(
+                {'detail': f'Account is {user.account_status}. Please verify your email.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         serializer = UserSerializer(user)
         
         # Get roles with scope details
         roles = []
-        for user_role in user.user_roles.filter(is_active=True):
+        for user_role in user.user_roles.filter(is_active=True).select_related('role'):
             roles.append({
                 'role': user_role.role.name,
+                'role_display_name': user_role.role.display_name,
                 'scope': user_role.scope,
                 'scope_ref': str(user_role.scope_ref) if user_role.scope_ref else None,
             })
@@ -705,6 +729,148 @@ class MeView(APIView):
             'consent_scopes': formatted_consents,
             'entitlements': entitlements,
         }, status=status.HTTP_200_OK)
+
+
+class ProfileView(APIView):
+    """
+    GET /api/v1/profile
+    PATCH /api/v1/profile
+    Get or update current user profile with role-specific data.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        
+        # Check if user is active
+        if not user.is_active:
+            return Response(
+                {'detail': 'Account is inactive. Please contact support.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check account status
+        if user.account_status != 'active':
+            return Response(
+                {'detail': f'Account is {user.account_status}. Please verify your email.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = UserSerializer(user)
+        user_data = serializer.data
+        
+        # Get roles with scope details
+        roles = []
+        primary_role = None
+        for user_role in user.user_roles.filter(is_active=True).select_related('role'):
+            role_data = {
+                'role': user_role.role.name,
+                'role_display_name': user_role.role.display_name,
+                'scope': user_role.scope,
+                'scope_ref': str(user_role.scope_ref) if user_role.scope_ref else None,
+            }
+            roles.append(role_data)
+            # Set primary role (first active role, or mentor/student if exists)
+            if not primary_role:
+                primary_role = role_data
+            elif user_role.role.name in ['mentor', 'student', 'mentee']:
+                primary_role = role_data
+        
+        # Get consent scopes
+        consent_scopes = get_user_consent_scopes(user)
+        
+        # Get entitlements
+        entitlements = list(
+            user.entitlements.filter(granted=True, expires_at__isnull=True)
+            .values_list('feature', flat=True)
+        )
+        
+        # Get role-specific data
+        role_specific_data = {}
+        
+        # Mentor-specific data
+        if user.is_mentor:
+            from mentorship_coordination.models import MenteeMentorAssignment
+            active_assignments = MenteeMentorAssignment.objects.filter(
+                mentor=user,
+                status='active'
+            )
+            role_specific_data['mentor'] = {
+                'active_mentees': active_assignments.count(),
+                'total_sessions': 0,  # TODO: Calculate from MentorSession
+                'pending_work_items': 0,  # TODO: Calculate from flags/work items
+                'capacity_weekly': user.mentor_capacity_weekly or 0,
+                'specialties': user.mentor_specialties or [],
+                'availability': user.mentor_availability or {},
+            }
+        
+        # Student/Mentee-specific data
+        student_roles = user.user_roles.filter(
+            role__name__in=['student', 'mentee'],
+            is_active=True
+        )
+        if student_roles.exists():
+            from programs.models import Enrollment
+            enrollment = Enrollment.objects.filter(
+                user=user,
+                status='active'
+            ).select_related('track', 'cohort').first()
+            
+            role_specific_data['student'] = {
+                'track_name': enrollment.track.name if enrollment and enrollment.track else None,
+                'cohort_name': enrollment.cohort.name if enrollment and enrollment.cohort else None,
+                'enrollment_status': enrollment.status if enrollment else None,
+            }
+        
+        # Director-specific data
+        director_roles = user.user_roles.filter(
+            role__name='program_director',
+            is_active=True
+        )
+        if director_roles.exists():
+            from programs.models import Cohort, Track
+            from programs.services.director_service import DirectorService
+            programs = DirectorService.get_director_programs(user)
+            cohorts_managed = Cohort.objects.filter(track__program__in=programs).count()
+            tracks_managed = Track.objects.filter(program__in=programs).count()
+            
+            role_specific_data['director'] = {
+                'cohorts_managed': cohorts_managed,
+                'tracks_managed': tracks_managed,
+            }
+        
+        # Admin-specific data
+        if user.is_staff:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            total_users = User.objects.count()
+            active_users = User.objects.filter(is_active=True).count()
+            
+            role_specific_data['admin'] = {
+                'total_users': total_users,
+                'active_users': active_users,
+            }
+        
+        # Return comprehensive profile data
+        return Response({
+            **user_data,
+            'roles': roles,
+            'primary_role': primary_role,
+            'consent_scopes': consent_scopes,
+            'entitlements': entitlements,
+            'role_specific_data': role_specific_data,
+        }, status=status.HTTP_200_OK)
+    
+    def patch(self, request):
+        """Update user profile."""
+        user = request.user
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ConsentView(APIView):

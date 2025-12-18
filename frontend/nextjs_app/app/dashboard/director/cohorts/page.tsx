@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { useCohorts, useDeleteCohort, usePrograms, useTracks } from '@/hooks/usePrograms'
 import { programsClient, type Cohort, type Program, type Track } from '@/services/programsClient'
+import { directorClient } from '@/services/directorClient'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -90,18 +91,79 @@ export default function CohortsPage() {
   }, [selectedProgramId, availableTracks, selectedTrackId])
 
   const { deleteCohort, isLoading: isDeleting } = useDeleteCohort()
+  const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean
+    type: 'delete' | 'archive' | 'status'
+    cohort: Cohort | null
+    newStatus?: string
+  }>({ show: false, type: 'delete', cohort: null })
+  const [isProcessing, setIsProcessing] = useState(false)
+  const menuRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete cohort "${name}"? This action cannot be undone and will affect all enrollments.`)) {
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionMenuOpen) {
+        const menuElement = menuRefs.current[actionMenuOpen]
+        if (menuElement && !menuElement.contains(event.target as Node)) {
+          setActionMenuOpen(null)
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [actionMenuOpen])
+
+  const handleDelete = async (cohort: Cohort) => {
+    setConfirmModal({ show: true, type: 'delete', cohort })
+  }
+
+  const handleArchive = async (cohort: Cohort) => {
+    if (cohort.status !== 'closing') {
+      alert('Cohort must be in "closing" status before it can be archived.')
       return
     }
+    setConfirmModal({ show: true, type: 'archive', cohort })
+  }
+
+  const handleStatusUpdate = async (cohort: Cohort, newStatus: string) => {
+    setConfirmModal({ show: true, type: 'status', cohort, newStatus })
+  }
+
+  const confirmAction = async () => {
+    if (!confirmModal.cohort) return
+
+    setIsProcessing(true)
     try {
-      await deleteCohort(id)
+      if (confirmModal.type === 'delete') {
+        await deleteCohort(confirmModal.cohort.id)
+      } else if (confirmModal.type === 'archive') {
+        await directorClient.archiveCohort(confirmModal.cohort.id)
+      } else if (confirmModal.type === 'status' && confirmModal.newStatus) {
+        await directorClient.updateCohortStatus(confirmModal.cohort.id, confirmModal.newStatus)
+      }
+      setConfirmModal({ show: false, type: 'delete', cohort: null })
+      setActionMenuOpen(null)
       await reload()
     } catch (err: any) {
-      alert(err.message || 'Failed to delete cohort')
-      console.error('Failed to delete cohort:', err)
+      alert(err.message || `Failed to ${confirmModal.type} cohort`)
+      console.error(`Failed to ${confirmModal.type} cohort:`, err)
+    } finally {
+      setIsProcessing(false)
     }
+  }
+
+  const getStatusTransitions = (currentStatus: string): string[] => {
+    const transitions: Record<string, string[]> = {
+      draft: ['active'],
+      active: ['running', 'cancelled'],
+      running: ['closing', 'cancelled'],
+      closing: ['closed'],
+      closed: [],
+      cancelled: [],
+    }
+    return transitions[currentStatus] || []
   }
 
   // Calculate statistics
@@ -361,15 +423,13 @@ export default function CohortsPage() {
                   
                   const statusColor = statusColors[cohort.status as keyof typeof statusColors] || statusColors.draft
                   
+                  const statusTransitions = getStatusTransitions(cohort.status)
+                  
                   return (
-                    <Link
-                      key={cohort.id}
-                      href={`/dashboard/director/cohorts/${cohort.id}`}
-                      className="block"
-                    >
-                      <Card className={`${statusColor} transition-all cursor-pointer h-full hover:scale-[1.02]`}>
+                    <div key={cohort.id} className="relative">
+                      <Card className={`${statusColor} transition-all h-full hover:shadow-lg hover:shadow-och-defender/20`}>
                         <div className="p-6 h-full flex flex-col">
-                          {/* Header */}
+                          {/* Header with Actions */}
                           <div className="mb-4">
                             <div className="flex items-center justify-between mb-3">
                               <Badge 
@@ -382,9 +442,97 @@ export default function CohortsPage() {
                               >
                                 {cohort.status}
                               </Badge>
-                              <span className="text-xs text-och-steel">
-                                {cohort.created_at ? new Date(cohort.created_at).toLocaleDateString() : ''}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-och-steel">
+                                  {cohort.created_at ? new Date(cohort.created_at).toLocaleDateString() : ''}
+                                </span>
+                                {/* Action Menu Button */}
+                                <div className="relative" ref={(el) => (menuRefs.current[cohort.id] = el)}>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setActionMenuOpen(actionMenuOpen === cohort.id ? null : cohort.id)
+                                    }}
+                                    className="p-1.5 hover:bg-och-steel/20 rounded-lg transition-colors"
+                                    aria-label="Cohort actions"
+                                  >
+                                    <svg className="w-5 h-5 text-och-steel" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                    </svg>
+                                  </button>
+                                  
+                                  {/* Action Menu Dropdown */}
+                                  {actionMenuOpen === cohort.id && (
+                                    <div className="absolute right-0 top-8 z-50 w-48 bg-och-midnight border border-och-steel/30 rounded-lg shadow-xl overflow-hidden">
+                                      <Link
+                                        href={`/dashboard/director/cohorts/${cohort.id}`}
+                                        className="block px-4 py-2 text-sm text-white hover:bg-och-defender/20 transition-colors"
+                                        onClick={() => setActionMenuOpen(null)}
+                                      >
+                                        📊 View Details
+                                      </Link>
+                                      <Link
+                                        href={`/dashboard/director/cohorts/${cohort.id}/edit`}
+                                        className="block px-4 py-2 text-sm text-white hover:bg-och-defender/20 transition-colors"
+                                        onClick={() => setActionMenuOpen(null)}
+                                      >
+                                        ✏️ Edit Cohort
+                                      </Link>
+                                      
+                                      {/* Status Update Options */}
+                                      {statusTransitions.length > 0 && (
+                                        <>
+                                          <div className="border-t border-och-steel/20 my-1"></div>
+                                          <div className="px-4 py-2 text-xs text-och-steel uppercase">Update Status</div>
+                                          {statusTransitions.map((status) => (
+                                            <button
+                                              key={status}
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleStatusUpdate(cohort, status)
+                                                setActionMenuOpen(null)
+                                              }}
+                                              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-och-defender/20 transition-colors"
+                                            >
+                                              → {status.charAt(0).toUpperCase() + status.slice(1)}
+                                            </button>
+                                          ))}
+                                        </>
+                                      )}
+                                      
+                                      {/* Archive Option */}
+                                      {cohort.status === 'closing' && (
+                                        <>
+                                          <div className="border-t border-och-steel/20 my-1"></div>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleArchive(cohort)
+                                              setActionMenuOpen(null)
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm text-och-gold hover:bg-och-gold/20 transition-colors"
+                                          >
+                                            📦 Archive Cohort
+                                          </button>
+                                        </>
+                                      )}
+                                      
+                                      {/* Delete Option */}
+                                      <div className="border-t border-och-steel/20 my-1"></div>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleDelete(cohort)
+                                          setActionMenuOpen(null)
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm text-och-orange hover:bg-och-orange/20 transition-colors"
+                                      >
+                                        🗑️ Delete Cohort
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                             <h3 className="text-xl font-bold text-white mb-2 line-clamp-2">{cohort.name}</h3>
                             <div className="space-y-1 text-sm">
@@ -437,7 +585,7 @@ export default function CohortsPage() {
                               <div>
                                 <p className="text-xs text-och-steel">Duration</p>
                                 <p className="text-xs text-white mt-1 line-clamp-1">
-                                  {cohort.start_date} - {cohort.end_date}
+                                  {cohort.start_date ? new Date(cohort.start_date).toLocaleDateString() : 'N/A'} - {cohort.end_date ? new Date(cohort.end_date).toLocaleDateString() : 'N/A'}
                                 </p>
                               </div>
                               <div>
@@ -447,15 +595,17 @@ export default function CohortsPage() {
                             </div>
                           </div>
 
-                          {/* Action Button */}
-                          <div className="pt-4 border-t border-och-steel/20">
-                            <div className="w-full text-center px-4 py-2 bg-och-defender text-white rounded-lg font-medium hover:bg-och-defender/80 transition-colors">
-                              🎛️ Manage Cohort
-                            </div>
+                          {/* Action Buttons */}
+                          <div className="pt-4 border-t border-och-steel/20 space-y-2">
+                            <Link href={`/dashboard/director/cohorts/${cohort.id}`} className="block">
+                              <div className="w-full text-center px-4 py-2 bg-och-defender text-white rounded-lg font-medium hover:bg-och-defender/80 transition-colors">
+                                🎛️ Manage Cohort
+                              </div>
+                            </Link>
                           </div>
                         </div>
                       </Card>
-                    </Link>
+                    </div>
                   )
                 })}
               </div>
@@ -521,7 +671,90 @@ export default function CohortsPage() {
             )}
           </div>
         </div>
+
+        {/* Confirmation Modal */}
+        {confirmModal.show && confirmModal.cohort && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !isProcessing && setConfirmModal({ show: false, type: 'delete', cohort: null })}>
+            <Card className="w-full max-w-md mx-4 border-och-orange/50" onClick={(e) => e.stopPropagation()}>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="text-och-orange text-2xl">
+                    {confirmModal.type === 'delete' ? '⚠️' : confirmModal.type === 'archive' ? '📦' : '🔄'}
+                  </div>
+                  <h2 className="text-2xl font-bold text-white">
+                    {confirmModal.type === 'delete' && 'Delete Cohort'}
+                    {confirmModal.type === 'archive' && 'Archive Cohort'}
+                    {confirmModal.type === 'status' && 'Update Status'}
+                  </h2>
+                </div>
+                
+                <div className="mb-6">
+                  <p className="text-och-steel mb-2">
+                    {confirmModal.type === 'delete' && (
+                      <>
+                        Are you sure you want to delete <span className="text-white font-semibold">{confirmModal.cohort.name}</span>? 
+                        This action cannot be undone and will affect all enrollments, mentors, and associated data.
+                      </>
+                    )}
+                    {confirmModal.type === 'archive' && (
+                      <>
+                        Archive <span className="text-white font-semibold">{confirmModal.cohort.name}</span>? 
+                        This will trigger certificate issuance and mark the cohort as closed. The cohort will be archived and cannot be reopened.
+                      </>
+                    )}
+                    {confirmModal.type === 'status' && confirmModal.newStatus && (
+                      <>
+                        Update <span className="text-white font-semibold">{confirmModal.cohort.name}</span> status from{' '}
+                        <span className="text-och-gold">{confirmModal.cohort.status}</span> to{' '}
+                        <span className="text-och-mint">{confirmModal.newStatus}</span>?
+                      </>
+                    )}
+                  </p>
+                  
+                  {confirmModal.type === 'delete' && (
+                    <div className="mt-4 p-3 bg-och-orange/10 border border-och-orange/30 rounded-lg">
+                      <p className="text-sm text-och-orange">
+                        ⚠️ This is a destructive action. All enrollments, mentor assignments, and cohort data will be permanently deleted.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => !isProcessing && setConfirmModal({ show: false, type: 'delete', cohort: null })}
+                    disabled={isProcessing}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant={confirmModal.type === 'delete' ? 'orange' : confirmModal.type === 'archive' ? 'gold' : 'defender'}
+                    onClick={confirmAction}
+                    disabled={isProcessing}
+                    className="flex-1"
+                  >
+                    {isProcessing ? (
+                      <span className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Processing...
+                      </span>
+                    ) : (
+                      <>
+                        {confirmModal.type === 'delete' && 'Delete Cohort'}
+                        {confirmModal.type === 'archive' && 'Archive Cohort'}
+                        {confirmModal.type === 'status' && 'Update Status'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </DirectorLayout>
     </RouteGuard>
   )
 }
+

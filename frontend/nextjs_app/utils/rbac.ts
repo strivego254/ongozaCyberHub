@@ -15,6 +15,9 @@ export interface RoutePermission {
 
 // Route permissions mapping
 export const ROUTE_PERMISSIONS: RoutePermission[] = [
+  // Dashboard root (redirect page) - allow any authenticated role
+  { path: '/dashboard', roles: ['mentee', 'student', 'mentor', 'admin', 'program_director', 'sponsor_admin', 'analyst', 'employer'] },
+
   // Student/Mentee routes
   { path: '/dashboard/student', roles: ['mentee', 'student'] },
   { path: '/dashboard/profiler', roles: ['mentee', 'student'] },
@@ -28,6 +31,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   
   // Mentor routes
   { path: '/dashboard/mentor', roles: ['mentor'] },
+  { path: '/dashboard/mentor/profile', roles: ['mentor'] },
   { path: '/dashboard/mentor/sessions', roles: ['mentor'] },
   { path: '/dashboard/mentor/missions', roles: ['mentor'] },
   { path: '/dashboard/mentor/scoring', roles: ['mentor'] },
@@ -68,6 +72,12 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   // Admin routes
   { path: '/dashboard/admin', roles: ['admin'] },
   { path: '/dashboard/admin/users', roles: ['admin'] },
+  { path: '/dashboard/admin/users/applications', roles: ['admin'] },
+  { path: '/dashboard/admin/users/directors', roles: ['admin'] },
+  { path: '/dashboard/admin/users/mentors', roles: ['admin'] },
+  { path: '/dashboard/admin/cohorts', roles: ['admin'] },
+  { path: '/dashboard/admin/users/mentees', roles: ['admin'] },
+  { path: '/dashboard/admin/users/finance', roles: ['admin'] },
   { path: '/dashboard/admin/settings', roles: ['admin'] },
   { path: '/dashboard/admin/subscriptions', roles: ['admin'] },
   { path: '/dashboard/admin/audit', roles: ['admin'] },
@@ -117,7 +127,8 @@ export function getUserRoles(user: User | null): Role[] {
         }
       } else {
         // Fallback: try to extract from object directly
-        roleName = String((ur as any).role || (ur as any).name || ur)
+        // Priority: role > name > role_display_name
+        roleName = String((ur as any).role || (ur as any).name || (ur as any).role_display_name || ur)
       }
     } else {
       roleName = String(ur)
@@ -176,11 +187,15 @@ export function hasRouteAccess(user: User | null, path: string): boolean {
   // Double-check: Admin has access to everything
   if (userRoles.includes('admin')) return true
   
-  // Find matching route permission
-  const permission = ROUTE_PERMISSIONS.find(p => path.startsWith(p.path))
+  // Find most-specific matching route permission (longest path wins)
+  const matching = ROUTE_PERMISSIONS
+    .filter(p => path === p.path || path.startsWith(p.path + '/') || path.startsWith(p.path))
+    .sort((a, b) => b.path.length - a.path.length)
+  const permission = matching[0]
+
   if (!permission) {
-    // If no specific permission found, allow access (default allow for now)
-    // In production, you might want to default deny
+    // Default deny for dashboard routes; default allow for non-dashboard routes.
+    if (path.startsWith('/dashboard')) return false
     return true
   }
   

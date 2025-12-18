@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { MissionsPending } from '@/components/mentor/MissionsPending'
 import { MissionReviewForm } from '@/components/mentor/MissionReviewForm'
 import { CapstoneScoringForm } from '@/components/mentor/CapstoneScoringForm'
@@ -8,17 +9,18 @@ import { mentorClient } from '@/services/mentorClient'
 import { useAuth } from '@/hooks/useAuth'
 import type { MissionSubmission, CapstoneProject } from '@/services/types/mentor'
 
-const USE_MOCK_DATA = false // Backend is ready
-
 export default function MissionsPage() {
   const { user } = useAuth()
   const mentorId = user?.id?.toString()
+  const searchParams = useSearchParams()
   const [selectedSubmission, setSelectedSubmission] = useState<MissionSubmission | null>(null)
   const [selectedCapstone, setSelectedCapstone] = useState<CapstoneProject | null>(null)
   const [capstones, setCapstones] = useState<CapstoneProject[]>([])
   const [loadingCapstones, setLoadingCapstones] = useState(false)
+  const [loadingSubmission, setLoadingSubmission] = useState(false)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
 
-  const loadCapstones = async () => {
+  const loadCapstones = useCallback(async () => {
     if (!mentorId) return
     setLoadingCapstones(true)
     try {
@@ -29,11 +31,59 @@ export default function MissionsPage() {
     } finally {
       setLoadingCapstones(false)
     }
-  }
+  }, [mentorId])
 
   useEffect(() => {
     loadCapstones()
-  }, [mentorId])
+  }, [loadCapstones])
+
+  // If a submission id is provided (e.g. from the dashboard "Review now" button), open it directly.
+  useEffect(() => {
+    const submissionId = searchParams.get('submission')
+    if (!submissionId) return
+    if (selectedSubmission?.id === submissionId) return
+
+    let cancelled = false
+    setLoadingSubmission(true)
+    setSubmissionError(null)
+
+    mentorClient
+      .getMissionSubmission(submissionId)
+      .then((data) => {
+        if (cancelled) return
+        setSelectedSubmission(data)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        const message =
+          err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Failed to load submission')
+        setSubmissionError(message)
+      })
+      .finally(() => {
+        if (cancelled) return
+        setLoadingSubmission(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams, selectedSubmission?.id])
+
+  if (loadingSubmission && !selectedSubmission) {
+    return (
+      <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-6 xl:px-8">
+        <div className="text-och-steel text-sm">Loading submission…</div>
+      </div>
+    )
+  }
+
+  if (submissionError && !selectedSubmission) {
+    return (
+      <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-6 xl:px-8">
+        <div className="text-och-orange text-sm">Error: {submissionError}</div>
+      </div>
+    )
+  }
 
   if (selectedSubmission) {
     return (

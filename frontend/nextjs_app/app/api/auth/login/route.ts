@@ -6,6 +6,54 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { LoginRequest, LoginResponse } from '@/services/types';
 
+function normalizeRoleName(roleName: string): string {
+  const normalized = (roleName || '').toLowerCase().trim()
+  if (normalized === 'program_director' || normalized === 'program director' || normalized === 'programdirector' || normalized === 'director') return 'program_director'
+  if (normalized === 'mentee') return 'mentee'
+  if (normalized === 'student') return 'student'
+  if (normalized === 'mentor') return 'mentor'
+  if (normalized === 'admin') return 'admin'
+  if (normalized === 'sponsor_admin' || normalized === 'sponsor' || normalized === 'sponsor/employer admin' || normalized === 'sponsoremployer admin') return 'sponsor_admin'
+  if (normalized === 'analyst') return 'analyst'
+  if (normalized === 'employer') return 'employer'
+  return normalized
+}
+
+function extractNormalizedRoles(user: any): string[] {
+  const rolesRaw = user?.roles || []
+  if (!Array.isArray(rolesRaw)) return []
+  const roles = rolesRaw
+    .map((ur: any) => {
+      const roleValue = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+      return normalizeRoleName(String(roleValue || ''))
+    })
+    .filter(Boolean)
+  // de-dupe
+  return Array.from(new Set(roles))
+}
+
+function getPrimaryRole(roles: string[]): string | null {
+  if (roles.includes('admin')) return 'admin'
+  const priority = ['program_director', 'mentor', 'analyst', 'sponsor_admin', 'employer', 'mentee', 'student']
+  for (const r of priority) if (roles.includes(r)) return r
+  return roles[0] || null
+}
+
+function getDashboardForRole(role: string | null): string {
+  switch (role) {
+    case 'admin': return '/dashboard/admin'
+    case 'program_director': return '/dashboard/director'
+    case 'mentor': return '/dashboard/mentor'
+    case 'analyst': return '/dashboard/analyst'
+    case 'sponsor_admin': return '/dashboard/sponsor'
+    case 'employer': return '/dashboard/employer'
+    case 'mentee':
+    case 'student':
+    default:
+      return '/dashboard/student'
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: LoginRequest = await request.json();
@@ -129,6 +177,31 @@ export async function POST(request: NextRequest) {
       access_token: data.access_token, // Return access token for localStorage
       // Don't return refresh_token - it's HttpOnly only
     });
+
+    // Set RBAC cookies for middleware enforcement (HttpOnly so client can't tamper)
+    const normalizedRoles = extractNormalizedRoles(data.user)
+    const primaryRole = getPrimaryRole(normalizedRoles)
+    nextResponse.cookies.set('och_roles', JSON.stringify(normalizedRoles), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    })
+    nextResponse.cookies.set('och_primary_role', primaryRole || '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    })
+    nextResponse.cookies.set('och_dashboard', getDashboardForRole(primaryRole), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    })
 
     // Set cookies directly on the response object
     // This ensures cookies are available on the next request

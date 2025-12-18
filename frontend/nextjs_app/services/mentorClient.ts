@@ -228,6 +228,17 @@ export const mentorClient = {
   },
 
   /**
+   * Update a mentee flag (acknowledge/resolve)
+   * Expected backend route: PATCH /mentors/flags/{flagId}
+   */
+  async updateMenteeFlag(flagId: string, data: {
+    status?: 'acknowledged' | 'resolved'
+    resolution_notes?: string
+  }): Promise<MenteeFlag> {
+    return apiGateway.patch(`/mentors/flags/${flagId}`, data)
+  },
+
+  /**
    * Assign user to a track (track assignment override)
    */
   async assignTrack(data: {
