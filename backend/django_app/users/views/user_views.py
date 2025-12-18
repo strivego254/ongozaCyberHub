@@ -4,6 +4,7 @@ User views for DRF - User management endpoints.
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.core.files.storage import default_storage
@@ -19,12 +20,22 @@ from ..audit_models import AuditLog
 User = get_user_model()
 
 
+class UserPagination(PageNumberPagination):
+    """
+    Custom pagination for UserViewSet that allows larger page sizes.
+    """
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 1000  # Allow up to 1000 users per page for admin/director use cases
+
+
 class UserViewSet(viewsets.ModelViewSet):
     """
     ViewSet for User model.
     """
     queryset = User.objects.all()
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = UserPagination
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -91,4 +102,3 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
-    

@@ -87,7 +87,8 @@ def mentor_flags(request, mentor_id):
         qs = qs.filter(severity=severity)
 
     qs = qs.order_by('-created_at')
-    return Response(MentorFlagSerializer(qs, many=True).data)
+    serializer = MentorFlagSerializer(qs, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 def _mentor_can_view_mentee(mentor, mentee) -> bool:
@@ -1325,40 +1326,6 @@ def create_flag(request):
     )
     
     return Response(MentorFlagSerializer(flag).data, status=status.HTTP_201_CREATED)
-def mentor_flags(request, mentor_id):
-    """
-    GET /api/v1/mentors/{mentor_id}/flags
-    Get flags raised by this mentor.
-
-    Optional query params:
-    - status: open|closed (maps to resolved flag)
-    - severity: low|medium|high|critical
-    """
-    # Verify the mentor_id matches the authenticated user
-    if str(request.user.id) != str(mentor_id):
-        return Response(
-            {'error': 'You can only view your own flags'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-
-    mentor = get_current_mentor(request.user)
-
-    qs = MentorFlag.objects.filter(mentor=mentor)
-
-    status_filter = request.query_params.get('status')
-    if status_filter:
-        sf = status_filter.strip().lower()
-        if sf in ['open', 'active', 'pending']:
-            qs = qs.filter(resolved=False)
-        elif sf in ['closed', 'resolved', 'done']:
-            qs = qs.filter(resolved=True)
-
-    severity = request.query_params.get('severity')
-    if severity:
-        qs = qs.filter(severity=severity)
-
-    qs = qs.order_by('-created_at')
-    return Response(MentorFlagSerializer(qs, many=True).data)
 
 
 

@@ -3,11 +3,16 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { useTalentScopeView } from '@/hooks/useTalentScopeView'
 import { useAuth } from '@/hooks/useAuth'
 import { useMentorMentees } from '@/hooks/useMentorMentees'
+import { useMenteeFlags } from '@/hooks/useMenteeFlags'
 import { mentorClient } from '@/services/mentorClient'
+import { djangoClient } from '@/services/djangoClient'
 import type { AssignedMentee } from '@/services/types/mentor'
+import type { User } from '@/services/types'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import {
   LineChart,
@@ -41,12 +46,47 @@ export default function MenteeAnalyticsPage() {
   
   const { mentees } = useMentorMentees(mentorId)
   const { view, isLoading, error } = useTalentScopeView(mentorId, menteeId)
-  const [mentee, setMentee] = useState<AssignedMentee | null>(null)
+  const { flagMentee, reload: reloadFlags } = useMenteeFlags(mentorId)
+  const [student, setStudent] = useState<AssignedMentee | null>(null)
+  const [studentDetails, setStudentDetails] = useState<User | null>(null)
+  const [loadingDetails, setLoadingDetails] = useState(false)
+  const [showFlagModal, setShowFlagModal] = useState(false)
+  const [flagForm, setFlagForm] = useState({
+    flag_type: 'struggling' as 'struggling' | 'at_risk' | 'needs_attention' | 'technical_issue',
+    severity: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+    description: '',
+  })
+  const [isFlagging, setIsFlagging] = useState(false)
+  const [flagError, setFlagError] = useState<string | null>(null)
+  const [flagSuccess, setFlagSuccess] = useState(false)
 
   useEffect(() => {
     if (mentees.length > 0 && menteeId) {
-      const found = mentees.find(m => m.id === menteeId)
-      setMentee(found || null)
+      const found = mentees.find(m => m.id === menteeId || m.user_id === menteeId)
+      if (found) {
+        setStudent(found)
+        
+        // Fetch detailed student information
+        if (found.user_id) {
+          setLoadingDetails(true)
+          djangoClient.users.getUser(Number(found.user_id))
+            .then((user) => {
+              setStudentDetails(user)
+            })
+            .catch((err) => {
+              console.error('Failed to load student details:', err)
+            })
+            .finally(() => {
+              setLoadingDetails(false)
+            })
+        }
+      } else {
+        setStudent(null)
+        setStudentDetails(null)
+      }
+    } else if (mentees.length === 0 && menteeId) {
+      // If no mentees loaded yet, wait for them
+      setStudent(null)
     }
   }, [mentees, menteeId])
 
@@ -71,21 +111,34 @@ export default function MenteeAnalyticsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold mb-2 text-och-mint">
-              {mentee?.name || 'Mentee Analytics'}
+              {student?.name || 'Student Analytics'}
             </h1>
             <p className="text-och-steel text-sm">
-              {mentee?.cohort && <span>Cohort: {mentee.cohort} • </span>}
-              {mentee?.track && <span>Track: {mentee.track} • </span>}
+              {student?.cohort && <span>Cohort: {student.cohort} • </span>}
+              {student?.track && <span>Track: {student.track} • </span>}
               Comprehensive TalentScope analytics and performance metrics
             </p>
           </div>
-          {mentee?.avatar_url && (
-            <img
-              src={mentee.avatar_url}
-              alt={mentee.name}
-              className="w-16 h-16 rounded-full border-2 border-och-mint/20"
-            />
-          )}
+          <div className="flex items-center gap-4">
+            <Button
+              variant="orange"
+              size="sm"
+              onClick={() => setShowFlagModal(true)}
+              className="flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Flag Student
+            </Button>
+            {student?.avatar_url && (
+              <img
+                src={student.avatar_url}
+                alt={student.name}
+                className="w-16 h-16 rounded-full border-2 border-och-mint/20"
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -109,6 +162,97 @@ export default function MenteeAnalyticsPage() {
 
       {!isLoading && !error && view && (
         <div className="space-y-6">
+          {/* Student Personal Details */}
+          {student && (
+            <Card>
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-white mb-4">Student Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex items-center gap-4">
+                    {student.avatar_url && (
+                      <img
+                        src={student.avatar_url}
+                        alt={student.name}
+                        className="w-20 h-20 rounded-full border-2 border-och-mint/20"
+                      />
+                    )}
+                    <div>
+                      <h3 className="text-xl font-semibold text-white">{student.name}</h3>
+                      <p className="text-sm text-och-steel">{student.email}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {studentDetails && (
+                      <>
+                        {studentDetails.first_name && studentDetails.last_name && (
+                          <div>
+                            <span className="text-xs text-och-steel">Full Name:</span>
+                            <p className="text-sm text-white">{studentDetails.first_name} {studentDetails.last_name}</p>
+                          </div>
+                        )}
+                        {studentDetails.phone_number && (
+                          <div>
+                            <span className="text-xs text-och-steel">Phone:</span>
+                            <p className="text-sm text-white">{studentDetails.phone_number}</p>
+                          </div>
+                        )}
+                        {studentDetails.country && (
+                          <div>
+                            <span className="text-xs text-och-steel">Country:</span>
+                            <p className="text-sm text-white">{studentDetails.country}</p>
+                          </div>
+                        )}
+                        {studentDetails.timezone && (
+                          <div>
+                            <span className="text-xs text-och-steel">Timezone:</span>
+                            <p className="text-sm text-white">{studentDetails.timezone}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {loadingDetails && (
+                      <div className="text-xs text-och-steel">Loading details...</div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {student.cohort && (
+                      <div>
+                        <span className="text-xs text-och-steel">Cohort:</span>
+                        <p className="text-sm text-white">{student.cohort}</p>
+                      </div>
+                    )}
+                    {student.track && (
+                      <div>
+                        <span className="text-xs text-och-steel">Track:</span>
+                        <p className="text-sm text-white">{student.track}</p>
+                      </div>
+                    )}
+                    {student.readiness_score !== undefined && (
+                      <div>
+                        <span className="text-xs text-och-steel">Readiness Score:</span>
+                        <p className="text-sm font-semibold text-och-mint">{student.readiness_score.toFixed(1)}%</p>
+                      </div>
+                    )}
+                    {student.risk_level && (
+                      <div>
+                        <span className="text-xs text-och-steel">Risk Level:</span>
+                        <Badge variant={student.risk_level === 'high' ? 'orange' : student.risk_level === 'medium' ? 'gold' : 'mint'}>
+                          {student.risk_level}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                  {studentDetails?.bio && (
+                    <div className="md:col-span-2">
+                      <span className="text-xs text-och-steel">Bio:</span>
+                      <p className="text-sm text-white mt-1">{studentDetails.bio}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Core Readiness Score - Prominent Display */}
           {view.core_readiness_score !== undefined && view.core_readiness_score !== null && (
             <Card>
@@ -438,22 +582,22 @@ export default function MenteeAnalyticsPage() {
                     .map(([skill, score]) => {
                       const numScore = Number(score) || 0
                       return (
-                        <div key={skill} className="p-2 bg-och-midnight rounded border border-och-steel/20">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs text-white capitalize">{skill.replace(/_/g, ' ')}</span>
+                      <div key={skill} className="p-2 bg-och-midnight rounded border border-och-steel/20">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-white capitalize">{skill.replace(/_/g, ' ')}</span>
                             <span className="text-xs font-semibold text-och-mint">{numScore.toFixed(0)}%</span>
-                          </div>
-                          <div className="w-full h-2 bg-och-midnight rounded-full overflow-hidden">
-                            <div
-                              className={`h-full transition-all ${
+                        </div>
+                        <div className="w-full h-2 bg-och-midnight rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all ${
                                 numScore >= 80 ? 'bg-och-mint' : 
                                 numScore >= 60 ? 'bg-och-defender' : 
                                 numScore >= 40 ? 'bg-och-gold' : 'bg-och-orange'
-                              }`}
+                            }`}
                               style={{ width: `${numScore}%` }}
-                            />
-                          </div>
+                          />
                         </div>
+                      </div>
                       )
                     })}
                 </div>
@@ -532,31 +676,31 @@ export default function MenteeAnalyticsPage() {
                     const performance = Number(trend.performance) || 0
                     const sentiment = Number(trend.sentiment) || 0
                     return (
-                      <div key={index} className="p-2 bg-och-midnight rounded border border-och-steel/20">
-                        <div className="text-xs text-och-steel mb-2">{new Date(trend.date).toLocaleDateString()}</div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div>
-                            <div className="text-och-steel mb-1">Engagement</div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 bg-och-midnight rounded-full overflow-hidden">
+                    <div key={index} className="p-2 bg-och-midnight rounded border border-och-steel/20">
+                      <div className="text-xs text-och-steel mb-2">{new Date(trend.date).toLocaleDateString()}</div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <div className="text-och-steel mb-1">Engagement</div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-och-midnight rounded-full overflow-hidden">
                                 <div className="h-full bg-och-mint" style={{ width: `${engagement}%` }} />
-                              </div>
+                            </div>
                               <span className="text-white w-8 text-right">{engagement.toFixed(0)}</span>
-                            </div>
                           </div>
-                          <div>
-                            <div className="text-och-steel mb-1">Performance</div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 bg-och-midnight rounded-full overflow-hidden">
+                        </div>
+                        <div>
+                          <div className="text-och-steel mb-1">Performance</div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-och-midnight rounded-full overflow-hidden">
                                 <div className="h-full bg-och-gold" style={{ width: `${performance}%` }} />
-                              </div>
-                              <span className="text-white w-8 text-right">{performance.toFixed(0)}</span>
                             </div>
+                              <span className="text-white w-8 text-right">{performance.toFixed(0)}</span>
                           </div>
-                          <div>
-                            <div className="text-och-steel mb-1">Sentiment</div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 bg-och-midnight rounded-full overflow-hidden">
+                        </div>
+                        <div>
+                          <div className="text-och-steel mb-1">Sentiment</div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-och-midnight rounded-full overflow-hidden">
                                 <div className="h-full bg-och-defender" style={{ width: `${sentiment * 100}%` }} />
                               </div>
                               <span className="text-white w-8 text-right">{(sentiment * 100).toFixed(0)}</span>
@@ -645,7 +789,7 @@ export default function MenteeAnalyticsPage() {
       {!isLoading && !error && !view && (
         <Card>
           <div className="p-6">
-            <div className="text-och-steel text-sm">No analytics data available for this mentee.</div>
+            <div className="text-och-steel text-sm">No analytics data available for this student.</div>
             <button
               onClick={() => router.push('/dashboard/mentor/analytics')}
               className="mt-4 text-och-mint hover:text-och-defender text-sm"
@@ -655,8 +799,181 @@ export default function MenteeAnalyticsPage() {
           </div>
         </Card>
       )}
+
+      {/* Flag Mentee Modal */}
+      {showFlagModal && (
+        <div className="fixed inset-0 bg-och-midnight/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-white">Flag Student</h2>
+                <button
+                  onClick={() => {
+                    setShowFlagModal(false)
+                    setFlagForm({
+                      flag_type: 'struggling',
+                      severity: 'medium',
+                      description: '',
+                    })
+                    setFlagError(null)
+                    setFlagSuccess(false)
+                  }}
+                  className="text-och-steel hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {student && (
+                <div className="mb-4 p-3 bg-och-midnight/50 rounded-lg border border-och-steel/20">
+                  <p className="text-sm text-och-steel mb-1">Flagging:</p>
+                  <p className="text-white font-medium">{student.name}</p>
+                  {student.email && (
+                    <p className="text-xs text-och-steel">{student.email}</p>
+                  )}
+                </div>
+              )}
+
+              {flagSuccess && (
+                <div className="mb-4 p-3 bg-och-mint/20 border border-och-mint rounded-lg">
+                  <p className="text-sm text-och-mint">Flag created successfully!</p>
+                </div>
+              )}
+
+              {flagError && (
+                <div className="mb-4 p-3 bg-och-orange/20 border border-och-orange rounded-lg">
+                  <p className="text-sm text-och-orange">{flagError}</p>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Flag Type
+                  </label>
+                  <select
+                    value={flagForm.flag_type}
+                    onChange={(e) => setFlagForm({ ...flagForm, flag_type: e.target.value as any })}
+                    className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+                  >
+                    <option value="struggling">Struggling</option>
+                    <option value="at_risk">At Risk</option>
+                    <option value="needs_attention">Needs Attention</option>
+                    <option value="technical_issue">Technical Issue</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Severity
+                  </label>
+                  <select
+                    value={flagForm.severity}
+                    onChange={(e) => setFlagForm({ ...flagForm, severity: e.target.value as any })}
+                    className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Description <span className="text-och-steel">(required)</span>
+                  </label>
+                  <textarea
+                    value={flagForm.description}
+                    onChange={(e) => setFlagForm({ ...flagForm, description: e.target.value })}
+                    rows={4}
+                    placeholder="Describe the issue or concern..."
+                    className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender placeholder-och-steel"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowFlagModal(false)
+                      setFlagForm({
+                        flag_type: 'struggling',
+                        severity: 'medium',
+                        description: '',
+                      })
+                      setFlagError(null)
+                      setFlagSuccess(false)
+                    }}
+                    disabled={isFlagging}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="orange"
+                    onClick={async () => {
+                      if (!flagForm.description.trim()) {
+                        setFlagError('Please provide a description')
+                        return
+                      }
+                      if (!student) {
+                        setFlagError('Student information is not loaded. Please wait and try again.')
+                        return
+                      }
+
+                      // Use user_id if available, otherwise try id
+                      const studentUserId = student.user_id || student.id
+                      if (!studentUserId) {
+                        setFlagError('Student ID is missing. Please refresh the page.')
+                        return
+                      }
+
+                      setIsFlagging(true)
+                      setFlagError(null)
+                      setFlagSuccess(false)
+
+                      try {
+                        await flagMentee({
+                          mentee_id: String(studentUserId), // Ensure it's a string (backend will convert to UUID)
+                          flag_type: flagForm.flag_type,
+                          severity: flagForm.severity,
+                          description: flagForm.description,
+                        })
+                        setFlagSuccess(true)
+                        await reloadFlags()
+                        
+                        // Close modal after 2 seconds
+                        setTimeout(() => {
+                          setShowFlagModal(false)
+                          setFlagForm({
+                            flag_type: 'struggling',
+                            severity: 'medium',
+                            description: '',
+                          })
+                          setFlagError(null)
+                          setFlagSuccess(false)
+                        }, 2000)
+                      } catch (err: any) {
+                        setFlagError(err?.message || 'Failed to create flag. Please try again.')
+                      } finally {
+                        setIsFlagging(false)
+                      }
+                    }}
+                    disabled={isFlagging || !flagForm.description.trim()}
+                    className="flex-1"
+                  >
+                    {isFlagging ? 'Creating Flag...' : 'Create Flag'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
-
 

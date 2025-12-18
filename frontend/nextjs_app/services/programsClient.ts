@@ -113,7 +113,7 @@ export interface Enrollment {
   enrollment_type: 'self' | 'sponsor' | 'invite'
   seat_type: 'paid' | 'scholarship' | 'sponsored'
   payment_status: 'pending' | 'paid' | 'waived'
-  status: 'active' | 'withdrawn' | 'completed' | 'incomplete'
+  status: 'pending_payment' | 'pending' | 'active' | 'suspended' | 'withdrawn' | 'completed' | 'incomplete'
   joined_at: string
   completed_at: string | null
 }
@@ -490,6 +490,10 @@ class ProgramsClient {
     return apiGateway.patch(`/director/cohorts/${id}/`, data)
   }
 
+  async manageSeatPool(cohortId: string, seatPool: { paid: number; scholarship: number; sponsored: number }): Promise<Cohort> {
+    return apiGateway.post(`/director/cohorts/${cohortId}/manage_seat_pool/`, { seat_pool: seatPool })
+  }
+
   async deleteCohort(id: string): Promise<void> {
     return apiGateway.delete(`/cohorts/${id}/`)
   }
@@ -824,4 +828,3 @@ export interface DirectorDashboard {
 }
 
 export const programsClient = new ProgramsClient()
-

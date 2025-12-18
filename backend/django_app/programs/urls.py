@@ -7,8 +7,6 @@ from .views import (
     ProgramViewSet, TrackViewSet, CohortViewSet,
     ProgramRuleViewSet, CertificateViewSet,
     MilestoneViewSet, ModuleViewSet,
-    DirectorProgramViewSet, DirectorTrackViewSet, DirectorCohortViewSet,
-    DirectorMentorViewSet, DirectorDashboardViewSet,
     DirectorProgramRuleViewSet, ProgramManagementViewSet,
     MentorAssignmentViewSet,
     director_dashboard
@@ -34,13 +32,15 @@ router.register(r'mentor-assignments', MentorAssignmentViewSet, basename='mentor
 router.register(r'calendar-events', CalendarEventViewSet, basename='calendar-event')
 
 # Director-specific endpoints
+# Note: Director ViewSets are currently handled via director_dashboard_views.py
+# If ViewSets are needed, they should be created in director_views.py
 director_router = DefaultRouter()
-director_router.register(r'programs', DirectorProgramViewSet, basename='director-program')
-director_router.register(r'tracks', DirectorTrackViewSet, basename='director-track')
-director_router.register(r'cohorts', DirectorCohortViewSet, basename='director-cohort')
-director_router.register(r'mentors', DirectorMentorViewSet, basename='director-mentor')
+# director_router.register(r'programs', DirectorProgramViewSet, basename='director-program')
+# director_router.register(r'tracks', DirectorTrackViewSet, basename='director-track')
+# director_router.register(r'cohorts', DirectorCohortViewSet, basename='director-cohort')
+# director_router.register(r'mentors', DirectorMentorViewSet, basename='director-mentor')
 director_router.register(r'rules', DirectorProgramRuleViewSet, basename='director-rule')
-director_router.register(r'dashboard', DirectorDashboardViewSet, basename='director-dashboard')
+# director_router.register(r'dashboard', DirectorDashboardViewSet, basename='director-dashboard')
 
 urlpatterns = [
     # Legacy director dashboard endpoint (kept for backward compatibility)

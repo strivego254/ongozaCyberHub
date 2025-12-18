@@ -110,7 +110,7 @@ export default function OverviewClient() {
         active: roleDistribution.active_users,
         programDirectors: roleDistribution.role_distribution['program_director'] || 0,
         financeUsers: roleDistribution.role_distribution['finance'] || 0,
-        mentees: (roleDistribution.role_distribution['mentee'] || 0) + (roleDistribution.role_distribution['student'] || 0),
+        students: (roleDistribution.role_distribution['student'] || 0) + (roleDistribution.role_distribution['mentee'] || 0),
         mentors: roleDistribution.role_distribution['mentor'] || 0,
       }
     }
@@ -122,8 +122,8 @@ export default function OverviewClient() {
     const financeUsers = users.filter((u) => 
       u.roles?.some((r: any) => r.role === 'finance')
     ).length
-    const mentees = users.filter((u) => 
-      u.roles?.some((r: any) => r.role === 'mentee' || r.role === 'student')
+    const students = users.filter((u) => 
+      u.roles?.some((r: any) => r.role === 'student' || r.role === 'mentee')
     ).length
     const activeUsers = users.filter((u) => u.is_active && u.account_status === 'active').length
 
@@ -132,7 +132,7 @@ export default function OverviewClient() {
       active: activeUsers,
       programDirectors,
       financeUsers,
-      mentees,
+      students,
       mentors: users.filter((u) => u.roles?.some((r: any) => r.role === 'mentor')).length,
     }
   }, [users, totalCount, roleDistribution])
@@ -373,8 +373,8 @@ export default function OverviewClient() {
               <p className="text-3xl font-bold text-och-gold">{stats.financeUsers}</p>
             </div>
             <div className="text-center p-4 bg-och-midnight/50 rounded-lg">
-              <p className="text-och-steel text-sm mb-1">Mentees</p>
-              <p className="text-3xl font-bold text-och-mint">{stats.mentees}</p>
+              <p className="text-och-steel text-sm mb-1">Students</p>
+              <p className="text-3xl font-bold text-och-mint">{stats.students}</p>
             </div>
           </div>
 
@@ -471,10 +471,10 @@ export default function OverviewClient() {
                 data={[
                   stats.programDirectors,
                   stats.financeUsers,
-                  stats.mentees,
+                  stats.students,
                   stats.mentors || 0,
                 ]}
-                labels={['Directors', 'Finance', 'Mentees', 'Mentors']}
+                labels={['Directors', 'Finance', 'Students', 'Mentors']}
                 color="#0648A8"
               />
             </div>
