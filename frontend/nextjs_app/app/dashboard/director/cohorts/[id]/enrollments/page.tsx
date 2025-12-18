@@ -77,6 +77,18 @@ export default function CohortEnrollmentsPage() {
     loadData()
   }, [cohortId, cohort])
 
+  // Sync seat pool from cohort data
+  useEffect(() => {
+    if (cohort?.seat_pool && !showSeatPoolModal) {
+      const pool = cohort.seat_pool as any
+      setSeatPool({
+        paid: pool.paid || 0,
+        scholarship: pool.scholarship || 0,
+        sponsored: pool.sponsored || 0,
+      })
+    }
+  }, [cohort, showSeatPoolModal])
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -198,6 +210,71 @@ export default function CohortEnrollmentsPage() {
       setSelectedEnrollments(new Set())
     } catch (err: any) {
       setError(err?.message || 'Failed to remove enrollments')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Handle seat pool update
+  const [seatPoolForm, setSeatPoolForm] = useState<{ paid: number; scholarship: number; sponsored: number }>({
+    paid: 0,
+    scholarship: 0,
+    sponsored: 0,
+  })
+  const [seatPoolError, setSeatPoolError] = useState<string | null>(null)
+  const [seatPoolSuccess, setSeatPoolSuccess] = useState<string | null>(null)
+
+  // Initialize seat pool form when cohort loads or modal opens
+  useEffect(() => {
+    if (showSeatPoolModal && cohort?.seat_pool) {
+      const pool = cohort.seat_pool as any
+      setSeatPoolForm({
+        paid: pool.paid || 0,
+        scholarship: pool.scholarship || 0,
+        sponsored: pool.sponsored || 0,
+      })
+    }
+  }, [showSeatPoolModal, cohort])
+
+  const handleUpdateSeatPool = async () => {
+    setSeatPoolError(null)
+    setSeatPoolSuccess(null)
+
+    // Validate total doesn't exceed seat cap
+    const total = seatPoolForm.paid + seatPoolForm.scholarship + seatPoolForm.sponsored
+    if (cohort && total > cohort.seat_cap) {
+      setSeatPoolError(`Total allocated seats (${total}) cannot exceed seat capacity (${cohort.seat_cap})`)
+      return
+    }
+
+    if (total < 0) {
+      setSeatPoolError('Seat allocations cannot be negative')
+      return
+    }
+
+    setIsProcessing(true)
+    try {
+      await programsClient.manageSeatPool(cohortId, seatPoolForm)
+      setSeatPoolSuccess('Seat pool updated successfully')
+      
+      // Reload cohort data to sync with backend
+      await reloadCohort()
+      
+      // Update local seat pool state
+      setSeatPool(seatPoolForm)
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowSeatPoolModal(false)
+        setSeatPoolSuccess(null)
+      }, 2000)
+    } catch (err: any) {
+      console.error('Failed to update seat pool:', err)
+      const errorMessage = err?.response?.data?.error || 
+                           err?.response?.data?.seat_pool?.[0] ||
+                           err?.message || 
+                           'Failed to update seat pool. Please check your permissions and try again.'
+      setSeatPoolError(errorMessage)
     } finally {
       setIsProcessing(false)
     }
@@ -1031,6 +1108,11 @@ export default function CohortEnrollmentsPage() {
                         </div>
                       </div>
                     ))}
+                    {usersLoading && studentPage > 1 && (
+                      <div className="py-4 text-center text-och-steel text-sm">
+                        Loading more students...
+                      </div>
+                    )}
                     {!usersLoading && students.length === 0 && (
                       <div className="py-10 text-center text-och-steel">No students found.</div>
                     )}
@@ -1041,7 +1123,4 @@ export default function CohortEnrollmentsPage() {
           </div>
         </div>
       )}
-    </RouteGuard>
-  )
-}
 
