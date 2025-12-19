@@ -32,7 +32,6 @@ class Migration(migrations.Migration):
                 ),
             ],
             state_operations=[
-                ),
             ],
         ),
         migrations.AlterField(
@@ -154,7 +153,6 @@ class Migration(migrations.Migration):
                 ),
             ],
             state_operations=[
-                ),
             ],
         ),
     ]
