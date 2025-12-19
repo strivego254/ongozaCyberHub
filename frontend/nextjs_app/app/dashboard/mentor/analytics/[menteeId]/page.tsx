@@ -700,6 +700,10 @@ export default function MenteeAnalyticsPage() {
                     .map(([skill, score]) => {
                       const numScore = Number(score) || 0
                       return (
+                        <div key={skill} className="flex items-center justify-between text-xs p-2 bg-och-midnight/50 rounded border border-och-steel/20">
+                          <span className="text-och-steel">{skill.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                          <span className="text-white font-medium">{numScore.toFixed(0)}%</span>
+                        </div>
                       )
                     })}
 >>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
@@ -816,10 +820,31 @@ export default function MenteeAnalyticsPage() {
                     const performance = Number(trend.performance) || 0
                     const sentiment = Number(trend.sentiment) || 0
                     return (
-                                <div className="h-full bg-och-defender" style={{ width: `${sentiment * 100}%` }} />
-                              </div>
-                              <span className="text-white w-8 text-right">{(sentiment * 100).toFixed(0)}</span>
+                      <div key={index} className="p-2 bg-och-midnight rounded border border-och-steel/20">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-och-steel">{new Date(trend.date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-och-steel w-20">Engagement:</span>
+                            <div className="flex-1 h-2 bg-och-midnight rounded-full overflow-hidden">
+                              <div className="h-full bg-och-mint" style={{ width: `${engagement}%` }} />
                             </div>
+                            <span className="text-white text-xs w-8 text-right">{engagement.toFixed(0)}%</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-och-steel w-20">Performance:</span>
+                            <div className="flex-1 h-2 bg-och-midnight rounded-full overflow-hidden">
+                              <div className="h-full bg-och-gold" style={{ width: `${performance}%` }} />
+                            </div>
+                            <span className="text-white text-xs w-8 text-right">{performance.toFixed(0)}%</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-och-steel w-20">Sentiment:</span>
+                            <div className="flex-1 h-2 bg-och-midnight rounded-full overflow-hidden">
+                              <div className="h-full bg-och-defender" style={{ width: `${sentiment * 100}%` }} />
+                            </div>
+                            <span className="text-white text-xs w-8 text-right">{(sentiment * 100).toFixed(0)}%</span>
                           </div>
                         </div>
                       </div>
