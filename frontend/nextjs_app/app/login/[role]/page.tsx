@@ -16,6 +16,7 @@ const PERSONAS = {
   director: { name: 'Program Director', icon: '👔', color: 'sahara-gold', description: 'Manage programs and operations' },
   sponsor: { name: 'Sponsor/Employer', icon: '💼', color: 'sahara-gold', description: 'Support talent development' },
   analyst: { name: 'Analyst', icon: '📊', color: 'defender-blue', description: 'Access analytics and insights' },
+  finance: { name: 'Finance', icon: '💰', color: 'defender-blue', description: 'Manage billing and revenue operations' },
 };
 
 const VALID_ROLES = Object.keys(PERSONAS);
