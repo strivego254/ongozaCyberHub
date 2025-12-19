@@ -17,7 +17,7 @@ export function CoachingMetrics() {
     {
       icon: TrendingUp,
       label: 'Alignment Score',
-      value: `${metrics.alignmentScore}%`,
+      value: `${metrics?.alignmentScore ?? 0}%`,
       color: 'text-indigo-400',
       bgColor: 'bg-indigo-500/10',
       borderColor: 'border-indigo-500/30',
@@ -25,7 +25,7 @@ export function CoachingMetrics() {
     {
       icon: Calendar,
       label: 'Total Streak',
-      value: `${metrics.totalStreakDays} days`,
+      value: `${metrics?.totalStreakDays ?? metrics?.habits_streak ?? 0} days`,
       color: 'text-orange-400',
       bgColor: 'bg-orange-500/10',
       borderColor: 'border-orange-500/30',
@@ -33,7 +33,7 @@ export function CoachingMetrics() {
     {
       icon: Target,
       label: 'Active Habits',
-      value: metrics.activeHabits,
+      value: metrics?.activeHabits ?? 0,
       color: 'text-emerald-400',
       bgColor: 'bg-emerald-500/10',
       borderColor: 'border-emerald-500/30',
@@ -41,7 +41,7 @@ export function CoachingMetrics() {
     {
       icon: Award,
       label: 'Completed Goals',
-      value: metrics.completedGoals,
+      value: metrics?.goals_completed ?? 0,
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
       borderColor: 'border-purple-500/30',

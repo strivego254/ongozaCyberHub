@@ -95,12 +95,12 @@ class MissionArtifactModelTest(TestCase):
         """Test artifact can be created."""
         artifact = MissionArtifact.objects.create(
             submission=self.submission,
-            type='file',
+            kind='file',
             url='https://example.com/file.pdf',
             filename='file.pdf',
             size_bytes=1024
         )
-        self.assertEqual(artifact.type, 'file')
+        self.assertEqual(artifact.kind, 'file')
         self.assertEqual(artifact.submission, self.submission)
 
 

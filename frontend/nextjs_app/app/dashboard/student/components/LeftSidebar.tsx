@@ -77,19 +77,19 @@ export function LeftSidebar() {
         <h3 className="text-sm font-semibold text-och-steel mb-3">Quick Stats</h3>
         <div className="grid grid-cols-2 gap-2">
           <Card className="glass-card p-3 text-center h-20">
-            <div className="text-2xl font-bold text-white">{quickStats.points}</div>
+            <div className="text-2xl font-bold text-white">{quickStats?.points || 0}</div>
             <div className="text-xs text-och-steel">Points</div>
           </Card>
           <Card className="glass-card p-3 text-center h-20">
-            <div className="text-2xl font-bold text-white">{quickStats.streak} 🔥</div>
+            <div className="text-2xl font-bold text-white">{quickStats?.streak || 0} 🔥</div>
             <div className="text-xs text-och-steel">Streak</div>
           </Card>
           <Card className="glass-card p-3 text-center h-20">
-            <div className="text-2xl font-bold text-white">{quickStats.badges} ⭐</div>
+            <div className="text-2xl font-bold text-white">{quickStats?.badges || 0} ⭐</div>
             <div className="text-xs text-och-steel">Badges</div>
           </Card>
           <Card className="glass-card p-3 text-center h-20">
-            <div className="text-2xl font-bold text-white">{quickStats.mentorRating}/5</div>
+            <div className="text-2xl font-bold text-white">{quickStats?.mentorRating || 0}/5</div>
             <div className="text-xs text-och-steel">Mentor</div>
           </Card>
         </div>
@@ -98,7 +98,7 @@ export function LeftSidebar() {
       <div>
         <h3 className="text-sm font-semibold text-och-steel mb-3">Upcoming Events</h3>
         <div className="space-y-2">
-          {events.length === 0 ? (
+          {(!events || events.length === 0) ? (
             <div className="text-center py-4">
               <p className="text-xs text-och-steel mb-2">No upcoming events</p>
               <Button
@@ -111,7 +111,7 @@ export function LeftSidebar() {
               </Button>
             </div>
           ) : (
-            events.map((event) => (
+            (events || []).map((event) => (
               <Card key={event.id} className="glass-card p-3">
                 <div className="flex items-start gap-2">
                   <span className="text-lg">{getEventIcon(event.type)}</span>
@@ -149,16 +149,16 @@ export function LeftSidebar() {
         <h3 className="text-sm font-semibold text-och-steel mb-3">Track Overview</h3>
         <Card className="glass-card p-3">
           <div className="text-sm font-semibold text-white mb-2">
-            {trackOverview.trackName} ({trackOverview.completedMilestones}/{trackOverview.totalMilestones})
+            {trackOverview?.name || 'Track'} ({trackOverview?.completedMilestones || 0}/{trackOverview?.totalMilestones || 0})
           </div>
           <div className="space-y-2">
-            {trackOverview.milestones.map((milestone) => (
-              <div key={milestone.id}>
+            {(trackOverview?.milestones || []).map((milestone: any) => (
+              <div key={milestone.id || milestone.code}>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-och-steel">{milestone.code}</span>
-                  <span className="text-och-steel">{milestone.progress}%</span>
+                  <span className="text-och-steel">{milestone.code || milestone.name}</span>
+                  <span className="text-och-steel">{milestone.progress || 0}%</span>
                 </div>
-                <ProgressBar value={milestone.progress} max={100} variant="mint" showLabel={false} className="h-1.5" />
+                <ProgressBar value={milestone.progress || 0} max={100} variant="mint" showLabel={false} className="h-1.5" />
               </div>
             ))}
           </div>
@@ -168,7 +168,7 @@ export function LeftSidebar() {
       <div>
         <h3 className="text-sm font-semibold text-och-steel mb-3">Community Feed</h3>
         <div className="space-y-2">
-          {communityFeed.length === 0 ? (
+          {(!communityFeed || communityFeed.length === 0) ? (
             <div className="text-center py-4">
               <p className="text-xs text-och-steel mb-2">No recent activity</p>
               <Button
@@ -181,14 +181,20 @@ export function LeftSidebar() {
               </Button>
             </div>
           ) : (
-            communityFeed.slice(0, 3).map((activity) => (
-              <Card key={activity.id} className="glass-card p-3">
+            (communityFeed || []).slice(0, 3).map((activity: any) => (
+              <Card key={activity.id || activity.content} className="glass-card p-3">
                 <div className="text-xs text-white mb-1">
-                  <span className="font-semibold">{activity.user}</span> {activity.action}
+                  {activity.content || (
+                    <>
+                      <span className="font-semibold">{activity.author || activity.user || 'User'}</span> {activity.action || activity.type}
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-och-steel">{activity.timestamp}</span>
-                  <span className="text-xs text-och-steel">👍 {activity.likes}</span>
+                  <span className="text-xs text-och-steel">{activity.timestamp || 'Recently'}</span>
+                  {activity.likes !== undefined && (
+                    <span className="text-xs text-och-steel">👍 {activity.likes}</span>
+                  )}
                 </div>
               </Card>
             ))

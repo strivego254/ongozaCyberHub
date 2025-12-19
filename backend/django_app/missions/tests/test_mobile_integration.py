@@ -56,7 +56,7 @@ class MobileUploadIntegrationTest(TestCase):
         # Verify artifact was created
         artifact = MissionArtifact.objects.filter(submission=self.submission).first()
         self.assertIsNotNone(artifact)
-        self.assertEqual(artifact.type, 'file')
+        self.assertEqual(artifact.kind, 'file')
         self.assertIn('photo.jpg', artifact.filename or '')
     
     def test_mobile_video_upload(self):

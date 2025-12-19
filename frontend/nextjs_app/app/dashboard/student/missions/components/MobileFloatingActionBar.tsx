@@ -55,7 +55,7 @@ export function MobileFloatingActionBar({
         )}
 
         <Button
-          variant="steel"
+          variant="outline"
           size="sm"
           onClick={handleSave}
           className="flex-1"

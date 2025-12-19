@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { getDashboardContextFromPath } from '@/utils/navigation'
 
 interface BreadcrumbItem {
   label: string
@@ -17,12 +18,33 @@ const generateBreadcrumbs = (pathname: string): BreadcrumbItem[] => {
   const segments = pathname.split('/').filter(Boolean)
   const breadcrumbs: BreadcrumbItem[] = []
 
-  // Always start with Dashboard
-  breadcrumbs.push({ label: 'Dashboard', href: '/dashboard/student' })
+  // Get the dashboard context from the pathname
+  const dashboardContext = getDashboardContextFromPath(pathname)
+  const dashboardBase = dashboardContext || '/dashboard/student'
+
+  // Determine dashboard label based on context
+  const dashboardLabelMap: Record<string, string> = {
+    '/dashboard/student': 'Student Dashboard',
+    '/dashboard/mentor': 'Mentor Dashboard',
+    '/dashboard/admin': 'Admin Dashboard',
+    '/dashboard/director': 'Director Dashboard',
+    '/dashboard/sponsor': 'Sponsor Dashboard',
+    '/dashboard/analyst': 'Analyst Dashboard',
+    '/dashboard/employer': 'Employer Dashboard',
+  }
+
+  const dashboardLabel = dashboardLabelMap[dashboardBase] || 'Dashboard'
+  breadcrumbs.push({ label: dashboardLabel, href: dashboardBase })
 
   // Map path segments to readable labels
   const labelMap: Record<string, string> = {
     student: 'Student',
+    mentor: 'Mentor',
+    admin: 'Admin',
+    director: 'Director',
+    sponsor: 'Sponsor',
+    analyst: 'Analyst',
+    employer: 'Employer',
     missions: 'Missions',
     coaching: 'Coaching',
     curriculum: 'Curriculum',
@@ -31,12 +53,24 @@ const generateBreadcrumbs = (pathname: string): BreadcrumbItem[] => {
     mentorship: 'Mentorship',
     settings: 'Settings',
     profile: 'Profile',
+    mentees: 'Mentees',
+    sessions: 'Sessions',
+    analytics: 'Analytics',
+    cohorts: 'Cohorts',
+    tracks: 'Tracks',
   }
 
-  let currentPath = '/dashboard/student'
-  segments.forEach((segment) => {
-    // Skip 'dashboard' and 'student' segments
-    if (segment === 'dashboard' || segment === 'student') {
+  let currentPath = dashboardBase
+  let skipNext = false
+  
+  segments.forEach((segment, index) => {
+    // Skip 'dashboard' segment
+    if (segment === 'dashboard') {
+      return
+    }
+
+    // Skip role segment (student, mentor, etc.) if it's the first segment after dashboard
+    if (index === 1 && ['student', 'mentor', 'admin', 'director', 'sponsor', 'analyst', 'employer'].includes(segment)) {
       return
     }
 

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useCohort } from '@/hooks/usePrograms'
+import { useCohort, usePrograms, useTracks, useTrack } from '@/hooks/usePrograms'
 import { programsClient, type MentorAssignment } from '@/services/programsClient'
 import { useUsers } from '@/hooks/useUsers'
 
@@ -17,8 +17,23 @@ export default function AssignMentorsPage() {
   const router = useRouter()
   const cohortId = params.id as string
   const { cohort, isLoading: loadingCohort } = useCohort(cohortId)
+  const { programs, isLoading: loadingPrograms } = usePrograms()
+  const { track: cohortTrack, isLoading: loadingTrack } = useTrack(cohort?.track || '')
+  const { tracks, isLoading: loadingTracks } = useTracks(cohortTrack?.program || undefined)
+  
   // Fetch only users with mentor role directly from the API
   const { users: mentorsFromApi, isLoading: loadingUsers } = useUsers({ page: 1, page_size: 200, role: 'mentor' })
+  
+  // Get program and track info from cohort
+  const selectedProgram = useMemo(() => {
+    if (!cohortTrack?.program) return null
+    return programs.find(p => p.id === cohortTrack.program)
+  }, [cohortTrack, programs])
+  
+  const selectedTrack = useMemo(() => {
+    if (!cohort?.track) return null
+    return tracks.find(t => t.id === cohort.track) || cohort.track
+  }, [cohort, tracks])
   
   const [mentorAssignments, setMentorAssignments] = useState<MentorAssignment[]>([])
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true)
@@ -28,6 +43,10 @@ export default function AssignMentorsPage() {
   // Form state for new assignment
   const [selectedMentorId, setSelectedMentorId] = useState<string>('')
   const [selectedRole, setSelectedRole] = useState<'primary' | 'support' | 'guest'>('support')
+  
+  // Reassign state
+  const [reassigningAssignmentId, setReassigningAssignmentId] = useState<string | null>(null)
+  const [newMentorId, setNewMentorId] = useState<string>('')
   
   // Use mentors directly from API (already filtered by role='mentor')
   const mentors = useMemo(() => {
@@ -40,6 +59,22 @@ export default function AssignMentorsPage() {
       .filter(a => a.active)
       .map(a => a.mentor?.toString() || a.mentor)
     return mentors.filter(m => !assignedIds.includes(m.id?.toString() || ''))
+  }, [mentors, mentorAssignments])
+
+  // Get available mentors for reassignment (includes all mentors except the current one being reassigned)
+  const getAvailableMentorsForReassign = useCallback((currentAssignmentId: string) => {
+    const currentAssignment = mentorAssignments.find(a => a.id === currentAssignmentId)
+    const currentMentorId = currentAssignment?.mentor?.toString() || currentAssignment?.mentor
+    
+    // Include all mentors except those already assigned (excluding the current one being reassigned)
+    const assignedIds = mentorAssignments
+      .filter(a => a.active && a.id !== currentAssignmentId)
+      .map(a => a.mentor?.toString() || a.mentor)
+    
+    return mentors.filter(m => {
+      const mentorId = m.id?.toString() || ''
+      return !assignedIds.includes(mentorId) || mentorId === currentMentorId
+    })
   }, [mentors, mentorAssignments])
 
   // Load existing mentor assignments
@@ -79,17 +114,61 @@ export default function AssignMentorsPage() {
     setIsAssigning(true)
     setError(null)
     try {
+      console.log('Assigning mentor:', { cohortId, mentor: selectedMentorId, role: selectedRole })
+      
+      // Ensure mentor ID is a string
+      const mentorId = String(selectedMentorId)
+      
       const newAssignment = await programsClient.assignMentor(cohortId, {
-        mentor: selectedMentorId,
+        mentor: mentorId,
         role: selectedRole,
       })
-      setMentorAssignments([...mentorAssignments, newAssignment])
+      console.log('Mentor assigned/reactivated successfully:', newAssignment)
+      // Reload assignments from backend to get updated list
+      const assignments = await programsClient.getCohortMentors(cohortId)
+      setMentorAssignments(Array.isArray(assignments) ? assignments : [])
       setSelectedMentorId('')
       setSelectedRole('support')
+      setError(null)
+      alert('Mentor assigned successfully')
     } catch (err: any) {
-      setError(err.message || 'Failed to assign mentor')
-      alert(err.message || 'Failed to assign mentor')
       console.error('Failed to assign mentor:', err)
+      console.error('Error response:', err?.response?.data)
+      
+      // Extract error message from various possible locations
+      let errorMessage = 'Failed to assign mentor'
+      
+      if (err?.response?.data) {
+        const errorData = err.response.data
+        
+        // Check for field-specific errors
+        if (errorData.mentor && Array.isArray(errorData.mentor)) {
+          errorMessage = errorData.mentor[0]
+        } else if (errorData.mentor) {
+          errorMessage = errorData.mentor
+        }
+        // Check for non-field errors
+        else if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+          errorMessage = errorData.non_field_errors[0]
+        } else if (errorData.non_field_errors) {
+          errorMessage = errorData.non_field_errors
+        }
+        // Check for general error message
+        else if (errorData.error) {
+          errorMessage = errorData.error
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail
+        }
+        // Check for string error
+        else if (typeof errorData === 'string') {
+          errorMessage = errorData
+        }
+      } else if (err?.message) {
+        errorMessage = err.message
+      }
+      
+      setError(errorMessage)
+      alert(`Error: ${errorMessage}`)
     } finally {
       setIsAssigning(false)
     }
@@ -102,7 +181,10 @@ export default function AssignMentorsPage() {
 
     try {
       await programsClient.removeMentorAssignment(assignmentId)
-      setMentorAssignments(mentorAssignments.filter(a => a.id !== assignmentId))
+      // Reload assignments from backend to get updated list
+      const assignments = await programsClient.getCohortMentors(cohortId)
+      setMentorAssignments(Array.isArray(assignments) ? assignments : [])
+      alert('Mentor removed successfully')
     } catch (err: any) {
       setError(err.message || 'Failed to remove mentor assignment')
       alert(err.message || 'Failed to remove mentor assignment')
@@ -114,10 +196,36 @@ export default function AssignMentorsPage() {
     try {
       const updated = await programsClient.updateMentorAssignment(assignmentId, { role: newRole })
       setMentorAssignments(mentorAssignments.map(a => a.id === assignmentId ? updated : a))
+      // Reload assignments to ensure we have the latest data
+      const assignments = await programsClient.getCohortMentors(cohortId)
+      setMentorAssignments(Array.isArray(assignments) ? assignments : [])
     } catch (err: any) {
       setError(err.message || 'Failed to update mentor role')
       alert(err.message || 'Failed to update mentor role')
       console.error('Failed to update mentor role:', err)
+    }
+  }
+
+  const handleReassignMentor = async (assignmentId: string, newMentorId: string, currentMentorName: string) => {
+    if (!newMentorId) {
+      alert('Please select a new mentor')
+      return
+    }
+
+    if (!confirm(`Are you sure you want to reassign ${currentMentorName} to a different mentor?`)) {
+      return
+    }
+
+    try {
+      await programsClient.reassignMentor(assignmentId, newMentorId)
+      // Reload assignments to get updated list
+      const assignments = await programsClient.getCohortMentors(cohortId)
+      setMentorAssignments(Array.isArray(assignments) ? assignments : [])
+      alert('Mentor reassigned successfully')
+    } catch (err: any) {
+      setError(err.message || 'Failed to reassign mentor')
+      alert(err.message || 'Failed to reassign mentor')
+      console.error('Failed to reassign mentor:', err)
     }
   }
 
@@ -169,6 +277,23 @@ export default function AssignMentorsPage() {
                 <p className="text-och-steel">
                   Manage mentor assignments for: <span className="text-white font-medium">{cohort.name}</span>
                 </p>
+                {/* Program and Track Context */}
+                <div className="mt-2 flex items-center gap-4 text-sm">
+                  {selectedProgram && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-och-steel">Program:</span>
+                      <Badge variant="defender">{selectedProgram.name}</Badge>
+                    </div>
+                  )}
+                  {selectedTrack && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-och-steel">Track:</span>
+                      <Badge variant="mint">
+                        {typeof selectedTrack === 'object' ? selectedTrack.name : 'Loading...'}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
               </div>
               <Link href={`/dashboard/director/cohorts/${cohortId}`}>
                 <Button variant="outline" size="sm">
@@ -266,11 +391,37 @@ export default function AssignMentorsPage() {
             {/* Current Assignments */}
             <Card>
               <div className="p-6">
-                <h2 className="text-xl font-bold text-white mb-4">
-                  Assigned Mentors ({mentorAssignments.filter(a => a.active).length})
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">
+                    Assigned Mentors ({mentorAssignments.filter(a => a.active).length})
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setIsLoadingAssignments(true)
+                      try {
+                        const assignments = await programsClient.getCohortMentors(cohortId)
+                        setMentorAssignments(Array.isArray(assignments) ? assignments : [])
+                        setError(null)
+                      } catch (err: any) {
+                        setError(err.message || 'Failed to refresh mentor assignments')
+                      } finally {
+                        setIsLoadingAssignments(false)
+                      }
+                    }}
+                    disabled={isLoadingAssignments}
+                  >
+                    {isLoadingAssignments ? 'Refreshing...' : '🔄 Refresh'}
+                  </Button>
+                </div>
                 
-                {mentorAssignments.filter(a => a.active).length === 0 ? (
+                {isLoadingAssignments ? (
+                  <div className="text-center py-8 text-och-steel">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-och-defender mx-auto mb-2"></div>
+                    <p>Loading assignments...</p>
+                  </div>
+                ) : mentorAssignments.filter(a => a.active).length === 0 ? (
                   <div className="text-center py-8 text-och-steel">
                     <p>No mentors assigned yet</p>
                     <p className="text-sm mt-2">Assign a mentor using the form on the left</p>
@@ -296,7 +447,7 @@ export default function AssignMentorsPage() {
                                 {mentor?.email && (
                                   <p className="text-xs text-och-steel">{mentor.email}</p>
                                 )}
-                                <div className="mt-2">
+                                <div className="mt-2 space-y-2">
                                   <select
                                     value={assignment.role || 'support'}
                                     onChange={(e) => handleUpdateRole(assignment.id!, e.target.value as 'primary' | 'support' | 'guest')}
@@ -306,6 +457,64 @@ export default function AssignMentorsPage() {
                                     <option value="support">Support</option>
                                     <option value="guest">Guest</option>
                                   </select>
+                                  
+                                  {/* Reassign Section */}
+                                  {reassigningAssignmentId === assignment.id ? (
+                                    <div className="flex gap-2 items-center">
+                                      <select
+                                        value={newMentorId}
+                                        onChange={(e) => setNewMentorId(e.target.value)}
+                                        className="flex-1 px-2 py-1 text-xs bg-och-midnight border border-och-steel/20 rounded text-white focus:outline-none focus:border-och-defender"
+                                      >
+                                        <option value="">Select new mentor...</option>
+                                        {getAvailableMentorsForReassign(assignment.id).map((m) => (
+                                          <option key={m.id} value={m.id}>
+                                            {m.email} {m.first_name || m.last_name 
+                                              ? `(${m.first_name || ''} ${m.last_name || ''})`.trim()
+                                              : ''}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <Button
+                                        variant="defender"
+                                        size="sm"
+                                        onClick={() => {
+                                          if (newMentorId) {
+                                            handleReassignMentor(assignment.id!, newMentorId, mentorName)
+                                            setReassigningAssignmentId(null)
+                                            setNewMentorId('')
+                                          }
+                                        }}
+                                        disabled={!newMentorId}
+                                        className="text-xs"
+                                      >
+                                        Confirm
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setReassigningAssignmentId(null)
+                                          setNewMentorId('')
+                                        }}
+                                        className="text-xs"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setReassigningAssignmentId(assignment.id!)
+                                        setNewMentorId('')
+                                      }}
+                                      className="text-xs w-full"
+                                    >
+                                      Reassign Mentor
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -323,6 +532,7 @@ export default function AssignMentorsPage() {
                                   size="sm"
                                   onClick={() => handleRemoveAssignment(assignment.id!, mentorName)}
                                   className="text-och-orange hover:text-och-orange/80 hover:border-och-orange text-xs"
+                                  disabled={reassigningAssignmentId === assignment.id}
                                 >
                                   Remove
                                 </Button>

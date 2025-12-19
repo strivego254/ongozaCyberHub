@@ -7,7 +7,14 @@ import { Flame, Trophy, Award } from 'lucide-react'
 import { useDashboardStore } from '../../lib/store/dashboardStore'
 
 export function GamificationCard() {
-  const { gamification } = useDashboardStore()
+  const { quickStats } = useDashboardStore()
+  const gamification = {
+    points: quickStats.points,
+    streak: quickStats.streak,
+    badges: quickStats.badges,
+    rank: quickStats.points >= 1000 ? 'Expert' : quickStats.points >= 500 ? 'Advanced' : quickStats.points >= 100 ? 'Intermediate' : 'Beginner',
+    level: Math.floor(quickStats.points / 100) + 1,
+  }
 
   return (
     <motion.div

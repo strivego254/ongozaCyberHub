@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { getUserRoleDisplay } from '@/utils/formatRole'
 
 export function SponsorProfileDropdown() {
   const { user, logout } = useAuth()
@@ -38,6 +39,8 @@ export function SponsorProfileDropdown() {
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'User'
 
+  const userRole = getUserRoleDisplay(user)
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -50,7 +53,7 @@ export function SponsorProfileDropdown() {
         </div>
         <div className="hidden md:block text-left">
           <div className="text-sm font-medium text-white">{userName}</div>
-          <div className="text-xs text-och-steel">Sponsor</div>
+          <div className="text-xs text-och-steel">{userRole}</div>
         </div>
         <svg
           className={`w-4 h-4 text-och-steel transition-transform ${isOpen ? 'rotate-180' : ''}`}

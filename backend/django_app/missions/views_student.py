@@ -328,15 +328,15 @@ def get_mission_detail(request, mission_id):
         'submission': {
             'id': str(submission.id),
             'notes': submission.notes,
-            'file_urls': [a.url for a in artifacts if a.type == 'file'],
-            'github_url': next((a.url for a in artifacts if a.type == 'github'), None),
-            'notebook_url': next((a.url for a in artifacts if a.type == 'notebook'), None),
-            'video_url': next((a.url for a in artifacts if a.type == 'video'), None),
+            'file_urls': [a.url for a in artifacts if a.kind == 'file'],
+            'github_url': next((a.url for a in artifacts if a.kind == 'github'), None),
+            'notebook_url': next((a.url for a in artifacts if a.kind == 'notebook'), None),
+            'video_url': next((a.url for a in artifacts if a.kind == 'video'), None),
         },
         'artifacts': [
             {
                 'id': str(a.id),
-                'type': a.type,
+                'type': a.kind,
                 'url': a.url,
                 'filename': a.filename,
             }
@@ -417,7 +417,7 @@ def submit_mission_for_ai(request, mission_id):
             # Create artifact
             MissionArtifact.objects.create(
                 submission=submission,
-                type='file',
+                kind='file',
                 url=file_url,
                 filename=file.name,
                 size_bytes=file.size,
@@ -438,21 +438,21 @@ def submit_mission_for_ai(request, mission_id):
     if 'github_url' in request.data and request.data['github_url']:
         MissionArtifact.objects.create(
             submission=submission,
-            type='github',
+            kind='github',
             url=request.data['github_url'],
         )
     
     if 'notebook_url' in request.data and request.data['notebook_url']:
         MissionArtifact.objects.create(
             submission=submission,
-            type='notebook',
+            kind='notebook',
             url=request.data['notebook_url'],
         )
     
     if 'video_url' in request.data and request.data['video_url']:
         MissionArtifact.objects.create(
             submission=submission,
-            type='video',
+            kind='video',
             url=request.data['video_url'],
         )
     
@@ -505,7 +505,7 @@ def upload_mission_artifacts(request, submission_id):
             
             artifact = MissionArtifact.objects.create(
                 submission=submission,
-                type='file',
+                kind='file',
                 url=file_url,
                 filename=file.name,
                 size_bytes=file.size,
@@ -527,7 +527,7 @@ def upload_mission_artifacts(request, submission_id):
     if 'github_url' in request.data and request.data['github_url']:
         artifact = MissionArtifact.objects.create(
             submission=submission,
-            type='github',
+            kind='github',
             url=request.data['github_url'],
         )
         artifacts.append(artifact)
@@ -535,7 +535,7 @@ def upload_mission_artifacts(request, submission_id):
     if 'notebook_url' in request.data and request.data['notebook_url']:
         artifact = MissionArtifact.objects.create(
             submission=submission,
-            type='notebook',
+            kind='notebook',
             url=request.data['notebook_url'],
         )
         artifacts.append(artifact)
@@ -543,7 +543,7 @@ def upload_mission_artifacts(request, submission_id):
     if 'video_url' in request.data and request.data['video_url']:
         artifact = MissionArtifact.objects.create(
             submission=submission,
-            type='video',
+            kind='video',
             url=request.data['video_url'],
         )
         artifacts.append(artifact)
@@ -552,7 +552,7 @@ def upload_mission_artifacts(request, submission_id):
         'artifacts': [
             {
                 'id': str(a.id),
-                'type': a.type,
+                'type': a.kind,
                 'url': a.url,
                 'filename': a.filename,
             }

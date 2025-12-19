@@ -415,7 +415,7 @@ export default function UsersPage() {
                   <RefreshIcon className="mr-2" />
                   Retry
                 </Button>
-              </div>
+            </div>
             </Card>
           </div>
         </AdminLayout>
@@ -435,7 +435,7 @@ export default function UsersPage() {
                   <UsersIcon className="w-8 h-8" />
                   User Management
                 </h1>
-                <p className="text-och-steel">Manage all platform users and their roles</p>
+            <p className="text-och-steel">Manage all platform users and their roles</p>
               </div>
               <Button onClick={() => refetch()} variant="outline" size="sm" disabled={isLoading}>
                 <RefreshIcon className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -630,10 +630,10 @@ export default function UsersPage() {
                     </div>
                   )}
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-och-steel/20">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-och-steel/20">
                           <th className="text-left p-3 text-och-steel text-sm font-semibold w-12">
                             <input
                               type="checkbox"
@@ -642,15 +642,15 @@ export default function UsersPage() {
                               className="w-4 h-4 rounded border-och-steel/30 bg-och-midnight/50 text-och-mint focus:ring-och-mint focus:ring-2 cursor-pointer"
                             />
                           </th>
-                          <th className="text-left p-3 text-och-steel text-sm font-semibold">User</th>
-                          <th className="text-left p-3 text-och-steel text-sm font-semibold">Email</th>
-                          <th className="text-left p-3 text-och-steel text-sm font-semibold">Roles</th>
-                          <th className="text-left p-3 text-och-steel text-sm font-semibold">Status</th>
-                          <th className="text-left p-3 text-och-steel text-sm font-semibold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredUsers.map((u) => (
+                      <th className="text-left p-3 text-och-steel text-sm font-semibold">User</th>
+                      <th className="text-left p-3 text-och-steel text-sm font-semibold">Email</th>
+                      <th className="text-left p-3 text-och-steel text-sm font-semibold">Roles</th>
+                      <th className="text-left p-3 text-och-steel text-sm font-semibold">Status</th>
+                      <th className="text-left p-3 text-och-steel text-sm font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((u) => (
                           <tr
                             key={u.id}
                             className={`border-b border-och-steel/10 hover:bg-och-midnight/50 transition-colors ${
@@ -665,30 +665,30 @@ export default function UsersPage() {
                                 className="w-4 h-4 rounded border-och-steel/30 bg-och-midnight/50 text-och-mint focus:ring-och-mint focus:ring-2 cursor-pointer"
                               />
                             </td>
-                            <td className="p-3">
-                              <div>
-                                <p className="text-white font-semibold">
-                                  {u.first_name} {u.last_name}
-                                </p>
+                        <td className="p-3">
+                          <div>
+                            <p className="text-white font-semibold">
+                              {u.first_name} {u.last_name}
+                            </p>
                                 <p className="text-xs text-och-steel">@{u.username || 'N/A'}</p>
-                              </div>
-                            </td>
-                            <td className="p-3 text-och-steel text-sm">{u.email}</td>
-                            <td className="p-3">
-                              <div className="flex flex-wrap gap-1">
+                          </div>
+                        </td>
+                        <td className="p-3 text-och-steel text-sm">{u.email}</td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-1">
                                 {u.roles && u.roles.length > 0 ? (
                                   u.roles.map((r: any, idx: number) => (
-                                    <Badge key={idx} variant="defender" className="text-xs">
-                                      {r.role}
-                                    </Badge>
+                              <Badge key={idx} variant="defender" className="text-xs">
+                                {r.role}
+                              </Badge>
                                   ))
                                 ) : (
                                   <span className="text-xs text-och-steel">No roles</span>
                                 )}
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <Badge
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <Badge
                                 variant={
                                   u.is_active && u.account_status === 'active'
                                     ? 'mint'
@@ -696,24 +696,24 @@ export default function UsersPage() {
                                     ? 'orange'
                                     : 'steel'
                                 }
-                              >
+                          >
                                 {u.account_status || (u.is_active ? 'active' : 'inactive')}
-                              </Badge>
-                            </td>
-                            <td className="p-3">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedUser(u)}
-                              >
-                                Manage Roles
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedUser(u)}
+                          >
+                            Manage Roles
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
                   {/* Pagination */}
                   {totalPages > 1 && (

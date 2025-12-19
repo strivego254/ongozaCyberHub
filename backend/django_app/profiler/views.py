@@ -168,3 +168,87 @@ def profiler_status(request):
         'current_self_complete': session.status in ['current_self_complete', 'future_you_complete', 'finished'],
         'future_you_complete': session.status in ['future_you_complete', 'finished'],
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_future_you_by_mentee(request, mentee_id):
+    """
+    GET /api/v1/profiler/mentees/{mentee_id}/future-you
+    Get Future-You persona for a mentee.
+    """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    
+    try:
+        mentee = User.objects.get(id=mentee_id)
+    except User.DoesNotExist:
+        return Response(
+            {'error': 'Mentee not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - user can view their own data, or if they're a mentor assigned to this mentee
+    user_roles = [ur.role.name for ur in request.user.user_roles.filter(is_active=True)]
+    is_analyst = 'analyst' in user_roles
+    is_admin = 'admin' in user_roles
+    is_mentor = request.user.is_mentor
+    
+    # If not viewing own data, check if user is mentor assigned to this mentee
+    can_view = False
+    if request.user.id == mentee.id:
+        can_view = True
+    elif is_analyst or is_admin:
+        can_view = True
+    elif is_mentor:
+        # Check if mentor is assigned to this mentee
+        from mentorship_coordination.models import MenteeMentorAssignment
+        assignment = MenteeMentorAssignment.objects.filter(
+            mentor=request.user,
+            mentee=mentee,
+            status='active'
+        ).first()
+        if assignment:
+            can_view = True
+    
+    if not can_view:
+        return Response(
+            {'error': 'Permission denied'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Get the most recent completed profiler session
+    session = ProfilerSession.objects.filter(
+        user=mentee,
+        status='finished'
+    ).order_by('-created_at').first()
+    
+    # If no completed session, check user's futureyou_persona field
+    if not session or not session.futureyou_persona:
+        # Check if user has futureyou_persona stored directly
+        if hasattr(mentee, 'futureyou_persona') and mentee.futureyou_persona:
+            persona_data = mentee.futureyou_persona if isinstance(mentee.futureyou_persona, dict) else {}
+        else:
+            return Response(
+                {
+                    'id': str(mentee.id),
+                    'persona_name': 'Not assessed',
+                    'description': 'Future-You persona has not been generated yet.',
+                    'estimated_readiness_date': None,
+                    'confidence_score': None,
+                },
+                status=status.HTTP_200_OK
+            )
+    else:
+        persona_data = session.futureyou_persona
+    
+    # Format response to match frontend expectations
+    response_data = {
+        'id': str(mentee.id),
+        'persona_name': persona_data.get('name', 'Not assessed'),
+        'description': persona_data.get('description', persona_data.get('summary', '')),
+        'estimated_readiness_date': persona_data.get('estimated_readiness_date'),
+        'confidence_score': float(session.track_confidence) if session and session.track_confidence else None,
+    }
+    
+    return Response(response_data, status=status.HTTP_200_OK)

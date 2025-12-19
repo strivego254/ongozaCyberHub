@@ -41,7 +41,7 @@ export function InfluenceAnalytics() {
   ] : []
 
   // Get trend data from influence analytics if available
-  const trendData = (influence as any)?.trend_data || []
+  const trendData = influence?.trend_data || []
 
   // Custom tooltip style
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -179,9 +179,11 @@ export function InfluenceAnalytics() {
           )}
 
           {/* Period */}
-          <div className="text-xs text-och-steel">
-            Period: {new Date(influence.period.start_date).toLocaleDateString()} - {new Date(influence.period.end_date).toLocaleDateString()}
-          </div>
+          {influence.period && influence.period.start_date && influence.period.end_date && (
+            <div className="text-xs text-och-steel">
+              Period: {new Date(influence.period.start_date).toLocaleDateString()} - {new Date(influence.period.end_date).toLocaleDateString()}
+            </div>
+          )}
         </div>
       )}
     </Card>

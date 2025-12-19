@@ -1,125 +1,46 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MissionsPending } from '@/components/mentor/MissionsPending'
-import { MissionReviewForm } from '@/components/mentor/MissionReviewForm'
-import { CapstoneScoringForm } from '@/components/mentor/CapstoneScoringForm'
-import { mentorClient } from '@/services/mentorClient'
+import { RouteGuard } from '@/components/auth/RouteGuard'
+import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
-import type { MissionSubmission, CapstoneProject } from '@/services/types/mentor'
-
-const USE_MOCK_DATA = false // Backend is ready
+import { mentorClient } from '@/services/mentorClient'
+import { MissionManagementView } from '@/components/mentor/missions/MissionManagementView'
+import type { MissionSubmission } from '@/services/types/mentor'
 
 export default function MissionsPage() {
   const { user } = useAuth()
   const mentorId = user?.id?.toString()
-  const [selectedSubmission, setSelectedSubmission] = useState<MissionSubmission | null>(null)
-  const [selectedCapstone, setSelectedCapstone] = useState<CapstoneProject | null>(null)
-  const [capstones, setCapstones] = useState<CapstoneProject[]>([])
-  const [loadingCapstones, setLoadingCapstones] = useState(false)
-
-  const loadCapstones = async () => {
-    if (!mentorId) return
-    setLoadingCapstones(true)
-    try {
-      const data = await mentorClient.getCapstoneProjects(mentorId, { status: 'pending_scoring' })
-      setCapstones(data)
-    } catch (err) {
-      console.error('Failed to load capstones:', err)
-    } finally {
-      setLoadingCapstones(false)
-    }
-  }
-
-  useEffect(() => {
-    loadCapstones()
-  }, [mentorId])
-
-  if (selectedSubmission) {
-    return (
-      <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-6 xl:px-8">
-        <MissionReviewForm
-          submission={selectedSubmission}
-          onReviewComplete={() => setSelectedSubmission(null)}
-        />
-      </div>
-    )
-  }
-
-  if (selectedCapstone) {
-    return (
-      <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-6 xl:px-8">
-        <CapstoneScoringForm
-          capstone={selectedCapstone}
-          onScoringComplete={() => {
-            setSelectedCapstone(null)
-            loadCapstones()
-          }}
-        />
-      </div>
-    )
-  }
 
   return (
-    <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-6 xl:px-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2 text-och-mint">Mission Review</h1>
-        <p className="text-och-steel">
-          Review mission submissions and score capstone projects for Professional tier mentees.
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        <MissionsPending onReviewClick={(submission) => setSelectedSubmission(submission)} />
-        
-        <div className="bg-och-midnight border border-och-steel/20 rounded-xl p-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-white">Capstone Projects</h2>
-              <p className="text-sm text-och-steel">
-                Score capstone projects pending review.
-              </p>
-            </div>
-            <button
-              onClick={loadCapstones}
-              className="px-4 py-2 bg-och-defender text-white rounded-lg hover:bg-opacity-90 text-sm"
-            >
-              {loadingCapstones ? 'Loading...' : 'Load Capstones'}
-            </button>
+    <RouteGuard>
+      <div className="w-full max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-6 xl:px-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2 text-och-mint">Mission Management</h1>
+          <p className="text-och-steel mb-4">
+            As an OCH Mentor, your management of missions is a critical component of the "human-in-the-loop" validation process, 
+            specifically for mentees on the $7 Premium (Professional) tier. While AI performs the initial analysis of a submission, 
+            you provide the deeper analysis required to verify skill mastery and professional readiness.
+          </p>
+          <div className="bg-och-midnight/50 border border-och-steel/20 rounded-lg p-4 mt-4">
+            <h3 className="text-sm font-semibold text-white mb-2">Your Mission Management Responsibilities:</h3>
+            <ul className="text-xs text-och-steel space-y-1 list-disc list-inside">
+              <li>Review submissions for <strong className="text-white">Professional tier ($7 Premium) mentees</strong> completing Intermediate, Advanced, Mastery, and Capstone missions</li>
+              <li>Provide <strong className="text-white">deeper analysis</strong> complementing AI feedback, issue pass/fail grades, and add written feedback</li>
+              <li><strong className="text-white">Tag technical competencies</strong> proven or missed to update mentee skill profiles (TalentScope Analytics)</li>
+              <li>Use <strong className="text-white">rubric-based scoring</strong> for Capstones and Advanced/Mastery missions</li>
+              <li>Recommend <strong className="text-white">next missions or recipes</strong> based on skill gaps detected</li>
+              <li>Track student progress and match it with their <strong className="text-white">Future-You persona</strong></li>
+            </ul>
           </div>
-
-          {capstones.length === 0 && !loadingCapstones && (
-            <div className="text-och-steel text-sm">No capstones pending scoring.</div>
-          )}
-
-          {capstones.length > 0 && (
-            <div className="space-y-3">
-              {capstones.map((capstone) => (
-                <div
-                  key={capstone.id}
-                  className="p-4 bg-och-midnight/50 rounded-lg flex justify-between items-center"
-                >
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">{capstone.title}</h3>
-                    <p className="text-sm text-och-steel mt-1">{capstone.mentee_name}</p>
-                    <p className="text-xs text-och-steel mt-1">
-                      Submitted: {new Date(capstone.submitted_at).toLocaleString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedCapstone(capstone)}
-                    className="px-4 py-2 bg-och-defender text-white rounded-lg hover:bg-opacity-90 text-sm"
-                  >
-                    Score Capstone
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+
+        {mentorId && (
+          <MissionManagementView mentorId={mentorId} />
+        )}
       </div>
-    </div>
+    </RouteGuard>
   )
 }
-
-

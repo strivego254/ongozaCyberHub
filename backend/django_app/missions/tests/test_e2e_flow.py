@@ -73,7 +73,7 @@ class MissionE2EFlowTest(TestCase):
         # Verify artifact created
         artifact = MissionArtifact.objects.filter(submission=submission).first()
         self.assertIsNotNone(artifact)
-        self.assertEqual(artifact.type, 'file')
+        self.assertEqual(artifact.kind, 'file')
         
         # Step 3: Submit for AI review
         submit_response = self.client.post(
@@ -135,7 +135,7 @@ class MissionE2EFlowTest(TestCase):
         # Verify GitHub artifact created
         artifact = MissionArtifact.objects.filter(
             submission=submission,
-            type='github'
+            kind='github'
         ).first()
         self.assertIsNotNone(artifact)
         self.assertIn('github.com', artifact.url)

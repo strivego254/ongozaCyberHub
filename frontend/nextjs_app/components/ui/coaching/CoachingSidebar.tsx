@@ -53,7 +53,7 @@ export function CoachingSidebar({ onNavigate }: CoachingSidebarProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <RadialAlignment score={metrics.alignmentScore} target={95} size="md" />
+              <RadialAlignment score={metrics?.alignmentScore || 0} target={95} size="md" />
               <p className="text-sm text-slate-400 mt-2 text-center">
                 Future-You Alignment
               </p>
@@ -83,15 +83,15 @@ export function CoachingSidebar({ onNavigate }: CoachingSidebarProps) {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-slate-400">
                 <span>Active Habits</span>
-                <span className="text-indigo-300 font-semibold">{metrics.activeHabits}</span>
+                <span className="text-indigo-300 font-semibold">{metrics?.activeHabits ?? metrics?.habits_streak ?? 0}</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Total Streak</span>
-                <span className="text-orange-300 font-semibold">{metrics.totalStreakDays} days</span>
+                <span className="text-orange-300 font-semibold">{metrics?.totalStreakDays ?? metrics?.habits_streak ?? 0} days</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Reflections</span>
-                <span className="text-purple-300 font-semibold">{metrics.reflectionCount}</span>
+                <span className="text-purple-300 font-semibold">{metrics?.reflectionCount ?? metrics?.reflections_count ?? 0}</span>
               </div>
             </div>
           </div>
@@ -139,9 +139,9 @@ export function CoachingSidebar({ onNavigate }: CoachingSidebarProps) {
             </Button>
           </div>
           <div className="p-6">
-            <RadialAlignment score={metrics.alignmentScore} target={95} size="lg" className="mx-auto mb-4" />
+            <RadialAlignment score={metrics?.alignmentScore || 0} target={95} size="lg" className="mx-auto mb-4" />
             <p className="text-center text-slate-300 mb-6">
-              {metrics.alignmentScore}% aligned with your Future-You
+              {metrics?.alignmentScore || 0}% aligned with your Future-You
             </p>
             <div className="space-y-2">
               {quickActions.map((action) => (

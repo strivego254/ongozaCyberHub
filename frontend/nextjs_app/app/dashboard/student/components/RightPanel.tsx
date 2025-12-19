@@ -103,7 +103,7 @@ export function RightPanel() {
         <h3 className="text-sm font-semibold text-och-steel mb-3">Habit Tracker</h3>
         <Card className="glass-card p-3">
           <div className="space-y-2">
-            {habits.length === 0 ? (
+            {(!habits || habits.length === 0) ? (
               <div className="text-center py-4">
                 <p className="text-xs text-och-steel mb-2">No habits configured</p>
                 <Button
@@ -116,7 +116,7 @@ export function RightPanel() {
                 </Button>
               </div>
             ) : (
-              habits.map((habit) => (
+              (habits || []).map((habit) => (
                 <div key={habit.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">
@@ -157,7 +157,7 @@ export function RightPanel() {
         <h3 className="text-sm font-semibold text-och-steel mb-3">Leaderboard</h3>
         <Card className="glass-card p-3">
           <div className="space-y-2">
-            {leaderboard.length === 0 ? (
+            {(!leaderboard || leaderboard.length === 0) ? (
               <div className="text-center py-4">
                 <p className="text-xs text-och-steel mb-2">No leaderboard data</p>
                 <Button
@@ -170,7 +170,7 @@ export function RightPanel() {
                 </Button>
               </div>
             ) : (
-              leaderboard.map((entry) => (
+              (leaderboard || []).map((entry) => (
                 <div
                   key={entry.userId}
                   className={`flex items-center justify-between p-2 rounded ${

@@ -41,8 +41,11 @@ def mission_dashboard(request):
     user_tier = get_user_tier(user)
     
     # Get user's enrollment for track
-    enrollment = Enrollment.objects.filter(user=user, status='active').first()
-    user_track = enrollment.track_key if enrollment else track
+    enrollment = Enrollment.objects.filter(user=user, status='active').select_related('cohort__track').first()
+    
+    # Get track_key from enrollment (uses the property that accesses cohort.track.key)
+    # This uses the track_key defined by the director when assigning the student to a cohort
+    user_track = enrollment.track_key if enrollment and enrollment.track_key else track
     
     # Get all missions for this track/tier
     all_missions = Mission.objects.filter(
