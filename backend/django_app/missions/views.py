@@ -127,7 +127,7 @@ def submit_mission(request, mission_id):
         # Create file record
         MissionArtifact.objects.create(
             submission=submission,
-            type='file',
+            kind='file',
             url=f'/media/missions/{submission.id}/{file.name}',
             filename=file.name,
             size_bytes=file.size,

@@ -3,9 +3,11 @@
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
+import { getUserRoleDisplay } from '@/utils/formatRole'
 
 export default function ProfileSettingsPage() {
   const { user } = useAuth()
+  const userRole = getUserRoleDisplay(user)
 
   return (
     <div className="p-6">
@@ -63,6 +65,16 @@ export default function ProfileSettingsPage() {
                 defaultValue={user?.email || ''}
                 className="w-full px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-och-steel mb-2">
+                Role
+              </label>
+              <div className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-och-mint">
+                {userRole}
+              </div>
+              <p className="text-xs text-och-steel mt-1">Your role is determined by your account permissions</p>
             </div>
 
             <div>

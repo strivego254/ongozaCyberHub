@@ -19,6 +19,14 @@ export function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
   const isDirectorRoute = pathname.startsWith('/dashboard/director');
 
+  // CRITICAL: Don't redirect if user is on login page and already has a token
+  // This prevents redirect loops after successful login
+  if (isAuthRoute && hasToken) {
+    // Allow login page to handle the redirect client-side
+    // This prevents middleware from interfering with post-login flow
+    return NextResponse.next();
+  }
+
   // Redirect to login if accessing protected route without token
   if (isProtectedRoute && !hasToken) {
     // Redirect to director login for director routes, otherwise student login

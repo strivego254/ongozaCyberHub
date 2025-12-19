@@ -233,12 +233,3 @@ class PaymentSettingsViewSet(viewsets.ModelViewSet):
                 return super().update(instance, validated_data)
         
         return PaymentSettingsSerializer
-
-
-
-
-
-
-
-
-

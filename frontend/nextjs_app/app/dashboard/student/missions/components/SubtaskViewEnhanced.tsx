@@ -285,7 +285,7 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
         {/* Actions */}
         <div className="flex items-center gap-3 mt-6">
           <Button
-            variant="steel"
+            variant="outline"
             onClick={() => {
               updateSubtaskProgress(currentSubtask, {
                 completed: progress.completed,

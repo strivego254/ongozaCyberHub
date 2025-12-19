@@ -489,7 +489,7 @@ export default function CreateProgramClient() {
                       Add First Track
                       </Button>
                     </div>
-                ) : (
+                  ) : (
                   <div className="space-y-6">
                       {tracks.map((track, trackIndex) => (
                       <Card key={trackIndex} className="border-och-defender/30 bg-och-midnight/30">
@@ -888,7 +888,7 @@ export default function CreateProgramClient() {
                         {track.specializations.length > 0 && (
                           <p className="text-xs text-och-steel mt-1">
                             {track.specializations.length} specialization(s)
-                          </p>
+                            </p>
                         )}
                           </div>
                         ))}

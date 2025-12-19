@@ -13,6 +13,7 @@ from .director_views import (
 )
 from .rules_views import DirectorProgramRuleViewSet
 from .program_management_views import ProgramManagementViewSet
+from .mentor_assignment_views import MentorAssignmentViewSet
 
 __all__ = [
     'ProgramViewSet', 'TrackViewSet', 'CohortViewSet',
@@ -22,6 +23,7 @@ __all__ = [
     'DirectorMentorViewSet', 'DirectorDashboardViewSet',
     'DirectorProgramRuleViewSet',
     'ProgramManagementViewSet',
+    'MentorAssignmentViewSet',
     'director_dashboard',
 ]
 

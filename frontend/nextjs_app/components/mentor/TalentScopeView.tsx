@@ -1,17 +1,48 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
-import { useTalentScopeView } from '@/hooks/useTalentScopeView'
 import { useAuth } from '@/hooks/useAuth'
 import { useMentorMentees } from '@/hooks/useMentorMentees'
+import type { AssignedMentee } from '@/services/types/mentor'
 
 export function TalentScopeView() {
   const { user } = useAuth()
+  const router = useRouter()
   const mentorId = user?.id?.toString()
   const { mentees } = useMentorMentees(mentorId)
-  const [selectedMenteeId, setSelectedMenteeId] = useState<string | undefined>(mentees[0]?.id)
-  const { view, isLoading, error } = useTalentScopeView(mentorId, selectedMenteeId)
+  const [selectedCohort, setSelectedCohort] = useState<string>('all')
+
+  // Group mentees by cohort
+  const menteesByCohort = useMemo(() => {
+    const grouped: Record<string, AssignedMentee[]> = {}
+    mentees.forEach((mentee) => {
+      const cohort = mentee.cohort || 'Unassigned'
+      if (!grouped[cohort]) {
+        grouped[cohort] = []
+      }
+      grouped[cohort].push(mentee)
+    })
+    return grouped
+  }, [mentees])
+
+  // Get unique cohorts
+  const cohorts = useMemo(() => {
+    return ['all', ...Object.keys(menteesByCohort).sort()]
+  }, [menteesByCohort])
+
+  // Filter mentees by selected cohort
+  const filteredMentees = useMemo(() => {
+    if (selectedCohort === 'all') {
+      return mentees
+    }
+    return menteesByCohort[selectedCohort] || []
+  }, [selectedCohort, mentees, menteesByCohort])
+
+  const handleMenteeClick = (menteeId: string) => {
+    router.push(`/dashboard/mentor/analytics/${menteeId}`)
+  }
 
   if (!mentorId) return null
 
@@ -20,129 +51,110 @@ export function TalentScopeView() {
       <div className="mb-4">
         <h2 className="text-2xl font-bold text-white mb-2">TalentScope Mentor View</h2>
         <p className="text-sm text-och-steel">
-          Visualize mentee performance data and behavioral trends.
+          Select a cohort and click on a mentee to view their detailed analytics.
         </p>
       </div>
 
-      {mentees.length > 0 && (
+      {/* Cohort Filter */}
+      {cohorts.length > 1 && (
         <div className="mb-4">
-          <label className="block text-sm font-medium text-white mb-2">Select Mentee</label>
+          <label className="block text-sm font-medium text-white mb-2">Filter by Cohort</label>
           <select
-            value={selectedMenteeId || ''}
-            onChange={(e) => setSelectedMenteeId(e.target.value)}
+            value={selectedCohort}
+            onChange={(e) => setSelectedCohort(e.target.value)}
             className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
           >
-            {mentees.map((mentee) => (
-              <option key={mentee.id} value={mentee.id}>
-                {mentee.name}
+            {cohorts.map((cohort) => (
+              <option key={cohort} value={cohort}>
+                {cohort === 'all' ? 'All Cohorts' : cohort}
               </option>
             ))}
           </select>
         </div>
       )}
 
-      {isLoading && <div className="text-och-steel text-sm">Loading TalentScope data...</div>}
-      {error && <div className="text-och-orange text-sm">Error: {error}</div>}
-
-      {!isLoading && !error && view && (
-        <div className="space-y-6">
-          {/* Ingested Signals */}
-          <div className="p-4 bg-och-midnight/50 rounded-lg">
-            <h3 className="text-lg font-semibold text-white mb-3">Ingested Signals</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-och-steel">Mentor Evaluations:</span>
-                <span className="text-white ml-2">{view.ingested_signals.mentor_evaluations}</span>
-              </div>
-              <div>
-                <span className="text-och-steel">Habit Logs:</span>
-                <span className="text-white ml-2">{view.ingested_signals.habit_logs}</span>
-              </div>
-              <div>
-                <span className="text-och-steel">Mission Scores:</span>
-                <span className="text-white ml-2">{view.ingested_signals.mission_scores}</span>
-              </div>
-              <div>
-                <span className="text-och-steel">Community Engagement:</span>
-                <span className="text-white ml-2">{view.ingested_signals.community_engagement}</span>
-              </div>
-            </div>
-            <div className="mt-3">
-              <span className="text-och-steel text-sm">Reflection Sentiment:</span>
-              <div className="flex gap-4 mt-1 text-xs">
-                <span className="text-och-mint">Positive: {view.ingested_signals.reflection_sentiment.positive}</span>
-                <span className="text-och-steel">Neutral: {view.ingested_signals.reflection_sentiment.neutral}</span>
-                <span className="text-och-orange">Negative: {view.ingested_signals.reflection_sentiment.negative}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Skills Heatmap */}
-          <div className="p-4 bg-och-midnight/50 rounded-lg">
-            <h3 className="text-lg font-semibold text-white mb-3">Skills Heatmap</h3>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {Object.entries(view.skills_heatmap).map(([skill, score]) => (
-                <div key={skill} className="flex justify-between items-center">
-                  <span className="text-och-steel capitalize">{skill.replace('_', ' ')}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 h-2 bg-och-midnight rounded-full overflow-hidden">
+      {/* Mentees Grid by Cohort */}
+      {filteredMentees.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-white mb-3">
+            {selectedCohort === 'all' ? 'All Mentees' : `Cohort: ${selectedCohort}`} ({filteredMentees.length})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredMentees.map((mentee) => (
+                <div
+                  key={mentee.id}
+                  onClick={() => handleMenteeClick(mentee.id)}
+                  className="p-4 rounded-lg border cursor-pointer transition-all hover:border-och-mint/50 bg-och-midnight/50 border-och-steel/20 hover:bg-och-midnight"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <h4 className="text-sm font-semibold text-white mb-1">{mentee.name}</h4>
+                      {mentee.cohort && (
+                        <p className="text-xs text-och-steel mb-1">Cohort: {mentee.cohort}</p>
+                      )}
+                      {mentee.track && (
+                        <p className="text-xs text-och-steel">Track: {mentee.track}</p>
+                      )}
+                    </div>
+                    {mentee.avatar_url && (
+                      <img
+                        src={mentee.avatar_url}
+                        alt={mentee.name}
+                        className="w-10 h-10 rounded-full border border-och-steel/20"
+                      />
+                    )}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-och-steel/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-och-steel">Readiness Score</span>
+                      <span className="text-sm font-bold text-white">{mentee.readiness_score.toFixed(1)}%</span>
+                </div>
+                    <div className="w-full h-2 bg-och-midnight rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-och-mint"
-                        style={{ width: `${score}%` }}
+                        className={`h-full transition-all ${
+                          mentee.readiness_score >= 80 ? 'bg-och-mint' :
+                          mentee.readiness_score >= 60 ? 'bg-och-defender' :
+                          mentee.readiness_score >= 40 ? 'bg-och-gold' : 'bg-och-orange'
+                        }`}
+                        style={{ width: `${mentee.readiness_score}%` }}
                       />
                     </div>
-                    <span className="text-white w-8 text-right">{score}%</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Behavioral Trends */}
-          <div className="p-4 bg-och-midnight/50 rounded-lg">
-            <h3 className="text-lg font-semibold text-white mb-3">Behavioral Trends</h3>
-            <div className="space-y-2 text-xs">
-              {view.behavioral_trends.slice(-5).map((trend, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="text-och-steel">{new Date(trend.date).toLocaleDateString()}</span>
-                  <div className="flex gap-4">
-                    <span className="text-och-mint">Eng: {trend.engagement}</span>
-                    <span className="text-och-gold">Perf: {trend.performance}</span>
-                    <span className="text-och-defender">Sent: {trend.sentiment}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Readiness Over Time */}
-          <div className="p-4 bg-och-midnight/50 rounded-lg">
-            <h3 className="text-lg font-semibold text-white mb-3">Readiness Over Time</h3>
-            <div className="space-y-2 text-xs">
-              {view.readiness_over_time.slice(-5).map((point, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="text-och-steel">{new Date(point.date).toLocaleDateString()}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-32 h-2 bg-och-midnight rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-och-mint"
-                        style={{ width: `${point.score}%` }}
-                      />
+                    <div className="flex items-center justify-between mt-2 text-xs">
+                      <span className={`px-2 py-0.5 rounded ${
+                        mentee.risk_level === 'low' ? 'bg-och-mint/20 text-och-mint' :
+                        mentee.risk_level === 'medium' ? 'bg-och-gold/20 text-och-gold' :
+                        'bg-och-orange/20 text-och-orange'
+                      }`}>
+                        {mentee.risk_level} risk
+                      </span>
+                      {mentee.missions_completed !== undefined && (
+                        <span className="text-och-steel">{mentee.missions_completed} missions</span>
+                      )}
                     </div>
-                    <span className="text-white w-10 text-right">{point.score}%</span>
+                  </div>
+                  <div className="mt-3 text-xs text-och-mint text-center">
+                    Click to view detailed analytics →
                   </div>
                 </div>
               ))}
             </div>
           </div>
+      )}
+
+      {filteredMentees.length === 0 && mentees.length > 0 && (
+        <div className="text-och-steel text-sm py-4">
+          No mentees found in the selected cohort.
         </div>
       )}
 
-      {!isLoading && !error && !view && (
-        <div className="text-och-steel text-sm">Select a mentee to view TalentScope data.</div>
+      {mentees.length === 0 && (
+        <div className="text-och-steel text-sm py-4">
+          No mentees assigned yet.
+        </div>
       )}
     </Card>
   )
 }
+
 
 

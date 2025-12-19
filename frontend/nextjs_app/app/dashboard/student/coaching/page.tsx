@@ -27,12 +27,11 @@ export default function CoachingPage() {
           habitsAPI.getAll().catch(() => []),
           goalsAPI.getAll().catch(() => []),
           reflectionsAPI.getAll().catch(() => []),
-          metricsAPI.getMetrics().catch(() => ({
-            alignmentScore: 87,
-            totalStreakDays: 0,
-            activeHabits: 0,
-            completedGoals: 0,
-            reflectionCount: 0,
+          metricsAPI.get().catch(() => ({
+            habits_streak: 0,
+            goals_completed: 0,
+            reflections_count: 0,
+            weekly_completion_rate: 0,
           })),
           Promise.all(
             (await habitsAPI.getAll()).map(habit => 

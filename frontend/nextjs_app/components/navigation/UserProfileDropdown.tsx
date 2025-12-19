@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { getUserRoleDisplay } from '@/utils/formatRole'
+import { getProfilePath, getSettingsPath } from '@/utils/navigation'
 
 export function UserProfileDropdown() {
   const { user, logout } = useAuth()
@@ -38,6 +40,10 @@ export function UserProfileDropdown() {
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'User'
 
+  const userRole = getUserRoleDisplay(user)
+  const profilePath = getProfilePath(user)
+  const settingsPath = getSettingsPath(user)
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -50,7 +56,7 @@ export function UserProfileDropdown() {
         </div>
         <div className="hidden md:block text-left">
           <div className="text-sm font-medium text-white">{userName}</div>
-          <div className="text-xs text-och-steel">Student</div>
+          <div className="text-xs text-och-steel">{userRole}</div>
         </div>
         <svg
           className={`w-4 h-4 text-och-steel transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -70,14 +76,14 @@ export function UserProfileDropdown() {
           </div>
           <div className="py-2">
             <Link
-              href="/dashboard/student/settings/profile"
+              href={profilePath}
               onClick={() => setIsOpen(false)}
               className="block px-4 py-2 text-sm text-och-steel hover:bg-och-defender/20 hover:text-och-mint transition-colors"
             >
               Profile
             </Link>
             <Link
-              href="/dashboard/student/settings"
+              href={settingsPath}
               onClick={() => setIsOpen(false)}
               className="block px-4 py-2 text-sm text-och-steel hover:bg-och-defender/20 hover:text-och-mint transition-colors"
             >

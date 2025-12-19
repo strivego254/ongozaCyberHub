@@ -16,9 +16,9 @@ export function PortfolioCard() {
   const { portfolio } = useDashboardStore()
 
   const data = [
-    { name: 'Approved', value: portfolio.approved, color: COLORS.approved },
-    { name: 'Pending', value: portfolio.pending, color: COLORS.pending },
-    { name: 'Rejected', value: portfolio.rejected, color: COLORS.rejected },
+    { name: 'Approved', value: portfolio?.approved || 0, color: COLORS.approved },
+    { name: 'Pending', value: portfolio?.pending || 0, color: COLORS.pending },
+    { name: 'Rejected', value: portfolio?.rejected || 0, color: COLORS.rejected },
   ].filter(item => item.value > 0)
 
   return (
@@ -31,7 +31,7 @@ export function PortfolioCard() {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-och-steel">Portfolio</h3>
           <span className="text-[10px] text-dashboard-accent font-medium">
-            {Math.round(portfolio.percentage)}%
+            {Math.round(portfolio?.percentage || 0)}%
           </span>
         </div>
 
@@ -69,15 +69,15 @@ export function PortfolioCard() {
 
         <div className="grid grid-cols-3 gap-1 text-[10px]">
           <div className="text-center">
-            <div className="text-white font-semibold">{portfolio.approved}</div>
+            <div className="text-white font-semibold">{portfolio?.approved || 0}</div>
             <div className="text-och-steel">Approved</div>
           </div>
           <div className="text-center">
-            <div className="text-white font-semibold">{portfolio.pending}</div>
+            <div className="text-white font-semibold">{portfolio?.pending || 0}</div>
             <div className="text-och-steel">Pending</div>
           </div>
           <div className="text-center">
-            <div className="text-white font-semibold">{portfolio.total}</div>
+            <div className="text-white font-semibold">{portfolio?.total || 0}</div>
             <div className="text-och-steel">Total</div>
           </div>
         </div>

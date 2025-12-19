@@ -49,7 +49,7 @@ export function RecipeSidebar({ recipeIds }: RecipeSidebarProps) {
               <p className="text-xs text-och-steel mb-3">{recipe.description}</p>
               <div className="flex items-center gap-2">
                 <Button
-                  variant="steel"
+                  variant="outline"
                   size="sm"
                   className="flex-1 text-xs"
                   onClick={() => {

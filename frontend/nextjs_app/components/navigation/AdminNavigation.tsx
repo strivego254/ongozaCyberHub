@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import clsx from 'clsx'
 import { useAuth } from '@/hooks/useAuth'
+import { getUserRoleDisplay } from '@/utils/formatRole'
 
 interface NavItem {
   label: string
@@ -233,7 +234,12 @@ export function AdminNavigation() {
                   ? `${user.first_name} ${user.last_name}`
                   : user?.email || 'Admin'}
               </p>
-              <p className="text-xs text-och-steel truncate">{user?.email}</p>
+              <p className="text-xs text-och-steel truncate">
+                {user?.email || ''}
+              </p>
+              <p className="text-xs text-och-mint truncate mt-0.5">
+                {getUserRoleDisplay(user)}
+              </p>
             </div>
             <svg
               className={`w-4 h-4 text-och-steel transition-transform flex-shrink-0 ${isProfileOpen ? 'rotate-180' : ''}`}

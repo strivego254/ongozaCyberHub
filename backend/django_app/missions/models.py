@@ -230,6 +230,7 @@ class MissionArtifact(models.Model):
     kind = models.CharField(
         max_length=20,
         choices=KIND_CHOICES,
+        default='file',
         db_index=True,
         help_text='Type of artifact'
     )

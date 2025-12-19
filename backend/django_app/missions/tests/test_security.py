@@ -82,7 +82,7 @@ class MissionSecurityTest(TestCase):
         """Test artifacts are properly linked to submissions."""
         artifact = MissionArtifact.objects.create(
             submission=self.submission1,
-            type='file',
+            kind='file',
             url='https://example.com/file.pdf',
             filename='file.pdf'
         )

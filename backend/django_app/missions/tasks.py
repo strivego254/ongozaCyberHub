@@ -49,7 +49,7 @@ def process_mission_ai_review(submission_id: str):
             try:
                 import requests
                 artifact_data = [
-                    {'type': a.type, 'url': a.url, 'filename': a.filename}
+                    {'type': a.kind, 'url': a.url, 'filename': a.filename}
                     for a in artifacts
                 ]
                 response = requests.post(
@@ -99,7 +99,7 @@ def process_mission_ai_review(submission_id: str):
 Mission: {submission.mission.code} - {submission.mission.title}
 Competencies: {submission.mission.competencies}
 Notes: {submission.notes}
-Artifacts: {[f"{a.type}: {a.filename or a.url}" for a in artifacts]}
+Artifacts: {[f"{a.kind}: {a.filename or a.url}" for a in artifacts]}
 """
                 
                 response = client.chat.completions.create(
