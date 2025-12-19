@@ -41,7 +41,7 @@ DB_NAME=ongozacyberhub
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_HOST=localhost
-DB_PORT=5432
+DB_PORT=5434
 
 # FastAPI Communication
 FASTAPI_BASE_URL=http://localhost:8001
@@ -54,15 +54,28 @@ fi
 
 # Check database connection
 echo "Checking database connection..."
-python manage.py check --database default 2>/dev/null || {
+python3 manage.py check --database default 2>/dev/null || {
     echo "⚠️  Database connection check failed. Continuing anyway..."
 }
 
+# Check if port 8000 is in use and handle it
+PORT=${PORT:-8000}
+if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null 2>&1 || ss -tuln 2>/dev/null | grep -q ":$PORT "; then
+    echo ""
+    echo "⚠️  Port $PORT is already in use (likely by Docker)!"
+    echo ""
+    echo "Please choose an option:"
+    echo "  1. Stop Docker containers first: cd ../../backend && docker compose down"
+    echo "  2. Use a different port: PORT=8001 bash start_server.sh"
+    echo ""
+    exit 1
+fi
+
 echo ""
-echo "Starting Django development server on http://localhost:8000"
+echo "Starting Django development server on http://localhost:$PORT"
 echo "Press Ctrl+C to stop"
 echo ""
 
 # Start server
-python manage.py runserver 0.0.0.0:8000
+python3 manage.py runserver 0.0.0.0:$PORT
 
