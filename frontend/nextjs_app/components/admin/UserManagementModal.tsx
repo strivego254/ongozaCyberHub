@@ -37,7 +37,7 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
   const loadUserData = async () => {
     if (!user) return
     try {
-      const updatedUser = await apiGateway.get(`/users/${user.id}`)
+      const updatedUser = await apiGateway.get(`/users/${user.id}`) as { roles?: string[] }
       setUserRoles(updatedUser.roles || [])
     } catch (error) {
       console.error('Failed to load user data:', error)
@@ -64,10 +64,10 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
       const response = await apiGateway.post(`/users/${user.id}/roles`, {
         role_id: selectedRole,
         scope: 'global',
-      })
+      }) as { detail?: string }
       
       // Reload user data to get updated roles with IDs
-      const updatedUser = await apiGateway.get(`/users/${user.id}`)
+      const updatedUser = await apiGateway.get(`/users/${user.id}`) as { roles?: string[] }
       setUserRoles(updatedUser.roles || [])
       setSelectedRole(null)
       
@@ -113,7 +113,7 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
       await apiGateway.delete(`/users/${user.id}/roles/${userRoleId}`)
       
       // Reload user data to get updated roles
-      const updatedUser = await apiGateway.get(`/users/${user.id}`)
+      const updatedUser = await apiGateway.get(`/users/${user.id}`) as { roles?: string[] }
       setUserRoles(updatedUser.roles || [])
       
       alert('Role revoked successfully')

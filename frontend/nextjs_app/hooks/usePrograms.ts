@@ -357,9 +357,10 @@ export function useCohorts(params?: {
         })
       } else if (Array.isArray(data)) {
         // Fallback for non-paginated responses
-        setCohorts(data)
+        const dataArray = data as any[]
+        setCohorts(dataArray)
         setPagination({
-          count: data.length,
+          count: dataArray.length,
           next: null,
           previous: null
         })

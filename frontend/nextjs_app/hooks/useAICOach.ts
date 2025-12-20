@@ -35,7 +35,7 @@ export function useAICOach() {
     
     try {
       const response = await aiCoachAPI.sendMessage(message, context, metadata)
-      addAIMessage(response)
+      addAIMessage(response as any)
       return response
     } catch (error) {
       console.error('Failed to send message to AI coach:', error)

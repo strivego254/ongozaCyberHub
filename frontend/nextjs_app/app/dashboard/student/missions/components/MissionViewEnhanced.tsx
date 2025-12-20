@@ -71,7 +71,7 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
     ? Math.round(
         (missionData.objectives.filter((_, i) => {
           const progressThreshold = ((i + 1) / missionData.objectives!.length) * 100
-          return (missionData.progress || 0) >= progressThreshold
+          return (missionData.progress_percent || 0) >= progressThreshold
         }).length /
           missionData.objectives.length) *
           100
@@ -100,7 +100,7 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
             <div className="flex items-center text-sm text-slate-500 gap-4">
               <div className="flex items-center">
                 <Shield className="w-4 h-4 mr-1" />
-                Track: {missionData.track?.toUpperCase() || 'DEFENDER'}
+                Track: {missionData.track?.toUpperCase() || missionData.track_key?.toUpperCase() || missionData.track_name?.toUpperCase() || 'DEFENDER'}
               </div>
               <div>|</div>
               <div>Tier: {missionData.tier?.toUpperCase() || 'BEGINNER'}</div>

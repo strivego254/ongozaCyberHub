@@ -74,7 +74,7 @@ export function ReviewFeedback({ progressId, userTier }: ReviewFeedbackProps) {
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-och-mint mb-2">Strengths</h3>
               <ul className="space-y-1">
-                {aiFeedback.strengths.map((strength, idx) => (
+                {aiFeedback.strengths.map((strength: string, idx: number) => (
                   <li key={idx} className="text-sm text-och-steel flex items-start gap-2">
                     <span className="text-och-mint">✓</span>
                     <span>{strength}</span>
@@ -89,7 +89,7 @@ export function ReviewFeedback({ progressId, userTier }: ReviewFeedbackProps) {
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-och-orange mb-2">Areas for Improvement</h3>
               <ul className="space-y-1">
-                {aiFeedback.gaps.map((gap, idx) => (
+                {aiFeedback.gaps.map((gap: string, idx: number) => (
                   <li key={idx} className="text-sm text-och-steel flex items-start gap-2">
                     <span className="text-och-orange">→</span>
                     <span>{gap}</span>
@@ -104,7 +104,7 @@ export function ReviewFeedback({ progressId, userTier }: ReviewFeedbackProps) {
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-och-steel mb-2">Suggestions</h3>
               <ul className="space-y-1">
-                {aiFeedback.full_feedback.suggested_improvements.map((suggestion, idx) => (
+                {aiFeedback.full_feedback.suggested_improvements.map((suggestion: string, idx: number) => (
                   <li key={idx} className="text-sm text-och-steel">
                     • {suggestion}
                   </li>
@@ -118,7 +118,7 @@ export function ReviewFeedback({ progressId, userTier }: ReviewFeedbackProps) {
             <div>
               <h3 className="text-sm font-semibold text-och-steel mb-2">Competencies Detected</h3>
               <div className="flex flex-wrap gap-2">
-                {aiFeedback.full_feedback.tagged_competencies.map((comp, idx) => (
+                {aiFeedback.full_feedback.tagged_competencies.map((comp: { name: string; level: number }, idx: number) => (
                   <Badge key={idx} variant="steel">
                     {comp.name} (L{comp.level})
                   </Badge>
@@ -148,7 +148,7 @@ export function ReviewFeedback({ progressId, userTier }: ReviewFeedbackProps) {
 
           {mentorFeedback ? (
             <div>
-              <Badge variant={mentorFeedback.decision === 'pass' ? 'mint' : 'error'}>
+              <Badge variant={mentorFeedback.decision === 'pass' ? 'mint' : 'orange'}>
                 {mentorFeedback.decision === 'pass' ? '✓ Passed' : '✗ Failed'}
               </Badge>
               {mentorFeedback.comments && (

@@ -16,7 +16,7 @@ import { useMissionStore } from '../lib/store/missionStore'
 import type { Mission } from '../types'
 
 interface MissionCardEnhancedProps {
-  mission: Mission & { gates?: any[]; warnings?: any[] }
+  mission: Mission & { gates?: any[]; warnings?: any[]; recipe_recommendations?: any[] }
   isDragging?: boolean
   provided?: any
   [key: string]: any // Allow additional props for drag-drop

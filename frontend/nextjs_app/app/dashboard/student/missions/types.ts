@@ -1,4 +1,6 @@
 export type MissionStatus = 
+  | 'locked'
+  | 'available'
   | 'not_started' 
   | 'draft'
   | 'in_progress' 
@@ -62,6 +64,9 @@ export interface Mission {
   artifacts_required?: number
   submission_id?: string
   ai_score?: number
+  recipe_recommendations?: any[]
+  track?: string
+  tier?: string
 }
 
 export interface MissionAttachment {

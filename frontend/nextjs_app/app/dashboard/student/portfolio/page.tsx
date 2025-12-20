@@ -61,7 +61,7 @@ export default function PortfolioPage() {
                 <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
                 <p className="text-sm text-och-steel mb-3">{item.description}</p>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {item.tags.map((tag) => (
+                  {item.tags.map((tag: string) => (
                     <Badge key={tag} variant="steel" className="text-xs">
                       {tag}
                     </Badge>

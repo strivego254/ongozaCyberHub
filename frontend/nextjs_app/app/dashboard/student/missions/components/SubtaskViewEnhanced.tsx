@@ -120,7 +120,7 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
   }
 
   const allDependenciesMet = currentSubtaskData?.dependencies
-    ? currentSubtaskData.dependencies.every((depId) => {
+    ? currentSubtaskData.dependencies.every((depId: number) => {
         const depProgress = subtasksProgress[depId]
         return depProgress?.completed
       })
@@ -140,7 +140,7 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
     ? 'available'
     : 'locked'
 
-  const evidenceTypes = currentSubtaskData.evidence_schema?.map((s) => s.type) || ['file', 'screenshot']
+  const evidenceTypes = currentSubtaskData.evidence_schema?.file_types || ['file', 'screenshot']
 
   const canGoPrevious = currentSubtask > 1
   const canGoNext = currentSubtask < subtasks.length
@@ -206,7 +206,7 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
             onChange={handleFileInput}
             className="hidden"
             id="file-upload"
-            accept={evidenceTypes.map((t) => {
+            accept={evidenceTypes.map((t: string) => {
               if (t === 'screenshot') return 'image/*'
               if (t === 'video') return 'video/*'
               return '*/*'
@@ -238,7 +238,7 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
                       </Badge>
                     </div>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => removeFile(file.id)}
                       className="flex-shrink-0"
@@ -285,7 +285,7 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
         {/* Actions */}
         <div className="flex items-center gap-3 mt-6">
           <Button
-            variant="steel"
+            variant="defender"
             onClick={() => {
               updateSubtaskProgress(currentSubtask, {
                 completed: progress.completed,

@@ -65,11 +65,12 @@ export function MissionView({ missionId }: MissionViewProps) {
       setCurrentMission(missionData)
       // Parse subtasks from mission data
       if (missionData.objectives) {
-        const subtasks: Subtask[] = missionData.objectives.map((obj, idx) => ({
+        const objectives = missionData.objectives
+        const subtasks: Subtask[] = objectives.map((obj, idx) => ({
           id: idx + 1,
           title: `Subtask ${idx + 1}`,
           description: obj,
-          estimated_minutes: Math.floor((missionData.estimated_time_minutes || 0) / missionData.objectives.length),
+          estimated_minutes: Math.floor((missionData.estimated_time_minutes || 0) / objectives.length),
         }))
         setSubtasks(subtasks)
       }

@@ -24,7 +24,7 @@ export function RecipeSidebar({ recipeIds }: RecipeSidebarProps) {
   }))
 
   const handleMarkComplete = (recipeId: string) => {
-    setCompletedRecipes(new Set([...completedRecipes, recipeId]))
+    setCompletedRecipes(new Set([...Array.from(completedRecipes), recipeId]))
   }
 
   if (recipeIds.length === 0) {
@@ -49,7 +49,7 @@ export function RecipeSidebar({ recipeIds }: RecipeSidebarProps) {
               <p className="text-xs text-och-steel mb-3">{recipe.description}</p>
               <div className="flex items-center gap-2">
                 <Button
-                  variant="steel"
+                  variant="defender"
                   size="sm"
                   className="flex-1 text-xs"
                   onClick={() => {

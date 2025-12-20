@@ -10,7 +10,20 @@ import { useAuth } from '@/hooks/useAuth'
 export function CoachingPanel() {
   const { user } = useAuth()
   const menteeId = user?.id?.toString()
-  const { habits, goals, latestReflection, isLoading, error, toggleHabit, completeGoal, submitReflection } = useHabits(menteeId)
+  const { habits, todayHabits, logHabit } = useHabits()
+  const goals: any[] = []
+  const latestReflection: any = null
+  const isLoading = false
+  const error: string | null = null
+  const toggleHabit = async (habitId: string, state: boolean) => {
+    await logHabit(habitId, state ? 'completed' : 'missed')
+  }
+  const completeGoal = async (goalId: string) => {
+    // TODO: Implement goal completion
+  }
+  const submitReflection = async (content: string) => {
+    // TODO: Implement reflection submission
+  }
   const [reflectionText, setReflectionText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -47,7 +60,7 @@ export function CoachingPanel() {
 
   const habitTypes = ['learn', 'practice', 'reflect'] as const
   const getHabitByType = (type: typeof habitTypes[number]) => {
-    return habits.find(h => h.type === type)
+    return todayHabits.find(h => h.name.toLowerCase().includes(type))
   }
 
   if (isLoading) {
@@ -91,19 +104,19 @@ export function CoachingPanel() {
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    checked={habit.completed_today}
-                    onChange={() => handleToggleHabit(habit.id, habit.completed_today)}
+                    checked={habit.todayStatus === 'completed'}
+                    onChange={() => handleToggleHabit(habit.id, habit.todayStatus === 'completed')}
                     className="w-5 h-5 rounded border-och-steel/20 bg-och-midnight text-och-defender focus:ring-och-defender"
                   />
                   <div>
-                    <div className="font-medium text-white capitalize">{type}</div>
+                    <div className="font-medium text-white capitalize">{habit.name}</div>
                     <div className="text-sm text-och-steel">
-                      Streak: {habit.current_streak} days
+                      Streak: {habit.streakData?.current || 0} days
                     </div>
                   </div>
                 </div>
-                {habit.current_streak > 0 && (
-                  <Badge variant="mint">{habit.current_streak} days</Badge>
+                {(habit.streakData?.current || 0) > 0 && (
+                  <Badge variant="mint">{habit.streakData?.current || 0} days</Badge>
                 )}
               </div>
             )

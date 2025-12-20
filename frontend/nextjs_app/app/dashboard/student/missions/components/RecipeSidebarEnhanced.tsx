@@ -51,7 +51,7 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
   const remainingRecipes = recipes.filter((r) => !completedRecipes.has(r.id))
 
   const handleMarkComplete = (recipeId: string) => {
-    setCompletedRecipes((prev) => new Set([...prev, recipeId]))
+    setCompletedRecipes((prev) => new Set([...Array.from(prev), recipeId]))
     // TODO: Save to backend
   }
 
@@ -72,7 +72,7 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
             <BookOpen className="w-5 h-5 mr-2" />
             Recipes ({remainingRecipes.length})
           </h4>
-          <Button variant="ghost" size="sm" aria-label="Filter recipes">
+          <Button variant="outline" size="sm" aria-label="Filter recipes">
             <Search className="w-4 h-4 mr-1" />
             Filter
           </Button>
@@ -120,7 +120,7 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
               Recipes ({remainingRecipes.length})
             </h4>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setIsOpen(!isOpen)}
               aria-label={isOpen ? 'Close recipes' : 'Open recipes'}
@@ -170,7 +170,7 @@ function RecipeCard({
       <p className="text-xs text-slate-600 mb-3 line-clamp-2">{recipe.description}</p>
       <div className="flex items-center gap-2">
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           className="flex-1 text-xs"
           onClick={() => {

@@ -183,7 +183,7 @@ export function SubtaskView({ missionId, subtaskNumber }: SubtaskViewProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-3">
-        <Button variant="steel" size="sm" onClick={handleSave} disabled={saveProgressMutation.isPending}>
+        <Button variant="defender" size="sm" onClick={handleSave} disabled={saveProgressMutation.isPending}>
           Save Progress
         </Button>
         <Button variant="mint" size="sm" onClick={handleComplete} disabled={saveProgressMutation.isPending}>

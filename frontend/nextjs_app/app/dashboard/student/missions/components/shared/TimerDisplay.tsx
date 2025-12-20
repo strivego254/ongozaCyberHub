@@ -97,7 +97,7 @@ export function TimerDisplay({
         <span className="text-xs text-slate-500">remaining</span>
       </div>
       <Button
-        variant="ghost"
+        variant="outline"
         size="sm"
         onClick={handleToggle}
         className="ml-2"

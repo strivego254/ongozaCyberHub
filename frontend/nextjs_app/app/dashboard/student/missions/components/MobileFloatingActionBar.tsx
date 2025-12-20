@@ -43,7 +43,7 @@ export function MobileFloatingActionBar({
       <div className="flex items-center gap-3 max-w-md mx-auto">
         {canGoPrevious && (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={onPrevious}
             className="flex-1"
@@ -55,7 +55,7 @@ export function MobileFloatingActionBar({
         )}
 
         <Button
-          variant="steel"
+          variant="defender"
           size="sm"
           onClick={handleSave}
           className="flex-1"
@@ -80,7 +80,7 @@ export function MobileFloatingActionBar({
 
         {canGoNext && (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={onNext}
             className="flex-1"

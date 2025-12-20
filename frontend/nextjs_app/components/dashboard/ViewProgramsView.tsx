@@ -70,7 +70,7 @@ export function ViewProgramsView() {
   }
 
   const startEdit = (program: Program) => {
-    setEditingId(program.id)
+    setEditingId(program.id || null)
     setFormData({
       name: program.name,
       category: program.category,
@@ -378,7 +378,7 @@ export function ViewProgramsView() {
                   <div className="flex gap-2 pt-4">
                     <Button
                       variant="mint"
-                      onClick={() => handleUpdate(program.id)}
+                      onClick={() => program.id && handleUpdate(program.id)}
                       disabled={isUpdating}
                     >
                       {isUpdating ? 'Saving...' : '💾 Save Changes'}
@@ -412,11 +412,11 @@ export function ViewProgramsView() {
                         </span>
                         <span>
                           <strong className="text-white">Created:</strong>{' '}
-                          {new Date(program.created_at).toLocaleDateString()}
+                          {program.created_at ? new Date(program.created_at).toLocaleDateString() : 'N/A'}
                         </span>
                         <span>
                           <strong className="text-white">Updated:</strong>{' '}
-                          {new Date(program.updated_at).toLocaleDateString()}
+                          {program.updated_at ? new Date(program.updated_at).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                     </div>
@@ -428,7 +428,7 @@ export function ViewProgramsView() {
                     <Button
                       variant="orange"
                       size="sm"
-                      onClick={() => handleDelete(program.id)}
+                      onClick={() => program.id && handleDelete(program.id)}
                       disabled={isDeleting}
                     >
                       🗑️ Delete

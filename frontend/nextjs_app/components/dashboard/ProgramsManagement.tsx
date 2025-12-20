@@ -108,7 +108,7 @@ export function ProgramsManagement({
   }
 
   const startEdit = (program: Program) => {
-    setEditingId(program.id)
+    setEditingId(program.id || null)
     setFormData({
       name: program.name,
       category: program.category,
@@ -409,7 +409,7 @@ export function ProgramsManagement({
                         Price: {program.currency} {formatPrice(program.default_price)}
                       </span>
                       <span>
-                        Created: {new Date(program.created_at).toLocaleDateString()}
+                        Created: {program.created_at ? new Date(program.created_at).toLocaleDateString() : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -421,7 +421,7 @@ export function ProgramsManagement({
                   <Button
                     variant="orange"
                     size="sm"
-                    onClick={() => handleDelete(program.id)}
+                    onClick={() => program.id && handleDelete(program.id)}
                     disabled={isDeleting}
                   >
                     🗑️ Delete

@@ -185,12 +185,6 @@ export const djangoClient = {
       return apiGateway.delete(`/users/${id}/`);
     },
 
-    /**
-     * Get user by ID
-     */
-    async getUser(id: number): Promise<User> {
-      return apiGateway.get(`/users/${id}/`);
-    },
   },
 
   /**
