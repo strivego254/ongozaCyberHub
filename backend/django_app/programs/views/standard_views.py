@@ -9,6 +9,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from django.db.models import Q, Count, Avg, Sum, F, Case, When, IntegerField
 from django.utils import timezone
 from datetime import timedelta
+import uuid
 from programs.models import (
     Program, Track, Milestone, Module, Specialization, Cohort, Enrollment,
     CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
@@ -21,6 +22,8 @@ from programs.serializers import (
 )
 # Import from core_services module
 from programs.core_services import auto_graduate_cohort, EnrollmentService, ProgramManagementService
+from users.models import Role, UserRole
+from users.utils.audit_utils import log_audit_event
 
 
 @extend_schema(
@@ -245,6 +248,43 @@ class ProgramViewSet(viewsets.ModelViewSet):
         
         return queryset.order_by('-created_at')
 
+    def perform_create(self, serializer):
+        program = serializer.save()
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='create',
+            resource_type='program',
+            resource_id=str(program.id),
+            metadata={'name': program.name},
+        )
+        return program
+
+    def perform_update(self, serializer):
+        program = self.get_object()
+        before = {'name': program.name, 'status': getattr(program, 'status', None)}
+        updated = serializer.save()
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='update',
+            resource_type='program',
+            resource_id=str(updated.id),
+            metadata={'before': before, 'updated_fields': list(serializer.validated_data.keys())},
+        )
+        return updated
+
+    def perform_destroy(self, instance):
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='delete',
+            resource_type='program',
+            resource_id=str(instance.id),
+            metadata={'name': getattr(instance, 'name', None)},
+        )
+        return super().perform_destroy(instance)
+
 
 class TrackViewSet(viewsets.ModelViewSet):
     """ViewSet for Track model."""
@@ -308,6 +348,43 @@ class TrackViewSet(viewsets.ModelViewSet):
         result = queryset.order_by('program__name', 'name')
         logger.info(f"TrackViewSet: Final queryset count: {result.count()}")
         return result
+
+    def perform_create(self, serializer):
+        track = serializer.save()
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='create',
+            resource_type='track',
+            resource_id=str(track.id),
+            metadata={'name': track.name, 'program_id': str(track.program_id) if track.program_id else None},
+        )
+        return track
+
+    def perform_update(self, serializer):
+        track = self.get_object()
+        before = {'name': track.name, 'program_id': str(track.program_id) if track.program_id else None, 'key': getattr(track, 'key', None)}
+        updated = serializer.save()
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='update',
+            resource_type='track',
+            resource_id=str(updated.id),
+            metadata={'before': before, 'updated_fields': list(serializer.validated_data.keys())},
+        )
+        return updated
+
+    def perform_destroy(self, instance):
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='delete',
+            resource_type='track',
+            resource_id=str(instance.id),
+            metadata={'name': getattr(instance, 'name', None), 'program_id': str(getattr(instance, 'program_id', '') or '')},
+        )
+        return super().perform_destroy(instance)
 
 
 class MilestoneViewSet(viewsets.ModelViewSet):
@@ -380,7 +457,45 @@ class CohortViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         logger.info(f"Cohort created successfully: {serializer.data.get('id')} - {serializer.data.get('name')}")
+        log_audit_event(
+            request=request,
+            user=request.user,
+            action='create',
+            resource_type='cohort',
+            resource_id=str(serializer.data.get('id')) if serializer.data.get('id') else None,
+            metadata={
+                'name': serializer.data.get('name'),
+                'track': data_preview.get('track'),
+                'start_date': data_preview.get('start_date'),
+                'end_date': data_preview.get('end_date'),
+            },
+        )
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_update(self, serializer):
+        cohort = self.get_object()
+        before = {'name': cohort.name, 'status': getattr(cohort, 'status', None), 'track_id': str(cohort.track_id)}
+        updated = serializer.save()
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='update',
+            resource_type='cohort',
+            resource_id=str(updated.id),
+            metadata={'before': before, 'updated_fields': list(serializer.validated_data.keys())},
+        )
+        return updated
+
+    def perform_destroy(self, instance):
+        log_audit_event(
+            request=self.request,
+            user=self.request.user,
+            action='delete',
+            resource_type='cohort',
+            resource_id=str(instance.id),
+            metadata={'name': getattr(instance, 'name', None), 'track_id': str(getattr(instance, 'track_id', '') or '')},
+        )
+        return super().perform_destroy(instance)
     
     def get_queryset(self):
         """Filter cohorts based on user permissions."""
@@ -397,12 +512,44 @@ class CohortViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=status_filter)
         
         if not user.is_staff:
-            # Directors can see cohorts from tracks they direct OR cohorts they're assigned as mentors
-            queryset = queryset.filter(
+            # Base visibility: tracks user directs OR cohorts they're assigned as mentors
+            visibility_q = (
                 Q(track__director=user) |
                 Q(mentor_assignments__mentor=user) |
-                Q(track__program__tracks__director=user)  # Also allow cohorts from programs they direct
-            ).distinct()
+                Q(track__program__tracks__director=user)  # cohorts in programs where they direct at least one track
+            )
+
+            # Also support RBAC UserRole scoping for program_director (track/cohort scopes)
+            director_role = Role.objects.filter(name='program_director').first()
+            if director_role:
+                director_roles = UserRole.objects.filter(user=user, role=director_role, is_active=True)
+
+                # scope_ref based grants
+                cohort_refs = list(director_roles.filter(scope='cohort', scope_ref__isnull=False).values_list('scope_ref', flat=True))
+                track_refs = list(director_roles.filter(scope='track', scope_ref__isnull=False).values_list('scope_ref', flat=True))
+
+                # legacy string-based grants
+                legacy_track_keys = list(director_roles.exclude(track_key__isnull=True).exclude(track_key='').values_list('track_key', flat=True))
+                legacy_cohort_ids_raw = list(director_roles.exclude(cohort_id__isnull=True).exclude(cohort_id='').values_list('cohort_id', flat=True))
+                legacy_cohort_ids = []
+                for raw in legacy_cohort_ids_raw:
+                    try:
+                        legacy_cohort_ids.append(uuid.UUID(str(raw)))
+                    except Exception:
+                        continue
+
+                if cohort_refs or legacy_cohort_ids:
+                    visibility_q = visibility_q | Q(id__in=cohort_refs + legacy_cohort_ids)
+                if track_refs:
+                    visibility_q = visibility_q | Q(track_id__in=track_refs)
+                if legacy_track_keys:
+                    visibility_q = visibility_q | Q(track__key__in=legacy_track_keys)
+
+                # If they have a global program_director role, treat it as broad access
+                if director_roles.filter(scope='global').exists():
+                    visibility_q = Q()  # no restriction
+
+            queryset = queryset.filter(visibility_q).distinct()
         
         return queryset
     
@@ -526,12 +673,79 @@ class CohortViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         
         elif request.method == 'POST':
+            from django.contrib.auth import get_user_model
+            from programs.services.director_service import DirectorService
+            User = get_user_model()
+            
             data = request.data.copy()
-            data['cohort'] = cohort.id
+            data['cohort'] = cohort.id  # Use UUID object, DRF will handle it
+            
+            # Check if mentor is already assigned
+            mentor_id = data.get('mentor')
+            if not mentor_id:
+                return Response(
+                    {'mentor': ['This field is required.']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Convert mentor_id to integer if it's a string (User PK is BigAutoField)
+            try:
+                if isinstance(mentor_id, str):
+                    mentor_id = int(mentor_id)
+                data['mentor'] = mentor_id
+                
+                # Verify mentor exists
+                try:
+                    mentor = User.objects.get(id=mentor_id)
+                except User.DoesNotExist:
+                    return Response(
+                        {'mentor': [f'Mentor with ID {mentor_id} does not exist.']},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except (ValueError, TypeError):
+                return Response(
+                    {'mentor': ['Invalid mentor ID format.']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check for existing assignment (including inactive ones for unique constraint)
+            existing = MentorAssignment.objects.filter(
+                cohort=cohort,
+                mentor_id=mentor_id
+            ).first()
+            if existing:
+                if existing.active:
+                    return Response(
+                        {'error': 'This mentor is already assigned to this cohort.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                else:
+                    # Reactivate the existing assignment instead of creating a new one
+                    existing.active = True
+                    existing.role = data.get('role', 'support')
+                    existing.save()
+                    serializer = MentorAssignmentSerializer(existing)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+            
+            # Check permissions before validation
+            if not (request.user.is_staff or DirectorService.can_manage_cohort(request.user, cohort)):
+                return Response(
+                    {'error': 'You do not have permission to manage this cohort'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
             serializer = MentorAssignmentSerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            # Log validation errors for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'MentorAssignmentSerializer validation failed: {serializer.errors}')
+            logger.error(f'Data sent to serializer: {data}')
+            
+            # Return detailed validation errors
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=True, methods=['post'])

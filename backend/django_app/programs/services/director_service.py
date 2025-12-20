@@ -65,15 +65,67 @@ class DirectorService:
     def can_manage_track(user: User, track: Track) -> bool:
         """Check if user can manage a track."""
         if user.is_staff:
+            logger.debug(f"User {user.email} is staff - allowing track management")
             return True
-        return track.director == user
+        
+        # Check if user is the direct director of the track
+        if track.director == user:
+            logger.debug(f"User {user.email} is director of track {track.id} - allowing track management")
+            return True
+        
+        # Check if user has program_director role
+        # Program directors can manage any track (consistent with how they can see all tracks)
+        from users.models import UserRole, Role
+        director_role = Role.objects.filter(name='program_director').first()
+        if director_role:
+            has_director_role = UserRole.objects.filter(
+                user=user,
+                role=director_role,
+                is_active=True
+            ).exists()
+            
+            if has_director_role:
+                logger.debug(f"User {user.email} has program_director role - allowing track management")
+                return True
+        
+        logger.debug(f"User {user.email} cannot manage track {track.id} - track director: {track.director}, user: {user}")
+        return False
     
     @staticmethod
     def can_manage_cohort(user: User, cohort: Cohort) -> bool:
         """Check if user can manage a cohort."""
         if user.is_staff:
+            logger.debug(f"User {user.email} is staff - allowing cohort management")
             return True
-        return cohort.track.director == user
+        
+        # Safety check: cohort must have a track
+        if not cohort.track:
+            logger.warning(f"Cohort {cohort.id} has no track assigned")
+            return False
+        
+        # Check if user is the direct director of the cohort's track
+        if cohort.track.director == user:
+            logger.debug(f"User {user.email} is director of track {cohort.track.id} - allowing cohort management")
+            return True
+        
+        # Check if user has program_director role
+        # Program directors can manage cohorts (consistent with TrackViewSet behavior)
+        from users.models import UserRole, Role
+        director_role = Role.objects.filter(name='program_director').first()
+        if director_role:
+            has_director_role = UserRole.objects.filter(
+                user=user,
+                role=director_role,
+                is_active=True
+            ).exists()
+            
+            if has_director_role:
+                logger.debug(f"User {user.email} has program_director role - allowing cohort management")
+                # Program directors can manage any cohort (consistent with how they can see all tracks)
+                return True
+        
+        logger.debug(f"User {user.email} cannot manage cohort {cohort.id} - track director: {cohort.track.director}, user: {user}")
+        return False
     
     @staticmethod
     @transaction.atomic
@@ -252,6 +304,53 @@ class DirectorService:
         
         logger.info(f"Bulk approved {approved_count} enrollments for cohort {cohort.id}")
         return {'approved': approved_count, 'total': len(enrollment_ids)}
+
+    @staticmethod
+    @transaction.atomic
+    def bulk_update_enrollments_status(
+        cohort: Cohort,
+        enrollment_ids: List[str],
+        new_status: str,
+        user: User
+    ) -> Dict[str, Any]:
+        """Bulk update enrollment status for a cohort."""
+        if not DirectorService.can_manage_cohort(user, cohort):
+            raise PermissionError("User cannot manage this cohort")
+
+        valid_statuses = {s for s, _ in Enrollment.STATUS_CHOICES}
+        if new_status not in valid_statuses:
+            raise ValueError(f"Invalid status: {new_status}")
+
+        qs = Enrollment.objects.filter(cohort=cohort, id__in=enrollment_ids)
+
+        updated = 0
+        for e in qs:
+            if new_status == 'active':
+                # Equivalent to approve (director override)
+                e.status = 'active'
+                e.payment_status = 'waived'
+            else:
+                e.status = new_status
+            if new_status == 'completed':
+                e.completed_at = timezone.now()
+            e.save()
+            updated += 1
+
+        logger.info(f"Bulk updated {updated} enrollments to {new_status} for cohort {cohort.id}")
+        return {'updated': updated, 'total': len(enrollment_ids), 'status': new_status}
+
+    @staticmethod
+    @transaction.atomic
+    def bulk_remove_enrollments(cohort: Cohort, enrollment_ids: List[str], user: User) -> Dict[str, Any]:
+        """Bulk delete enrollments for a cohort."""
+        if not DirectorService.can_manage_cohort(user, cohort):
+            raise PermissionError("User cannot manage this cohort")
+
+        qs = Enrollment.objects.filter(cohort=cohort, id__in=enrollment_ids)
+        deleted_count = qs.count()
+        qs.delete()
+        logger.info(f"Bulk removed {deleted_count} enrollments for cohort {cohort.id}")
+        return {'deleted': deleted_count, 'total': len(enrollment_ids)}
     
     @staticmethod
     def get_cohort_readiness_analytics(cohort: Cohort) -> Dict[str, Any]:

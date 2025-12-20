@@ -26,6 +26,11 @@ export default function OverviewClient() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('7d')
+  const [roleDistribution, setRoleDistribution] = useState<{
+    role_distribution: Record<string, number>;
+    total_users: number;
+    active_users: number;
+  } | null>(null)
 
   useEffect(() => {
     loadInitialData()
@@ -34,11 +39,26 @@ export default function OverviewClient() {
   const loadInitialData = async () => {
     try {
       setIsLoading(true)
-      await loadAuditLogs()
+      await Promise.all([
+        loadAuditLogs(),
+        loadRoleDistribution(),
+      ])
     } catch (error) {
       console.error('Failed to load overview data:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const loadRoleDistribution = async () => {
+    try {
+      const { djangoClient } = await import('@/services/djangoClient')
+      const data = await djangoClient.users.getRoleDistribution()
+      console.log('Role distribution data from backend:', data)
+      setRoleDistribution(data)
+    } catch (error) {
+      console.error('Failed to load role distribution:', error)
+      setRoleDistribution(null)
     }
   }
 
@@ -81,16 +101,28 @@ export default function OverviewClient() {
     }
   }
 
-  // Statistics
+  // Statistics - use backend data if available, otherwise fallback to client-side calculation
   const stats = useMemo(() => {
+    if (roleDistribution) {
+      // Use backend data for accurate counts
+      return {
+        total: roleDistribution.total_users,
+        active: roleDistribution.active_users,
+        programDirectors: roleDistribution.role_distribution['program_director'] || 0,
+        financeUsers: roleDistribution.role_distribution['finance'] || 0,
+        mentors: roleDistribution.role_distribution['mentor'] || 0,
+      }
+    }
+    
+    // Fallback to client-side calculation (may be inaccurate due to pagination)
     const programDirectors = users.filter((u) => 
       u.roles?.some((r: any) => r.role === 'program_director')
     ).length
     const financeUsers = users.filter((u) => 
       u.roles?.some((r: any) => r.role === 'finance')
     ).length
-    const mentees = users.filter((u) => 
-      u.roles?.some((r: any) => r.role === 'mentee' || r.role === 'student')
+    const students = users.filter((u) => 
+      u.roles?.some((r: any) => r.role === 'student' || r.role === 'mentee')
     ).length
     const activeUsers = users.filter((u) => u.is_active && u.account_status === 'active').length
 
@@ -99,9 +131,9 @@ export default function OverviewClient() {
       active: activeUsers,
       programDirectors,
       financeUsers,
-      mentees,
+      mentors: users.filter((u) => u.roles?.some((r: any) => r.role === 'mentor')).length,
     }
-  }, [users, totalCount])
+  }, [users, totalCount, roleDistribution])
 
   // Audit log stats
   const auditStats = useMemo(() => {
@@ -339,8 +371,8 @@ export default function OverviewClient() {
               <p className="text-3xl font-bold text-och-gold">{stats.financeUsers}</p>
             </div>
             <div className="text-center p-4 bg-och-midnight/50 rounded-lg">
-              <p className="text-och-steel text-sm mb-1">Mentees</p>
-              <p className="text-3xl font-bold text-och-mint">{stats.mentees}</p>
+              <p className="text-och-steel text-sm mb-1">Students</p>
+              <p className="text-3xl font-bold text-och-mint">{stats.students}</p>
             </div>
           </div>
 
@@ -428,7 +460,7 @@ export default function OverviewClient() {
               )}
             </div>
           </Card>
-          
+
           {/* Analytics Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
@@ -437,10 +469,9 @@ export default function OverviewClient() {
                 data={[
                   stats.programDirectors,
                   stats.financeUsers,
-                  stats.mentees,
-                  users.filter((u) => u.roles?.some((r: any) => r.role === 'mentor')).length,
+                  stats.mentors || 0,
                 ]}
-                labels={['Directors', 'Finance', 'Mentees', 'Mentors']}
+                labels={['Directors', 'Finance', 'Students', 'Mentors']}
                 color="#0648A8"
               />
             </div>

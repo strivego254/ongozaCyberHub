@@ -7,6 +7,9 @@ import { cookies } from 'next/headers';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
+const OCH_ROLES_COOKIE = 'och_roles';
+const OCH_PRIMARY_ROLE_COOKIE = 'och_primary_role';
+const OCH_DASHBOARD_COOKIE = 'och_dashboard';
 
 /**
  * Get access token from cookies (server-side)
@@ -58,6 +61,9 @@ export async function clearServerAuthTokens(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(ACCESS_TOKEN_COOKIE);
   cookieStore.delete(REFRESH_TOKEN_COOKIE);
+  cookieStore.delete(OCH_ROLES_COOKIE);
+  cookieStore.delete(OCH_PRIMARY_ROLE_COOKIE);
+  cookieStore.delete(OCH_DASHBOARD_COOKIE);
 }
 
 /**

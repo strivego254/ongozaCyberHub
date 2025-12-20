@@ -4,16 +4,18 @@ Audit log views for compliance and security monitoring.
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
 from django.db.models import Q
 from users.audit_models import AuditLog
 from users.serializers import AuditLogSerializer
+from users.models import Role, UserRole
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     """
     GET /api/v1/audit-logs
-    List audit logs (admin only).
+    List audit logs (admin and program directors).
     """
     queryset = AuditLog.objects.all()
     permission_classes = [permissions.IsAuthenticated]
@@ -23,16 +25,35 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         """Filter audit logs based on user permissions and query params."""
         user = self.request.user
         
-        # Admins can see all logs
-        if user.is_staff or user.is_superuser:
+        # Admins can see all logs. Program directors can see director-relevant logs.
+        is_admin = user.is_staff or user.is_superuser
+        director_role = Role.objects.filter(name='program_director').first()
+        is_director = False
+        if director_role:
+            is_director = UserRole.objects.filter(user=user, role=director_role, is_active=True).exists()
+
+        if is_admin:
             queryset = AuditLog.objects.all()
+        elif is_director:
+            queryset = AuditLog.objects.filter(
+                resource_type__in=[
+                    'program', 'cohort', 'track', 'milestone', 'module',
+                    'enrollment', 'mentor_assignment', 'mission',
+                ]
+            )
         else:
-            # Users can only see their own audit logs
-            queryset = AuditLog.objects.filter(user=user)
+            # Keep audit logs restricted for non-admin/non-director users
+            raise PermissionDenied('You do not have permission to view audit logs.')
         
-        # Filter by actor (actor_identifier)
+        # Filter by actor (actor_identifier or user ID)
         actor = self.request.query_params.get('actor')
-        if actor:
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            try:
+                queryset = queryset.filter(user_id=int(user_id))
+            except (ValueError, TypeError):
+                pass
+        elif actor:
             queryset = queryset.filter(actor_identifier__icontains=actor)
         
         # Filter by entity (resource_type or resource_id)
@@ -79,6 +100,13 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         resource_type = self.request.query_params.get('resource_type')
         if resource_type:
             queryset = queryset.filter(resource_type=resource_type)
+
+        # Support multiple resource types: ?resource_types=program,cohort,track
+        resource_types = self.request.query_params.get('resource_types')
+        if resource_types:
+            types = [t.strip() for t in resource_types.split(',') if t.strip()]
+            if types:
+                queryset = queryset.filter(resource_type__in=types)
         
         # Filter by result
         result = self.request.query_params.get('result')

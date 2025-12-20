@@ -7,21 +7,23 @@ from .standard_views import (
     MilestoneViewSet, ModuleViewSet,
     director_dashboard
 )
-from .director_views import (
-    DirectorProgramViewSet, DirectorTrackViewSet, DirectorCohortViewSet,
-    DirectorMentorViewSet, DirectorDashboardViewSet
-)
+# Note: Director ViewSets moved to separate files or handled via director_dashboard_views
+# These imports are commented out until ViewSets are recreated if needed
+# from .director_views import (
+#     DirectorProgramViewSet, DirectorTrackViewSet, DirectorCohortViewSet,
+#     DirectorMentorViewSet, DirectorDashboardViewSet
+# )
 from .rules_views import DirectorProgramRuleViewSet
 from .program_management_views import ProgramManagementViewSet
+from .mentor_assignment_views import MentorAssignmentViewSet
 
 __all__ = [
     'ProgramViewSet', 'TrackViewSet', 'CohortViewSet',
     'ProgramRuleViewSet', 'CertificateViewSet',
     'MilestoneViewSet', 'ModuleViewSet',
-    'DirectorProgramViewSet', 'DirectorTrackViewSet', 'DirectorCohortViewSet',
-    'DirectorMentorViewSet', 'DirectorDashboardViewSet',
     'DirectorProgramRuleViewSet',
     'ProgramManagementViewSet',
+    'MentorAssignmentViewSet',
     'director_dashboard',
 ]
 

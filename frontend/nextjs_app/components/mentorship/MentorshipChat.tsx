@@ -9,13 +9,15 @@ import { useAuth } from '@/hooks/useAuth'
 import type { ChatMessage } from '@/services/types/mentorship'
 
 interface MentorshipChatProps {
+  menteeId?: string
   mentorId?: string
   mentorName?: string
 }
 
-export function MentorshipChat({ mentorId, mentorName }: MentorshipChatProps) {
+export function MentorshipChat({ menteeId: menteeIdProp, mentorId, mentorName }: MentorshipChatProps) {
   const { user } = useAuth()
-  const menteeId = user?.id?.toString()
+  // Default to logged-in mentee (student view), but allow mentors to provide a target mentee id.
+  const menteeId = menteeIdProp || user?.id?.toString()
   const {
     messages,
     presence,

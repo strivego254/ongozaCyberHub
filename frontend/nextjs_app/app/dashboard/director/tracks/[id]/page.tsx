@@ -33,8 +33,8 @@ export default function TrackDetailPage() {
       if (!trackId) return
       setLoadingCohorts(true)
       try {
-        const data = await programsClient.getCohorts({ trackId })
-        setCohorts(Array.isArray(data) ? data : [])
+        const res = await programsClient.getCohorts({ trackId, page: 1, pageSize: 200 })
+        setCohorts(Array.isArray(res?.results) ? res.results : [])
       } catch (err) {
         console.error('Failed to load cohorts:', err)
       } finally {
@@ -88,7 +88,7 @@ export default function TrackDetailPage() {
     }
     try {
       await deleteTrack(trackId)
-      router.push('/dashboard/director/programs')
+      router.push('/dashboard/director/tracks')
     } catch (err: any) {
       alert(err.message || 'Failed to delete track')
     }
@@ -131,8 +131,8 @@ export default function TrackDetailPage() {
               <p className="text-och-orange mb-2">Error loading track</p>
               {error && <p className="text-sm text-och-steel mb-4">{error}</p>}
               <div className="flex gap-3 justify-center">
-                <Link href="/dashboard/director/programs">
-                  <Button variant="outline">Back to Programs</Button>
+                <Link href="/dashboard/director/tracks">
+                  <Button variant="outline">Back to Tracks</Button>
                 </Link>
               </div>
             </div>
@@ -206,7 +206,7 @@ export default function TrackDetailPage() {
                     >
                       {isDeleting ? 'Deleting...' : 'Delete'}
                     </Button>
-                    <Link href={track.program ? `/dashboard/director/programs/${track.program}` : '/dashboard/director/programs'}>
+                    <Link href="/dashboard/director/tracks">
                       <Button variant="outline" size="sm">
                         ← Back
                       </Button>
@@ -318,7 +318,7 @@ export default function TrackDetailPage() {
                         <div className="flex flex-wrap gap-2">
                           {track.missions && track.missions.length > 0 ? (
                             track.missions.map((missionId: string, idx: number) => (
-                              <Badge key={idx} variant="steel">{missionId}</Badge>
+                              <Badge key={idx} variant="outline">{missionId}</Badge>
                             ))
                           ) : (
                             <p className="text-och-steel">No missions linked</p>
@@ -366,7 +366,7 @@ export default function TrackDetailPage() {
                               <h3 className="text-white font-semibold">{milestone.name}</h3>
                               <p className="text-sm text-och-steel mt-1">{milestone.description}</p>
                             </div>
-                            <Badge variant="steel">Order: {milestone.order}</Badge>
+                            <Badge variant="outline">Order: {milestone.order}</Badge>
                           </div>
                           {milestone.duration_weeks && (
                             <p className="text-xs text-och-steel mb-2">Duration: {milestone.duration_weeks} weeks</p>

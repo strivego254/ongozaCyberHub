@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { missionsClient, type MissionTemplate } from '@/services/missionsClient'
 import { usePrograms, useTracks, useProgram } from '@/hooks/usePrograms'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 const ITEMS_PER_PAGE = 20
@@ -31,12 +30,6 @@ const FilterIcon = () => (
   </svg>
 )
 
-const EditIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-  </svg>
-)
-
 const TrashIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -50,6 +43,7 @@ const RocketIcon = () => (
 )
 
 export default function MissionsManagementPage() {
+  const router = useRouter()
   const { programs, isLoading: programsLoading } = usePrograms()
   const [selectedProgramId, setSelectedProgramId] = useState<string>('')
   
@@ -118,7 +112,7 @@ export default function MissionsManagementPage() {
   // Load missions when filters change
   useEffect(() => {
     loadMissions()
-  }, [currentPage, debouncedSearch, selectedTrackFilter, selectedDifficultyFilter, selectedTypeFilter, selectedStatusFilter])
+  }, [currentPage, debouncedSearch, selectedProgramId, selectedTrackFilter, selectedDifficultyFilter, selectedTypeFilter, selectedStatusFilter])
 
   // Use tracks from program detail if available, otherwise use tracks endpoint
   const availableTracks = useMemo(() => {
@@ -144,13 +138,13 @@ export default function MissionsManagementPage() {
         params.search = debouncedSearch.trim()
       }
 
+      if (selectedProgramId && selectedProgramId !== '') {
+        params.program_id = selectedProgramId
+      }
+
       if (selectedTrackFilter !== 'all') {
-        // Try to find if it's a track ID or track key
-        const track = availableTracks.find(t => String(t.id) === selectedTrackFilter || t.key === selectedTrackFilter)
-        if (track) {
-          params.track_id = track.id
-          params.track_key = track.key
-        }
+        // Track filter select stores track.id
+        params.track_id = selectedTrackFilter
       }
 
       if (selectedDifficultyFilter !== 'all') {
@@ -220,39 +214,9 @@ export default function MissionsManagementPage() {
     setShowMissionForm(true)
   }
 
-  const handleEditMission = (mission: MissionTemplate) => {
-    setEditingMission(mission)
-    // Extract OCH Admin fields from requirements if they exist there
-    const reqs = mission.requirements || {}
-    setMissionForm({
-      code: mission.code,
-      title: mission.title,
-      description: mission.description,
-      difficulty: mission.difficulty,
-      type: mission.type,
-      track_id: mission.track_id,
-      track_key: mission.track_key,
-      est_hours: mission.est_hours,
-      estimated_time_minutes: mission.estimated_time_minutes,
-      competencies: mission.competencies || [],
-      requirements: reqs,
-      // OCH Admin fields - check both direct fields and requirements JSON
-      status: mission.status || reqs.status || 'draft',
-      assessment_mode: mission.assessment_mode || reqs.assessment_mode || 'hybrid',
-      requires_mentor_review: mission.requires_mentor_review ?? reqs.requires_mentor_review ?? false,
-      story_narrative: mission.story_narrative || reqs.story_narrative || '',
-      subtasks: mission.subtasks || reqs.subtasks || [],
-      evidence_upload_schema: mission.evidence_upload_schema || reqs.evidence_upload_schema || {
-        file_types: [],
-        max_file_size_mb: 10,
-        required_artifacts: [],
-      },
-      time_constraint_hours: mission.time_constraint_hours || reqs.time_constraint_hours,
-      competency_coverage: mission.competency_coverage || reqs.competency_coverage || [],
-      rubric_id: mission.rubric_id || reqs.rubric_id,
-      module_id: mission.module_id || reqs.module_id,
-    })
-    setShowMissionForm(true)
+  const handleOpenMission = (missionId?: string) => {
+    if (!missionId) return
+    router.push(`/dashboard/director/curriculum/missions/${missionId}`)
   }
 
   const handleSaveMission = async () => {
@@ -475,6 +439,7 @@ export default function MissionsManagementPage() {
                   onChange={(e) => {
                     setSelectedProgramId(e.target.value)
                     setSelectedTrackFilter('all')
+                    setCurrentPage(1)
                   }}
                   className="px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                 >
@@ -489,7 +454,10 @@ export default function MissionsManagementPage() {
                 {/* Track Filter */}
                 <select
                   value={selectedTrackFilter}
-                  onChange={(e) => setSelectedTrackFilter(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedTrackFilter(e.target.value)
+                    setCurrentPage(1)
+                  }}
                   className="px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                   disabled={!selectedProgramId}
                 >
@@ -504,7 +472,10 @@ export default function MissionsManagementPage() {
                 {/* Difficulty Filter */}
                 <select
                   value={selectedDifficultyFilter}
-                  onChange={(e) => setSelectedDifficultyFilter(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedDifficultyFilter(e.target.value)
+                    setCurrentPage(1)
+                  }}
                   className="px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                 >
                   <option value="all">All Difficulties</option>
@@ -517,7 +488,10 @@ export default function MissionsManagementPage() {
                 {/* Type Filter */}
                 <select
                   value={selectedTypeFilter}
-                  onChange={(e) => setSelectedTypeFilter(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedTypeFilter(e.target.value)
+                    setCurrentPage(1)
+                  }}
                   className="px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                 >
                   <option value="all">All Types</option>
@@ -530,7 +504,10 @@ export default function MissionsManagementPage() {
                 {/* Status Filter */}
                 <select
                   value={selectedStatusFilter}
-                  onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedStatusFilter(e.target.value)
+                    setCurrentPage(1)
+                  }}
                   className="px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                 >
                   <option value="all">All Statuses</option>
@@ -610,123 +587,93 @@ export default function MissionsManagementPage() {
                 </div>
               ) : (
                 <>
-                  <div className="space-y-4 mb-6">
-                    {missions.map((mission) => {
-                      const track = availableTracks.find(t => String(t.id) === mission.track_id || t.key === mission.track_key)
-                      
-                      return (
-                        <Link
-                          key={mission.id}
-                          href={`/dashboard/director/curriculum/missions/${mission.id}`}
-                          className="block"
-                        >
-                        <div
-                          className="p-5 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-mint/30 transition-all cursor-pointer"
-                          onClick={(e) => {
-                            // Prevent navigation when clicking edit/delete buttons
-                            if ((e.target as HTMLElement).closest('button')) {
-                              e.preventDefault()
-                              e.stopPropagation()
-                            }
-                          }}
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                <h3 className="text-lg font-semibold text-white">{mission.code}</h3>
-                                <Badge variant={getStatusColor(getMissionStatus(mission))}>
-                                  {getMissionStatus(mission)}
-                                </Badge>
-                                <Badge variant={getDifficultyColor(mission.difficulty)}>
-                                  {mission.difficulty}
-                                </Badge>
-                                <Badge variant={getTypeColor(mission.type)}>
-                                  {mission.type}
-                                </Badge>
-                                {track && (
-                                  <Badge variant="steel">{track.name}</Badge>
-                                )}
-                                {mission.requirements?.requires_mentor_review && (
-                                  <Badge variant="gold">Mentor Review</Badge>
-                                )}
-                              </div>
-                              <h4 className="text-white font-medium mb-1">{mission.title}</h4>
-                              {mission.description && (
-                                <p className="text-sm text-och-steel mb-3 line-clamp-2">{mission.description}</p>
-                              )}
-                              
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
-                                {mission.est_hours && (
-                                  <div>
-                                    <p className="text-xs text-och-steel mb-1">Est. Hours</p>
-                                    <p className="text-sm text-white font-medium">{mission.est_hours}h</p>
-                                  </div>
-                                )}
-                                {mission.estimated_time_minutes && (
-                                  <div>
-                                    <p className="text-xs text-och-steel mb-1">Est. Minutes</p>
-                                    <p className="text-sm text-white font-medium">{mission.estimated_time_minutes}min</p>
-                                  </div>
-                                )}
-                                <div>
-                                  <p className="text-xs text-och-steel mb-1">Competencies</p>
-                                  <p className="text-sm text-white font-medium">
-                                    {mission.competencies?.length || 0}
-                                  </p>
+                  <div className="mb-6">
+                    <div className="hidden md:grid grid-cols-12 gap-3 text-xs uppercase tracking-wide text-och-steel pb-3 border-b border-och-steel/20">
+                      <div className="col-span-5">Mission</div>
+                      <div className="col-span-3">Track / Tags</div>
+                      <div className="col-span-2">Est.</div>
+                      <div className="col-span-2 text-right">Actions</div>
+                    </div>
+
+                    <div className="divide-y divide-och-steel/10">
+                      {missions.map((mission) => {
+                        const track = availableTracks.find(
+                          (t) => String(t.id) === String(mission.track_id) || t.key === mission.track_key
+                        )
+                        const trackLabel =
+                          mission.track_name ||
+                          track?.name ||
+                          mission.track_key ||
+                          (mission.track_id ? String(mission.track_id) : '')
+                        const programLabel = mission.program_name || (track as any)?.program_name || ''
+                        const missionStatus = getMissionStatus(mission)
+
+                        return (
+                          <div
+                            key={mission.id}
+                            onClick={() => handleOpenMission(mission.id)}
+                            className="py-4 cursor-pointer hover:bg-och-midnight/30 transition-colors"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                              <div className="md:col-span-5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="text-white font-semibold">{mission.code}</div>
+                                  <Badge variant={getStatusColor(missionStatus)}>{missionStatus}</Badge>
+                                  <Badge variant={getDifficultyColor(mission.difficulty)}>{mission.difficulty}</Badge>
+                                  <Badge variant={getTypeColor(mission.type)}>{mission.type}</Badge>
+                                  {mission.requirements?.requires_mentor_review && (
+                                    <Badge variant="gold">Mentor Review</Badge>
+                                  )}
                                 </div>
-                                <div>
-                                  <p className="text-xs text-och-steel mb-1">Created</p>
-                                  <p className="text-sm text-white font-medium">
-                                    {mission.created_at ? new Date(mission.created_at).toLocaleDateString() : 'N/A'}
-                                  </p>
+                                <div className="text-sm text-white mt-1 font-medium">{mission.title}</div>
+                                <div className="text-xs text-och-steel mt-1 line-clamp-2">
+                                  {mission.description || 'No description'}
                                 </div>
                               </div>
 
-                              {mission.competencies && mission.competencies.length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  {mission.competencies.slice(0, 5).map((competency, idx) => (
+                              <div className="md:col-span-3">
+                                <div className="text-sm text-white">{trackLabel ? trackLabel : 'Unassigned'}</div>
+                                {programLabel && (
+                                  <div className="text-xs text-och-steel mt-0.5">{programLabel}</div>
+                                )}
+                                <div className="mt-1 flex flex-wrap gap-2">
+                                  {(mission.competencies || []).slice(0, 3).map((c, idx) => (
                                     <Badge key={idx} variant="steel" className="text-xs">
-                                      {competency}
+                                      {c}
                                     </Badge>
                                   ))}
-                                  {mission.competencies.length > 5 && (
+                                  {(mission.competencies || []).length > 3 && (
                                     <Badge variant="steel" className="text-xs">
-                                      +{mission.competencies.length - 5} more
+                                      +{(mission.competencies || []).length - 3} more
                                     </Badge>
                                   )}
                                 </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  handleEditMission(mission)
-                                }}
-                              >
-                                <EditIcon />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  handleDeleteMission(mission.id!)
-                                }}
-                                className="text-red-400 hover:text-red-300"
-                              >
-                                <TrashIcon />
-                              </Button>
+                              </div>
+
+                              <div className="md:col-span-2 text-sm text-white">
+                                <div>
+                                  {mission.est_hours ? `${mission.est_hours}h` : '—'} /{' '}
+                                  {mission.estimated_time_minutes ? `${mission.estimated_time_minutes}m` : '—'}
+                                </div>
+                                <div className="text-xs text-och-steel mt-1">
+                                  Created {mission.created_at ? new Date(mission.created_at).toLocaleDateString() : 'N/A'}
+                                </div>
+                              </div>
+
+                              <div className="md:col-span-2 flex gap-2 md:justify-end" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="defender"
+                                  size="sm"
+                                  onClick={() => handleOpenMission(mission.id)}
+                                >
+                                  Manage & Analytics
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        </Link>
-                      )
-                    })}
+                        )
+                      })}
+                    </div>
                   </div>
 
                   {/* Pagination */}

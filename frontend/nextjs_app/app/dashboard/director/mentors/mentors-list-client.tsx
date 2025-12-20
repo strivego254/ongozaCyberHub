@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -243,11 +242,6 @@ export default function MentorsListClient() {
               </h1>
               <p className="text-och-steel">View and manage all platform mentors</p>
             </div>
-            <Link href="/dashboard/director/mentors/assign">
-              <Button variant="defender" size="sm">
-                + Assign Mentors
-              </Button>
-            </Link>
           </div>
         </div>
 

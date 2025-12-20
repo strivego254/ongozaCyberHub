@@ -10,10 +10,20 @@ export function useMentorSessions(mentorId: string | undefined, params?: {
   status?: 'scheduled' | 'completed' | 'all'
   start_date?: string
   end_date?: string
+  page?: number
+  page_size?: number
 }) {
   const [sessions, setSessions] = useState<GroupMentorshipSession[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pagination, setPagination] = useState<{
+    count: number
+    page: number
+    page_size: number
+    total_pages: number
+    next: string | null
+    previous: string | null
+  } | null>(null)
 
   const load = useCallback(async () => {
     if (!mentorId) return
@@ -21,13 +31,26 @@ export function useMentorSessions(mentorId: string | undefined, params?: {
     setError(null)
     try {
       const data = await mentorClient.getGroupSessions(mentorId, params)
-      setSessions(data)
+      setSessions(data.results || data)
+      if (data.count !== undefined) {
+        setPagination({
+          count: data.count,
+          page: data.page || 1,
+          page_size: data.page_size || 10,
+          total_pages: data.total_pages || 1,
+          next: data.next || null,
+          previous: data.previous || null,
+        })
+      } else {
+        // Handle non-paginated response (backward compatibility)
+        setPagination(null)
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load sessions')
     } finally {
       setIsLoading(false)
     }
-  }, [mentorId, params?.status, params?.start_date, params?.end_date])
+  }, [mentorId, params?.status, params?.start_date, params?.end_date, params?.page, params?.page_size])
 
   useEffect(() => {
     load()
@@ -41,6 +64,7 @@ export function useMentorSessions(mentorId: string | undefined, params?: {
     meeting_type: 'zoom' | 'google_meet' | 'in_person'
     meeting_link?: string
     track_assignment?: string
+    cohort_id?: string
   }) => {
     if (!mentorId) {
       const errorMsg = 'Mentor ID is required to create a session'
@@ -55,7 +79,18 @@ export function useMentorSessions(mentorId: string | undefined, params?: {
       return newSession
     } catch (err: any) {
       console.error('useMentorSessions: Error creating session:', err)
-      const errorMsg = err.message || 'Failed to create session'
+      console.error('Error details:', {
+        message: err.message,
+        status: err.status,
+        data: err.data,
+        response: err.response,
+        stack: err.stack
+      })
+      // Log the full error object
+      if (err.data) {
+        console.error('Error data from backend:', err.data)
+      }
+      const errorMsg = err.message || err.data?.error || err.data?.details || 'Failed to create session'
       setError(errorMsg)
       throw err
     }
@@ -70,6 +105,16 @@ export function useMentorSessions(mentorId: string | undefined, params?: {
       joined_at?: string
       left_at?: string
     }>
+    structured_notes?: {
+      key_takeaways?: string[]
+      action_items?: Array<{ item: string; assignee?: string }>
+      discussion_points?: string
+      next_steps?: string
+      mentor_reflections?: string
+    }
+    scheduled_at?: string
+    duration_minutes?: number
+    is_closed?: boolean
   }) => {
     try {
       const updated = await mentorClient.updateGroupSession(sessionId, data)
@@ -81,7 +126,7 @@ export function useMentorSessions(mentorId: string | undefined, params?: {
     }
   }, [load])
 
-  return { sessions, isLoading, error, reload: load, createSession, updateSession }
+  return { sessions, isLoading, error, reload: load, createSession, updateSession, pagination }
 }
 
 

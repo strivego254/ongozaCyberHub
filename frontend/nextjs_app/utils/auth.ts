@@ -4,6 +4,8 @@
 
 const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
+// Legacy key used by older axios clients in this repo
+const LEGACY_AUTH_TOKEN_KEY = 'auth_token';
 const ACCESS_TOKEN_COOKIE = 'access_token';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
 
@@ -15,6 +17,7 @@ export function setAuthTokens(accessToken: string, refreshToken: string): void {
 
   // Set in localStorage as fallback
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(LEGACY_AUTH_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 
   // Set in cookies (should be HttpOnly in production via API route)
@@ -37,7 +40,7 @@ export function getAccessToken(): string | null {
   }
 
   // Fallback to localStorage
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_AUTH_TOKEN_KEY);
 }
 
 /**
@@ -64,6 +67,7 @@ export function clearAuthTokens(): void {
   if (typeof window === 'undefined') return;
 
   localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 
   // Clear cookies

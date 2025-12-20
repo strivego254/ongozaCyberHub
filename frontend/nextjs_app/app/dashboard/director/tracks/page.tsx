@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useTracks, useDeleteTrack, usePrograms, useProgram } from '@/hooks/usePrograms'
-import { programsClient, type Track, type Program } from '@/services/programsClient'
+import { programsClient } from '@/services/programsClient'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -15,6 +15,8 @@ export default function TracksPage() {
   const router = useRouter()
   const { programs, isLoading: loadingPrograms, reload: reloadPrograms } = usePrograms()
   const [selectedProgramId, setSelectedProgramId] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(12)
   
   // Fetch selected program details dynamically to get latest updates
   const { program: selectedProgramFromApi, isLoading: loadingSelectedProgram, reload: reloadSelectedProgram } = useProgram(
@@ -94,24 +96,34 @@ export default function TracksPage() {
 
   // Load cohort counts for each track
   useEffect(() => {
-    if (tracks.length === 0) return
+    if (tracks.length === 0) {
+      setCohortsMap({})
+      return
+    }
     const loadCohortCounts = async () => {
       const counts: Record<string, number> = {}
-      for (const track of tracks) {
-        if (track.id) {
+      await Promise.all(
+        tracks.map(async (track) => {
+          if (!track.id) return
           try {
-            const cohorts = await programsClient.getCohorts({ trackId: String(track.id) })
-            counts[track.id] = Array.isArray(cohorts) ? cohorts.length : 0
+            // `getCohorts` is paginated; use count for an accurate total.
+            const res = await programsClient.getCohorts({ trackId: track.id, page: 1, pageSize: 1 })
+            counts[track.id] = typeof res?.count === 'number' ? res.count : 0
           } catch (err) {
             console.error(`Failed to load cohorts for track ${track.id}:`, err)
             counts[track.id] = 0
           }
-        }
-      }
+        })
+      )
       setCohortsMap(counts)
     }
     loadCohortCounts()
   }, [tracks])
+
+  // Reset pagination when filters/program selection changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedProgramId, filterType, searchQuery])
 
   const filteredTracks = useMemo(() => {
     return tracks.filter((track) => {
@@ -131,6 +143,17 @@ export default function TracksPage() {
     })
   }, [tracks, filterType, searchQuery])
 
+  const totalPages = Math.max(1, Math.ceil(filteredTracks.length / pageSize))
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages))
+  }, [totalPages])
+
+  const paginatedTracks = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredTracks.slice(start, start + pageSize)
+  }, [filteredTracks, currentPage, pageSize])
+
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete track "${name}"? This action cannot be undone and will affect all associated cohorts and enrollments.`)) {
       return
@@ -141,12 +164,6 @@ export default function TracksPage() {
     } catch (err: any) {
       alert(err.message || 'Failed to delete track')
       console.error('Failed to delete track:', err)
-    }
-  }
-
-  const handleViewProgram = (programId: string | undefined) => {
-    if (programId) {
-      router.push(`/dashboard/director/programs/${programId}`)
     }
   }
 
@@ -259,7 +276,7 @@ export default function TracksPage() {
                       <div>
                         <span className="text-och-steel">Status:</span>
                         <Badge 
-                          variant={selectedProgram.status === 'active' ? 'defender' : selectedProgram.status === 'archived' ? 'steel' : 'steel'}
+                          variant={selectedProgram.status === 'active' ? 'defender' : selectedProgram.status === 'archived' ? 'secondary' : 'outline'}
                           className="ml-2"
                         >
                           {selectedProgram.status || 'N/A'}
@@ -327,11 +344,13 @@ export default function TracksPage() {
                   Showing <span className="text-white font-semibold">{filteredTracks.length}</span> of{' '}
                   <span className="text-white font-semibold">{tracks.length}</span> tracks in{' '}
                   <span className="text-och-defender font-semibold">{selectedProgram.name}</span>
+                  {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
                 </>
               ) : (
                 <>
                   Showing <span className="text-white font-semibold">{filteredTracks.length}</span> of{' '}
                   <span className="text-white font-semibold">{tracks.length}</span> tracks across all programs
+                  {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
                 </>
               )}
             </div>
@@ -394,122 +413,181 @@ export default function TracksPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {filteredTracks.map((track) => (
-                <Card key={track.id} className="border-och-defender/30 hover:border-och-defender/50 transition-colors">
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Badge variant={track.track_type === 'primary' ? 'defender' : 'gold'}>
-                            {track.track_type === 'primary' ? 'Primary Track' : 'Cross-Track'}
-                          </Badge>
-                          <h3 className="text-xl font-bold text-white">{track.name}</h3>
-                        </div>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-4">
-                            <span className="text-och-steel">Key:</span>
-                            <code className="px-2 py-1 bg-och-midnight/50 rounded text-och-defender font-mono text-xs">
-                              {track.key}
-                            </code>
-                          </div>
-                          {track.program_name && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-och-steel">Program:</span>
-                              {track.program ? (
-                                <button
-                                  onClick={() => handleViewProgram(track.program)}
-                                  className="text-och-defender hover:text-och-defender/80 hover:underline cursor-pointer"
-                                  title={`View ${track.program_name} program`}
+              {/* List View */}
+              <Card className="border-och-defender/30">
+                <div className="p-4">
+                  <div className="hidden md:grid grid-cols-12 gap-3 text-xs uppercase tracking-wide text-och-steel pb-3 border-b border-och-steel/20">
+                    <div className="col-span-5">Track</div>
+                    <div className="col-span-2">Key / Program</div>
+                    <div className="col-span-1 text-right">Cohorts</div>
+                    <div className="col-span-1 text-right">Milestones</div>
+                    <div className="col-span-1 text-right">Modules</div>
+                    <div className="col-span-2 text-right">Actions</div>
+                  </div>
+
+                  <div className="divide-y divide-och-steel/20">
+                    {paginatedTracks.map((track) => {
+                      const cohortsCount = cohortsMap[track.id || ''] ?? 0
+                      const milestonesCount = track.milestones?.length || 0
+                      const modulesCount =
+                        track.milestones?.reduce((sum: number, m: any) => sum + (m.modules?.length || 0), 0) || 0
+
+                      return (
+                        <div
+                          key={track.id}
+                          onClick={() => track.id && router.push(`/dashboard/director/tracks/${track.id}`)}
+                          className="py-4 cursor-pointer hover:bg-och-midnight/30 transition-colors"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                            <div className="md:col-span-5">
+                              <div className="flex items-center gap-2">
+                                <Badge variant={track.track_type === 'primary' ? 'defender' : 'gold'}>
+                                  {track.track_type === 'primary' ? 'Primary' : 'Cross-Track'}
+                                </Badge>
+                                <div className="text-white font-semibold">{track.name}</div>
+                              </div>
+                              <div className="text-xs text-och-steel mt-1 line-clamp-1">
+                                {track.description || 'No description'}
+                              </div>
+                            </div>
+
+                            <div className="md:col-span-2">
+                              <div className="flex items-center gap-2">
+                                <code className="px-2 py-1 bg-och-midnight/50 rounded text-och-defender font-mono text-xs">
+                                  {track.key}
+                                </code>
+                              </div>
+                              <div className="text-xs text-och-steel mt-1 line-clamp-1">
+                                {track.program_name || (track.program ? `Program: ${track.program}` : 'No program')}
+                              </div>
+                            </div>
+
+                            <div className="md:col-span-1 md:text-right text-sm text-white">
+                              {cohortsCount}
+                            </div>
+                            <div className="md:col-span-1 md:text-right text-sm text-white">
+                              {milestonesCount}
+                            </div>
+                            <div className="md:col-span-1 md:text-right text-sm text-white">
+                              {modulesCount}
+                            </div>
+
+                            <div className="md:col-span-2 flex flex-wrap gap-2 md:justify-end">
+                              {track.id && (
+                                <Button
+                                  variant="defender"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/dashboard/director/tracks/${track.id}`)
+                                  }}
                                 >
-                                  {track.program_name}
-                                </button>
-                              ) : (
-                                <span className="text-och-steel">{track.program_name}</span>
+                                  Manage
+                                </Button>
+                              )}
+                              {track.program && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/dashboard/director/programs/${track.program}`)
+                                  }}
+                                >
+                                  Program
+                                </Button>
+                              )}
+                              {track.id && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/dashboard/director/cohorts/new?track_id=${track.id}`)
+                                  }}
+                                >
+                                  + Cohort
+                                </Button>
+                              )}
+                              {track.id && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete(track.id!, track.name)
+                                  }}
+                                  disabled={isDeleting}
+                                  className="text-och-orange hover:text-och-orange/80 hover:border-och-orange"
+                                >
+                                  {isDeleting ? 'Deleting...' : 'Delete'}
+                                </Button>
                               )}
                             </div>
-                          )}
-                          {!track.program_name && track.program && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-och-steel">Program ID:</span>
-                              <code className="px-2 py-1 bg-och-midnight/50 rounded text-och-steel font-mono text-xs">
-                                {track.program}
-                              </code>
-                            </div>
-                          )}
-                          {track.description && (
-                            <p className="text-och-steel mt-2 line-clamp-2">{track.description}</p>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </Card>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pt-4 border-t border-och-steel/20">
-                      <div>
-                        <p className="text-xs text-och-steel mb-1">Milestones</p>
-                        <p className="text-lg font-bold text-white">{track.milestones?.length || 0}</p>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <Card className="border-och-defender/30">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-och-steel text-sm">
+                        Page {currentPage} of {totalPages} • {filteredTracks.length} tracks
                       </div>
-                      <div>
-                        <p className="text-xs text-och-steel mb-1">Modules</p>
-                        <p className="text-lg font-bold text-white">
-                          {track.milestones?.reduce((sum: number, m: any) => sum + (m.modules?.length || 0), 0) || 0}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-och-steel mb-1">Specializations</p>
-                        <p className="text-lg font-bold text-white">{track.specializations?.length || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-och-steel mb-1">Cohorts</p>
-                        <p className="text-lg font-bold text-white">{cohortsMap[track.id || ''] || 0}</p>
-                      </div>
-                    </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          ← Previous
+                        </Button>
+                        <div className="flex gap-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum: number
+                            if (totalPages <= 5) {
+                              pageNum = i + 1
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i
+                            } else {
+                              pageNum = currentPage - 2 + i
+                            }
 
-                    <div className="flex flex-wrap gap-2 pt-4 border-t border-och-steel/20">
-                      {track.id && (
-                        <>
-                          <Link href={`/dashboard/director/tracks/${track.id}`} className="flex-1 min-w-[140px]">
-                            <Button variant="defender" size="sm" className="w-full">
-                              ✏️ Edit Track
-                            </Button>
-                          </Link>
-                          {track.program && (
-                            <Link href={`/dashboard/director/programs/${track.program}`}>
-                              <Button variant="outline" size="sm">
-                                📋 View Program
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={currentPage === pageNum ? 'defender' : 'outline'}
+                                size="sm"
+                                onClick={() => setCurrentPage(pageNum)}
+                                className="min-w-[40px]"
+                              >
+                                {pageNum}
                               </Button>
-                            </Link>
-                          )}
-                          {track.program && (
-                            <Link href={`/dashboard/director/programs/${track.program}/edit`}>
-                              <Button variant="outline" size="sm">
-                                ⚙️ Edit Program
-                              </Button>
-                            </Link>
-                          )}
-                          {track.id && (
-                            <Link href={`/dashboard/director/cohorts/new?track_id=${track.id}`}>
-                              <Button variant="outline" size="sm">
-                                + Create Cohort
-                              </Button>
-                            </Link>
-                          )}
-                          {track.id && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(track.id!, track.name)}
-                              disabled={isDeleting}
-                              className="text-och-orange hover:text-och-orange/80 hover:border-och-orange"
-                            >
-                              {isDeleting ? 'Deleting...' : '🗑️ Delete'}
-                            </Button>
-                          )}
-                        </>
-                      )}
+                            )
+                          })}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next →
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </Card>
-              ))}
+              )}
             </div>
           )}
         </div>

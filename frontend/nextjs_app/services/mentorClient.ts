@@ -130,7 +130,17 @@ export const mentorClient = {
     status?: 'scheduled' | 'completed' | 'all'
     start_date?: string
     end_date?: string
-  }): Promise<GroupMentorshipSession[]> {
+    page?: number
+    page_size?: number
+  }): Promise<{
+    results: GroupMentorshipSession[]
+    count: number
+    page: number
+    page_size: number
+    total_pages: number
+    next: string | null
+    previous: string | null
+  }> {
     return apiGateway.get(`/mentors/${mentorId}/sessions`, { params })
   },
 
@@ -161,6 +171,16 @@ export const mentorClient = {
       joined_at?: string
       left_at?: string
     }>
+    structured_notes?: {
+      key_takeaways?: string[]
+      action_items?: Array<{ item: string; assignee?: string }>
+      discussion_points?: string
+      next_steps?: string
+      mentor_reflections?: string
+    }
+    scheduled_at?: string
+    duration_minutes?: number
+    is_closed?: boolean
   }): Promise<GroupMentorshipSession> {
     return apiGateway.patch(`/mentors/sessions/${sessionId}`, data)
   },
@@ -187,6 +207,8 @@ export const mentorClient = {
 
   /**
    * Flag a mentee who is struggling
+   * Backend endpoint: POST /api/v1/mentor/flags
+   * Note: Backend gets mentor from authenticated user, so mentorId is not needed in URL
    */
   async flagMentee(mentorId: string, data: {
     mentee_id: string
@@ -194,7 +216,13 @@ export const mentorClient = {
     severity: 'low' | 'medium' | 'high' | 'critical'
     description: string
   }): Promise<MenteeFlag> {
-    return apiGateway.post(`/mentors/${mentorId}/flags`, data)
+    // Backend expects: mentee_id, reason (not description), severity
+    // Map description to reason and flag_type is not used by backend but kept for frontend consistency
+    return apiGateway.post(`/mentor/flags`, {
+      mentee_id: data.mentee_id,
+      reason: data.description, // Backend expects 'reason' field
+      severity: data.severity,
+    })
   },
 
   /**
@@ -205,6 +233,17 @@ export const mentorClient = {
     severity?: 'low' | 'medium' | 'high' | 'critical'
   }): Promise<MenteeFlag[]> {
     return apiGateway.get(`/mentors/${mentorId}/flags`, { params })
+  },
+
+  /**
+   * Update a mentee flag (acknowledge/resolve)
+   * Expected backend route: PATCH /mentors/flags/{flagId}
+   */
+  async updateMenteeFlag(flagId: string, data: {
+    status?: 'acknowledged' | 'resolved'
+    resolution_notes?: string
+  }): Promise<MenteeFlag> {
+    return apiGateway.patch(`/mentors/flags/${flagId}`, data)
   },
 
   /**
@@ -266,3 +305,4 @@ export const mentorClient = {
     }))
   },
 }
+

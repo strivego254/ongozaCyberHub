@@ -1,10 +1,31 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import clsx from 'clsx'
 import { useAuth } from '@/hooks/useAuth'
+import { useNavigation } from '@/hooks/useNavigation'
+import { getPrimaryRole } from '@/utils/rbac'
+
+// Helper function to get role display name
+function getRoleDisplayName(role: string | null): string {
+  if (!role) return 'Director'
+  
+  const roleMap: Record<string, string> = {
+    'student': 'Student',
+    'mentee': 'Student',
+    'mentor': 'Mentor',
+    'admin': 'Admin',
+    'program_director': 'Program Director',
+    'sponsor_admin': 'Sponsor',
+    'employer': 'Employer',
+    'analyst': 'Analyst',
+    'finance': 'Finance Director',
+  }
+  
+  return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, ' ')
+}
 
 interface NavItem {
   label: string
@@ -17,6 +38,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Overview', href: '/dashboard/director', icon: '📊', priority: 'high' },
+  { label: 'Manage Programs', href: '/dashboard/director/programs', icon: '📋', priority: 'high' },
   { 
     label: 'Programs & Cohorts', 
     href: '/dashboard/director/programs', 
@@ -48,7 +70,6 @@ const navItems: NavItem[] = [
     priority: 'high',
     children: [
       { label: 'View All Mentors', href: '/dashboard/director/mentors', icon: '👥' },
-      { label: 'Assign Mentors', href: '/dashboard/director/mentors/assign', icon: '➕' },
       { label: 'Auto-Matching', href: '/dashboard/director/mentorship/matching', icon: '🔀' },
       { label: 'Mentor Reviews', href: '/dashboard/director/mentorship/reviews', icon: '⭐' },
       { label: 'Cycle Configuration', href: '/dashboard/director/mentorship/cycles', icon: '🔄' },
@@ -76,9 +97,20 @@ export function DirectorNavigation() {
   const router = useRouter()
   const { user, logout } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const {
+    expandedItems,
+    toggleExpanded,
+    searchQuery,
+    setSearchQuery,
+  } = useNavigation({ storageKey: 'director-nav-expanded', autoExpandActive: true })
+
+  // Get primary role dynamically
+  const primaryRole = useMemo(() => getPrimaryRole(user), [user])
+  const roleDisplayName = useMemo(() => getRoleDisplayName(primaryRole), [primaryRole])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -109,21 +141,103 @@ export function DirectorNavigation() {
     return pathname?.startsWith(href)
   }
 
-  const toggleExpanded = (label: string) => {
-    setExpandedItems((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(label)) {
-        newSet.delete(label)
-      } else {
-        newSet.add(label)
+  // Auto-expand items with active children
+  useEffect(() => {
+    navItems.forEach((item) => {
+      if (item.children) {
+        const hasActiveChild = item.children.some((child) => isActive(child.href))
+        if (hasActiveChild && !expandedItems.has(item.label)) {
+          toggleExpanded(item.label)
+        }
       }
-      return newSet
     })
-  }
+  }, [pathname])
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsMobileMenuOpen(false)
+        setIsProfileOpen(false)
+        setShowSearch(false)
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearch(true)
+        setTimeout(() => searchInputRef.current?.focus(), 0)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Focus search input when shown
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [showSearch])
+
+  // Filter nav items by search query
+  const filteredNavItems = useMemo(() => {
+    if (!searchQuery) return navItems
+
+    const query = searchQuery.toLowerCase()
+    return navItems
+      .map((item) => {
+        const matchesLabel = item.label.toLowerCase().includes(query)
+        const matchingChildren = item.children?.filter(
+          (child) => child.label.toLowerCase().includes(query) || child.href.toLowerCase().includes(query)
+        )
+
+        if (matchesLabel || (matchingChildren && matchingChildren.length > 0)) {
+          return {
+            ...item,
+            children: matchingChildren || item.children,
+          }
+        }
+        return null
+      })
+      .filter((item): item is NavItem => item !== null)
+  }, [searchQuery])
 
   // Separate high priority items
-  const highPriorityItems = navItems.filter(item => item.priority === 'high')
-  const otherItems = navItems.filter(item => item.priority !== 'high')
+  const highPriorityItems = useMemo(() => navItems.filter(item => item.priority === 'high'), [])
+  const otherItems = useMemo(() => navItems.filter(item => item.priority !== 'high'), [])
+
+  // Expand all function that works with nav items
+  const handleExpandAll = useCallback(() => {
+    const allItemsWithChildren = navItems.filter((item) => item.children && item.children.length > 0)
+    if (typeof window !== 'undefined') {
+      try {
+        const newExpanded = new Set(allItemsWithChildren.map((item) => item.label))
+        localStorage.setItem('director-nav-expanded', JSON.stringify(Array.from(newExpanded)))
+        // Update state by manually setting expanded items
+        allItemsWithChildren.forEach((item) => {
+          if (!expandedItems.has(item.label)) {
+            toggleExpanded(item.label)
+          }
+        })
+      } catch (err) {
+        console.error('Failed to save navigation state:', err)
+      }
+    }
+  }, [navItems, expandedItems, toggleExpanded])
+
+  // Collapse all function
+  const handleCollapseAll = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('director-nav-expanded', JSON.stringify([]))
+        // Collapse all by toggling each expanded item
+        expandedItems.forEach((label) => {
+          toggleExpanded(label)
+        })
+      } catch (err) {
+        console.error('Failed to save navigation state:', err)
+      }
+    }
+  }, [expandedItems, toggleExpanded])
 
   return (
     <>
@@ -168,15 +282,68 @@ export function DirectorNavigation() {
           </Link>
         </div>
 
+        {/* Search Bar */}
+        <div className="p-4 border-b border-och-steel/20">
+          <div className="relative">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setShowSearch(true)}
+              placeholder="Search navigation... (Ctrl+K)"
+              className="w-full px-4 py-2 pl-10 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white text-sm placeholder-och-steel focus:outline-none focus:border-och-defender transition-colors"
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-och-steel"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-och-steel hover:text-white transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Expand/Collapse Controls */}
+        {!searchQuery && (
+          <div className="px-4 py-2 border-b border-och-steel/20 flex gap-2">
+            <button
+              onClick={handleExpandAll}
+              className="flex-1 px-3 py-1.5 text-xs bg-och-defender/20 text-och-defender rounded hover:bg-och-defender/30 transition-colors"
+            >
+              Expand All
+            </button>
+            <button
+              onClick={handleCollapseAll}
+              className="flex-1 px-3 py-1.5 text-xs bg-och-steel/20 text-och-steel rounded hover:bg-och-steel/30 transition-colors"
+            >
+              Collapse All
+            </button>
+          </div>
+        )}
+
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {/* High Priority Section */}
           {highPriorityItems.length > 0 && (
             <div className="mb-4">
-              <div className="px-4 py-2 mb-2">
-                <p className="text-xs font-semibold text-och-orange uppercase tracking-wider">Priority Actions</p>
-              </div>
-              {highPriorityItems.map((item) => {
+              {!searchQuery && (
+                <div className="px-4 py-2 mb-2">
+                  <p className="text-xs font-semibold text-och-orange uppercase tracking-wider">Priority Actions</p>
+                </div>
+              )}
+              {(searchQuery ? filteredNavItems.filter((i) => i.priority === 'high') : highPriorityItems).map((item) => {
                 const active = isActive(item.href)
                 const hasChildren = item.children && item.children.length > 0
                 const isExpanded = expandedItems.has(item.label)
@@ -204,7 +371,12 @@ export function DirectorNavigation() {
                           </span>
                         </button>
                         {isExpanded && item.children && (
-                          <div className="ml-4 mt-1 space-y-1 border-l border-och-steel/20 pl-4">
+                          <div
+                            className={clsx(
+                              'ml-4 mt-1 space-y-1 border-l border-och-steel/20 pl-4 overflow-hidden transition-all duration-300',
+                              isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                            )}
+                          >
                             {item.children?.map((child) => {
                               const childActive = isActive(child.href)
                               return (
@@ -256,8 +428,9 @@ export function DirectorNavigation() {
           )}
 
           {/* Other Items Section */}
-          <div className="mt-4 pt-4 border-t border-och-steel/20">
-            {otherItems.map((item) => {
+          {!searchQuery && (
+            <div className="mt-4 pt-4 border-t border-och-steel/20">
+              {otherItems.map((item) => {
               const active = isActive(item.href)
               const hasChildren = item.children && item.children.length > 0
               const isExpanded = expandedItems.has(item.label)
@@ -285,7 +458,12 @@ export function DirectorNavigation() {
                         </span>
                       </button>
                       {isExpanded && item.children && (
-                        <div className="ml-4 mt-1 space-y-1 border-l border-och-steel/20 pl-4">
+                        <div
+                          className={clsx(
+                            'ml-4 mt-1 space-y-1 border-l border-och-steel/20 pl-4 overflow-hidden transition-all duration-300',
+                            isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                          )}
+                        >
                           {item.children.map((child) => {
                             const childActive = isActive(child.href)
                             return (
@@ -333,7 +511,89 @@ export function DirectorNavigation() {
                 </div>
               )
             })}
-          </div>
+            </div>
+          )}
+          {/* Show all filtered items when searching */}
+          {searchQuery && (
+            <div className="space-y-1">
+              {filteredNavItems
+                .filter((item) => item.priority !== 'high')
+                .map((item) => {
+                  const active = isActive(item.href)
+                  const hasChildren = item.children && item.children.length > 0
+                  const isExpanded = expandedItems.has(item.label)
+
+                  return (
+                    <div key={item.href}>
+                      {hasChildren ? (
+                        <>
+                          <button
+                            onClick={() => toggleExpanded(item.label)}
+                            className={clsx(
+                              'w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all duration-200',
+                              'hover:bg-och-defender/20 hover:text-och-mint',
+                              active
+                                ? 'bg-och-defender/30 text-och-mint border-l-4 border-och-mint'
+                                : 'text-och-steel'
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-xl">{item.icon}</span>
+                              <span className="font-medium">{item.label}</span>
+                            </div>
+                            <span className="text-och-steel">{isExpanded ? '▼' : '▶'}</span>
+                          </button>
+                          {isExpanded && item.children && (
+                            <div
+                              className={clsx(
+                                'ml-4 mt-1 space-y-1 border-l border-och-steel/20 pl-4 overflow-hidden transition-all duration-300',
+                                isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                              )}
+                            >
+                              {item.children.map((child) => {
+                                const childActive = isActive(child.href)
+                                return (
+                                  <Link
+                                    key={child.href}
+                                    href={child.href}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={clsx(
+                                      'flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 text-sm',
+                                      'hover:bg-och-defender/20 hover:text-och-mint',
+                                      childActive
+                                        ? 'bg-och-defender/30 text-och-mint'
+                                        : 'text-och-steel'
+                                    )}
+                                  >
+                                    <span className="text-lg">{child.icon}</span>
+                                    <span>{child.label}</span>
+                                  </Link>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={clsx(
+                            'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200',
+                            'hover:bg-och-defender/20 hover:text-och-mint',
+                            active
+                              ? 'bg-och-defender/30 text-och-mint border-l-4 border-och-mint'
+                              : 'text-och-steel'
+                          )}
+                        >
+                          <span className="text-xl">{item.icon}</span>
+                          <span className="font-medium">{item.label}</span>
+                        </Link>
+                      )}
+                    </div>
+                  )
+                })}
+            </div>
+          )}
         </nav>
 
         {/* User Profile Section */}
@@ -347,11 +607,11 @@ export function DirectorNavigation() {
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-medium text-white truncate">
-                {user?.first_name && user?.last_name
+                {user?.email || (user?.first_name && user?.last_name
                   ? `${user.first_name} ${user.last_name}`
-                  : user?.email || 'Director'}
+                  : 'Director')}
               </p>
-              <p className="text-xs text-och-steel truncate">{user?.email}</p>
+              <p className="text-xs text-och-steel truncate">{roleDisplayName}</p>
             </div>
             <svg
               className={`w-4 h-4 text-och-steel transition-transform flex-shrink-0 ${isProfileOpen ? 'rotate-180' : ''}`}

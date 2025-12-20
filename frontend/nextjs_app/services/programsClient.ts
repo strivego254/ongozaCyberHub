@@ -113,7 +113,7 @@ export interface Enrollment {
   enrollment_type: 'self' | 'sponsor' | 'invite'
   seat_type: 'paid' | 'scholarship' | 'sponsored'
   payment_status: 'pending' | 'paid' | 'waived'
-  status: 'active' | 'withdrawn' | 'completed' | 'incomplete'
+  status: 'pending_payment' | 'pending' | 'active' | 'suspended' | 'withdrawn' | 'completed' | 'incomplete'
   joined_at: string
   completed_at: string | null
 }
@@ -486,6 +486,14 @@ class ProgramsClient {
     return apiGateway.patch(`/cohorts/${id}/`, data)
   }
 
+  async updateCohortDirector(id: string, data: Partial<Cohort>): Promise<Cohort> {
+    return apiGateway.patch(`/director/cohorts/${id}/`, data)
+  }
+
+  async manageSeatPool(cohortId: string, seatPool: { paid: number; scholarship: number; sponsored: number }): Promise<Cohort> {
+    return apiGateway.post(`/director/cohorts/${cohortId}/manage_seat_pool/`, { seat_pool: seatPool })
+  }
+
   async deleteCohort(id: string): Promise<void> {
     return apiGateway.delete(`/cohorts/${id}/`)
   }
@@ -520,6 +528,57 @@ class ProgramsClient {
     return apiGateway.post(`/cohorts/${cohortId}/enrollments/`, data)
   }
 
+  async updateEnrollment(enrollmentId: string, data: Partial<Enrollment>): Promise<Enrollment> {
+    // Note: This requires backend support. For now, we'll use the cohort enrollment endpoint
+    // TODO: Add proper enrollment detail endpoint in backend
+    // This is a temporary workaround - enrollment updates should go through cohort context
+    throw new Error('Enrollment update endpoint not yet implemented. Please use approve endpoint or update through cohort.')
+  }
+
+  async approveEnrollment(cohortId: string, enrollmentId: string): Promise<Enrollment> {
+    return apiGateway.post(`/director/cohorts/${cohortId}/approve_enrollment/`, { enrollment_id: enrollmentId })
+  }
+
+  async bulkApproveEnrollments(cohortId: string, enrollmentIds: string[]): Promise<any> {
+    return apiGateway.post(`/director/cohorts/${cohortId}/bulk_approve_enrollments/`, { enrollment_ids: enrollmentIds })
+  }
+
+  async updateEnrollmentStatus(cohortId: string, enrollmentId: string, status: string): Promise<Enrollment> {
+    return apiGateway.post(`/director/cohorts/${cohortId}/update_enrollment_status/`, { enrollment_id: enrollmentId, status })
+  }
+
+  async bulkUpdateEnrollmentsStatus(cohortId: string, enrollmentIds: string[], status: string): Promise<any> {
+    return apiGateway.post(`/director/cohorts/${cohortId}/bulk_update_enrollments/`, { enrollment_ids: enrollmentIds, status })
+  }
+
+  async bulkRemoveEnrollments(cohortId: string, enrollmentIds: string[]): Promise<any> {
+    return apiGateway.post(`/director/cohorts/${cohortId}/bulk_remove_enrollments/`, { enrollment_ids: enrollmentIds })
+  }
+
+  async bulkCreateEnrollments(cohortId: string, data: {
+    user_ids: Array<string | number>
+    seat_type?: 'paid' | 'scholarship' | 'sponsored'
+    enrollment_type?: 'director' | 'invite' | 'sponsor' | 'self'
+  }): Promise<{
+    created: Enrollment[]
+    waitlisted: any[]
+    errors: Array<{ user_id: string; error: string }>
+    requested: number
+    created_count: number
+    waitlisted_count: number
+    error_count: number
+  }> {
+    return apiGateway.post(`/director/cohorts/${cohortId}/bulk_create_enrollments/`, data)
+  }
+
+  async getCohortWaitlist(cohortId: string): Promise<any[]> {
+    return apiGateway.get(`/cohorts/${cohortId}/waitlist/`)
+  }
+
+  async promoteFromWaitlist(cohortId: string, count?: number): Promise<any> {
+    return apiGateway.post(`/cohorts/${cohortId}/waitlist/`, { count: count || 1 })
+  }
+
   // Mentor Assignments
   async getCohortMentors(cohortId: string): Promise<MentorAssignment[]> {
     return apiGateway.get(`/cohorts/${cohortId}/mentors/`)
@@ -536,6 +595,35 @@ class ProgramsClient {
 
   async removeMentorAssignment(assignmentId: string): Promise<void> {
     return apiGateway.delete(`/mentor-assignments/${assignmentId}/`)
+  }
+
+  async getMentorAssignments(mentorId?: string): Promise<MentorAssignment[]> {
+    // Get all mentor assignments, optionally filtered by mentor ID
+    const params: Record<string, string> = {}
+    if (mentorId) {
+      params.mentor = mentorId
+    }
+    const response = await apiGateway.get<{ results: MentorAssignment[]; count: number } | MentorAssignment[]>(
+      '/mentor-assignments/',
+      { params }
+    )
+    if (Array.isArray(response)) {
+      if (mentorId) {
+        return response.filter((a) => {
+          const aMentorId = typeof a.mentor === 'string' ? a.mentor : a.mentor?.toString()
+          return aMentorId === mentorId || aMentorId === mentorId.toString()
+        })
+      }
+      return response
+    }
+    const results = response.results || []
+    if (mentorId) {
+      return results.filter((a) => {
+        const aMentorId = typeof a.mentor === 'string' ? a.mentor : a.mentor?.toString()
+        return aMentorId === mentorId || aMentorId === mentorId.toString()
+      })
+    }
+    return results
   }
 
   async listMentors(searchQuery?: string): Promise<any[]> {
@@ -673,7 +761,7 @@ class ProgramsClient {
       `${process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://localhost:8000'}/api/v1/cohorts/${cohortId}/export/?format=${format}`,
       {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('auth_token') || ''}`,
         },
       }
     )
@@ -686,6 +774,10 @@ class ProgramsClient {
   // Director Dashboard
   async getDirectorDashboard(): Promise<DirectorDashboard> {
     return apiGateway.get('/programs/director/dashboard/')
+  }
+
+  async getDirectorCohortDetail(cohortId: string): Promise<any> {
+    return apiGateway.get(`/director/dashboard/cohorts/${cohortId}/`)
   }
 }
 

@@ -135,6 +135,22 @@ class SSOLoginView(APIView):
                 }
             )
 
+            # Check if user is active before creating session
+            if not user.is_active:
+                _log_audit_event(user, 'sso_login', 'user', 'failure', {'reason': 'inactive_user', 'provider': provider_name})
+                return Response(
+                    {'detail': 'Account is inactive. Please contact support.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Check account status
+            if user.account_status != 'active':
+                _log_audit_event(user, 'sso_login', 'user', 'failure', {'reason': 'inactive_account_status', 'provider': provider_name, 'status': user.account_status})
+                return Response(
+                    {'detail': f'Account is {user.account_status}. Please verify your email.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
             # Create session and issue tokens
             ip_address = _get_client_ip(request)
             user_agent = request.META.get('HTTP_USER_AGENT', '')

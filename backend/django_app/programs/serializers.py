@@ -2,10 +2,13 @@
 Serializers for Programs app.
 """
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 from .models import (
     Program, Track, Milestone, Module, Specialization, Cohort, Enrollment,
     CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
 )
+
+User = get_user_model()
 
 
 # Define serializers in dependency order: Module -> Milestone -> Track -> Program
@@ -295,15 +298,21 @@ class CohortSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Validate cohort data."""
+        # NOTE: This serializer is used for both create and partial updates (PATCH).
+        # Only enforce required fields on create, or when the field is explicitly provided.
+        is_create = self.instance is None
+
         # Validate name field - check for empty strings
-        name = data.get('name')
-        if not name or (isinstance(name, str) and name.strip() == ''):
-            raise serializers.ValidationError({'name': 'This field may not be blank.'})
+        if is_create or 'name' in data:
+            name = data.get('name')
+            if not name or (isinstance(name, str) and name.strip() == ''):
+                raise serializers.ValidationError({'name': 'This field may not be blank.'})
         
         # Validate track field
-        track = data.get('track')
-        if not track:
-            raise serializers.ValidationError({'track': 'This field is required.'})
+        if is_create or 'track' in data:
+            track = data.get('track')
+            if not track:
+                raise serializers.ValidationError({'track': 'This field is required.'})
         
         # Convert empty string to None for UUIDField to avoid validation errors
         calendar_template_id = data.get('calendar_template_id')
@@ -311,8 +320,8 @@ class CohortSerializer(serializers.ModelSerializer):
             data['calendar_template_id'] = None
         
         # Validate dates
-        start_date = data.get('start_date')
-        end_date = data.get('end_date')
+        start_date = data.get('start_date', getattr(self.instance, 'start_date', None))
+        end_date = data.get('end_date', getattr(self.instance, 'end_date', None))
         
         if start_date and end_date and end_date < start_date:
             raise serializers.ValidationError({
@@ -322,7 +331,7 @@ class CohortSerializer(serializers.ModelSerializer):
         # Validate seat_pool if provided
         seat_pool = data.get('seat_pool', {})
         if isinstance(seat_pool, dict):
-            seat_cap = data.get('seat_cap', 0)
+            seat_cap = data.get('seat_cap', getattr(self.instance, 'seat_cap', 0) or 0)
             total_allocated = (
                 seat_pool.get('paid', 0) +
                 seat_pool.get('scholarship', 0) +
@@ -366,6 +375,10 @@ class MentorAssignmentSerializer(serializers.ModelSerializer):
     mentor_email = serializers.CharField(source='mentor.email', read_only=True)
     mentor_name = serializers.SerializerMethodField()
     cohort_name = serializers.CharField(source='cohort.name', read_only=True)
+    mentor = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=True
+    )
     
     class Meta:
         model = MentorAssignment
@@ -374,6 +387,32 @@ class MentorAssignmentSerializer(serializers.ModelSerializer):
     
     def get_mentor_name(self, obj):
         return obj.mentor.get_full_name() or obj.mentor.email
+    
+    def validate(self, data):
+        """Validate mentor assignment data."""
+        # Validate mentor field
+        mentor = data.get('mentor')
+        if not mentor:
+            raise serializers.ValidationError({'mentor': 'This field is required.'})
+        
+        # Validate cohort field
+        cohort = data.get('cohort')
+        if not cohort:
+            raise serializers.ValidationError({'cohort': 'This field is required.'})
+        
+        # Check for duplicate assignment (same mentor + cohort, active)
+        if self.instance is None:  # Only check on create, not update
+            existing = MentorAssignment.objects.filter(
+                cohort=cohort,
+                mentor=mentor,
+                active=True
+            ).exists()
+            if existing:
+                raise serializers.ValidationError({
+                    'non_field_errors': ['This mentor is already assigned to this cohort.']
+                })
+        
+        return data
 
 
 class ProgramRuleSerializer(serializers.ModelSerializer):

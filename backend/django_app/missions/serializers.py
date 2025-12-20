@@ -13,12 +13,16 @@ class MissionSerializer(serializers.ModelSerializer):
     title = serializers.CharField(max_length=255, required=True)
     difficulty = serializers.ChoiceField(choices=Mission.DIFFICULTY_CHOICES, required=True)
     type = serializers.ChoiceField(choices=Mission.TYPE_CHOICES, required=False, default='lab')
+    track_name = serializers.SerializerMethodField()
+    program_id = serializers.SerializerMethodField()
+    program_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Mission
         fields = [
             'id', 'code', 'title', 'description', 'difficulty', 'type',
             'track_id', 'track_key', 'est_hours', 'estimated_time_minutes',
+            'track_name', 'program_id', 'program_name',
             'competencies', 'requirements', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
@@ -40,6 +44,25 @@ class MissionSerializer(serializers.ModelSerializer):
         if value == '':
             return None
         return value
+
+    def _track_meta(self, obj):
+        """Resolve track metadata from precomputed context (preferred) or None."""
+        lookup = self.context.get('track_lookup') or {}
+        if not getattr(obj, 'track_id', None):
+            return None
+        return lookup.get(str(obj.track_id))
+
+    def get_track_name(self, obj):
+        meta = self._track_meta(obj)
+        return meta.get('name') if meta else None
+
+    def get_program_id(self, obj):
+        meta = self._track_meta(obj)
+        return meta.get('program_id') if meta else None
+
+    def get_program_name(self, obj):
+        meta = self._track_meta(obj)
+        return meta.get('program_name') if meta else None
 
 
 class MissionArtifactSerializer(serializers.ModelSerializer):

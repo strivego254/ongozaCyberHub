@@ -6,6 +6,7 @@ import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { DatePicker } from '@/components/ui/DatePicker'
 import { useCreateCohort, useTracks, usePrograms, useProgram, useTrack, useProgramRules } from '@/hooks/usePrograms'
 import { programsClient, type Cohort, type CalendarEvent, type Program, type Track, type Milestone } from '@/services/programsClient'
 import { apiGateway } from '@/services/apiGateway'
@@ -384,27 +385,27 @@ export default function CreateCohortClient() {
                 return (
                   <div key={stepInfo.key} className="flex items-center gap-2 flex-shrink-0">
                     <div className="flex flex-col items-center">
-                      <div
+              <div
                         className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-semibold transition-all ${
                           isActive
                             ? 'bg-och-defender text-white shadow-lg scale-110'
                             : isCompleted
-                            ? 'bg-och-mint text-och-midnight'
-                            : 'bg-och-midnight/50 text-och-steel'
-                        }`}
-                      >
+                    ? 'bg-och-mint text-och-midnight'
+                    : 'bg-och-midnight/50 text-och-steel'
+                }`}
+              >
                         {isCompleted ? '✓' : stepInfo.icon}
-                      </div>
+              </div>
                       <span className={`text-xs font-medium mt-1 text-center whitespace-nowrap ${
                         isActive ? 'text-och-defender' : isCompleted ? 'text-och-mint' : 'text-och-steel'
-                      }`}>
+              }`}>
                         {stepInfo.label}
-                      </span>
-                    </div>
+              </span>
+            </div>
                     {idx < 4 && (
                       <div className={`w-8 h-0.5 mx-2 ${isCompleted ? 'bg-och-mint' : 'bg-och-steel/30'}`} />
                     )}
-                  </div>
+        </div>
                 )
               })}
             </div>
@@ -581,28 +582,28 @@ export default function CreateCohortClient() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">
-                      Start Date *
-                    </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      label="Start Date"
                       required
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                      value={formData.start_date || ''}
+                      onChange={(val) => {
+                        const next: any = { ...formData, start_date: val }
+                        if (val && formData.end_date && val > formData.end_date) {
+                          next.end_date = ''
+                        }
+                        setFormData(next)
+                      }}
+                      max={formData.end_date || undefined}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">
-                      End Date *
-                    </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      label="End Date"
                       required
-                      value={formData.end_date}
-                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                      value={formData.end_date || ''}
+                      onChange={(val) => setFormData({ ...formData, end_date: val })}
+                      min={formData.start_date || undefined}
                     />
                   </div>
                 </div>

@@ -13,8 +13,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/mentor' },
-  { label: 'Mentees', href: '/dashboard/mentor/mentees' },
   { label: 'Missions', href: '/dashboard/mentor/missions' },
+  { label: 'Cohorts & Tracks', href: '/dashboard/mentor/cohorts-tracks' },
   { label: 'Sessions', href: '/dashboard/mentor/sessions' },
   { label: 'Analytics', href: '/dashboard/mentor/analytics' },
   { label: 'Profile', href: '/dashboard/mentor/profile' },

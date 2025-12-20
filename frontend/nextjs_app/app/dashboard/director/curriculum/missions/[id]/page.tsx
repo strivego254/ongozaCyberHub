@@ -8,9 +8,9 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { missionsClient, type MissionTemplate } from '@/services/missionsClient'
-import { programsClient } from '@/services/programsClient'
+import { programsClient, type Program, type Track } from '@/services/programsClient'
 import { djangoClient } from '@/services/djangoClient'
-import { usePrograms, useTracks } from '@/hooks/usePrograms'
+import { useProgram, usePrograms, useTracks } from '@/hooks/usePrograms'
 import Link from 'next/link'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
@@ -99,14 +99,38 @@ export default function MissionDetailPage() {
   const [mission, setMission] = useState<MissionTemplate | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [linkedTrack, setLinkedTrack] = useState<Track | null>(null)
+  const [linkedProgram, setLinkedProgram] = useState<Program | null>(null)
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [missionForm, setMissionForm] = useState<Partial<MissionTemplate>>({})
+
+  // Track linking (Programs → Tracks)
+  const { programs } = usePrograms()
+  const [selectedProgramId, setSelectedProgramId] = useState<string>('')
+  const { program: selectedProgramDetail, isLoading: programDetailLoading } = useProgram(
+    selectedProgramId ? selectedProgramId : ''
+  )
+  const { tracks: programTracks, isLoading: tracksLoading } = useTracks(
+    selectedProgramId ? selectedProgramId : undefined
+  )
+
+  const availableTracks = (selectedProgramDetail?.tracks && Array.isArray(selectedProgramDetail.tracks) && selectedProgramDetail.tracks.length > 0)
+    ? selectedProgramDetail.tracks
+    : programTracks
   
-  // Get tracks for track selection
-  const { tracks } = useTracks(mission?.track_id ? undefined : undefined)
+  // Keep program selector in sync with current track_id when possible (best-effort)
+  useEffect(() => {
+    if (!isEditing) return
+    if (!missionForm.track_id) return
+    const match = programTracks.find((t: any) => String(t.id) === String(missionForm.track_id))
+    if (match?.program) {
+      setSelectedProgramId(String(match.program))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing])
 
   useEffect(() => {
     loadMissionData()
@@ -119,6 +143,22 @@ export default function MissionDetailPage() {
       // Load mission details first
       const missionData = await missionsClient.getMission(missionId)
       setMission(missionData)
+
+      // Resolve linked track/program for display (best-effort)
+      setLinkedTrack(null)
+      setLinkedProgram(null)
+      if (missionData.track_id) {
+        try {
+          const t = await programsClient.getTrack(String(missionData.track_id))
+          setLinkedTrack(t)
+          if (t?.program) {
+            const p = await programsClient.getProgram(String(t.program))
+            setLinkedProgram(p)
+          }
+        } catch {
+          // ignore; show fallback labels
+        }
+      }
       
       // Extract OCH Admin fields from requirements
       const reqs = missionData.requirements || {}
@@ -161,14 +201,51 @@ export default function MissionDetailPage() {
     }
   }, [missionId])
 
+  const handleCancelEdit = () => {
+    if (!mission) {
+      setIsEditing(false)
+      return
+    }
+    const reqs = mission.requirements || {}
+    setMissionForm({
+      code: mission.code,
+      title: mission.title,
+      description: mission.description,
+      difficulty: mission.difficulty,
+      type: mission.type,
+      track_id: mission.track_id,
+      track_key: mission.track_key,
+      est_hours: mission.est_hours,
+      estimated_time_minutes: mission.estimated_time_minutes,
+      competencies: mission.competencies || [],
+      requirements: reqs,
+      status: mission.status || reqs.status || 'draft',
+      assessment_mode: mission.assessment_mode || reqs.assessment_mode || 'hybrid',
+      requires_mentor_review: mission.requires_mentor_review ?? reqs.requires_mentor_review ?? false,
+      story_narrative: mission.story_narrative || reqs.story_narrative || '',
+      subtasks: mission.subtasks || reqs.subtasks || [],
+      evidence_upload_schema: mission.evidence_upload_schema || reqs.evidence_upload_schema || {
+        file_types: [],
+        max_file_size_mb: 10,
+        required_artifacts: [],
+      },
+      time_constraint_hours: mission.time_constraint_hours || reqs.time_constraint_hours,
+      competency_coverage: mission.competency_coverage || reqs.competency_coverage || [],
+      rubric_id: mission.rubric_id || reqs.rubric_id,
+      module_id: mission.module_id || reqs.module_id,
+    })
+    setIsEditing(false)
+  }
+
   const loadMissionAnalytics = async (missionData?: MissionTemplate) => {
     const missionToUse = missionData || mission
     if (!missionToUse) return
-    
     try {
       // Fetch submissions
-      const submissionsResponse = await missionsClient.getMissionSubmissions?.(missionId) ||
-        await fetch(`/api/v1/missions/${missionId}/submissions/`).then(r => r.json()).catch(() => ({ submissions: [] }))
+      const submissionsResponse = (await missionsClient.getMissionSubmissions?.(missionId)) ||
+        (await fetch(`/api/v1/missions/${missionId}/submissions/`)
+          .then((r) => r.json())
+          .catch(() => ({ submissions: [] })))
       
       const submissions = submissionsResponse.submissions || []
 
@@ -431,6 +508,8 @@ export default function MissionDetailPage() {
     ? Object.entries(analytics.submissions_by_status).map(([name, value]) => ({ name, value }))
     : []
 
+  const baseMission = mission || analytics?.mission || null
+
   if (isLoading) {
     return (
       <RouteGuard>
@@ -448,13 +527,31 @@ export default function MissionDetailPage() {
     )
   }
 
-  if (error || !analytics) {
+  // If mission fetch failed, show the error (analytics failure should not block the page)
+  if (error && !baseMission) {
     return (
       <RouteGuard>
         <DirectorLayout>
           <div className="max-w-7xl mx-auto">
             <div className="text-center py-12">
-              <p className="text-red-400 mb-4">{error || 'Mission not found'}</p>
+              <p className="text-red-400 mb-4">{error}</p>
+              <Link href="/dashboard/director/curriculum/missions">
+                <Button variant="outline">Back to Missions</Button>
+              </Link>
+            </div>
+          </div>
+        </DirectorLayout>
+      </RouteGuard>
+    )
+  }
+
+  if (!baseMission) {
+    return (
+      <RouteGuard>
+        <DirectorLayout>
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center py-12">
+              <p className="text-red-400 mb-4">Mission not found</p>
               <Link href="/dashboard/director/curriculum/missions">
                 <Button variant="outline">Back to Missions</Button>
               </Link>
@@ -477,57 +574,273 @@ export default function MissionDetailPage() {
                 <span className="ml-2">Back to Missions</span>
               </Button>
             </Link>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-bold text-och-gold">{analytics.mission.code}</h1>
-              <Badge variant={getDifficultyColor(analytics.mission.difficulty)}>
-                {analytics.mission.difficulty}
-              </Badge>
-              <Badge variant={getTypeColor(analytics.mission.type)}>
-                {analytics.mission.type}
-              </Badge>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                  <h1 className="text-4xl font-bold text-och-gold">{baseMission.code}</h1>
+                  <Badge variant={getDifficultyColor(baseMission.difficulty)}>
+                    {baseMission.difficulty}
+                  </Badge>
+                  <Badge variant={getTypeColor(baseMission.type)}>
+                    {baseMission.type}
+                  </Badge>
+                </div>
+                <h2 className="text-2xl font-semibold text-white mb-2">{baseMission.title}</h2>
+                {baseMission.description && (
+                  <p className="text-och-steel">{baseMission.description}</p>
+                )}
+
+                {/* Linked Program / Track */}
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-och-steel">Linked:</span>
+                  {linkedProgram ? (
+                    <button
+                      onClick={() => router.push(`/dashboard/director/programs/${linkedProgram.id}`)}
+                      className="text-och-defender hover:underline"
+                      title="View program"
+                    >
+                      {linkedProgram.name}
+                    </button>
+                  ) : (
+                    <span className="text-och-steel">No program</span>
+                  )}
+                  <span className="text-och-steel">/</span>
+                  {linkedTrack ? (
+                    <button
+                      onClick={() => router.push(`/dashboard/director/tracks/${linkedTrack.id}`)}
+                      className="text-och-defender hover:underline"
+                      title="View track"
+                    >
+                      {linkedTrack.name}
+                    </button>
+                  ) : baseMission.track_id || baseMission.track_key ? (
+                    <span className="text-och-steel">
+                      {baseMission.track_key || String(baseMission.track_id)}
+                    </span>
+                  ) : (
+                    <span className="text-och-steel">Unassigned</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {isEditing ? (
+                  <>
+                    <Button variant="outline" onClick={handleCancelEdit} disabled={isSaving}>
+                      Cancel
+                    </Button>
+                    <Button variant="defender" onClick={handleSaveMission} disabled={isSaving}>
+                      {isSaving ? 'Saving...' : 'Save'}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="defender" onClick={() => setIsEditing(true)}>
+                      <EditIcon />
+                      <span className="ml-2">Edit</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleDeleteMission}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <TrashIcon />
+                      <span className="ml-2">Delete</span>
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
-            <h2 className="text-2xl font-semibold text-white mb-2">{analytics.mission.title}</h2>
-            {analytics.mission.description && (
-              <p className="text-och-steel">{analytics.mission.description}</p>
-            )}
           </div>
+
+          {/* Mission Management (Edit Form) */}
+          {isEditing && (
+            <Card className="mb-6 border-och-defender/30">
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-white mb-4">Mission Management</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Mission Code</label>
+                    <input
+                      value={missionForm.code || ''}
+                      onChange={(e) => setMissionForm({ ...missionForm, code: e.target.value })}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Title</label>
+                    <input
+                      value={missionForm.title || ''}
+                      onChange={(e) => setMissionForm({ ...missionForm, title: e.target.value })}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-white mb-2">Description</label>
+                  <textarea
+                    value={missionForm.description || ''}
+                    onChange={(e) => setMissionForm({ ...missionForm, description: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Difficulty</label>
+                    <select
+                      value={missionForm.difficulty || 'beginner'}
+                      onChange={(e) => setMissionForm({ ...missionForm, difficulty: e.target.value as any })}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    >
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
+                      <option value="capstone">Capstone</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Type</label>
+                    <select
+                      value={missionForm.type || 'lab'}
+                      onChange={(e) => setMissionForm({ ...missionForm, type: e.target.value as any })}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    >
+                      <option value="lab">Lab</option>
+                      <option value="scenario">Scenario</option>
+                      <option value="project">Project</option>
+                      <option value="capstone">Capstone</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Est. Hours</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={missionForm.est_hours ?? ''}
+                      onChange={(e) => setMissionForm({ ...missionForm, est_hours: e.target.value ? parseInt(e.target.value) : undefined })}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Est. Minutes</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={missionForm.estimated_time_minutes ?? ''}
+                      onChange={(e) => setMissionForm({ ...missionForm, estimated_time_minutes: e.target.value ? parseInt(e.target.value) : undefined })}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    />
+                  </div>
+                </div>
+
+                {/* Program/Track assignment */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-och-steel/20">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Program (filter tracks)</label>
+                    <select
+                      value={selectedProgramId}
+                      onChange={(e) => setSelectedProgramId(e.target.value)}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    >
+                      <option value="">All Programs</option>
+                      {programs.map((p: any) => (
+                        <option key={p.id} value={String(p.id)}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Attach to Track</label>
+                    <select
+                      value={missionForm.track_id ? String(missionForm.track_id) : ''}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (!val) {
+                          setMissionForm({ ...missionForm, track_id: '', track_key: '' })
+                          return
+                        }
+                        const t = availableTracks.find((x: any) => String(x.id) === String(val))
+                        setMissionForm({
+                          ...missionForm,
+                          track_id: val,
+                          track_key: t?.key || missionForm.track_key || '',
+                        })
+                      }}
+                      disabled={tracksLoading || programDetailLoading}
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender disabled:opacity-50"
+                    >
+                      <option value="">
+                        {(tracksLoading || programDetailLoading) ? 'Loading tracks...' : 'Unassigned'}
+                      </option>
+                      {availableTracks.map((t: any) => (
+                        <option key={t.id} value={String(t.id)}>
+                          {t.name} ({t.key})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-och-steel mt-1">
+                      This will set <span className="text-white">track_id</span> and <span className="text-white">track_key</span> and sync to backend.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Analytics unavailable warning */}
+          {!analytics && (
+            <Card className="mb-6 border-och-orange/50">
+              <div className="p-4 text-och-orange">
+                Analytics unavailable (submissions endpoint failed or no data). Mission details are still editable.
+              </div>
+            </Card>
+          )}
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <div className="p-6">
-                <p className="text-och-steel text-sm mb-1">Total Submissions</p>
-                <p className="text-3xl font-bold text-white">{analytics.total_submissions}</p>
-              </div>
-            </Card>
-            <Card>
-              <div className="p-6">
-                <p className="text-och-steel text-sm mb-1">Avg. AI Score</p>
-                <p className="text-3xl font-bold text-white">
-                  {analytics.average_ai_score.toFixed(1)}%
-                </p>
-              </div>
-            </Card>
-            <Card>
-              <div className="p-6">
-                <p className="text-och-steel text-sm mb-1">Avg. Mentor Score</p>
-                <p className="text-3xl font-bold text-white">
-                  {analytics.average_mentor_score.toFixed(1)}%
-                </p>
-              </div>
-            </Card>
-            <Card>
-              <div className="p-6">
-                <p className="text-och-steel text-sm mb-1">Approval Rate</p>
-                <p className="text-3xl font-bold text-white">
-                  {analytics.approval_rate.toFixed(1)}%
-                </p>
-              </div>
-            </Card>
-          </div>
+          {analytics && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <div className="p-6">
+                  <p className="text-och-steel text-sm mb-1">Total Submissions</p>
+                  <p className="text-3xl font-bold text-white">{analytics.total_submissions}</p>
+                </div>
+              </Card>
+              <Card>
+                <div className="p-6">
+                  <p className="text-och-steel text-sm mb-1">Avg. AI Score</p>
+                  <p className="text-3xl font-bold text-white">
+                    {analytics.average_ai_score.toFixed(1)}%
+                  </p>
+                </div>
+              </Card>
+              <Card>
+                <div className="p-6">
+                  <p className="text-och-steel text-sm mb-1">Avg. Mentor Score</p>
+                  <p className="text-3xl font-bold text-white">
+                    {analytics.average_mentor_score.toFixed(1)}%
+                  </p>
+                </div>
+              </Card>
+              <Card>
+                <div className="p-6">
+                  <p className="text-och-steel text-sm mb-1">Approval Rate</p>
+                  <p className="text-3xl font-bold text-white">
+                    {analytics.approval_rate.toFixed(1)}%
+                  </p>
+                </div>
+              </Card>
+            </div>
+          )}
 
           {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {analytics && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Status Distribution */}
             <Card>
               <div className="p-6">
@@ -593,6 +906,7 @@ export default function MissionDetailPage() {
               </div>
             </Card>
           </div>
+          )}
 
           {/* Cohorts and Mentors */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

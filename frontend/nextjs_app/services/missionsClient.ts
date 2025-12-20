@@ -15,6 +15,9 @@ export interface MissionTemplate {
   type: 'lab' | 'scenario' | 'project' | 'capstone'
   track_id?: string
   track_key?: string
+  track_name?: string | null
+  program_id?: string | null
+  program_name?: string | null
   est_hours?: number
   estimated_time_minutes?: number
   competencies?: string[]
@@ -57,6 +60,7 @@ export const missionsClient = {
    * Get all missions (for directors/admin)
    */
   async getAllMissions(params?: {
+    program_id?: string
     track_id?: string
     track_key?: string
     difficulty?: string

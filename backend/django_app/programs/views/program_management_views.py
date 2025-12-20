@@ -15,6 +15,7 @@ from programs.serializers import (
     ProgramSerializer, ProgramDetailSerializer,
     TrackSerializer, MilestoneSerializer, ModuleSerializer, SpecializationSerializer
 )
+from users.utils.audit_utils import log_audit_event
 
 
 class ProgramManagementViewSet(viewsets.ModelViewSet):
@@ -118,6 +119,19 @@ class ProgramManagementViewSet(viewsets.ModelViewSet):
                 
                 # Ensure program is saved with all fields and categories
                 program.refresh_from_db()
+                log_audit_event(
+                    request=request,
+                    user=request.user,
+                    action='create',
+                    resource_type='program',
+                    resource_id=str(program.id),
+                    metadata={
+                        'name': program.name,
+                        'operation': 'programs-management.create',
+                        'tracks_count': len(tracks_data),
+                        'rules_count': len(rules_data),
+                    },
+                )
                 logger.info(f"Program base created: {program.id} - {program.name}")
                 logger.info(f"Program category: {program.category}, categories: {program.categories}")
                 
