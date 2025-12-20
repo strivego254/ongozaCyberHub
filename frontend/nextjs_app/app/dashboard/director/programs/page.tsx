@@ -1,12 +1,20 @@
 'use client'
 
+<<<<<<< HEAD
+import { useEffect, useMemo, useRef, useState } from 'react'
+=======
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+<<<<<<< HEAD
+import { useCohorts, useDeleteProgram, useProgram, usePrograms, useUpdateCohort } from '@/hooks/usePrograms'
+=======
 import { useCohorts, useDeleteProgram, useProgram, usePrograms, useUpdateCohortDirector } from '@/hooks/usePrograms'
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 
@@ -22,10 +30,17 @@ interface ProgramDetails {
 export default function ProgramsPage() {
   const { programs, isLoading, reload } = usePrograms()
   const { deleteProgram, isLoading: isDeleting } = useDeleteProgram()
+<<<<<<< HEAD
+  const { updateCohort, isLoading: isAssigning, error: assignApiError } = useUpdateCohort()
+  const { cohorts, isLoading: cohortsLoading, reload: reloadCohorts } = useCohorts({ page: 1, pageSize: 500 })
+  const [assignProgramId, setAssignProgramId] = useState<string>('')
+  const { program: assignProgramDetail, isLoading: assignProgramLoading } = useProgram(assignProgramId)
+=======
   const { updateCohort, isLoading: isAssigning, error: assignApiError } = useUpdateCohortDirector()
   const { cohorts, isLoading: cohortsLoading, reload: reloadCohorts } = useCohorts({ page: 1, pageSize: 500 })
   const [assignProgramId, setAssignProgramId] = useState<string>('')
   const { program: assignProgramDetail, isLoading: assignProgramLoading, reload: reloadProgramDetail } = useProgram(assignProgramId)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [assignTrackId, setAssignTrackId] = useState<string>('')
   const [assignCohortId, setAssignCohortId] = useState<string>('')
   const [assignError, setAssignError] = useState<string | null>(null)
@@ -211,6 +226,14 @@ export default function ProgramsPage() {
 
     try {
       await updateCohort(assignCohortId, { track: assignTrackId })
+<<<<<<< HEAD
+      setAssignSuccess('Cohort updated successfully.')
+      // Refresh data shown on the page
+      reload()
+      reloadCohorts()
+    } catch (err: any) {
+      setAssignError(err?.message || assignApiError || 'Failed to assign program to cohort')
+=======
       setAssignSuccess('Cohort updated successfully. The cohort is now assigned to the selected track.')
       // Refresh all data shown on the page
       await Promise.all([
@@ -244,6 +267,7 @@ export default function ProgramsPage() {
                            assignApiError || 
                            'Failed to assign program to cohort. Please check your permissions and try again.'
       setAssignError(errorMessage)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     }
   }
 
@@ -464,7 +488,11 @@ export default function ProgramsPage() {
                                     </div>
                                   </div>
                                   <div className="ml-2">
+<<<<<<< HEAD
+                                    <Badge variant={c.status === 'active' ? 'mint' : 'steel'} className="text-xs">
+=======
                                     <Badge variant={c.status === 'active' ? 'mint' : 'outline'} className="text-xs">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                                       {c.status}
                                     </Badge>
                                   </div>

@@ -22,6 +22,8 @@ class MentorAssignmentViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         user = self.request.user
         
+<<<<<<< HEAD
+=======
         # Support filtering by mentor ID via query parameter (for admin/staff)
         mentor_id = self.request.query_params.get('mentor')
         if mentor_id:
@@ -40,6 +42,7 @@ class MentorAssignmentViewSet(viewsets.ModelViewSet):
             except (ValueError, TypeError):
                 pass  # Invalid mentor ID, ignore filter
         
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         # If user is a program director, show assignments for cohorts they manage
         if hasattr(user, 'is_staff') and user.is_staff:
             return queryset
@@ -146,6 +149,10 @@ class MentorAssignmentViewSet(viewsets.ModelViewSet):
         # Allow if user is staff/admin or if they are the director of the cohort's track
         if not (request.user.is_staff or DirectorService.can_manage_cohort(request.user, cohort)):
             return Response(
+<<<<<<< HEAD
+                {'error': 'You do not have permission to manage this cohort'},
+=======
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 status=status.HTTP_403_FORBIDDEN
             )
         

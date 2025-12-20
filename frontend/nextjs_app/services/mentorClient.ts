@@ -55,6 +55,22 @@ export const mentorClient = {
    */
 
   /**
+   * Get all missions defined by directors (read-only for mentors)
+   */
+  async getAllMissions(mentorId: string, params?: {
+    track?: string
+    tier?: string
+    difficulty?: string
+    type?: string
+    search?: string
+    is_active?: boolean
+    limit?: number
+    offset?: number
+  }): Promise<{ results: any[]; count: number }> {
+    return apiGateway.get(`/mentors/${mentorId}/missions`, { params })
+  },
+
+  /**
    * Get mission submission queue (only Professional tier submissions)
    */
   async getMissionSubmissionQueue(mentorId: string, params?: {
@@ -66,10 +82,37 @@ export const mentorClient = {
   },
 
   /**
+   * Update mission submission status
+   */
+  async updateSubmissionStatus(submissionId: string, status: 'in_progress' | 'in_mentor_review' | 'scheduled' | 'reviewed', notes?: string): Promise<any> {
+    return apiGateway.patch(`/mentors/missions/submissions/${submissionId}/status`, {
+      status,
+      notes,
+    })
+  },
+
+  /**
    * Get detailed mission submission
    */
   async getMissionSubmission(submissionId: string): Promise<MissionSubmission> {
     return apiGateway.get(`/mentors/missions/submissions/${submissionId}`)
+  },
+
+  /**
+   * Get mission submissions for a specific mission
+   */
+  async getMissionSubmissions(mentorId: string, params?: {
+    mission_id?: string
+    status?: string
+    limit?: number
+    offset?: number
+  }): Promise<MissionSubmission[]> {
+    const response = await apiGateway.get(`/mentors/${mentorId}/missions/submissions`, { params })
+    // Filter by mission_id on frontend if backend doesn't support it
+    if (params?.mission_id && response.results) {
+      return response.results.filter((sub: MissionSubmission) => sub.mission_id === params.mission_id)
+    }
+    return response.results || []
   },
 
   /**

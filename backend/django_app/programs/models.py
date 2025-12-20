@@ -293,6 +293,20 @@ class Enrollment(models.Model):
             ),
         ]
     
+    @property
+    def track_key(self):
+        """Get the track key from the enrollment's cohort's track."""
+        if self.cohort and self.cohort.track:
+            return self.cohort.track.key
+        return None
+    
+    @property
+    def track(self):
+        """Get the track object from the enrollment's cohort."""
+        if self.cohort:
+            return self.cohort.track
+        return None
+    
     def __str__(self):
         return f"{self.user.email} - {self.cohort.name}"
 

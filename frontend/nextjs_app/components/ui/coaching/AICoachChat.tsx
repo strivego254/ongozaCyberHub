@@ -32,7 +32,7 @@ export function AICoachChat({ className }: AICoachChatProps) {
   
   // Initialize with welcome message if empty
   useEffect(() => {
-    if (aiMessages.length === 0) {
+    if (aiMessages && aiMessages.length === 0) {
       const welcomeMessage: AICoachMessage = {
         id: 'welcome',
         role: 'assistant',
@@ -42,7 +42,7 @@ export function AICoachChat({ className }: AICoachChatProps) {
       }
       addAIMessage(welcomeMessage)
     }
-  }, [aiMessages.length, addAIMessage])
+  }, [aiMessages?.length, addAIMessage])
   
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
@@ -124,7 +124,7 @@ export function AICoachChat({ className }: AICoachChatProps) {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             <AnimatePresence>
-              {aiMessages.map((message) => (
+              {(aiMessages || []).map((message) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}

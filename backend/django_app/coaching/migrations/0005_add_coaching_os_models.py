@@ -50,18 +50,21 @@ class Migration(migrations.Migration):
         ),
         
         # Update HabitLog - rename and add fields
+        # Note: completed_at was already removed in migration 0002, so skip this rename
+        # migrations.RenameField(
+        #     model_name='habitlog',
+        #     old_name='completed_at',
+        #     new_name='logged_at',
+        # ),
+        # Rename log_date (from migration 0002) to date (current model uses 'date')
         migrations.RenameField(
             model_name='habitlog',
-            old_name='completed_at',
-            new_name='logged_at',
+            old_name='log_date',
+            new_name='date',
         ),
-        migrations.AddField(
-            model_name='habitlog',
-            name='date',
-            field=models.DateField(db_index=True, default=django.utils.timezone.now),
-            preserve_default=False,
-        ),
-        migrations.AddField(
+        # Note: status field was already added in migration 0002, but with different choices
+        # This migration updates it with new choices
+        migrations.AlterField(
             model_name='habitlog',
             name='status',
             field=models.CharField(
@@ -69,6 +72,13 @@ class Migration(migrations.Migration):
                 default='completed',
                 max_length=20
             ),
+        ),
+        # Add logged_at field (auto_now_add timestamp)
+        migrations.AddField(
+            model_name='habitlog',
+            name='logged_at',
+            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now),
+            preserve_default=False,
         ),
         
         # Update Goal - add fields
@@ -118,11 +128,13 @@ class Migration(migrations.Migration):
         ),
         
         # Update Reflection - rename and add fields
-        migrations.RenameField(
-            model_name='reflection',
-            old_name='response',
-            new_name='content',
-        ),
+        # Note: content field already exists from migration 0002 (renamed from prompt)
+        # So we skip this rename if content already exists, or if response doesn't exist
+        # migrations.RenameField(
+        #     model_name='reflection',
+        #     old_name='response',
+        #     new_name='content',
+        # ),
         migrations.RenameField(
             model_name='reflection',
             old_name='sentiment_score',
@@ -133,10 +145,11 @@ class Migration(migrations.Migration):
             old_name='behavior_tags',
             new_name='emotion_tags',
         ),
-        migrations.RemoveField(
-            model_name='reflection',
-            name='prompt',
-        ),
+        # Note: prompt field was already renamed to content in migration 0002, so skip this removal
+        # migrations.RemoveField(
+        #     model_name='reflection',
+        #     name='prompt',
+        # ),
         migrations.AddField(
             model_name='reflection',
             name='date',

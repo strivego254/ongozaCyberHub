@@ -73,6 +73,14 @@ class Command(BaseCommand):
                 'last_name': 'User',
                 'role': 'analyst',
             },
+            {
+                'email': 'finance@test.com',
+                'username': 'finance',
+                'first_name': 'Finance',
+                'last_name': 'User',
+                'role': 'finance',
+                'mfa_enabled': True,  # Finance requires MFA
+            },
         ]
 
         created_count = 0

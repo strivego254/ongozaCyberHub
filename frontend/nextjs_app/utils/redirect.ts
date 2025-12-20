@@ -71,5 +71,6 @@ export const ROLE_DASHBOARD_MAP = {
   'sponsor_admin': '/dashboard/sponsor',
   'analyst': '/dashboard/analyst',
   'employer': '/dashboard/employer',
+  'finance': '/dashboard/finance',
 } as const
 

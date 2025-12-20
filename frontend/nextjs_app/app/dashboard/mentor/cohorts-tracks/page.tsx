@@ -1,6 +1,17 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+<<<<<<< HEAD
+import { RouteGuard } from '@/components/auth/RouteGuard'
+import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { useAuth } from '@/hooks/useAuth'
+import { useCohorts, useTracks, usePrograms } from '@/hooks/usePrograms'
+import { programsClient, type Cohort, type Track, type MentorAssignment, type Milestone, type Module, type Enrollment } from '@/services/programsClient'
+
+const ChevronDownIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+=======
 import { useRouter } from 'next/navigation'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { Card } from '@/components/ui/Card'
@@ -14,12 +25,18 @@ import type { MenteeFlag } from '@/services/types/mentor'
 
 const ChevronDownIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
   </svg>
 )
 
+<<<<<<< HEAD
+const ChevronRightIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+=======
 const ChevronRightIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
   </svg>
 )
@@ -35,7 +52,10 @@ interface AssignmentWithDetails {
 
 export default function MentorCohortsTracksPage() {
   const { user } = useAuth()
+<<<<<<< HEAD
+=======
   const router = useRouter()
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const mentorId = user?.id?.toString()
   
   const { cohorts, isLoading: cohortsLoading } = useCohorts({ page: 1, pageSize: 500 })
@@ -49,6 +69,8 @@ export default function MentorCohortsTracksPage() {
   const [expandedTracks, setExpandedTracks] = useState<Set<string>>(new Set())
   const [trackDetails, setTrackDetails] = useState<Record<string, { milestones: Milestone[]; modules: Module[] }>>({})
   const [cohortEnrollments, setCohortEnrollments] = useState<Record<string, { enrollments: Enrollment[]; loading: boolean }>>({})
+<<<<<<< HEAD
+=======
   const [selectedMentees, setSelectedMentees] = useState<Set<string>>(new Set())
   const [showFlagModal, setShowFlagModal] = useState(false)
   const [flagFormData, setFlagFormData] = useState({
@@ -58,6 +80,7 @@ export default function MentorCohortsTracksPage() {
   })
   const [submittingFlag, setSubmittingFlag] = useState(false)
   const [flagError, setFlagError] = useState<string | null>(null)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   // Load mentor assignments
   useEffect(() => {
@@ -252,6 +275,8 @@ export default function MentorCohortsTracksPage() {
     return variants[seatType] || 'steel'
   }
 
+<<<<<<< HEAD
+=======
   const toggleMenteeSelection = (enrollmentId: string) => {
     const newSelected = new Set(selectedMentees)
     if (newSelected.has(enrollmentId)) {
@@ -331,6 +356,7 @@ export default function MentorCohortsTracksPage() {
     router.push(`/dashboard/mentor/analytics/${menteeId}`)
   }
 
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   if (isLoading || cohortsLoading || tracksLoading || programsLoading) {
     return (
       <RouteGuard>
@@ -378,8 +404,13 @@ export default function MentorCohortsTracksPage() {
             {assignments.map((assignment) => {
               const { cohort, track, program, assignment: mentorAssignment } = assignment
               const isCohortExpanded = expandedCohorts.has(cohort.id)
+<<<<<<< HEAD
+              const isTrackExpanded = track?.id ? expandedTracks.has(track.id) : false
+              const details = track?.id ? trackDetails[track.id] : null
+=======
               const isTrackExpanded = track ? expandedTracks.has(track.id) : false
               const details = track ? trackDetails[track.id] : null
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
               return (
                 <Card key={cohort.id} className="overflow-hidden">
@@ -424,6 +455,9 @@ export default function MentorCohortsTracksPage() {
                     <div className="px-6 pb-6 space-y-4 border-t border-och-steel/20">
                       {/* Enrolled Students Section */}
                       <div className="pt-4">
+<<<<<<< HEAD
+                        <h3 className="text-lg font-semibold text-white mb-4">Enrolled Students</h3>
+=======
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-lg font-semibold text-white">Enrolled Students</h3>
                           {(() => {
@@ -457,6 +491,7 @@ export default function MentorCohortsTracksPage() {
                             )
                           })()}
                         </div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                         {(() => {
                           const enrollmentData = cohortEnrollments[cohort.id]
                           if (!enrollmentData) {
@@ -479,6 +514,53 @@ export default function MentorCohortsTracksPage() {
                           }
                           return (
                             <div className="space-y-3">
+<<<<<<< HEAD
+                              {activeEnrollments.map((enrollment) => (
+                                <div
+                                  key={enrollment.id}
+                                  className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <div>
+                                          <p className="text-white font-medium">
+                                            {enrollment.user_name || enrollment.user_email || enrollment.user}
+                                          </p>
+                                          {enrollment.user_email && enrollment.user_name && (
+                                            <p className="text-xs text-och-steel mt-1">{enrollment.user_email}</p>
+                                          )}
+                                        </div>
+                                        <Badge variant={getEnrollmentStatusBadge(enrollment.status)}>
+                                          {enrollment.status.replace('_', ' ')}
+                                        </Badge>
+                                        <Badge variant={getSeatTypeBadge(enrollment.seat_type)}>
+                                          {enrollment.seat_type}
+                                        </Badge>
+                                        <Badge variant={getPaymentStatusBadge(enrollment.payment_status)}>
+                                          {enrollment.payment_status}
+                                        </Badge>
+                                      </div>
+                                      <div className="flex items-center gap-4 text-xs text-och-steel mt-2">
+                                        <span>
+                                          Joined: {new Date(enrollment.joined_at).toLocaleDateString()}
+                                        </span>
+                                        {enrollment.completed_at && (
+                                          <>
+                                            <span>•</span>
+                                            <span>
+                                              Completed: {new Date(enrollment.completed_at).toLocaleDateString()}
+                                            </span>
+                                          </>
+                                        )}
+                                        <span>•</span>
+                                        <span className="capitalize">{enrollment.enrollment_type}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+=======
                               {activeEnrollments.map((enrollment) => {
                                 const menteeId = getMenteeId(enrollment)
                                 const isSelected = selectedMentees.has(menteeId)
@@ -545,6 +627,7 @@ export default function MentorCohortsTracksPage() {
                                   </div>
                                 )
                               })}
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                             </div>
                           )
                         })()}
@@ -577,9 +660,15 @@ export default function MentorCohortsTracksPage() {
                                 <h3 className="text-lg font-semibold text-white">{track.name}</h3>
                                 <p className="text-sm text-och-steel mt-1">{track.description}</p>
                                 <div className="flex items-center gap-2 mt-2">
+<<<<<<< HEAD
+                                  <Badge variant="steel">{track.track_type}</Badge>
+                                  {track.key && (
+                                    <Badge variant="steel">{track.key}</Badge>
+=======
                                   <Badge variant="outline">{track.track_type}</Badge>
                                   {track.key && (
                                     <Badge variant="outline">{track.key}</Badge>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                                   )}
                                 </div>
                               </div>
@@ -618,11 +707,19 @@ export default function MentorCohortsTracksPage() {
                                             </div>
                                             <div className="flex items-center gap-2">
                                               {milestone.duration_weeks && (
+<<<<<<< HEAD
+                                                <Badge variant="steel" className="text-xs">
+                                                  {milestone.duration_weeks} weeks
+                                                </Badge>
+                                              )}
+                                              <Badge variant="steel" className="text-xs">
+=======
                                                 <Badge variant="outline" className="text-xs">
                                                   {milestone.duration_weeks} weeks
                                                 </Badge>
                                               )}
                                               <Badge variant="outline" className="text-xs">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                                                 Order: {milestone.order}
                                               </Badge>
                                             </div>
@@ -652,11 +749,19 @@ export default function MentorCohortsTracksPage() {
                                                         )}
                                                       </div>
                                                       <div className="flex items-center gap-2">
+<<<<<<< HEAD
+                                                        <Badge variant="steel" className="text-xs">
+                                                          {module.content_type}
+                                                        </Badge>
+                                                        {module.estimated_hours && (
+                                                          <Badge variant="steel" className="text-xs">
+=======
                                                         <Badge variant="outline" className="text-xs">
                                                           {module.content_type}
                                                         </Badge>
                                                         {module.estimated_hours && (
                                                           <Badge variant="outline" className="text-xs">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                                                             {module.estimated_hours}h
                                                           </Badge>
                                                         )}
@@ -781,6 +886,8 @@ export default function MentorCohortsTracksPage() {
             </div>
           </Card>
         )}
+<<<<<<< HEAD
+=======
 
         {/* Flag Modal */}
         {showFlagModal && (
@@ -862,10 +969,14 @@ export default function MentorCohortsTracksPage() {
             </Card>
           </div>
         )}
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
       </div>
     </RouteGuard>
   )
 }
+<<<<<<< HEAD
+=======
 
 
 
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407

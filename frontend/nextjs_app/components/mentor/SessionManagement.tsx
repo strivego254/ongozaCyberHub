@@ -13,21 +13,31 @@ import type { GroupMentorshipSession } from '@/services/types/mentor'
 export function SessionManagement() {
   const { user } = useAuth()
   const mentorId = user?.id?.toString()
+<<<<<<< HEAD
+=======
   const { cohorts: assignedCohorts, isLoading: cohortsLoading } = useMentorAssignedTracks(mentorId)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(12) // 12 sessions per page
   const { sessions, isLoading, error, createSession, updateSession, pagination } = useMentorSessions(mentorId, { 
     status: 'all',
     page: currentPage,
     page_size: pageSize
+<<<<<<< HEAD
+  })
+=======
   });
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingSession, setEditingSession] = useState<string | null>(null)
   const [editingNotes, setEditingNotes] = useState<string | null>(null)
   const [reschedulingSession, setReschedulingSession] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
+<<<<<<< HEAD
+=======
   const [filterStatus, setFilterStatus] = useState<'all' | 'scheduled' | 'completed' | 'cancelled'>('all')
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   const [formData, setFormData] = useState({
     title: '',
@@ -69,6 +79,9 @@ export function SessionManagement() {
         scheduledAtISO = new Date(formData.scheduled_at).toISOString()
       }
       
+<<<<<<< HEAD
+      const sessionData = {
+=======
       const sessionData: {
         title: string
         description: string
@@ -79,11 +92,16 @@ export function SessionManagement() {
         track_assignment?: string
         cohort_id?: string
       } = {
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         title: formData.title,
         description: formData.description || '',
         scheduled_at: scheduledAtISO,
         duration_minutes: formData.duration_minutes,
         meeting_type: formData.meeting_type,
+<<<<<<< HEAD
+        meeting_link: formData.meeting_link || undefined,
+        track_assignment: formData.track_assignment || undefined,
+=======
       }
       
       // Only include optional fields if they have values
@@ -95,6 +113,7 @@ export function SessionManagement() {
       }
       if (formData.cohort_id && formData.cohort_id.trim()) {
         sessionData.cohort_id = formData.cohort_id.trim()
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
       }
       
       console.log('Creating session with data:', sessionData, 'mentorId:', mentorId)
@@ -202,21 +221,36 @@ export function SessionManagement() {
             Schedule, manage, and track group mentorship sessions for your assigned cohorts.
           </p>
         </div>
+<<<<<<< HEAD
+        <div className="flex gap-2">
+=======
         <div className="flex flex-wrap items-center gap-3">
           {/* View Mode Toggle */}
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
           <div className="flex gap-1 bg-och-midnight/50 rounded-lg p-1">
             <Button
               variant={viewMode === 'list' ? 'defender' : 'outline'}
               size="sm"
               onClick={() => setViewMode('list')}
             >
+<<<<<<< HEAD
+              List
+=======
               <span className="mr-1">📋</span> List
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             </Button>
             <Button
               variant={viewMode === 'calendar' ? 'defender' : 'outline'}
               size="sm"
               onClick={() => setViewMode('calendar')}
             >
+<<<<<<< HEAD
+              Calendar
+            </Button>
+        </div>
+        <Button variant="defender" onClick={() => setShowCreateForm(!showCreateForm)}>
+          {showCreateForm ? 'Cancel' : '+ New Session'}
+=======
               <span className="mr-1">📅</span> Calendar
             </Button>
         </div>
@@ -227,6 +261,7 @@ export function SessionManagement() {
             className="whitespace-nowrap"
           >
             <span className="mr-2">+</span> New Session
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         </Button>
         </div>
       </div>
@@ -261,6 +296,10 @@ export function SessionManagement() {
               className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault()
+<<<<<<< HEAD
+            console.log('Form submitted', formData)
+=======
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             handleCreate(e)
           }}
         >
@@ -319,6 +358,21 @@ export function SessionManagement() {
                   rows={4}
                   className="w-full px-4 py-2.5 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all resize-none"
           />
+<<<<<<< HEAD
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <DateTimePicker
+              value={formData.scheduled_at}
+              onChange={(value) => {
+                console.log('DateTimePicker onChange:', value)
+                setFormData({ ...formData, scheduled_at: value })
+              }}
+              label="Scheduled Date & Time"
+              required
+              min={new Date().toISOString().slice(0, 16)}
+            />
+            <div>
+              <label className="block text-xs text-och-steel mb-1">Duration (minutes)</label>
+=======
               </div>
 
               {/* Date/Time and Duration */}
@@ -341,12 +395,17 @@ export function SessionManagement() {
                   <label className="block text-sm font-medium text-white mb-2">
                     Duration (minutes)
                   </label>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             <input
               type="number"
                     placeholder="60"
               value={formData.duration_minutes}
               onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 60 })}
+<<<<<<< HEAD
+                className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+=======
                     className="w-full px-4 py-2.5 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all"
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               min="15"
               max="240"
             />
@@ -402,8 +461,29 @@ export function SessionManagement() {
             <Button 
               variant="defender" 
               type="submit"
+<<<<<<< HEAD
+              disabled={!formData.title || !formData.scheduled_at || !mentorId}
+              onClick={(e) => {
+                console.log('Create Session button clicked', { 
+                  title: formData.title, 
+                  scheduled_at: formData.scheduled_at, 
+                  mentorId 
+                })
+                // Ensure form submission is handled
+                if (!formData.title || !formData.scheduled_at || !mentorId) {
+                  e.preventDefault()
+                  const missing = []
+                  if (!formData.title) missing.push('Title')
+                  if (!formData.scheduled_at) missing.push('Scheduled Date & Time')
+                  if (!mentorId) missing.push('Mentor ID')
+                  alert(`Please fill in: ${missing.join(', ')}`)
+                  return
+                }
+              }}
+=======
                   disabled={!formData.title || !formData.scheduled_at || !formData.cohort_id || !mentorId}
                   className="flex-1"
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             >
               Create Session
             </Button>
@@ -420,7 +500,10 @@ export function SessionManagement() {
                   meeting_type: 'zoom',
                   meeting_link: '',
                   track_assignment: '',
+<<<<<<< HEAD
+=======
                       cohort_id: '',
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 })
               }}
             >
@@ -428,7 +511,11 @@ export function SessionManagement() {
             </Button>
           </div>
           {error && (
+<<<<<<< HEAD
+            <div className="text-och-orange text-xs mt-2 px-2 py-1 bg-och-orange/10 border border-och-orange/20 rounded">
+=======
                 <div className="text-och-orange text-sm mt-2 px-4 py-2 bg-och-orange/10 border border-och-orange/20 rounded-lg">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               {error}
             </div>
           )}
@@ -486,10 +573,18 @@ export function SessionManagement() {
             </div>
       )}
 
+<<<<<<< HEAD
+      {!isLoading && !error && sessions.length > 0 && (
+        <>
+          {viewMode === 'calendar' ? (
+            <SessionCalendarView sessions={sessions} onSessionClick={(sessionId) => {
+              // Scroll to session or highlight it
+=======
           {!isLoading && !error && filteredSessions.length > 0 && (
         <>
           {viewMode === 'calendar' ? (
                 <SessionCalendarView sessions={filteredSessions} onSessionClick={(sessionId) => {
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               const element = document.getElementById(`session-${sessionId}`)
               if (element) {
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -500,10 +595,17 @@ export function SessionManagement() {
               }
             }} />
           ) : (
+<<<<<<< HEAD
+        <div className="space-y-3">
+          {/* Compact Session List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {sessions.map((session) => {
+=======
                 <div className="space-y-4">
                   {/* Session Cards Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredSessions.map((session) => {
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               const isExpanded = expandedSession === session.id
               const sessionDate = new Date(session.scheduled_at)
               const isPast = sessionDate < new Date()
@@ -512,22 +614,45 @@ export function SessionManagement() {
               <div 
                 key={session.id} 
                 id={`session-${session.id}`} 
+<<<<<<< HEAD
+                className={`p-3 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-mint/50 transition-all cursor-pointer ${
+=======
                           className={`p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-mint/50 transition-all cursor-pointer ${
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                   isExpanded ? 'col-span-full md:col-span-2 lg:col-span-3' : ''
                 }`}
                 onClick={() => !isExpanded && setExpandedSession(session.id)}
               >
+<<<<<<< HEAD
+                {/* Compact Header */}
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-white truncate">{session.title}</h3>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+=======
                           {/* Session Header */}
                           <div className="flex justify-between items-start mb-3">
                   <div className="flex-1 min-w-0">
                               <h3 className="text-base font-semibold text-white mb-2">{session.title}</h3>
                               <div className="flex items-center gap-2 flex-wrap">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                       <Badge 
                         variant={
                           session.status === 'completed' ? 'mint' : 
                           session.status === 'scheduled' ? 'defender' : 
                           'gold'
                         } 
+<<<<<<< HEAD
+                        className="text-[10px] px-1.5 py-0.5 capitalize"
+                      >
+                        {session.status}
+                      </Badge>
+                      <Badge variant="steel" className="text-[10px] px-1.5 py-0.5 capitalize">
+                        {session.meeting_type}
+                      </Badge>
+                    {session.track_assignment && (
+                        <Badge variant="gold" className="text-[10px] px-1.5 py-0.5">
+=======
                                   className="text-xs px-2 py-1 capitalize"
                       >
                         {session.status}
@@ -537,11 +662,22 @@ export function SessionManagement() {
                       </Badge>
                     {session.track_assignment && (
                                   <Badge variant="gold" className="text-xs px-2 py-1">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                           {session.track_assignment}
                         </Badge>
                     )}
                   </div>
                 </div>
+<<<<<<< HEAD
+                  <div className="text-right text-[10px] text-och-steel ml-2 flex-shrink-0">
+                    <div className="font-medium text-white">
+                      {sessionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </div>
+                    <div>
+                      {sessionDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    <div>{session.duration_minutes}m</div>
+=======
                             <div className="text-right text-xs text-och-steel ml-3 flex-shrink-0">
                               <div className="font-semibold text-white text-sm mb-1">
                       {sessionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -550,22 +686,35 @@ export function SessionManagement() {
                       {sessionDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                               <div className="text-och-steel">{session.duration_minutes} min</div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 </div>
               </div>
 
                 {/* Description Preview */}
                 {session.description && !isExpanded && (
+<<<<<<< HEAD
+                  <p className="text-xs text-och-steel line-clamp-2 mb-2">{session.description}</p>
+=======
                             <p className="text-sm text-och-steel line-clamp-2 mb-3">{session.description}</p>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 )}
 
                 {/* Meeting Link */}
               {session.meeting_link && (
+<<<<<<< HEAD
+                  <div className="mb-2">
+=======
                             <div className="mb-3">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                     <a 
                       href={session.meeting_link} 
                       target="_blank" 
                       rel="noopener noreferrer" 
+<<<<<<< HEAD
+                      className="text-och-mint hover:underline text-[10px] inline-flex items-center gap-1"
+=======
                                 className="text-och-mint hover:underline text-sm inline-flex items-center gap-2 font-medium"
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span>🔗</span> Join Meeting
@@ -575,7 +724,11 @@ export function SessionManagement() {
 
                 {/* Expanded Content */}
                 {isExpanded && (
+<<<<<<< HEAD
+                  <div className="mt-3 pt-3 border-t border-och-steel/20 space-y-3" onClick={(e) => e.stopPropagation()}>
+=======
                             <div className="mt-4 pt-4 border-t border-och-steel/20 space-y-4" onClick={(e) => e.stopPropagation()}>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                     {/* Close button */}
                     <div className="flex justify-end">
                       <Button 
@@ -990,9 +1143,13 @@ function SessionCalendarView({
         ))}
         {days.map((date, idx) => {
           if (!date) {
+<<<<<<< HEAD
+            return <div key={`empty-${idx}`} className="aspect-square" />
+=======
             return (
               <div key={`empty-${idx}`} className="aspect-square" />
             )
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
           }
           
           const daySessions = getSessionsForDate(date)

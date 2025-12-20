@@ -5,7 +5,7 @@
 
 import { User, UserRole } from '@/services/types/user'
 
-export type Role = 'mentee' | 'student' | 'mentor' | 'admin' | 'program_director' | 'sponsor_admin' | 'analyst' | 'employer'
+export type Role = 'mentee' | 'student' | 'mentor' | 'admin' | 'program_director' | 'sponsor_admin' | 'analyst' | 'employer' | 'finance'
 
 export interface RoutePermission {
   path: string
@@ -151,6 +151,7 @@ export function getUserRoles(user: User | null): Role[] {
     if (normalized === 'sponsor_admin' || normalized === 'sponsor' || normalized === 'sponsor/employer admin' || normalized === 'sponsoremployer admin') return 'sponsor_admin'
     if (normalized === 'analyst') return 'analyst'
     if (normalized === 'employer') return 'employer'
+    if (normalized === 'finance') return 'finance'
     
     // Log unknown roles for debugging
     console.warn('⚠️ Unknown role name:', roleName, 'normalized:', normalized, 'from user role:', ur)
@@ -234,7 +235,7 @@ export function getPrimaryRole(user: User | null): Role | null {
   
   // Priority order (higher priority roles first)
   // This ensures users with multiple roles get redirected to the most appropriate dashboard
-  const priority: Role[] = ['program_director', 'mentor', 'analyst', 'sponsor_admin', 'employer', 'mentee', 'student']
+  const priority: Role[] = ['program_director', 'finance', 'mentor', 'analyst', 'sponsor_admin', 'employer', 'mentee', 'student']
   
   console.log('getPrimaryRole: Checking priority order for roles:', roles)
   console.log('getPrimaryRole: Priority order:', priority)
@@ -273,6 +274,7 @@ export function getDashboardRoute(role: Role | null): string {
     'sponsor_admin': '/dashboard/sponsor',     // Sponsor/Employer Admin → Sponsor Dashboard
     'analyst': '/dashboard/analyst',           // Analyst role → Analyst Dashboard
     'employer': '/dashboard/employer',         // Employer role → Employer Dashboard
+    'finance': '/dashboard/finance',           // Finance role → Finance Dashboard
   }
   
   const route = routeMap[role]

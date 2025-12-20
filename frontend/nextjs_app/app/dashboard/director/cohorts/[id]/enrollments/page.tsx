@@ -10,7 +10,10 @@ import { useCohort } from '@/hooks/usePrograms'
 import { programsClient, type Enrollment } from '@/services/programsClient'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+<<<<<<< HEAD
+=======
 import { useUsers } from '@/hooks/useUsers'
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
 interface WaitlistEntry {
   id: string
@@ -28,32 +31,48 @@ export default function CohortEnrollmentsPage() {
   const params = useParams()
   const router = useRouter()
   const cohortId = params.id as string
+<<<<<<< HEAD
+  const { cohort, isLoading: loadingCohort } = useCohort(cohortId)
+=======
   const { cohort, isLoading: loadingCohort, reload: reloadCohort } = useCohort(cohortId)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+<<<<<<< HEAD
+  const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [selectedSeatType, setSelectedSeatType] = useState<string>('all')
+  const [selectedEnrollmentType, setSelectedEnrollmentType] = useState<string>('all')
+=======
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(['all']))
   const [selectedSeatTypes, setSelectedSeatTypes] = useState<Set<string>>(new Set(['all']))
   const [selectedEnrollmentTypes, setSelectedEnrollmentTypes] = useState<Set<string>>(new Set(['all']))
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [selectedEnrollments, setSelectedEnrollments] = useState<Set<string>>(new Set())
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [showSeatPoolModal, setShowSeatPoolModal] = useState(false)
+<<<<<<< HEAD
+=======
   const [openFilter, setOpenFilter] = useState<string | null>(null)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [seatPool, setSeatPool] = useState<{ paid: number; scholarship: number; sponsored: number }>({
     paid: 0,
     scholarship: 0,
     sponsored: 0,
   })
 
+<<<<<<< HEAD
+=======
   // Student picker (fetch from backend users endpoint; directors can see all users)
   const [studentSearch, setStudentSearch] = useState('')
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
   const [assignSeatType, setAssignSeatType] = useState<'paid' | 'scholarship' | 'sponsored'>('paid')
   const [assignEnrollmentType, setAssignEnrollmentType] = useState<'director' | 'invite' | 'sponsor' | 'self'>('director')
 
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   // Load data
   useEffect(() => {
     const loadData = async () => {
@@ -67,6 +86,14 @@ export default function CohortEnrollmentsPage() {
         ])
         setEnrollments(enrolls)
         setWaitlist(waitlistData)
+<<<<<<< HEAD
+        
+        // Load seat pool from cohort (if available)
+        if (cohort && 'seat_pool' in cohort && cohort.seat_pool) {
+          setSeatPool(cohort.seat_pool as any)
+        }
+=======
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
       } catch (err: any) {
         console.error('Failed to load enrollment data:', err)
         setError(err?.message || 'Failed to load enrollment data')
@@ -77,6 +104,17 @@ export default function CohortEnrollmentsPage() {
     loadData()
   }, [cohortId, cohort])
 
+<<<<<<< HEAD
+  // Filter enrollments
+  const filteredEnrollments = useMemo(() => {
+    return enrollments.filter((e) => {
+      if (selectedStatus !== 'all' && e.status !== selectedStatus) return false
+      if (selectedSeatType !== 'all' && e.seat_type !== selectedSeatType) return false
+      if (selectedEnrollmentType !== 'all' && e.enrollment_type !== selectedEnrollmentType) return false
+      return true
+    })
+  }, [enrollments, selectedStatus, selectedSeatType, selectedEnrollmentType])
+=======
   // Sync seat pool from cohort data
   useEffect(() => {
     if (cohort?.seat_pool && !showSeatPoolModal) {
@@ -114,11 +152,16 @@ export default function CohortEnrollmentsPage() {
       return true
     })
   }, [enrollments, selectedStatuses, selectedSeatTypes, selectedEnrollmentTypes])
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   // Calculate statistics
   const stats = useMemo(() => {
     const active = enrollments.filter((e) => e.status === 'active').length
+<<<<<<< HEAD
+    const pending = enrollments.filter((e) => (e as any).status === 'pending_payment').length
+=======
     const pending = enrollments.filter((e) => e.status === 'pending_payment').length
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     const withdrawn = enrollments.filter((e) => e.status === 'withdrawn').length
     const completed = enrollments.filter((e) => e.status === 'completed').length
     const seatUtilization = cohort ? (active / cohort.seat_cap) * 100 : 0
@@ -173,8 +216,23 @@ export default function CohortEnrollmentsPage() {
     setIsProcessing(true)
     setError(null)
     try {
+<<<<<<< HEAD
+      // If activating, use approve endpoint
+      if (status === 'active') {
+        const updated = await programsClient.approveEnrollment(cohortId, enrollmentId)
+        setEnrollments((prev) => prev.map((e) => (e.id === enrollmentId ? updated : e)))
+      } else {
+        // For other status updates, reload enrollments and show message
+        // TODO: Add backend endpoint for general enrollment status updates
+        setError('Status update for non-active statuses requires backend endpoint. Please use approve for activation.')
+        // Reload enrollments
+        const enrolls = await programsClient.getCohortEnrollments(cohortId)
+        setEnrollments(enrolls)
+      }
+=======
       const updated = await programsClient.updateEnrollmentStatus(cohortId, enrollmentId, status)
       setEnrollments((prev) => prev.map((e) => (e.id === enrollmentId ? updated : e)))
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     } catch (err: any) {
       setError(err?.message || 'Failed to update enrollment status')
     } finally {
@@ -182,6 +240,8 @@ export default function CohortEnrollmentsPage() {
     }
   }
 
+<<<<<<< HEAD
+=======
   const handleBulkStatus = async (statusValue: string) => {
     if (selectedEnrollments.size === 0) return
     setIsProcessing(true)
@@ -313,6 +373,7 @@ export default function CohortEnrollmentsPage() {
     }
   }
 
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   // Handle promote from waitlist
   const handlePromoteFromWaitlist = async (count?: number) => {
     setIsProcessing(true)
@@ -415,9 +476,17 @@ export default function CohortEnrollmentsPage() {
                 </div>
               </div>
               <div className="flex gap-3">
+<<<<<<< HEAD
+                <Link href={`/dashboard/director/enrollments/assign?cohort=${cohortId}`}>
+                  <Button variant="defender" size="sm">
+                    Assign Students
+                  </Button>
+                </Link>
+=======
                 <Button variant="defender" size="sm" onClick={() => setShowAssignModal(true)}>
                   Assign Students
                 </Button>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 <Link href={`/dashboard/director/cohorts/${cohortId}`}>
                   <Button variant="outline" size="sm">
                     ← Back to Cohort
@@ -468,6 +537,52 @@ export default function CohortEnrollmentsPage() {
           {/* Filters and Actions */}
           <Card className="mb-6">
             <div className="p-6">
+<<<<<<< HEAD
+              <div className="flex flex-wrap items-center gap-4 mb-4">
+                <div>
+                  <label className="text-sm text-och-steel mb-1 block">Status</label>
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="bg-och-midnight border border-och-steel/20 rounded px-3 py-2 text-white"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="pending_payment">Pending Payment</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="withdrawn">Withdrawn</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-och-steel mb-1 block">Seat Type</label>
+                  <select
+                    value={selectedSeatType}
+                    onChange={(e) => setSelectedSeatType(e.target.value)}
+                    className="bg-och-midnight border border-och-steel/20 rounded px-3 py-2 text-white"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="paid">Paid</option>
+                    <option value="scholarship">Scholarship</option>
+                    <option value="sponsored">Sponsored</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-och-steel mb-1 block">Enrollment Type</label>
+                  <select
+                    value={selectedEnrollmentType}
+                    onChange={(e) => setSelectedEnrollmentType(e.target.value)}
+                    className="bg-och-midnight border border-och-steel/20 rounded px-3 py-2 text-white"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="self">Self-enroll</option>
+                    <option value="sponsor">Sponsor</option>
+                    <option value="invite">Invite</option>
+                    <option value="director">Director Assign</option>
+                  </select>
+                </div>
+                <div className="flex-1"></div>
+=======
               <div className="flex flex-wrap items-start gap-4 mb-4">
                 {/* Status Filter */}
                 <div className="relative">
@@ -733,6 +848,7 @@ export default function CohortEnrollmentsPage() {
                     Clear Filters
                   </Button>
                 </div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 {selectedEnrollments.size > 0 && (
                   <div className="flex gap-2">
                     <Button
@@ -746,6 +862,8 @@ export default function CohortEnrollmentsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+<<<<<<< HEAD
+=======
                       onClick={() => handleBulkStatus('suspended')}
                       disabled={isProcessing}
                     >
@@ -771,6 +889,7 @@ export default function CohortEnrollmentsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                       onClick={() => setSelectedEnrollments(new Set())}
                     >
                       Clear Selection
@@ -816,9 +935,17 @@ export default function CohortEnrollmentsPage() {
                 <h2 className="text-xl font-bold text-white">
                   Enrollments ({filteredEnrollments.length})
                 </h2>
+<<<<<<< HEAD
+                <Link href={`/dashboard/director/enrollments/assign?cohort=${cohortId}`}>
+                  <Button variant="defender" size="sm">
+                    + Assign Student
+                  </Button>
+                </Link>
+=======
                 <Button variant="defender" size="sm" onClick={() => setShowAssignModal(true)}>
                   + Assign Students
                 </Button>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               </div>
 
               {filteredEnrollments.length === 0 ? (
@@ -906,7 +1033,11 @@ export default function CohortEnrollmentsPage() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex gap-2">
+<<<<<<< HEAD
+                              {(enrollment as any).status === 'pending_payment' && (
+=======
                               {enrollment.status === 'pending_payment' && (
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                                 <Button
                                   variant="mint"
                                   size="sm"
@@ -996,6 +1127,11 @@ export default function CohortEnrollmentsPage() {
           )}
         </div>
       </DirectorLayout>
+<<<<<<< HEAD
+    </RouteGuard>
+  )
+}
+=======
 
       {/* Assign Students Modal */}
       {showAssignModal && (
@@ -1124,3 +1260,4 @@ export default function CohortEnrollmentsPage() {
         </div>
       )}
 
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407

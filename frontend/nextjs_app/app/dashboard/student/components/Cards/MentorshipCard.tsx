@@ -29,37 +29,37 @@ export function MentorshipCard() {
       <Card className="glass-card p-3 md:p-4 hover:glass-hover transition-all">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-och-steel">Mentorship</h3>
-          <Badge variant={mentorship.status === 'scheduled' ? 'mint' : 'orange'} className="text-[10px]">
-            {mentorship.status}
+          <Badge variant={(mentorship?.status || 'none') === 'scheduled' ? 'mint' : 'orange'} className="text-[10px]">
+            {mentorship?.status || 'none'}
           </Badge>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-och-steel" />
-            <span className="text-sm text-white">{mentorship.mentorName || 'TBD'}</span>
+            <span className="text-sm text-white">{mentorship?.mentorName || 'TBD'}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-och-steel" />
             <div className="flex-1">
               <div className="text-sm text-white">
-                {formatDate(mentorship.nextSessionDate)}
+                {formatDate(mentorship?.nextSessionDate || '')}
               </div>
-              {mentorship.nextSessionTime && (
+              {mentorship?.nextSessionTime && (
                 <div className="text-xs text-och-steel">{mentorship.nextSessionTime}</div>
               )}
             </div>
           </div>
 
-          {mentorship.sessionType && (
+          {mentorship?.sessionType && (
             <div className="text-xs text-och-steel">
               Type: <span className="text-white">{mentorship.sessionType}</span>
             </div>
           )}
         </div>
 
-        {mentorship.status === 'scheduled' && (
+        {mentorship?.status === 'scheduled' && (
           <Button
             variant="mint"
             size="sm"

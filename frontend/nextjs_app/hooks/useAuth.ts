@@ -142,31 +142,47 @@ export function useAuth() {
       console.log('✅ Access token stored successfully in localStorage');
       
       // Fetch full user profile with roles from /auth/me
-      // Wait a bit to ensure token is available for the request
+      // Retry logic to ensure we get the full user profile
       let fullUser = user;
-      try {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        console.log('Fetching full user profile from /auth/me...');
-        fullUser = await djangoClient.auth.getCurrentUser();
-        console.log('✅ Full user profile received:', fullUser);
-        console.log('User roles:', fullUser?.roles);
-      } catch (err: any) {
-        // If /auth/me fails, use the user from login response
-        console.warn('⚠️ Failed to fetch full user profile from /auth/me:', err?.message || err);
-        console.warn('Using user from login response (may not have full role details)');
-        // The user from login response should still work, but might not have roles
-        // This is okay - we'll use what we have
+      let profileRetries = 0;
+      const maxRetries = 3;
+      
+      while (profileRetries < maxRetries) {
+        try {
+          // Small delay to ensure token is available
+          if (profileRetries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 200 * profileRetries));
+          }
+          
+          console.log(`Fetching full user profile from /auth/me... (attempt ${profileRetries + 1})`);
+          fullUser = await djangoClient.auth.getCurrentUser();
+          console.log('✅ Full user profile received:', fullUser);
+          console.log('User roles:', fullUser?.roles);
+          
+          // If we got a user with roles, break out of retry loop
+          if (fullUser && fullUser.roles && fullUser.roles.length > 0) {
+            break;
+          }
+        } catch (err: any) {
+          console.warn(`⚠️ Attempt ${profileRetries + 1} failed to fetch full user profile:`, err?.message || err);
+          profileRetries++;
+          
+          // If this is the last retry, use the user from login response
+          if (profileRetries >= maxRetries) {
+            console.warn('Using user from login response (may not have full role details)');
+            break;
+          }
+        }
       }
       
-      // Update state with authenticated user
+      // Update state with authenticated user immediately
       setState({
         user: fullUser,
         isLoading: false,
         isAuthenticated: true,
       });
       
-      console.log('Login successful, returning user:', fullUser);
+      console.log('✅ Login successful, returning user:', fullUser);
       return { user: fullUser, access_token: access_token };
     } catch (error) {
       setState(prev => ({ ...prev, isLoading: false }));

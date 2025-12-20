@@ -20,8 +20,11 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'beginner' | 'intermediate' | 'advanced' | 'capstone'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'ai_reviewed'>('all')
+<<<<<<< HEAD
+=======
   const [search, setSearch] = useState('')
   const pageSize = 10
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const { missions, totalCount, isLoading, error, updateMissionStatus } = useMentorMissions(mentorId, {
     status: 'pending_review',
     limit: pageSize,
@@ -29,6 +32,13 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
   })
 
   // Filter missions by difficulty and status
+<<<<<<< HEAD
+  const filteredMissions = missions.filter(m => {
+    if (difficultyFilter !== 'all' && m.mission_difficulty !== difficultyFilter) return false
+    if (statusFilter !== 'all' && m.status !== statusFilter) return false
+    return true
+  })
+=======
   const filteredMissions = useMemo(() => {
     const q = search.trim().toLowerCase()
     return missions.filter((m: any) => {
@@ -42,6 +52,7 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
       return true
     })
   }, [missions, difficultyFilter, statusFilter, search])
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   const handleReview = (submission: MissionSubmission) => {
     if (onReviewClick) {
@@ -141,6 +152,8 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
             <option value="ai_reviewed">AI Reviewed</option>
           </select>
         </div>
+<<<<<<< HEAD
+=======
         <div className="flex-1 min-w-[220px]">
           <label className="block text-xs text-och-steel mb-1">Search</label>
           <input
@@ -153,6 +166,7 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
             className="w-full px-3 py-1.5 rounded-lg bg-och-midnight border border-och-steel/20 text-sm text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
           />
         </div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
       </div>
 
       {successMessage && (

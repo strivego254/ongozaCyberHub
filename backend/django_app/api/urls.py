@@ -45,6 +45,9 @@ urlpatterns = [
     # Mentorship Coordination Engine (must come FIRST to avoid URL conflicts with programs router)
     path('', include('mentorship_coordination.urls')),
     
+    # Mentorship Coordination Engine (must come FIRST to avoid URL conflicts with programs router)
+    path('', include('mentorship_coordination.urls')),
+    
     # Mentorship endpoints
     path('', include('mentorship.urls')),
     

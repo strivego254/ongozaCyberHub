@@ -17,15 +17,28 @@ class MissionSerializer(serializers.ModelSerializer):
     program_id = serializers.SerializerMethodField()
     program_name = serializers.SerializerMethodField()
     
+    # Alias field for backward compatibility
+    estimated_time_minutes = serializers.IntegerField(
+        source='estimated_duration_minutes',
+        read_only=True,
+        required=False,
+        allow_null=True,
+        help_text='Alias for estimated_duration_minutes (for backward compatibility)'
+    )
+    
     class Meta:
         model = Mission
         fields = [
             'id', 'code', 'title', 'description', 'difficulty', 'type',
+<<<<<<< HEAD
+            'track_id', 'track_key', 'est_hours', 'estimated_duration_minutes', 'estimated_time_minutes',
+=======
             'track_id', 'track_key', 'est_hours', 'estimated_time_minutes',
             'track_name', 'program_id', 'program_name',
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             'competencies', 'requirements', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'estimated_time_minutes']
     
     def validate_code(self, value):
         """Validate mission code."""
@@ -69,7 +82,7 @@ class MissionArtifactSerializer(serializers.ModelSerializer):
     """Serializer for mission artifacts."""
     class Meta:
         model = MissionArtifact
-        fields = ['id', 'type', 'url', 'filename', 'size_bytes', 'metadata', 'created_at']
+        fields = ['id', 'kind', 'url', 'filename', 'size_bytes', 'metadata', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 

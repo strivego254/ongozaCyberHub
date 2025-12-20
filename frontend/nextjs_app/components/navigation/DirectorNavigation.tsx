@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import clsx from 'clsx'
 import { useAuth } from '@/hooks/useAuth'
+<<<<<<< HEAD
+import { getUserRoleDisplay } from '@/utils/formatRole'
+=======
 import { useNavigation } from '@/hooks/useNavigation'
 import { getPrimaryRole } from '@/utils/rbac'
 
@@ -26,6 +29,7 @@ function getRoleDisplayName(role: string | null): string {
   
   return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, ' ')
 }
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
 interface NavItem {
   label: string
@@ -611,7 +615,16 @@ export function DirectorNavigation() {
                   ? `${user.first_name} ${user.last_name}`
                   : 'Director')}
               </p>
+<<<<<<< HEAD
+              <p className="text-xs text-och-steel truncate">
+                {user?.email || ''}
+              </p>
+              <p className="text-xs text-och-mint truncate mt-0.5">
+                {getUserRoleDisplay(user)}
+              </p>
+=======
               <p className="text-xs text-och-steel truncate">{roleDisplayName}</p>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             </div>
             <svg
               className={`w-4 h-4 text-och-steel transition-transform flex-shrink-0 ${isProfileOpen ? 'rotate-180' : ''}`}

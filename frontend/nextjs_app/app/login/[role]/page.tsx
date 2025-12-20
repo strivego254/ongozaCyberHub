@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +16,7 @@ const PERSONAS = {
   director: { name: 'Program Director', icon: '👔', color: 'sahara-gold', description: 'Manage programs and operations' },
   sponsor: { name: 'Sponsor/Employer', icon: '💼', color: 'sahara-gold', description: 'Support talent development' },
   analyst: { name: 'Analyst', icon: '📊', color: 'defender-blue', description: 'Access analytics and insights' },
+  finance: { name: 'Finance', icon: '💰', color: 'defender-blue', description: 'Manage billing and revenue operations' },
 };
 
 const VALID_ROLES = Object.keys(PERSONAS);
@@ -50,6 +51,8 @@ function LoginForm() {
 
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
     if (role && !VALID_ROLES.includes(role)) {
@@ -59,42 +62,36 @@ function LoginForm() {
 
   // Redirect if already authenticated (but only if not currently logging in)
   useEffect(() => {
-    // Don't redirect if we're in the middle of logging in
-    if (isLoggingIn) return;
+    // Prevent multiple redirects
+    if (hasRedirectedRef.current) return;
     
-    // Only redirect if we're already authenticated and not in the middle of a login attempt
-    // This prevents redirect loops during login
-    if (isAuthenticated && user && !isLoading) {
-      const redirectTo = searchParams.get('redirect');
+    // Don't redirect if we're in the middle of logging in or redirecting
+    if (isLoggingIn || isRedirecting) return;
+    
+    // Wait for auth state to be determined
+    if (isLoading) return;
+    
+    // Only redirect if we're already authenticated and have a user
+    // This prevents redirect loops when user is not authenticated
+    if (isAuthenticated && user) {
+      hasRedirectedRef.current = true;
       
-      // If logging in through director login, verify user has director or admin role
-      if (role === 'director' && redirectTo?.startsWith('/dashboard/director')) {
-        const userRoles = user?.roles || []
-        const isAdmin = userRoles.some((ur: any) => {
-          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
-          return roleName?.toLowerCase().trim() === 'admin'
-        })
-        const isProgramDirector = userRoles.some((ur: any) => {
-          const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
-          const normalized = roleName?.toLowerCase().trim()
-          return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
-        })
-        
-        if (!isAdmin && !isProgramDirector) {
-          setError('You do not have permission to access the Program Director dashboard. Please login with an account that has program_director or admin role.')
-          return
-        }
-      }
+      const redirectTo = searchParams.get('redirect');
+      let targetRoute: string;
       
       if (redirectTo && redirectTo.startsWith('/dashboard')) {
-        router.push(redirectTo);
+        targetRoute = redirectTo;
       } else {
-        // Use role-based redirect instead of defaulting to student
-        const dashboardRoute = getRedirectRoute(user);
-        router.push(dashboardRoute);
+        targetRoute = getRedirectRoute(user);
+      }
+      
+      // Use router.push for client-side navigation (preserves cookies)
+      if (targetRoute && targetRoute.startsWith('/dashboard')) {
+        console.log('🔄 Redirecting authenticated user to:', targetRoute);
+        router.push(targetRoute);
       }
     }
-  }, [isAuthenticated, user, router, searchParams, isLoading, isLoggingIn, role]);
+  }, [isAuthenticated, user, isLoading, isLoggingIn, isRedirecting, router]);
 
   const currentPersona = PERSONAS[role as keyof typeof PERSONAS] || PERSONAS.student;
 
@@ -102,29 +99,39 @@ function LoginForm() {
     e.preventDefault();
     setError(null);
     setIsLoggingIn(true);
+    setIsRedirecting(false);
 
     try {
+      // Perform login - this will update auth state and return user with roles
       const result = await login(formData);
-      console.log('=== Login Success ===');
-      console.log('Login result:', result);
+      
+      if (!result || !result.user) {
+        throw new Error('Login failed: No user data received');
+      }
 
-      // Get token from result or localStorage
-      const token = result?.access_token || localStorage.getItem('access_token');
+      const currentUser = result.user;
+      const token = result.access_token || localStorage.getItem('access_token');
       
       if (!token) {
-        console.error('Token not found in login result or localStorage');
-        setError('Authentication token not found. Please try logging in again.');
-        return;
-      }
-      
-      // Ensure token is stored in localStorage
-      if (!localStorage.getItem('access_token')) {
-        localStorage.setItem('access_token', token);
+        throw new Error('Authentication token not found');
       }
 
-      // Determine redirect route based on user role
-      let route = '/dashboard/student';
+      // Ensure token is in localStorage
+      localStorage.setItem('access_token', token);
+      
+      // Cookie is already set by the API route (/api/auth/login)
+      // No need to set it manually - the browser handles it automatically
+
+      // Determine redirect route
       const redirectTo = searchParams.get('redirect');
+<<<<<<< HEAD
+      let route: string;
+      
+      if (redirectTo && redirectTo.startsWith('/dashboard')) {
+        route = redirectTo;
+      } else {
+        route = getRedirectRoute(currentUser);
+=======
 
       // Wait for auth state to fully update and roles to be loaded
       // The login function already fetches full user profile from /auth/me
@@ -225,14 +232,27 @@ function LoginForm() {
             }
           }
         }
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
       }
 
-      console.log('🚀 Final redirect route:', route);
+      // Validate route
+      if (!route || !route.startsWith('/dashboard')) {
+        route = '/dashboard/student'; // Safe fallback
+      }
+
+      console.log('✅ Login successful, redirecting to:', route);
       
-      // Set cookie manually in browser to ensure it's available for middleware
-      // The API route already set it, but we'll ensure it's in the browser
-      document.cookie = `access_token=${token}; path=/; max-age=${60 * 15}; SameSite=Lax`;
+      // Mark as redirecting and prevent useEffect from interfering
+      setIsRedirecting(true);
+      hasRedirectedRef.current = true;
       
+<<<<<<< HEAD
+      // Use router.push for client-side navigation (preserves cookies)
+      // Add a small delay to ensure cookie is set by browser
+      setTimeout(() => {
+        router.push(route);
+      }, 100);
+=======
       // Additional delay to ensure auth state is fully updated and cookies are set
       await new Promise(resolve => setTimeout(resolve, 300));
       
@@ -250,30 +270,26 @@ function LoginForm() {
       // Small delay before refresh to ensure navigation has started
       await new Promise(resolve => setTimeout(resolve, 100));
       router.refresh();
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
     } catch (err: any) {
       setIsLoggingIn(false);
-      console.error('Login error:', err);
+      setIsRedirecting(false);
       
       let message = 'Login failed. Please check your credentials.';
 
-      // Check for MFA requirement
       if (err?.mfa_required) {
         message = 'Multi-factor authentication is required. Please contact support to set up MFA.';
-      } else if (err?.data) {
-        // Prefer detail over error if both exist, otherwise use either
-        if (err.data.detail && err.data.detail !== err.data.error) {
-          message = err.data.detail;
-        } else {
-          message = err.data.detail || err.data.error || message;
-        }
+      } else if (err?.data?.detail) {
+        message = err.data.detail;
+      } else if (err?.data?.error) {
+        message = err.data.error;
       } else if (err?.detail) {
         message = err.detail;
       } else if (err?.message) {
         message = err.message;
-        // Check for connection errors
-        if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('ECONNREFUSED') || err.message.includes('fetch failed')) {
-          message = 'Cannot connect to backend server. The Django API is not running. Please start the Django backend server on port 8000.';
+        if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('ECONNREFUSED')) {
+          message = 'Cannot connect to backend server. Please ensure the Django API is running on port 8000.';
         }
       }
 
@@ -332,10 +348,23 @@ function LoginForm() {
           {/* Error */}
           {error && (
             <div
-              className="bg-signal-orange/25 border border-signal-orange text-white px-4 py-3 rounded-md text-sm mb-5"
+              className="bg-signal-orange/25 border border-signal-orange text-white px-4 py-3 rounded-md text-sm mb-5 animate-fadeIn"
               role="alert"
             >
               {error}
+            </div>
+          )}
+
+          {/* Success/Redirecting Message */}
+          {isRedirecting && !error && (
+            <div
+              className="bg-cyber-mint/25 border border-cyber-mint text-white px-4 py-3 rounded-md text-sm mb-5 animate-fadeIn"
+              role="status"
+            >
+              <div className="flex items-center gap-2">
+                <div className="animate-spin h-4 w-4 border-2 border-cyber-mint border-t-transparent rounded-full"></div>
+                <span>Login successful! Redirecting to your dashboard...</span>
+              </div>
             </div>
           )}
 
@@ -388,11 +417,11 @@ function LoginForm() {
             {/* CTA */}
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isLoggingIn || isRedirecting}
               variant="defender"
               className="w-full py-3 text-base font-semibold rounded-md"
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isRedirecting ? 'Redirecting...' : isLoggingIn ? 'Signing in...' : isLoading ? 'Loading...' : 'Sign In'}
             </Button>
           </form>
 

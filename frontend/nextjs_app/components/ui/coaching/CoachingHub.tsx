@@ -32,9 +32,9 @@ export function CoachingHub() {
           Coaching OS
         </h1>
         <div className="max-w-2xl mx-auto">
-          <RadialAlignment score={metrics.alignmentScore} size="lg" className="mx-auto mb-4" />
+          <RadialAlignment score={metrics?.alignmentScore || 0} size="lg" className="mx-auto mb-4" />
           <p className="text-xl text-slate-300">
-            {metrics.alignmentScore}% aligned with your Future-You
+            {metrics?.alignmentScore || 0}% aligned with your Future-You
           </p>
         </div>
       </motion.div>
@@ -75,7 +75,7 @@ export function CoachingHub() {
               >
                 Reflect Now
               </Button>
-              {metrics.lastReflectionDate && (
+              {metrics?.lastReflectionDate && (
                 <p className="text-xs text-slate-500 mt-4">
                   Last reflection: {new Date(metrics.lastReflectionDate).toLocaleDateString()}
                 </p>

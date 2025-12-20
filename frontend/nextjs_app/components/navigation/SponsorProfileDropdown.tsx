@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+<<<<<<< HEAD
+import { getUserRoleDisplay } from '@/utils/formatRole'
+=======
 import { getPrimaryRole } from '@/utils/rbac'
 
 // Helper function to get role display name
@@ -23,6 +26,7 @@ function getRoleDisplayName(role: string | null): string {
   
   return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, ' ')
 }
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
 export function SponsorProfileDropdown() {
   const { user, logout } = useAuth()
@@ -62,6 +66,8 @@ export function SponsorProfileDropdown() {
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'User'
 
+  const userRole = getUserRoleDisplay(user)
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -73,8 +79,13 @@ export function SponsorProfileDropdown() {
           {userInitials}
         </div>
         <div className="hidden md:block text-left">
+<<<<<<< HEAD
+          <div className="text-sm font-medium text-white">{userName}</div>
+          <div className="text-xs text-och-steel">{userRole}</div>
+=======
           <div className="text-sm font-medium text-white">{user?.email || userName}</div>
           <div className="text-xs text-och-steel">{roleDisplayName}</div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         </div>
         <svg
           className={`w-4 h-4 text-och-steel transition-transform ${isOpen ? 'rotate-180' : ''}`}

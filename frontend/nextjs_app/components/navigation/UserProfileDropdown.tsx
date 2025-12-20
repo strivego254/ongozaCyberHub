@@ -3,6 +3,10 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+<<<<<<< HEAD
+import { getUserRoleDisplay } from '@/utils/formatRole'
+import { getProfilePath, getSettingsPath } from '@/utils/navigation'
+=======
 import { getPrimaryRole } from '@/utils/rbac'
 
 // Helper function to get role display name
@@ -23,6 +27,7 @@ function getRoleDisplayName(role: string | null): string {
   
   return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, ' ')
 }
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
 export function UserProfileDropdown() {
   const { user, logout } = useAuth()
@@ -62,6 +67,10 @@ export function UserProfileDropdown() {
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'User'
 
+  const userRole = getUserRoleDisplay(user)
+  const profilePath = getProfilePath(user)
+  const settingsPath = getSettingsPath(user)
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -73,8 +82,13 @@ export function UserProfileDropdown() {
           {userInitials}
         </div>
         <div className="hidden md:block text-left">
+<<<<<<< HEAD
+          <div className="text-sm font-medium text-white">{userName}</div>
+          <div className="text-xs text-och-steel">{userRole}</div>
+=======
           <div className="text-sm font-medium text-white">{user?.email || userName}</div>
           <div className="text-xs text-och-steel">{roleDisplayName}</div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         </div>
         <svg
           className={`w-4 h-4 text-och-steel transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -94,14 +108,14 @@ export function UserProfileDropdown() {
           </div>
           <div className="py-2">
             <Link
-              href="/dashboard/student/settings/profile"
+              href={profilePath}
               onClick={() => setIsOpen(false)}
               className="block px-4 py-2 text-sm text-och-steel hover:bg-och-defender/20 hover:text-och-mint transition-colors"
             >
               Profile
             </Link>
             <Link
-              href="/dashboard/student/settings"
+              href={settingsPath}
               onClick={() => setIsOpen(false)}
               className="block px-4 py-2 text-sm text-och-steel hover:bg-och-defender/20 hover:text-och-mint transition-colors"
             >

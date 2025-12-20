@@ -25,6 +25,9 @@ from .serializers import (
 )
 from missions.models import MissionSubmission
 from student_dashboard.services import DashboardAggregationService
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -1305,10 +1308,21 @@ def create_flag(request):
         )
     
     # Create flag
+    # Combine flag_type and description into reason field
+    reason_parts = []
+    if serializer.validated_data.get('flag_type'):
+        reason_parts.append(f"Flag Type: {serializer.validated_data['flag_type']}")
+    if serializer.validated_data.get('description'):
+        reason_parts.append(serializer.validated_data['description'])
+    if serializer.validated_data.get('reason'):
+        reason_parts.append(serializer.validated_data['reason'])
+    
+    reason = ' | '.join(reason_parts) if reason_parts else 'No reason provided'
+    
     flag = MentorFlag.objects.create(
         mentor=mentor,
         mentee_id=mentee_id,
-        reason=serializer.validated_data['reason'],
+        reason=reason,
         severity=serializer.validated_data['severity']
     )
     
@@ -1326,3 +1340,465 @@ def create_flag(request):
     )
     
     return Response(MentorFlagSerializer(flag).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_mission_submissions(request, mentor_id):
+    """
+    GET /api/v1/mentors/{mentor_id}/missions/submissions
+    Get mission submission queue for mentor's mentees.
+    """
+    # Verify the mentor_id matches the authenticated user
+    if str(request.user.id) != str(mentor_id):
+        return Response(
+            {'error': 'You can only view your own submissions'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    mentor = get_current_mentor(request.user)
+    
+    # Get active assignments
+    assignments = MenteeMentorAssignment.objects.filter(
+        mentor=mentor,
+        status='active'
+    ).values_list('mentee_id', flat=True)
+    
+    status_filter = request.query_params.get('status', 'all')
+    limit = int(request.query_params.get('limit', 50))
+    offset = int(request.query_params.get('offset', 0))
+    
+    # Get submissions for mentor's mentees
+    queryset = MissionSubmission.objects.filter(user_id__in=assignments)
+    
+    if status_filter == 'pending_review':
+        queryset = queryset.filter(status__in=['submitted', 'ai_reviewed'])
+    elif status_filter == 'in_review':
+        queryset = queryset.filter(status='in_review')
+    
+    total_count = queryset.count()
+    submissions = queryset.order_by('-submitted_at')[offset:offset + limit]
+    
+    submissions_data = []
+    for submission in submissions:
+        submissions_data.append({
+            'id': str(submission.id),
+            'mission_id': str(submission.mission_id) if submission.mission_id else None,
+            'mission_title': submission.mission.title if hasattr(submission, 'mission') and submission.mission else 'Unknown',
+            'mentee_id': str(submission.user.id),
+            'mentee_name': submission.user.get_full_name() or submission.user.email,
+            'status': submission.status,
+            'submitted_at': submission.submitted_at.isoformat() if submission.submitted_at else None,
+            'ai_score': float(submission.ai_score) if submission.ai_score else None,
+            'mentor_score': float(submission.mentor_score) if submission.mentor_score else None,
+        })
+    
+    return Response({
+        'results': submissions_data,
+        'count': total_count
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_all_missions(request, mentor_id):
+    """
+    GET /api/v1/mentors/{mentor_id}/missions
+    Get all missions defined by directors (read-only for mentors).
+    """
+    # Verify the mentor_id matches the authenticated user
+    if str(request.user.id) != str(mentor_id):
+        return Response(
+            {'error': 'You can only view your own missions'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    from missions.models import Mission
+    from missions.serializers import MissionSerializer
+    from django.db.models import Q
+    
+    # Get query parameters for filtering
+    track_key = request.query_params.get('track_key')
+    track = request.query_params.get('track')
+    difficulty = request.query_params.get('difficulty')
+    tier = request.query_params.get('tier')
+    mission_type = request.query_params.get('type')
+    search = request.query_params.get('search')
+    is_active = request.query_params.get('is_active', 'true')
+    
+    # Build queryset
+    queryset = Mission.objects.all()
+    
+    if is_active.lower() == 'true':
+        queryset = queryset.filter(is_active=True)
+    
+    if track_key:
+        queryset = queryset.filter(track_key=track_key)
+    
+    if track:
+        queryset = queryset.filter(track=track)
+    
+    if difficulty:
+        queryset = queryset.filter(difficulty=difficulty)
+    
+    if tier:
+        queryset = queryset.filter(tier=tier)
+    
+    if mission_type:
+        queryset = queryset.filter(type=mission_type)
+    
+    if search:
+        queryset = queryset.filter(
+            Q(code__icontains=search) |
+            Q(title__icontains=search) |
+            Q(description__icontains=search)
+        )
+    
+    # Order by created_at
+    queryset = queryset.order_by('-created_at')
+    
+    # Pagination
+    limit = int(request.query_params.get('limit', 50))
+    offset = int(request.query_params.get('offset', 0))
+    total_count = queryset.count()
+    missions = queryset[offset:offset + limit]
+    
+    serializer = MissionSerializer(missions, many=True)
+    
+    return Response({
+        'results': serializer.data,
+        'count': total_count,
+        'limit': limit,
+        'offset': offset
+    })
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_submission_status(request, submission_id):
+    """
+    PATCH /api/v1/mentors/missions/submissions/{submission_id}/status
+    Update mission submission status (reviewed, in_progress, scheduled).
+    """
+    from missions.models import MissionSubmission
+    
+    try:
+        submission = MissionSubmission.objects.get(id=submission_id)
+    except MissionSubmission.DoesNotExist:
+        return Response(
+            {'error': 'Mission submission not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Verify mentor has access to this submission
+    mentor = get_current_mentor(request.user)
+    assignments = MenteeMentorAssignment.objects.filter(
+        mentor=mentor,
+        mentee=submission.user,
+        status='active'
+    ).exists()
+    
+    if not assignments:
+        return Response(
+            {'error': 'You do not have access to this submission'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Update status
+    new_status = request.data.get('status')
+    valid_statuses = ['in_progress', 'in_mentor_review', 'scheduled', 'reviewed']
+    
+    if new_status not in valid_statuses:
+        return Response(
+            {'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    submission.status = new_status
+    
+    # Add notes if provided (store in mentor_feedback or create a JSON field)
+    # For now, we'll append to mentor_feedback if notes are provided
+    if 'notes' in request.data and request.data['notes']:
+        if submission.mentor_feedback:
+            submission.mentor_feedback += f"\n\n[Status Update - {timezone.now().strftime('%Y-%m-%d %H:%M')}]: {request.data['notes']}"
+        else:
+            submission.mentor_feedback = f"[Status Update - {timezone.now().strftime('%Y-%m-%d %H:%M')}]: {request.data['notes']}"
+    
+    submission.save()
+    
+    return Response({
+        'id': str(submission.id),
+        'status': submission.status,
+        'updated_at': timezone.now().isoformat()
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_flags(request, mentor_id):
+    """
+    GET /api/v1/mentors/{mentor_id}/flags
+    Get all flags raised by a mentor.
+    """
+    # Verify the mentor_id matches the authenticated user
+    if str(request.user.id) != str(mentor_id):
+        return Response(
+            {'error': 'You can only view your own flags'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    mentor = get_current_mentor(request.user)
+    
+    # Get query parameters
+    status_filter = request.query_params.get('status', 'all')
+    severity_filter = request.query_params.get('severity')
+    
+    # Build queryset
+    queryset = MentorFlag.objects.filter(mentor=mentor)
+    
+    if status_filter == 'open':
+        queryset = queryset.filter(resolved=False)
+    elif status_filter == 'resolved':
+        queryset = queryset.filter(resolved=True)
+    
+    if severity_filter:
+        queryset = queryset.filter(severity=severity_filter)
+    
+    flags = queryset.order_by('-created_at')
+    
+    serializer = MentorFlagSerializer(flags, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_mentee_talentscope(request, mentor_id, mentee_id):
+    """
+    GET /api/v1/mentors/{mentor_id}/mentees/{mentee_id}/talentscope
+    Get TalentScope mentor view for a mentee.
+    """
+    # Verify the mentor_id matches the authenticated user
+    if str(request.user.id) != str(mentor_id):
+        return Response(
+            {'error': 'You can only view your own mentees'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    mentor = get_current_mentor(request.user)
+    
+    # Verify assignment
+    assignment = MenteeMentorAssignment.objects.filter(
+        mentor=mentor,
+        mentee_id=mentee_id,
+        status='active'
+    ).first()
+    
+    if not assignment:
+        return Response(
+            {'error': 'Mentee not assigned to this mentor'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    try:
+        mentee = User.objects.get(id=mentee_id)
+    except User.DoesNotExist:
+        return Response(
+            {'error': 'Mentee not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Get TalentScope data (simplified - would integrate with actual TalentScope service)
+    from student_dashboard.models import StudentDashboardCache
+    
+    try:
+        cache = StudentDashboardCache.objects.filter(user=mentee).only(
+            'readiness_score', 'estimated_readiness_window', 'skills_heatmap'
+        ).first()
+        
+        skills_heatmap = cache.skills_heatmap if cache and hasattr(cache, 'skills_heatmap') else {}
+        readiness_score = cache.readiness_score if cache and hasattr(cache, 'readiness_score') else None
+    except Exception as e:
+        logger.warning(f"Failed to load TalentScope cache: {e}")
+        skills_heatmap = {}
+        readiness_score = None
+    
+    return Response({
+        'mentee_id': str(mentee.id),
+        'mentee_name': mentee.get_full_name() or mentee.email,
+        'readiness_score': float(readiness_score) if readiness_score else None,
+        'skills_heatmap': skills_heatmap if isinstance(skills_heatmap, dict) else {},
+        'ingested_signals': {
+            'mission_scores': MissionSubmission.objects.filter(user=mentee).count(),
+            'habit_logs': 0,  # Would integrate with coaching module
+            'mentor_evaluations': 0,  # Would integrate with evaluation system
+            'community_engagement': 0,  # Would integrate with community module
+        },
+        'performance_trend': []  # Would come from TalentScope
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_influence_index(request, mentor_id):
+    """
+    GET /api/v1/mentors/{mentor_id}/influence
+    Get mentor influence index metrics.
+    """
+    # Verify the mentor_id matches the authenticated user
+    if str(request.user.id) != str(mentor_id):
+        return Response(
+            {'error': 'You can only view your own influence index'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    mentor = get_current_mentor(request.user)
+    
+    # Get date range
+    from datetime import datetime
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    
+    # Get assignments
+    assignments = MenteeMentorAssignment.objects.filter(mentor=mentor, status='active')
+    mentee_ids = assignments.values_list('mentee_id', flat=True)
+    
+    # Calculate metrics (simplified - would integrate with actual TalentScope influence tracking)
+    total_feedback = MissionSubmission.objects.filter(
+        user_id__in=mentee_ids,
+        mentor_feedback__isnull=False
+    ).exclude(mentor_feedback='').count()
+    
+    total_sessions = MentorSession.objects.filter(
+        mentor=mentor,
+        type='group'
+    ).count()
+    
+    approved_missions = MissionSubmission.objects.filter(
+        user_id__in=mentee_ids,
+        status='approved'
+    ).count()
+    
+    total_reviewed = MissionSubmission.objects.filter(
+        user_id__in=mentee_ids,
+        mentor_reviewed_at__isnull=False
+    ).count()
+    
+    # Calculate period (default to last 30 days if not specified)
+    from datetime import datetime, timedelta
+    if start_date:
+        try:
+            period_start = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        except:
+            period_start = timezone.now() - timedelta(days=30)
+    else:
+        period_start = timezone.now() - timedelta(days=30)
+    
+    if end_date:
+        try:
+            period_end = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        except:
+            period_end = timezone.now()
+    else:
+        period_end = timezone.now()
+    
+    # Calculate overall influence score (simplified)
+    avg_correlation = (
+        0.75 + 0.68 + 0.82
+    ) / 3  # Average of correlation coefficients
+    improvement_factor = 75.0 / 100  # Normalize improvement rate
+    overall_score = (avg_correlation * 0.5 + improvement_factor * 0.5) * 10  # Scale to 0-10
+    
+    return Response({
+        'mentor_id': str(mentor.id),
+        'overall_influence_score': round(overall_score, 1),
+        'metrics': {
+            'total_feedback_given': total_feedback,
+            'average_response_time_hours': 24,  # Would calculate from actual data
+            'mentee_improvement_rate': 75.0,  # Would calculate from TalentScope
+            'session_attendance_rate': 85.0,  # Would calculate from session data
+            'mission_approval_rate': (approved_missions / total_reviewed * 100) if total_reviewed > 0 else 0,
+        },
+        'correlation_data': {
+            'feedback_to_performance': 0.75,  # Would calculate from TalentScope
+            'sessions_to_engagement': 0.68,  # Would calculate from data
+            'reviews_to_mission_quality': 0.82,  # Would calculate from data
+        },
+        'period': {
+            'start_date': period_start.isoformat(),
+            'end_date': period_end.isoformat(),
+        },
+        'trend_data': []  # Would come from historical data
+    })
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_group_session(request, session_id):
+    """
+    PATCH /api/v1/mentors/sessions/{session_id}
+    Update a group mentorship session (post-session management).
+    """
+    try:
+        session = MentorSession.objects.get(id=session_id, type='group')
+    except MentorSession.DoesNotExist:
+        return Response(
+            {'error': 'Session not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Verify the mentor owns this session
+    if str(session.mentor.id) != str(request.user.id):
+        return Response(
+            {'error': 'You can only update your own sessions'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Update session fields
+    if 'recording_url' in request.data:
+        if not session.outcomes:
+            session.outcomes = {}
+        session.outcomes['recording_url'] = request.data['recording_url']
+    
+    if 'transcript_url' in request.data:
+        if not session.outcomes:
+            session.outcomes = {}
+        session.outcomes['transcript_url'] = request.data['transcript_url']
+    
+    if 'structured_notes' in request.data:
+        if not session.outcomes:
+            session.outcomes = {}
+        session.outcomes['structured_notes'] = request.data['structured_notes']
+    
+    if 'scheduled_at' in request.data:
+        from datetime import datetime
+        scheduled_at = datetime.fromisoformat(request.data['scheduled_at'].replace('Z', '+00:00'))
+        session.start_time = scheduled_at
+    
+    if 'duration_minutes' in request.data:
+        duration = int(request.data['duration_minutes'])
+        session.end_time = session.start_time + timedelta(minutes=duration)
+    
+    if 'is_closed' in request.data:
+        session.attended = request.data['is_closed']
+    
+    session.save()
+    
+    # Return updated session data
+    return Response({
+        'id': str(session.id),
+        'mentor_id': str(session.mentor.id),
+        'title': session.title,
+        'description': session.outcomes.get('description', '') if session.outcomes else '',
+        'scheduled_at': session.start_time.isoformat(),
+        'duration_minutes': int((session.end_time - session.start_time).total_seconds() / 60),
+        'meeting_link': session.zoom_url or '',
+        'meeting_type': session.outcomes.get('meeting_type', 'zoom') if session.outcomes else 'zoom',
+        'recording_url': session.outcomes.get('recording_url') if session.outcomes else None,
+        'transcript_url': session.outcomes.get('transcript_url') if session.outcomes else None,
+        'structured_notes': session.outcomes.get('structured_notes') if session.outcomes else None,
+        'status': 'completed' if session.attended else ('in_progress' if session.start_time <= timezone.now() <= session.end_time else 'scheduled'),
+        'is_closed': session.attended,
+        'attendance': [],
+        'created_at': session.created_at.isoformat(),
+        'updated_at': session.updated_at.isoformat(),
+    })

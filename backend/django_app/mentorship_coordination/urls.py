@@ -15,7 +15,13 @@ from .views import (
     mentor_mentee_talentscope,
     mentor_mission_submissions,
     update_group_session,
+<<<<<<< HEAD
+    mentor_influence_index,
+    mentor_all_missions,
+    update_submission_status,
+=======
     mentor_influence_index
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 )
 from .sse_views import mentor_dashboard_stream
 
@@ -25,7 +31,13 @@ urlpatterns = [
     # CRITICAL: More specific patterns MUST come first to avoid conflicts
     # The order matters - Django matches patterns in order
     path('mentors/<int:mentor_id>/mentees/<int:mentee_id>/talentscope', mentor_mentee_talentscope, name='mentor-mentee-talentscope'),
+<<<<<<< HEAD
+    path('mentors/<int:mentor_id>/missions', mentor_all_missions, name='mentor-all-missions'),
     path('mentors/<int:mentor_id>/missions/submissions', mentor_mission_submissions, name='mentor-mission-submissions'),
+    path('mentors/missions/submissions/<uuid:submission_id>/status', update_submission_status, name='update-submission-status'),
+=======
+    path('mentors/<int:mentor_id>/missions/submissions', mentor_mission_submissions, name='mentor-mission-submissions'),
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     path('mentors/<int:mentor_id>/influence', mentor_influence_index, name='mentor-influence'),
     path('mentors/<int:mentor_id>/flags/', mentor_flags, name='mentor-flags-slash'),
     path('mentors/<int:mentor_id>/flags', mentor_flags, name='mentor-flags'),

@@ -1,6 +1,10 @@
 'use client'
 
+<<<<<<< HEAD
+import { useState, useEffect } from 'react'
+=======
 import { useCallback, useEffect, useState } from 'react'
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -8,6 +12,13 @@ import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { mentorClient } from '@/services/mentorClient'
 import { profilerClient } from '@/services/profilerClient'
+<<<<<<< HEAD
+import { programsClient, type Enrollment, type Cohort } from '@/services/programsClient'
+import { useCohorts } from '@/hooks/usePrograms'
+import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { MenteeAnalytics } from '@/components/mentor/MenteeAnalytics'
+=======
 import { mentorshipClient } from '@/services/mentorshipClient'
 import { coachingClient } from '@/services/coachingClient'
 import { habitsClient } from '@/services/habitsClient'
@@ -15,12 +26,16 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { MentorshipChat } from '@/components/mentorship/MentorshipChat'
 import { ReflectionWithSentiment } from '@/components/coaching/ReflectionWithSentiment'
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 import type {
   MenteeGoal,
   MenteeFlag,
   TalentScopeMentorView,
   MenteePerformance,
   AssignedMentee,
+<<<<<<< HEAD
+} from '@/services/types/mentor'
+=======
   MentorInfluenceIndex,
 } from '@/services/types/mentor'
 import type { MentorshipSession } from '@/services/types/mentorship'
@@ -48,16 +63,29 @@ function getErrorMessage(err: unknown): string {
 function isMenteeTab(v: string): v is MenteeTab {
   return v === 'overview' || v === 'goals' || v === 'performance' || v === 'missions' || v === 'sessions' || v === 'chat' || v === 'flags'
 }
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
 export default function MenteeDetailPage() {
   const params = useParams()
   const router = useRouter()
+<<<<<<< HEAD
+=======
   const searchParams = useSearchParams()
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const { user } = useAuth()
   const mentorId = user?.id?.toString()
   const menteeId = params.id as string
 
   const [menteeData, setMenteeData] = useState<AssignedMentee | null>(null)
+<<<<<<< HEAD
+  const [profilerData, setProfilerData] = useState<any>(null)
+  const [talentscopeData, setTalentscopeData] = useState<TalentScopeMentorView | null>(null)
+  const [performanceData, setPerformanceData] = useState<MenteePerformance | null>(null)
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [goals, setGoals] = useState<MenteeGoal[]>([])
+  const [flags, setFlags] = useState<MenteeFlag[]>([])
+  const [activeTab, setActiveTab] = useState<'overview' | 'goals' | 'performance' | 'missions' | 'sessions' | 'flags'>('overview')
+=======
   const [profilerData, setProfilerData] = useState<FutureYouProfile | null>(null)
   const [talentscopeData, setTalentscopeData] = useState<TalentScopeMentorView | null>(null)
   const [performanceData, setPerformanceData] = useState<MenteePerformance | null>(null)
@@ -82,6 +110,7 @@ export default function MenteeDetailPage() {
   const [resolveNotes, setResolveNotes] = useState('')
   const [resolveFlagId, setResolveFlagId] = useState<string>('')
   const [activeTab, setActiveTab] = useState<MenteeTab>('overview')
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showFlagModal, setShowFlagModal] = useState(false)
@@ -92,6 +121,11 @@ export default function MenteeDetailPage() {
     description: '',
   })
 
+<<<<<<< HEAD
+  const { cohorts, isLoading: cohortsLoading } = useCohorts({ page: 1, pageSize: 500 })
+
+  // Load mentee data from assigned cohorts
+=======
   // Allow deep-linking to a specific tab (e.g. from the mentees flag inbox)
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -104,6 +138,7 @@ export default function MenteeDetailPage() {
   }
 
   // Load mentee data via mentor assignments (RBAC-safe + efficient)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   useEffect(() => {
     const loadMenteeData = async () => {
       if (!mentorId || !menteeId) {
@@ -111,6 +146,93 @@ export default function MenteeDetailPage() {
         return
       }
 
+<<<<<<< HEAD
+      // Wait for cohorts to finish loading
+      if (cohortsLoading) {
+        return
+      }
+      
+      setLoading(true)
+      setError(null)
+      
+      try {
+        console.log('[MenteeDetail] Loading mentee data for:', menteeId, 'from mentor:', mentorId)
+        
+        // Step 1: Find all cohorts where this mentor is assigned
+        const assignedCohorts: Cohort[] = []
+        
+        for (const cohort of cohorts) {
+          try {
+            const cohortMentors = await programsClient.getCohortMentors(String(cohort.id))
+            const isAssigned = cohortMentors.some(
+              (assignment: any) => String(assignment.mentor) === String(mentorId) && assignment.active !== false
+            )
+            
+            if (isAssigned) {
+              assignedCohorts.push(cohort)
+            }
+          } catch (err) {
+            console.error(`[MenteeDetail] Failed to check mentor assignment for cohort ${cohort.id}:`, err)
+          }
+        }
+
+        console.log('[MenteeDetail] Assigned cohorts found:', assignedCohorts.length)
+
+        // Step 2: Find the mentee in enrollments from assigned cohorts
+        let foundMentee: AssignedMentee | null = null
+        let foundEnrollment: Enrollment | null = null
+
+        for (const cohort of assignedCohorts) {
+          try {
+            const enrollments = await programsClient.getCohortEnrollments(String(cohort.id))
+            const enrollment = enrollments.find(
+              (e) => (String(e.user) === String(menteeId) || String(e.id) === String(menteeId)) &&
+                     (e.status === 'active' || e.status === 'completed')
+            )
+
+            if (enrollment) {
+              foundEnrollment = enrollment
+              foundMentee = {
+                id: enrollment.user,
+                user_id: enrollment.user,
+                name: enrollment.user_name || enrollment.user_email || 'Unknown',
+                email: enrollment.user_email || '',
+                track: cohort.track_name || '',
+                cohort: cohort.name || enrollment.cohort_name || '',
+                readiness_score: 0,
+                risk_level: 'low',
+                missions_completed: 0,
+                subscription_tier: enrollment.seat_type === 'paid' ? 'professional' : enrollment.seat_type === 'scholarship' ? 'professional' : 'free',
+                assigned_at: enrollment.joined_at,
+                status: enrollment.status === 'active' ? 'active' : enrollment.status === 'completed' ? 'active' : 'inactive',
+              }
+              console.log('[MenteeDetail] Found mentee in cohort:', cohort.name)
+              break
+            }
+          } catch (err) {
+            console.error(`[MenteeDetail] Failed to load enrollments for cohort ${cohort.id}:`, err)
+          }
+        }
+
+        if (!foundMentee) {
+          // Fallback: Try direct API
+          console.log('[MenteeDetail] Mentee not found in cohorts, trying direct API...')
+          try {
+            const directMentees = await mentorClient.getAssignedMentees(mentorId)
+            const mentee = directMentees.find((m: AssignedMentee) => m.id === menteeId || m.user_id === menteeId)
+            if (mentee) {
+              foundMentee = mentee
+              console.log('[MenteeDetail] Found mentee via direct API')
+            }
+          } catch (fallbackErr) {
+            console.error('[MenteeDetail] Direct API also failed:', fallbackErr)
+          }
+        }
+
+        if (!foundMentee) {
+          setError('Mentee not found. This mentee may not be enrolled in any of your assigned cohorts.')
+          setLoading(false)
+=======
       setLoading(true)
       setError(null)
       setProfilerDenied(false)
@@ -122,10 +244,35 @@ export default function MenteeDetailPage() {
 
         if (!foundMentee) {
           setError('Mentee not found or not assigned to you (RBAC).')
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
           return
         }
 
         setMenteeData(foundMentee)
+<<<<<<< HEAD
+        if (foundEnrollment) {
+          setEnrollments([foundEnrollment])
+        }
+
+        // Load additional data in parallel
+        try {
+          const [performance, profiler, talentscope] = await Promise.all([
+            mentorClient.getMenteePerformance(mentorId, menteeId).catch(() => null),
+            profilerClient.getFutureYou(menteeId).catch(() => null),
+            mentorClient.getTalentScopeView(mentorId, menteeId).catch(() => null),
+          ])
+
+          setPerformanceData(performance)
+          setProfilerData(profiler)
+          setTalentscopeData(talentscope)
+        } catch (err) {
+          console.error('[MenteeDetail] Failed to load additional data:', err)
+          // Don't fail the whole page if additional data fails
+        }
+      } catch (err: any) {
+        console.error('[MenteeDetail] Failed to load mentee data:', err)
+        setError(err?.message || 'Failed to load mentee data')
+=======
 
         const [performance, profilerResult, talentscope] = await Promise.all([
           mentorClient.getMenteePerformance(mentorId, menteeId).catch(() => null),
@@ -146,12 +293,16 @@ export default function MenteeDetailPage() {
       } catch (err: unknown) {
         console.error('[MenteeDetail] Failed to load mentee data:', err)
         setError(getErrorMessage(err) || 'Failed to load mentee data')
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
       } finally {
         setLoading(false)
       }
     }
 
     loadMenteeData()
+<<<<<<< HEAD
+  }, [mentorId, menteeId, cohorts, cohortsLoading])
+=======
   }, [mentorId, menteeId])
 
   const loadGoals = useCallback(async () => {
@@ -163,10 +314,27 @@ export default function MenteeDetailPage() {
       console.error('Failed to load goals:', err)
     }
   }, [mentorId, menteeId])
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   // Load goals when goals tab is active
   useEffect(() => {
     if (activeTab === 'goals' && mentorId) {
+<<<<<<< HEAD
+      const loadGoals = async () => {
+        try {
+          const data = await mentorClient.getMenteeGoals(mentorId, { mentee_id: menteeId })
+          setGoals(data.filter((g: MenteeGoal) => g.mentee_id === menteeId))
+        } catch (err) {
+          console.error('Failed to load goals:', err)
+        }
+      }
+      loadGoals()
+    }
+  }, [activeTab, mentorId, menteeId])
+
+  // Load flags when flags tab is active
+  const loadFlags = async () => {
+=======
       loadGoals()
     }
   }, [activeTab, mentorId, loadGoals])
@@ -259,6 +427,7 @@ export default function MenteeDetailPage() {
 
   // Load flags when flags tab is active
   const loadFlags = useCallback(async () => {
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     if (!mentorId) return
     try {
       const data = await mentorClient.getMenteeFlags(mentorId)
@@ -266,6 +435,10 @@ export default function MenteeDetailPage() {
     } catch (err) {
       console.error('Failed to load flags:', err)
     }
+<<<<<<< HEAD
+  }
+
+=======
   }, [mentorId, menteeId])
 
   const acknowledge = useCallback(async (flagId: string) => {
@@ -300,11 +473,16 @@ export default function MenteeDetailPage() {
     }
   }, [mentorId, resolveFlagId, resolveNotes, loadFlags])
 
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   useEffect(() => {
     if (activeTab === 'flags' && mentorId) {
       loadFlags()
     }
+<<<<<<< HEAD
+  }, [activeTab, mentorId, menteeId])
+=======
   }, [activeTab, mentorId, loadFlags])
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   // Handle flag submission
   const handleRaiseFlag = async (e: React.FormEvent) => {
@@ -318,15 +496,24 @@ export default function MenteeDetailPage() {
     setError(null)
 
     try {
+<<<<<<< HEAD
+      const newFlag = await mentorClient.flagMentee(mentorId, {
+=======
       await mentorClient.flagMentee(mentorId, {
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         mentee_id: menteeId,
         flag_type: flagFormData.flag_type,
         severity: flagFormData.severity,
         description: flagFormData.description.trim(),
       })
 
+<<<<<<< HEAD
+      // Add the new flag to the list
+      setFlags((prev) => [newFlag, ...prev])
+=======
       // Re-fetch flags from backend for canonical status (sync)
       await loadFlags()
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
       // Reset form and close modal
       setFlagFormData({
@@ -340,9 +527,15 @@ export default function MenteeDetailPage() {
       if (activeTab !== 'flags') {
         setActiveTab('flags')
       }
+<<<<<<< HEAD
+    } catch (err: any) {
+      console.error('Failed to raise flag:', err)
+      setError(err?.message || 'Failed to raise flag. Please try again.')
+=======
     } catch (err: unknown) {
       console.error('Failed to raise flag:', err)
       setError(getErrorMessage(err) || 'Failed to raise flag. Please try again.')
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     } finally {
       setSubmittingFlag(false)
     }
@@ -393,10 +586,17 @@ export default function MenteeDetailPage() {
               <p className="text-och-steel">{menteeData.email}</p>
               <div className="flex items-center gap-2 mt-2">
                 {menteeData.track && (
+<<<<<<< HEAD
+                  <Badge variant="steel">{menteeData.track}</Badge>
+                )}
+                {menteeData.cohort && (
+                  <Badge variant="steel">{menteeData.cohort}</Badge>
+=======
                   <Badge variant="outline">{menteeData.track}</Badge>
                 )}
                 {menteeData.cohort && (
                   <Badge variant="outline">{menteeData.cohort}</Badge>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 )}
                 {menteeData.subscription_tier === 'professional' && (
                   <Badge variant="defender">$7 Professional</Badge>
@@ -461,6 +661,8 @@ export default function MenteeDetailPage() {
               Sessions
             </button>
             <button
+<<<<<<< HEAD
+=======
               onClick={() => setActiveTab('chat')}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === 'chat'
@@ -471,6 +673,7 @@ export default function MenteeDetailPage() {
               Chat
             </button>
             <button
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               onClick={() => setActiveTab('flags')}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === 'flags'
@@ -487,6 +690,8 @@ export default function MenteeDetailPage() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Profiler Data */}
+<<<<<<< HEAD
+=======
             {profilerDenied && (
               <Card>
                 <div className="p-6">
@@ -498,6 +703,7 @@ export default function MenteeDetailPage() {
                 </div>
               </Card>
             )}
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             {profilerData && (
               <Card>
                 <div className="p-6">
@@ -520,6 +726,8 @@ export default function MenteeDetailPage() {
               </Card>
             )}
 
+<<<<<<< HEAD
+=======
             {/* Reflection Review */}
             <Card>
               <div className="p-6">
@@ -549,6 +757,7 @@ export default function MenteeDetailPage() {
               </div>
             </Card>
 
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             {/* TalentScope Baseline */}
             {talentscopeData && (
               <Card>
@@ -581,7 +790,11 @@ export default function MenteeDetailPage() {
                     <div>
                       <h4 className="text-sm font-semibold text-white mb-2">Skills Heatmap</h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+<<<<<<< HEAD
+                        {Object.entries(talentscopeData.skills_heatmap).map(([skill, score]: [string, any]) => (
+=======
                         {Object.entries(talentscopeData.skills_heatmap).map(([skill, score]: [string, number]) => (
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                           <div key={skill} className="flex items-center justify-between text-xs p-2 bg-och-midnight/50 rounded">
                             <span className="text-och-steel">{skill}</span>
                             <span className="text-white font-medium">{score}%</span>
@@ -629,6 +842,12 @@ export default function MenteeDetailPage() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-white">Goals</h3>
+<<<<<<< HEAD
+                  <Button variant="defender" size="sm">
+                    + New Goal
+                  </Button>
+                </div>
+=======
                   <Button variant="outline" size="sm" onClick={loadGoals}>
                     Refresh
                   </Button>
@@ -636,6 +855,7 @@ export default function MenteeDetailPage() {
                 <p className="text-sm text-och-steel mb-4">
                   Mentees own their goals (“mentees do the work”). Your role is to review status, add feedback, and intervene early when progress stalls.
                 </p>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 {goals.length === 0 ? (
                   <div className="text-center py-8 text-och-steel">
                     <p>No goals found for this mentee.</p>
@@ -664,6 +884,10 @@ export default function MenteeDetailPage() {
                               <div className="text-sm text-white">{goal.mentor_feedback.feedback}</div>
                             </div>
                           )}
+<<<<<<< HEAD
+                          {goal.status === 'pending' && (
+                            <Button variant="defender" size="sm" className="mt-3">
+=======
                           {(menteeData.subscription_tier === 'professional' || menteeData.subscription_tier === 'premium') && (
                             <Button
                               variant="defender"
@@ -677,6 +901,7 @@ export default function MenteeDetailPage() {
                                 await loadGoals()
                               }}
                             >
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                               Provide Feedback
                             </Button>
                           )}
@@ -692,6 +917,14 @@ export default function MenteeDetailPage() {
 
         {activeTab === 'performance' && (
           <div className="space-y-6">
+<<<<<<< HEAD
+            <MenteeAnalytics
+              mentorId={mentorId || ''}
+              menteeId={menteeId}
+              performanceData={performanceData}
+              talentscopeData={talentscopeData}
+            />
+=======
             <Card>
               <div className="p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Performance Tracking</h3>
@@ -748,6 +981,7 @@ export default function MenteeDetailPage() {
                 )}
               </div>
             </Card>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
           </div>
         )}
 
@@ -759,6 +993,12 @@ export default function MenteeDetailPage() {
                 <p className="text-sm text-och-steel mb-4">
                   Manage mentorship sessions with this mentee. Schedule sessions, take notes, and track outcomes.
                 </p>
+<<<<<<< HEAD
+                <Button variant="defender" size="sm">
+                  Schedule Session
+                </Button>
+                {/* Session list would go here */}
+=======
                 <div className="flex flex-wrap gap-2 mb-4">
                   <Link href="/dashboard/mentor/sessions">
                     <Button variant="defender" size="sm">Open Session Manager</Button>
@@ -795,17 +1035,21 @@ export default function MenteeDetailPage() {
                     ))}
                   </div>
                 )}
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               </div>
             </Card>
           </div>
         )}
 
+<<<<<<< HEAD
+=======
         {activeTab === 'chat' && (
           <div className="space-y-6">
             <MentorshipChat menteeId={menteeId} mentorId={mentorId} mentorName={user?.email || 'Mentor'} />
           </div>
         )}
 
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         {activeTab === 'flags' && (
           <div className="space-y-6">
             <Card>
@@ -869,6 +1113,8 @@ export default function MenteeDetailPage() {
                               {flag.severity}
                             </Badge>
                           </div>
+<<<<<<< HEAD
+=======
                           <div className="flex gap-2 mt-3">
                             {flag.status === 'open' && (
                               <Button
@@ -891,6 +1137,7 @@ export default function MenteeDetailPage() {
                               </Button>
                             )}
                           </div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                           <div className="text-xs text-och-steel mt-2">
                             Raised: {new Date(flag.raised_at).toLocaleDateString()} at {new Date(flag.raised_at).toLocaleTimeString()}
                             {flag.status === 'resolved' && flag.resolved_at && (
@@ -912,6 +1159,8 @@ export default function MenteeDetailPage() {
           </div>
         )}
 
+<<<<<<< HEAD
+=======
         {/* Resolve flag modal */}
         {resolveModalOpen && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
@@ -955,6 +1204,7 @@ export default function MenteeDetailPage() {
           </div>
         )}
 
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         {/* Raise Flag Modal */}
         {showFlagModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
