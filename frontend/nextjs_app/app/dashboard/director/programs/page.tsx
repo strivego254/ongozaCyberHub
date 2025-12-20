@@ -1,22 +1,46 @@
 'use client'
 
+<<<<<<< HEAD
 import { useEffect, useMemo, useRef, useState } from 'react'
+=======
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+<<<<<<< HEAD
 import { useCohorts, useDeleteProgram, useProgram, usePrograms, useUpdateCohort } from '@/hooks/usePrograms'
+=======
+import { useCohorts, useDeleteProgram, useProgram, usePrograms, useUpdateCohortDirector } from '@/hooks/usePrograms'
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
+
+interface ProgramDetails {
+  [key: string]: {
+    tracks: any[]
+    cohorts: any[]
+    isLoading: boolean
+    lastUpdated: number
+  }
+}
 
 export default function ProgramsPage() {
   const { programs, isLoading, reload } = usePrograms()
   const { deleteProgram, isLoading: isDeleting } = useDeleteProgram()
+<<<<<<< HEAD
   const { updateCohort, isLoading: isAssigning, error: assignApiError } = useUpdateCohort()
   const { cohorts, isLoading: cohortsLoading, reload: reloadCohorts } = useCohorts({ page: 1, pageSize: 500 })
   const [assignProgramId, setAssignProgramId] = useState<string>('')
   const { program: assignProgramDetail, isLoading: assignProgramLoading } = useProgram(assignProgramId)
+=======
+  const { updateCohort, isLoading: isAssigning, error: assignApiError } = useUpdateCohortDirector()
+  const { cohorts, isLoading: cohortsLoading, reload: reloadCohorts } = useCohorts({ page: 1, pageSize: 500 })
+  const [assignProgramId, setAssignProgramId] = useState<string>('')
+  const { program: assignProgramDetail, isLoading: assignProgramLoading, reload: reloadProgramDetail } = useProgram(assignProgramId)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [assignTrackId, setAssignTrackId] = useState<string>('')
   const [assignCohortId, setAssignCohortId] = useState<string>('')
   const [assignError, setAssignError] = useState<string | null>(null)
@@ -30,6 +54,94 @@ export default function ProgramsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   
+  // Store detailed program information
+  const [programDetails, setProgramDetails] = useState<ProgramDetails>({})
+  const [refreshingPrograms, setRefreshingPrograms] = useState<Set<string>>(new Set())
+  
+  // Fetch detailed program information
+  const fetchProgramDetails = useCallback(async (programId: string, force = false) => {
+    if (!programId) return
+    
+    // Don't refetch if recently updated (within 5 seconds) unless forced
+    if (!force) {
+      setProgramDetails(prev => {
+        const existing = prev[programId]
+        if (existing && Date.now() - existing.lastUpdated < 5000) {
+          return prev
+        }
+        return prev
+      })
+      
+      // Check again after state read
+      const existing = programDetails[programId]
+      if (existing && !force && Date.now() - existing.lastUpdated < 5000) {
+        return
+      }
+    }
+    
+    setRefreshingPrograms(prev => new Set(prev).add(programId))
+    
+    try {
+      const { programsClient } = await import('@/services/programsClient')
+      const [programData, tracksData] = await Promise.all([
+        programsClient.getProgram(programId),
+        programsClient.getTracks(programId)
+      ])
+      
+      // Get cohorts for all tracks in this program
+      const trackIds = Array.isArray(tracksData) ? tracksData.map((t: any) => t.id) : []
+      const allCohorts = await Promise.all(
+        trackIds.map(async (trackId: string) => {
+          try {
+            const cohorts = await programsClient.getCohorts({ trackId })
+            return Array.isArray(cohorts) ? cohorts : (cohorts?.results || [])
+          } catch {
+            return []
+          }
+        })
+      )
+      const cohorts = allCohorts.flat()
+      
+      setProgramDetails(prev => ({
+        ...prev,
+        [programId]: {
+          tracks: Array.isArray(tracksData) ? tracksData : [],
+          cohorts: cohorts,
+          isLoading: false,
+          lastUpdated: Date.now()
+        }
+      }))
+    } catch (err) {
+      console.error(`Failed to fetch details for program ${programId}:`, err)
+      setProgramDetails(prev => ({
+        ...prev,
+        [programId]: {
+          tracks: prev[programId]?.tracks || [],
+          cohorts: prev[programId]?.cohorts || [],
+          isLoading: false,
+          lastUpdated: prev[programId]?.lastUpdated || Date.now()
+        }
+      }))
+    } finally {
+      setRefreshingPrograms(prev => {
+        const next = new Set(prev)
+        next.delete(programId)
+        return next
+      })
+    }
+  }, [])
+
+  // Fetch details for all programs on mount and when programs list changes
+  useEffect(() => {
+    if (!isLoading && programs.length > 0) {
+      programs.forEach((program: any) => {
+        if (program.id) {
+          fetchProgramDetails(program.id)
+        }
+      })
+    }
+  }, [programs, isLoading, fetchProgramDetails])
+
   // Listen for program creation events to refresh the list
   useEffect(() => {
     const handleProgramCreated = () => {
@@ -114,12 +226,48 @@ export default function ProgramsPage() {
 
     try {
       await updateCohort(assignCohortId, { track: assignTrackId })
+<<<<<<< HEAD
       setAssignSuccess('Cohort updated successfully.')
       // Refresh data shown on the page
       reload()
       reloadCohorts()
     } catch (err: any) {
       setAssignError(err?.message || assignApiError || 'Failed to assign program to cohort')
+=======
+      setAssignSuccess('Cohort updated successfully. The cohort is now assigned to the selected track.')
+      // Refresh all data shown on the page
+      await Promise.all([
+        reload(), // Reload all programs to update cohort counts in cards
+        reloadCohorts(), // Reload all cohorts
+        assignProgramId ? reloadProgramDetail() : Promise.resolve() // Reload specific program detail if selected
+      ])
+      
+      // Refresh program details for all programs to update cohort counts
+      programs.forEach((p: any) => {
+        if (p.id) {
+          fetchProgramDetails(p.id, true) // Force refresh
+        }
+      })
+      // Clear form after successful assignment
+      setTimeout(() => {
+        setAssignProgramId('')
+        setAssignTrackId('')
+        setAssignCohortId('')
+        setCohortSearchQuery('')
+        setShowCohortDropdown(false)
+        setAssignSuccess(null)
+      }, 2000)
+    } catch (err: any) {
+      console.error('Failed to assign program to cohort:', err)
+      // Extract detailed error message
+      const errorMessage = err?.response?.data?.error || 
+                           err?.response?.data?.detail || 
+                           err?.response?.data?.track?.[0] ||
+                           err?.message || 
+                           assignApiError || 
+                           'Failed to assign program to cohort. Please check your permissions and try again.'
+      setAssignError(errorMessage)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     }
   }
 
@@ -340,7 +488,11 @@ export default function ProgramsPage() {
                                     </div>
                                   </div>
                                   <div className="ml-2">
+<<<<<<< HEAD
                                     <Badge variant={c.status === 'active' ? 'mint' : 'steel'} className="text-xs">
+=======
+                                    <Badge variant={c.status === 'active' ? 'mint' : 'outline'} className="text-xs">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                                       {c.status}
                                     </Badge>
                                   </div>
@@ -389,78 +541,153 @@ export default function ProgramsPage() {
             </Card>
           </div>
 
-          <div className="mb-4 text-och-steel">
-            Showing {filteredPrograms.length} of {programs.length} programs
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-och-steel">
+              Showing <span className="text-white font-semibold">{filteredPrograms.length}</span> of <span className="text-white font-semibold">{programs.length}</span> programs
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                reload()
+                programs.forEach((p: any) => {
+                  if (p.id) {
+                    fetchProgramDetails(p.id, true) // Force refresh
+                  }
+                })
+              }}
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
+              <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh All
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPrograms && filteredPrograms.length > 0 ? (
-              filteredPrograms.map((program: any) => (
-                <Card key={program.id}>
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-white mb-1">{program.name}</h3>
-                        <div className="text-sm text-och-steel prose prose-invert prose-sm max-w-none">
-                          <ReactMarkdown
-                            components={{
-                              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                              h1: ({ children }) => <h1 className="text-lg font-bold text-white mb-2">{children}</h1>,
-                              h2: ({ children }) => <h2 className="text-base font-bold text-white mb-2">{children}</h2>,
-                              h3: ({ children }) => <h3 className="text-sm font-bold text-white mb-1">{children}</h3>,
-                              ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
-                              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
-                              li: ({ children }) => <li className="text-och-steel">{children}</li>,
-                              strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-                              em: ({ children }) => <em className="italic">{children}</em>,
-                              code: ({ children }) => <code className="bg-och-midnight/50 px-1 py-0.5 rounded text-och-defender text-xs">{children}</code>,
-                              a: ({ href, children }) => <a href={href} className="text-och-defender hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-                            }}
-                          >
-                            {program.description || ''}
-                          </ReactMarkdown>
+              filteredPrograms.map((program: any) => {
+                const details = programDetails[program.id]
+                const isRefreshing = refreshingPrograms.has(program.id)
+                const tracksCount = details?.tracks?.length ?? program.tracks?.length ?? 0
+                const cohortsCount = details?.cohorts?.length ?? program.cohorts?.length ?? 0
+                const isLoadingDetails = details?.isLoading !== false && !details
+                
+                return (
+                  <Card key={program.id} className="hover:border-och-defender/50 transition-all duration-200 hover:shadow-lg">
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-xl font-bold text-white truncate">{program.name}</h3>
+                            {isRefreshing && (
+                              <svg className="w-4 h-4 text-och-defender animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="text-sm text-och-steel prose prose-invert prose-sm max-w-none line-clamp-2">
+                            <ReactMarkdown
+                              components={{
+                                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                                h1: ({ children }) => <h1 className="text-base font-bold text-white mb-1">{children}</h1>,
+                                h2: ({ children }) => <h2 className="text-sm font-bold text-white mb-1">{children}</h2>,
+                                h3: ({ children }) => <h3 className="text-xs font-bold text-white mb-0.5">{children}</h3>,
+                                ul: ({ children }) => <ul className="list-disc list-inside mb-1 space-y-0.5 text-xs">{children}</ul>,
+                                ol: ({ children }) => <ol className="list-decimal list-inside mb-1 space-y-0.5 text-xs">{children}</ol>,
+                                li: ({ children }) => <li className="text-och-steel">{children}</li>,
+                                strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                                em: ({ children }) => <em className="italic">{children}</em>,
+                                code: ({ children }) => <code className="bg-och-midnight/50 px-1 py-0.5 rounded text-och-defender text-xs">{children}</code>,
+                                a: ({ href, children }) => <a href={href} className="text-och-defender hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                              }}
+                            >
+                              {program.description || 'No description available'}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                        <Badge variant="defender" className="ml-3 flex-shrink-0">{program.status || 'active'}</Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-och-midnight/30 rounded-lg border border-och-steel/10">
+                        <div className="text-center">
+                          <div className="text-xs text-och-steel mb-1">Duration</div>
+                          <div className="text-sm font-semibold text-white">
+                            {program.duration_months ? `${program.duration_months}mo` : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="text-center border-l border-r border-och-steel/20">
+                          <div className="text-xs text-och-steel mb-1">Tracks</div>
+                          <div className="text-sm font-semibold text-white flex items-center justify-center gap-1">
+                            {isLoadingDetails ? (
+                              <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            ) : (
+                              tracksCount
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-och-steel mb-1">Cohorts</div>
+                          <div className="text-sm font-semibold text-white flex items-center justify-center gap-1">
+                            {isLoadingDetails ? (
+                              <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            ) : (
+                              cohortsCount
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <Badge variant="defender" className="ml-3">{program.status || 'active'}</Badge>
-                    </div>
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-och-steel">Duration</span>
-                        <span className="text-white">{program.duration || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-och-steel">Tracks</span>
-                        <span className="text-white">{program.tracks?.length || 0}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-och-steel">Cohorts</span>
-                        <span className="text-white">{program.cohorts?.length || 0}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link href={`/dashboard/director/programs/${program.id}`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">
-                          View
+                      
+                      <div className="flex gap-2">
+                        <Link href={`/dashboard/director/programs/${program.id}`} className="flex-1">
+                          <Button variant="outline" size="sm" className="w-full">
+                            View
+                          </Button>
+                        </Link>
+                        <Link href={`/dashboard/director/programs/${program.id}/edit`} className="flex-1">
+                          <Button variant="defender" size="sm" className="w-full">
+                            Edit
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (program.id) {
+                              fetchProgramDetails(program.id, true) // Force refresh
+                            }
+                          }}
+                          disabled={isRefreshing}
+                          className="px-3"
+                          title="Refresh program details"
+                        >
+                          <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
                         </Button>
-                      </Link>
-                      <Link href={`/dashboard/director/programs/${program.id}/edit`} className="flex-1">
-                        <Button variant="defender" size="sm" className="w-full">
-                          Edit
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(program.id, program.name)}
+                          disabled={isDeleting}
+                          className="text-och-orange hover:text-och-orange/80 hover:border-och-orange px-3"
+                          title="Delete program"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </Button>
-                      </Link>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(program.id, program.name)}
-                        disabled={isDeleting}
-                        className="text-och-orange hover:text-och-orange/80 hover:border-och-orange"
-                      >
-                        Delete
-                      </Button>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))
+                  </Card>
+                )
+              })
             ) : (
               <Card className="col-span-full">
                 <div className="p-12 text-center">

@@ -34,6 +34,11 @@ export default function ProgramDetailPage() {
     )
   }
 
+<<<<<<< HEAD
+=======
+  const { program, isLoading, error, reload } = useProgram(programId)
+
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   // Debug logging
   if (typeof window !== 'undefined') {
     console.log('ProgramDetailPage:', { programId, isLoading, error, hasProgram: !!program, program })
@@ -104,6 +109,9 @@ export default function ProgramDetailPage() {
                 <p className="text-och-steel">{program.description || 'No description'}</p>
               </div>
               <div className="flex gap-3">
+                <Button variant="outline" size="sm" onClick={reload} disabled={isLoading}>
+                  🔄 Refresh
+                </Button>
                 <Link href={`/dashboard/director/programs/${program.id}/edit`}>
                   <Button variant="defender" size="sm">
                     Edit Program

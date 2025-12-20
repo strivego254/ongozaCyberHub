@@ -106,9 +106,15 @@ export default function TracksPage() {
         tracks.map(async (track) => {
           if (!track.id) return
           try {
+<<<<<<< HEAD
 // `getCohorts` is paginated; use count for an accurate total.
 const res = await programsClient.getCohorts({ trackId: track.id, page: 1, pageSize: 1 })
 counts[track.id] = typeof res?.count === 'number' ? res.count : 0
+=======
+            // `getCohorts` is paginated; use count for an accurate total.
+            const res = await programsClient.getCohorts({ trackId: track.id, page: 1, pageSize: 1 })
+            counts[track.id] = typeof res?.count === 'number' ? res.count : 0
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
           } catch (err) {
             console.error(`Failed to load cohorts for track ${track.id}:`, err)
             counts[track.id] = 0

@@ -43,6 +43,7 @@ class Migration(migrations.Migration):
 
 
 
+<<<<<<< HEAD
 
 
 
@@ -51,3 +52,5 @@ class Migration(migrations.Migration):
 
 
 
+=======
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407

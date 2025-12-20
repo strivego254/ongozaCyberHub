@@ -24,6 +24,13 @@ export function InfluenceAnalytics() {
   const mentorId = user?.id?.toString()
   const { influence, isLoading, error } = useMentorInfluence(mentorId)
 
+  const formatDateSafe = (iso?: string | null) => {
+    if (!iso) return 'N/A'
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return 'N/A'
+    return d.toLocaleDateString()
+  }
+
   // Prepare metrics data for bar chart
   const metricsData = influence ? [
     { name: 'Feedback', value: influence.metrics.total_feedback_given, color: '#10B981' },
@@ -41,7 +48,15 @@ export function InfluenceAnalytics() {
   ] : []
 
   // Get trend data from influence analytics if available
+<<<<<<< HEAD
   const trendData = influence?.trend_data || []
+=======
+  const trendData = (influence?.trend_data || []).map((x: any) => ({
+    date: x?.date,
+    // support legacy key from older backend responses
+    score: typeof x?.score === 'number' ? x.score : (typeof x?.influence_score === 'number' ? x.influence_score : 0),
+  }))
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   // Custom tooltip style
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -179,11 +194,17 @@ export function InfluenceAnalytics() {
           )}
 
           {/* Period */}
+<<<<<<< HEAD
           {influence.period && influence.period.start_date && influence.period.end_date && (
             <div className="text-xs text-och-steel">
               Period: {new Date(influence.period.start_date).toLocaleDateString()} - {new Date(influence.period.end_date).toLocaleDateString()}
             </div>
           )}
+=======
+          <div className="text-xs text-och-steel">
+            Period: {formatDateSafe(influence?.period?.start_date)} - {formatDateSafe(influence?.period?.end_date)}
+          </div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         </div>
       )}
     </Card>

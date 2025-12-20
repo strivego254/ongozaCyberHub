@@ -3,7 +3,7 @@ import clsx from 'clsx'
 
 interface BadgeProps {
   children: ReactNode
-  variant?: 'defender' | 'mint' | 'gold' | 'orange' | 'steel'
+  variant?: 'defender' | 'mint' | 'gold' | 'orange' | 'steel' | 'outline'
   className?: string
 }
 
@@ -14,6 +14,7 @@ export const Badge = ({ children, variant = 'defender', className }: BadgeProps)
     gold: 'bg-och-gold/20 text-och-gold border-och-gold/40',
     orange: 'bg-och-orange/20 text-och-orange border-och-orange/40',
     steel: 'bg-och-steel/20 text-och-steel border-och-steel/40',
+    outline: 'bg-transparent text-white border-och-steel/40',
   }
   
   return (

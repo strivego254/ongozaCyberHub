@@ -483,6 +483,27 @@ export function useUpdateCohort() {
   return { updateCohort, isLoading, error }
 }
 
+export function useUpdateCohortDirector() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const updateCohort = useCallback(async (id: string, data: Partial<Cohort>) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const result = await programsClient.updateCohortDirector(id, data)
+      return result
+    } catch (err: any) {
+      setError(err.message || 'Failed to update cohort')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  return { updateCohort, isLoading, error }
+}
+
 export function useDeleteCohort() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

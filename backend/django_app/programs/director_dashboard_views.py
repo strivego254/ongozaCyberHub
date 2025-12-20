@@ -236,16 +236,39 @@ def director_cohort_detail(request, cohort_id):
                 )
         
         # Get or refresh cohort dashboard cache
-        try:
-            cohort_dashboard = DirectorCohortDashboard.objects.get(
-                director=director,
-                cohort=cohort
-            )
-        except DirectorCohortDashboard.DoesNotExist:
-            cohort_dashboard = DirectorDashboardAggregationService.refresh_cohort_dashboard(
-                director, cohort
-            )
-        
+        # For staff/admin users, use any director's cache or create a generic one
+        if director.is_staff:
+            # For admins/staff, try to get any director's cache for this cohort, or create a generic one
+            try:
+                cohort_dashboard = DirectorCohortDashboard.objects.filter(
+                    cohort=cohort
+                ).first()
+                if not cohort_dashboard:
+                    # Create a generic dashboard cache for admin viewing
+                    cohort_dashboard = DirectorDashboardAggregationService.refresh_cohort_dashboard(
+                        director, cohort
+                    )
+            except Exception:
+                # Fallback: create a new dashboard cache
+                cohort_dashboard = DirectorDashboardAggregationService.refresh_cohort_dashboard(
+                    director, cohort
+                )
+        else:
+            # For directors, use their specific cache
+            try:
+                cohort_dashboard = DirectorCohortDashboard.objects.get(
+                    director=director,
+                    cohort=cohort
+                )
+            except DirectorCohortDashboard.DoesNotExist:
+                cohort_dashboard = DirectorDashboardAggregationService.refresh_cohort_dashboard(
+                    director, cohort
+                )
+            except Exception:
+                # Fallback: create a new dashboard cache
+                cohort_dashboard = DirectorDashboardAggregationService.refresh_cohort_dashboard(
+                    director, cohort
+                )
         # Get detailed enrollment breakdown
         enrollments = cohort.enrollments.all()
         enrollment_detail = {
@@ -312,7 +335,6 @@ def director_cohort_detail(request, cohort_id):
             'program_name': cohort.track.program.name if cohort.track and cohort.track.program else '',
             'enrollment': enrollment_detail,
             'mentors': mentors,
-            'readiness_distribution': readiness_distribution,
             'competency_heatmap': competency_heatmap,
             'mission_funnel': mission_funnel,
             'portfolio_health': portfolio_health,

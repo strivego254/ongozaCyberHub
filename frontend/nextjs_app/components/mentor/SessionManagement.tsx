@@ -7,24 +7,37 @@ import { Badge } from '@/components/ui/Badge'
 import { DateTimePicker } from '@/components/ui/DateTimePicker'
 import { useMentorSessions } from '@/hooks/useMentorSessions'
 import { useAuth } from '@/hooks/useAuth'
+import { useMentorAssignedTracks } from '@/hooks/useMentorAssignedTracks'
 import type { GroupMentorshipSession } from '@/services/types/mentor'
 
 export function SessionManagement() {
   const { user } = useAuth()
   const mentorId = user?.id?.toString()
+<<<<<<< HEAD
+=======
+  const { cohorts: assignedCohorts, isLoading: cohortsLoading } = useMentorAssignedTracks(mentorId)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(12) // 12 sessions per page
   const { sessions, isLoading, error, createSession, updateSession, pagination } = useMentorSessions(mentorId, { 
     status: 'all',
     page: currentPage,
     page_size: pageSize
+<<<<<<< HEAD
   })
+=======
+  });
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingSession, setEditingSession] = useState<string | null>(null)
   const [editingNotes, setEditingNotes] = useState<string | null>(null)
   const [reschedulingSession, setReschedulingSession] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
+<<<<<<< HEAD
+=======
+  const [filterStatus, setFilterStatus] = useState<'all' | 'scheduled' | 'completed' | 'cancelled'>('all')
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   const [formData, setFormData] = useState({
     title: '',
@@ -34,6 +47,7 @@ export function SessionManagement() {
     meeting_type: 'zoom' as 'zoom' | 'google_meet' | 'in_person',
     meeting_link: '',
     track_assignment: '',
+    cohort_id: '',
   })
 
   const handleCreate = async (e?: React.FormEvent) => {
@@ -65,14 +79,41 @@ export function SessionManagement() {
         scheduledAtISO = new Date(formData.scheduled_at).toISOString()
       }
       
+<<<<<<< HEAD
       const sessionData = {
+=======
+      const sessionData: {
+        title: string
+        description: string
+        scheduled_at: string
+        duration_minutes: number
+        meeting_type: 'zoom' | 'google_meet' | 'in_person'
+        meeting_link?: string
+        track_assignment?: string
+        cohort_id?: string
+      } = {
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         title: formData.title,
         description: formData.description || '',
         scheduled_at: scheduledAtISO,
         duration_minutes: formData.duration_minutes,
         meeting_type: formData.meeting_type,
+<<<<<<< HEAD
         meeting_link: formData.meeting_link || undefined,
         track_assignment: formData.track_assignment || undefined,
+=======
+      }
+      
+      // Only include optional fields if they have values
+      if (formData.meeting_link && formData.meeting_link.trim()) {
+        sessionData.meeting_link = formData.meeting_link.trim()
+      }
+      if (formData.track_assignment && formData.track_assignment.trim()) {
+        sessionData.track_assignment = formData.track_assignment.trim()
+      }
+      if (formData.cohort_id && formData.cohort_id.trim()) {
+        sessionData.cohort_id = formData.cohort_id.trim()
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
       }
       
       console.log('Creating session with data:', sessionData, 'mentorId:', mentorId)
@@ -89,6 +130,7 @@ export function SessionManagement() {
         meeting_type: 'zoom',
         meeting_link: '',
         track_assignment: '',
+        cohort_id: '',
       })
       
       // Switch to list view to see the new session
@@ -158,62 +200,165 @@ export function SessionManagement() {
     }
   }
 
+  // Filter sessions by status
+  const filteredSessions = filterStatus === 'all' 
+    ? sessions 
+    : sessions.filter(s => s.status === filterStatus);
+
+  if (!mentorId) {
   return (
-    <Card>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+      <div>Loading...</div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Group Mentorship Sessions</h2>
-          <p className="text-sm text-och-steel">
-            Schedule, manage, and track group mentorship sessions.
+          <h1 className="text-3xl font-bold text-white mb-2">Session Management</h1>
+          <p className="text-och-steel">
+            Schedule, manage, and track group mentorship sessions for your assigned cohorts.
           </p>
         </div>
+<<<<<<< HEAD
         <div className="flex gap-2">
+=======
+        <div className="flex flex-wrap items-center gap-3">
+          {/* View Mode Toggle */}
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
           <div className="flex gap-1 bg-och-midnight/50 rounded-lg p-1">
             <Button
               variant={viewMode === 'list' ? 'defender' : 'outline'}
               size="sm"
               onClick={() => setViewMode('list')}
             >
+<<<<<<< HEAD
               List
+=======
+              <span className="mr-1">📋</span> List
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             </Button>
             <Button
               variant={viewMode === 'calendar' ? 'defender' : 'outline'}
               size="sm"
               onClick={() => setViewMode('calendar')}
             >
+<<<<<<< HEAD
               Calendar
             </Button>
         </div>
         <Button variant="defender" onClick={() => setShowCreateForm(!showCreateForm)}>
           {showCreateForm ? 'Cancel' : '+ New Session'}
+=======
+              <span className="mr-1">📅</span> Calendar
+            </Button>
+        </div>
+          {/* Create Session Button */}
+          <Button 
+            variant="defender" 
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="whitespace-nowrap"
+          >
+            <span className="mr-2">+</span> New Session
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         </Button>
         </div>
       </div>
 
+      {/* Create Session Form */}
       {showCreateForm && (
+        <Card className="border-och-mint/30">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Create New Session</h2>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setShowCreateForm(false)
+                  setFormData({
+                    title: '',
+                    description: '',
+                    scheduled_at: '',
+                    duration_minutes: 60,
+                    meeting_type: 'zoom',
+                    meeting_link: '',
+                    track_assignment: '',
+                    cohort_id: '',
+                  })
+                }}
+              >
+                ✕
+              </Button>
+            </div>
         <form 
-          className="mb-6 p-4 bg-och-midnight/50 rounded-lg space-y-3"
+              className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault()
+<<<<<<< HEAD
             console.log('Form submitted', formData)
+=======
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             handleCreate(e)
           }}
         >
+              {/* Cohort Selection */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Select Cohort <span className="text-och-orange">*</span>
+                </label>
+                {cohortsLoading ? (
+                  <div className="text-sm text-och-steel">Loading cohorts...</div>
+                ) : assignedCohorts.length === 0 ? (
+                  <div className="text-sm text-och-orange bg-och-orange/10 border border-och-orange/20 rounded-lg p-3">
+                    No assigned cohorts found. Please contact an administrator to be assigned to a cohort.
+                  </div>
+                ) : (
+                  <select
+                    value={formData.cohort_id}
+                    onChange={(e) => setFormData({ ...formData, cohort_id: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all"
+                    required
+                  >
+                    <option value="">-- Select a Cohort --</option>
+                    {assignedCohorts.map((cohort) => (
+                      <option key={cohort.id} value={cohort.id}>
+                        {cohort.name} {cohort.status && `(${cohort.status})`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Session Title <span className="text-och-orange">*</span>
+                </label>
           <input
             type="text"
-            placeholder="Session Title"
+                  placeholder="e.g., Weekly Group Check-in"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+                  className="w-full px-4 py-2.5 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all"
             required
           />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Description
+                </label>
           <textarea
-            placeholder="Description"
+                  placeholder="Add session details, agenda, or notes..."
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            rows={3}
-            className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+                  rows={4}
+                  className="w-full px-4 py-2.5 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all resize-none"
           />
+<<<<<<< HEAD
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <DateTimePicker
               value={formData.scheduled_at}
@@ -227,44 +372,96 @@ export function SessionManagement() {
             />
             <div>
               <label className="block text-xs text-och-steel mb-1">Duration (minutes)</label>
+=======
+              </div>
+
+              {/* Date/Time and Duration */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Scheduled Date & Time <span className="text-och-orange">*</span>
+                  </label>
+            <DateTimePicker
+              value={formData.scheduled_at}
+              onChange={(value) => {
+                setFormData({ ...formData, scheduled_at: value })
+              }}
+                    label=""
+              required
+              min={new Date().toISOString().slice(0, 16)}
+            />
+                </div>
+            <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Duration (minutes)
+                  </label>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             <input
               type="number"
-              placeholder="Duration (minutes)"
+                    placeholder="60"
               value={formData.duration_minutes}
               onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 60 })}
+<<<<<<< HEAD
                 className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+=======
+                    className="w-full px-4 py-2.5 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all"
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               min="15"
               max="240"
             />
             </div>
           </div>
+
+              {/* Meeting Type and Link */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Meeting Type
+                  </label>
           <select
             value={formData.meeting_type}
             onChange={(e) => setFormData({ ...formData, meeting_type: e.target.value as any })}
-            className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+                    className="w-full px-4 py-2.5 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all"
           >
             <option value="zoom">Zoom</option>
             <option value="google_meet">Google Meet</option>
             <option value="in_person">In Person</option>
           </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Meeting Link
+                  </label>
           <input
             type="text"
-            placeholder="Meeting Link (optional)"
+                    placeholder="https://..."
             value={formData.meeting_link}
             onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
-          />
+                    className="w-full px-4 py-2.5 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Track Assignment */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Track Assignment (optional)
+                </label>
           <input
             type="text"
-            placeholder="Track Assignment (optional)"
+                  placeholder="e.g., Frontend Development Track"
             value={formData.track_assignment}
             onChange={(e) => setFormData({ ...formData, track_assignment: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
+                  className="w-full px-4 py-2.5 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all"
           />
-          <div className="flex gap-2">
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex gap-3 pt-4 border-t border-och-steel/20">
             <Button 
               variant="defender" 
               type="submit"
+<<<<<<< HEAD
               disabled={!formData.title || !formData.scheduled_at || !mentorId}
               onClick={(e) => {
                 console.log('Create Session button clicked', { 
@@ -283,6 +480,10 @@ export function SessionManagement() {
                   return
                 }
               }}
+=======
+                  disabled={!formData.title || !formData.scheduled_at || !formData.cohort_id || !mentorId}
+                  className="flex-1"
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             >
               Create Session
             </Button>
@@ -299,6 +500,10 @@ export function SessionManagement() {
                   meeting_type: 'zoom',
                   meeting_link: '',
                   track_assignment: '',
+<<<<<<< HEAD
+=======
+                      cohort_id: '',
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 })
               }}
             >
@@ -306,29 +511,80 @@ export function SessionManagement() {
             </Button>
           </div>
           {error && (
+<<<<<<< HEAD
             <div className="text-och-orange text-xs mt-2 px-2 py-1 bg-och-orange/10 border border-och-orange/20 rounded">
+=======
+                <div className="text-och-orange text-sm mt-2 px-4 py-2 bg-och-orange/10 border border-och-orange/20 rounded-lg">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               {error}
             </div>
           )}
         </form>
+          </div>
+        </Card>
       )}
 
-      {isLoading && <div className="text-och-steel text-sm py-4">Loading sessions...</div>}
-      {error && (
+      {/* Sessions Display */}
+      <Card>
+        <div className="p-6">
+          {/* Filter and Stats */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold text-white">Sessions</h2>
+              <div className="flex gap-2">
+                {(['all', 'scheduled', 'completed', 'cancelled'] as const).map((status) => (
+                  <Button
+                    key={status}
+                    variant={filterStatus === status ? 'defender' : 'outline'}
+                    size="sm"
+                    onClick={() => setFilterStatus(status)}
+                    className="capitalize"
+                  >
+                    {status}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="text-sm text-och-steel">
+              Showing {filteredSessions.length} of {sessions.length} sessions
+            </div>
+          </div>
+
+          {isLoading && (
+            <div className="text-center py-12">
+              <div className="text-och-steel text-sm">Loading sessions...</div>
+            </div>
+          )}
+          
+          {!isLoading && error && (
         <div className="text-och-orange text-sm py-4 px-4 bg-och-orange/10 border border-och-orange/20 rounded-lg">
           <strong>Error:</strong> {error}
         </div>
       )}
 
-      {!isLoading && !error && sessions.length === 0 && (
-        <div className="text-och-steel text-sm">No sessions found.</div>
+          {!isLoading && !error && filteredSessions.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-och-steel text-lg mb-2">No sessions found</div>
+              <p className="text-och-steel text-sm">
+                {filterStatus !== 'all' 
+                  ? `No ${filterStatus} sessions. Try changing the filter.`
+                  : 'Create your first session to get started.'}
+              </p>
+            </div>
       )}
 
+<<<<<<< HEAD
       {!isLoading && !error && sessions.length > 0 && (
         <>
           {viewMode === 'calendar' ? (
             <SessionCalendarView sessions={sessions} onSessionClick={(sessionId) => {
               // Scroll to session or highlight it
+=======
+          {!isLoading && !error && filteredSessions.length > 0 && (
+        <>
+          {viewMode === 'calendar' ? (
+                <SessionCalendarView sessions={filteredSessions} onSessionClick={(sessionId) => {
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               const element = document.getElementById(`session-${sessionId}`)
               if (element) {
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -339,10 +595,17 @@ export function SessionManagement() {
               }
             }} />
           ) : (
+<<<<<<< HEAD
         <div className="space-y-3">
           {/* Compact Session List */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {sessions.map((session) => {
+=======
+                <div className="space-y-4">
+                  {/* Session Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredSessions.map((session) => {
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               const isExpanded = expandedSession === session.id
               const sessionDate = new Date(session.scheduled_at)
               const isPast = sessionDate < new Date()
@@ -351,22 +614,35 @@ export function SessionManagement() {
               <div 
                 key={session.id} 
                 id={`session-${session.id}`} 
+<<<<<<< HEAD
                 className={`p-3 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-mint/50 transition-all cursor-pointer ${
+=======
+                          className={`p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-mint/50 transition-all cursor-pointer ${
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                   isExpanded ? 'col-span-full md:col-span-2 lg:col-span-3' : ''
                 }`}
                 onClick={() => !isExpanded && setExpandedSession(session.id)}
               >
+<<<<<<< HEAD
                 {/* Compact Header */}
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-white truncate">{session.title}</h3>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
+=======
+                          {/* Session Header */}
+                          <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1 min-w-0">
+                              <h3 className="text-base font-semibold text-white mb-2">{session.title}</h3>
+                              <div className="flex items-center gap-2 flex-wrap">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                       <Badge 
                         variant={
                           session.status === 'completed' ? 'mint' : 
                           session.status === 'scheduled' ? 'defender' : 
                           'gold'
                         } 
+<<<<<<< HEAD
                         className="text-[10px] px-1.5 py-0.5 capitalize"
                       >
                         {session.status}
@@ -376,11 +652,23 @@ export function SessionManagement() {
                       </Badge>
                     {session.track_assignment && (
                         <Badge variant="gold" className="text-[10px] px-1.5 py-0.5">
+=======
+                                  className="text-xs px-2 py-1 capitalize"
+                      >
+                        {session.status}
+                      </Badge>
+                                <Badge variant="steel" className="text-xs px-2 py-1 capitalize">
+                        {session.meeting_type}
+                      </Badge>
+                    {session.track_assignment && (
+                                  <Badge variant="gold" className="text-xs px-2 py-1">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                           {session.track_assignment}
                         </Badge>
                     )}
                   </div>
                 </div>
+<<<<<<< HEAD
                   <div className="text-right text-[10px] text-och-steel ml-2 flex-shrink-0">
                     <div className="font-medium text-white">
                       {sessionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -389,22 +677,44 @@ export function SessionManagement() {
                       {sessionDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div>{session.duration_minutes}m</div>
+=======
+                            <div className="text-right text-xs text-och-steel ml-3 flex-shrink-0">
+                              <div className="font-semibold text-white text-sm mb-1">
+                      {sessionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </div>
+                              <div className="mb-1">
+                      {sessionDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                              <div className="text-och-steel">{session.duration_minutes} min</div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 </div>
               </div>
 
                 {/* Description Preview */}
                 {session.description && !isExpanded && (
+<<<<<<< HEAD
                   <p className="text-xs text-och-steel line-clamp-2 mb-2">{session.description}</p>
+=======
+                            <p className="text-sm text-och-steel line-clamp-2 mb-3">{session.description}</p>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 )}
 
                 {/* Meeting Link */}
               {session.meeting_link && (
+<<<<<<< HEAD
                   <div className="mb-2">
+=======
+                            <div className="mb-3">
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                     <a 
                       href={session.meeting_link} 
                       target="_blank" 
                       rel="noopener noreferrer" 
+<<<<<<< HEAD
                       className="text-och-mint hover:underline text-[10px] inline-flex items-center gap-1"
+=======
+                                className="text-och-mint hover:underline text-sm inline-flex items-center gap-2 font-medium"
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span>🔗</span> Join Meeting
@@ -414,7 +724,11 @@ export function SessionManagement() {
 
                 {/* Expanded Content */}
                 {isExpanded && (
+<<<<<<< HEAD
                   <div className="mt-3 pt-3 border-t border-och-steel/20 space-y-3" onClick={(e) => e.stopPropagation()}>
+=======
+                            <div className="mt-4 pt-4 border-t border-och-steel/20 space-y-4" onClick={(e) => e.stopPropagation()}>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                     {/* Close button */}
                     <div className="flex justify-end">
                       <Button 
@@ -729,7 +1043,9 @@ export function SessionManagement() {
           )}
         </>
       )}
+        </div>
     </Card>
+    </div>
   )
 }
 
@@ -827,7 +1143,13 @@ function SessionCalendarView({
         ))}
         {days.map((date, idx) => {
           if (!date) {
+<<<<<<< HEAD
             return <div key={`empty-${idx}`} className="aspect-square" />
+=======
+            return (
+              <div key={`empty-${idx}`} className="aspect-square" />
+            )
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
           }
           
           const daySessions = getSessionsForDate(date)

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { hasRouteAccess } from '@/utils/rbac'
 import { getRedirectRoute } from '@/utils/redirect'
+import { getUserRoles } from '@/utils/rbac'
 
 interface RouteGuardProps {
   children: React.ReactNode
@@ -15,12 +16,21 @@ export function RouteGuard({ children, requiredRoles: _requiredRoles }: RouteGua
   const { user, isLoading, isAuthenticated } = useAuth()
   const router = useRouter()
 
+  const getLoginRouteForPath = (path: string) => {
+    if (path.startsWith('/dashboard/director')) return '/login/director'
+    if (path.startsWith('/dashboard/admin')) return '/login/admin'
+    if (path.startsWith('/dashboard/mentor')) return '/login/mentor'
+    if (path.startsWith('/dashboard/sponsor')) return '/login/sponsor'
+    if (path.startsWith('/dashboard/analyst') || path.startsWith('/dashboard/analytics')) return '/login/analyst'
+    if (path.startsWith('/dashboard/employer') || path.startsWith('/dashboard/marketplace')) return '/login/employer'
+    return '/login/student'
+  }
+
   useEffect(() => {
     // Wait for auth state to be determined
     if (isLoading) return
 
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
-    const isDirectorRoute = currentPath.startsWith('/dashboard/director')
 
     // Only redirect if we're definitely not authenticated
     // Give a small delay to allow auth state to settle after login
@@ -33,8 +43,7 @@ export function RouteGuard({ children, requiredRoles: _requiredRoles }: RouteGua
       
       if (!hasToken) {
         console.log('RouteGuard: No auth token found, redirecting to login')
-        // Redirect to director login if accessing director routes, otherwise student login
-        const loginRoute = isDirectorRoute ? '/login/director' : '/login/student'
+        const loginRoute = getLoginRouteForPath(currentPath)
         if (typeof window !== 'undefined') {
           const redirectUrl = `${loginRoute}?redirect=${encodeURIComponent(currentPath)}`
           router.push(redirectUrl)
@@ -47,46 +56,19 @@ export function RouteGuard({ children, requiredRoles: _requiredRoles }: RouteGua
       }
     }
 
-    // Check if user has access to current route
-    // CRITICAL: Check for admin role first
-    const userRoles = user?.roles || []
-    const isAdmin = userRoles.some((ur: any) => {
-      const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
-      return roleName?.toLowerCase().trim() === 'admin'
-    })
-    
-    const isProgramDirector = userRoles.some((ur: any) => {
-      const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
-      const normalized = roleName?.toLowerCase().trim()
-      return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
-    })
-    
-    // If accessing director routes, check for director or admin role
-    if (isDirectorRoute) {
-      if (!isAdmin && !isProgramDirector) {
-        console.log('⚠️ RouteGuard: User does not have program_director or admin role, redirecting to login')
-        const redirectUrl = `/login/director?redirect=${encodeURIComponent(currentPath)}`
-        router.push(redirectUrl)
+    // If requiredRoles is provided, enforce it (in addition to route permissions)
+    if (_requiredRoles && _requiredRoles.length > 0) {
+      const roles = getUserRoles(user)
+      const ok = _requiredRoles.some(r => roles.includes(r as any))
+      if (!ok) {
+        router.push(getRedirectRoute(user))
         return
       }
-      // Admin or program_director accessing director route - allow
-      console.log('✅ RouteGuard: Admin or program_director accessing director route - allowing access')
-      return
     }
-    
-    // If user is admin and trying to access admin routes, allow it
-    if (isAdmin && currentPath.startsWith('/dashboard/admin')) {
-      console.log('✅ RouteGuard: Admin user accessing admin route - allowing access')
-      return
-    }
-    
-    // Check route access for non-admin or non-admin routes
+
     if (!hasRouteAccess(user, currentPath)) {
-      console.log('⚠️ RouteGuard: User does not have access to route:', currentPath)
-      // Use centralized redirect utility which handles admin priority
-      const dashboardRoute = getRedirectRoute(user)
-      console.log('📍 RouteGuard: Redirecting to:', dashboardRoute)
-      router.push(dashboardRoute)
+      router.push(getRedirectRoute(user))
+      return
     }
   }, [user, isLoading, isAuthenticated, router])
 
@@ -118,44 +100,14 @@ export function RouteGuard({ children, requiredRoles: _requiredRoles }: RouteGua
   }
 
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
-  const isDirectorRoute = currentPath.startsWith('/dashboard/director')
-  
-  // CRITICAL: Check for admin role first
-  const userRoles = user?.roles || []
-  const isAdmin = userRoles.some((ur: any) => {
-    const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
-    return roleName?.toLowerCase().trim() === 'admin'
-  })
-  
-  const isProgramDirector = userRoles.some((ur: any) => {
-    const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
-    const normalized = roleName?.toLowerCase().trim()
-    return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
-  })
-  
-  // If accessing director routes, require admin or program_director role
-  if (isDirectorRoute) {
-    if (!isAdmin && !isProgramDirector) {
-      // Redirect to director login if not authorized
-      if (typeof window !== 'undefined') {
-        const redirectUrl = `/login/director?redirect=${encodeURIComponent(currentPath)}`
-        router.push(redirectUrl)
-      }
-      return null
-    }
-    // Admin or program_director accessing director route - allow
-    return <>{children}</>
+
+  if (_requiredRoles && _requiredRoles.length > 0) {
+    const roles = getUserRoles(user)
+    const ok = _requiredRoles.some(r => roles.includes(r as any))
+    if (!ok) return null
   }
-  
-  // If user is admin and trying to access admin routes, allow it
-  if (isAdmin && currentPath.startsWith('/dashboard/admin')) {
-    return <>{children}</>
-  }
-  
-  // Check route access for other routes
-  if (!hasRouteAccess(user, currentPath)) {
-    return null
-  }
+
+  if (!hasRouteAccess(user, currentPath)) return null
 
   return <>{children}</>
 }

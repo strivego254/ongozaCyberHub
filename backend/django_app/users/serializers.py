@@ -235,6 +235,7 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'timestamp',
             'ip_address',
             'user_agent',
+            'changes',
             'metadata',
             'result',
         ]

@@ -89,30 +89,84 @@ class Migration(migrations.Migration):
         ),
         migrations.RunSQL(
             sql=[
-                ("ALTER TABLE user_module_progress ENABLE ROW LEVEL SECURITY;", []),
+                # RLS is optional; only enable when running on a DB that provides auth.uid() (e.g. Supabase).
                 ("""
-                CREATE POLICY user_module_progress_isolation ON user_module_progress
-                FOR ALL
-                USING (auth.uid() = user_id);
+                DO $$
+                BEGIN
+                  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth')
+                     AND EXISTS (
+                       SELECT 1
+                       FROM pg_proc p
+                       JOIN pg_namespace n ON n.oid = p.pronamespace
+                       WHERE n.nspname = 'auth' AND p.proname = 'uid'
+                     )
+                  THEN
+                    EXECUTE 'ALTER TABLE user_module_progress ENABLE ROW LEVEL SECURITY';
+                    EXECUTE 'CREATE POLICY user_module_progress_isolation ON user_module_progress
+                             FOR ALL
+                             USING (auth.uid() = user_id)';
+                  END IF;
+                END $$;
                 """, []),
             ],
             reverse_sql=[
-                ("DROP POLICY IF EXISTS user_module_progress_isolation ON user_module_progress;", []),
-                ("ALTER TABLE user_module_progress DISABLE ROW LEVEL SECURITY;", []),
+                ("""
+                DO $$
+                BEGIN
+                  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth')
+                     AND EXISTS (
+                       SELECT 1
+                       FROM pg_proc p
+                       JOIN pg_namespace n ON n.oid = p.pronamespace
+                       WHERE n.nspname = 'auth' AND p.proname = 'uid'
+                     )
+                  THEN
+                    EXECUTE 'DROP POLICY IF EXISTS user_module_progress_isolation ON user_module_progress';
+                    EXECUTE 'ALTER TABLE user_module_progress DISABLE ROW LEVEL SECURITY';
+                  END IF;
+                END $$;
+                """, []),
             ],
         ),
         migrations.RunSQL(
             sql=[
-                ("ALTER TABLE user_lesson_progress ENABLE ROW LEVEL SECURITY;", []),
+                # RLS is optional; only enable when running on a DB that provides auth.uid() (e.g. Supabase).
                 ("""
-                CREATE POLICY user_lesson_progress_isolation ON user_lesson_progress
-                FOR ALL
-                USING (auth.uid() = user_id);
+                DO $$
+                BEGIN
+                  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth')
+                     AND EXISTS (
+                       SELECT 1
+                       FROM pg_proc p
+                       JOIN pg_namespace n ON n.oid = p.pronamespace
+                       WHERE n.nspname = 'auth' AND p.proname = 'uid'
+                     )
+                  THEN
+                    EXECUTE 'ALTER TABLE user_lesson_progress ENABLE ROW LEVEL SECURITY';
+                    EXECUTE 'CREATE POLICY user_lesson_progress_isolation ON user_lesson_progress
+                             FOR ALL
+                             USING (auth.uid() = user_id)';
+                  END IF;
+                END $$;
                 """, []),
             ],
             reverse_sql=[
-                ("DROP POLICY IF EXISTS user_lesson_progress_isolation ON user_lesson_progress;", []),
-                ("ALTER TABLE user_lesson_progress DISABLE ROW LEVEL SECURITY;", []),
+                ("""
+                DO $$
+                BEGIN
+                  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth')
+                     AND EXISTS (
+                       SELECT 1
+                       FROM pg_proc p
+                       JOIN pg_namespace n ON n.oid = p.pronamespace
+                       WHERE n.nspname = 'auth' AND p.proname = 'uid'
+                     )
+                  THEN
+                    EXECUTE 'DROP POLICY IF EXISTS user_lesson_progress_isolation ON user_lesson_progress';
+                    EXECUTE 'ALTER TABLE user_lesson_progress DISABLE ROW LEVEL SECURITY';
+                  END IF;
+                END $$;
+                """, []),
             ],
         ),
     ]

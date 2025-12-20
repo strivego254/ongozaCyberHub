@@ -260,7 +260,7 @@ export interface MentorInfluenceIndex {
     sessions_to_engagement: number
     reviews_to_mission_quality: number
   }
-  period: {
+  period?: {
     start_date: string
     end_date: string
   }

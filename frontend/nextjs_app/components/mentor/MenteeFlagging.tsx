@@ -7,7 +7,14 @@ import { Badge } from '@/components/ui/Badge'
 import { useMenteeFlags } from '@/hooks/useMenteeFlags'
 import { useMentorMentees } from '@/hooks/useMentorMentees'
 import { useAuth } from '@/hooks/useAuth'
+<<<<<<< HEAD
 import type { AssignedMentee } from '@/services/types/mentor'
+=======
+import type { MenteeFlag } from '@/services/types/mentor'
+
+type FlagType = 'struggling' | 'at_risk' | 'needs_attention' | 'technical_issue'
+type FlagSeverity = 'low' | 'medium' | 'high' | 'critical'
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
 export function MenteeFlagging() {
   const { user } = useAuth()
@@ -17,8 +24,8 @@ export function MenteeFlagging() {
   const [showFlagForm, setShowFlagForm] = useState(false)
   const [formData, setFormData] = useState({
     mentee_id: '',
-    flag_type: 'struggling' as 'struggling' | 'at_risk' | 'needs_attention' | 'technical_issue',
-    severity: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+    flag_type: 'struggling' as FlagType,
+    severity: 'medium' as FlagSeverity,
     description: '',
   })
   const [menteeSearchQuery, setMenteeSearchQuery] = useState('')
@@ -43,7 +50,11 @@ export function MenteeFlagging() {
 
   // Get selected mentee details
   const selectedMentee = useMemo(() => {
+<<<<<<< HEAD
     return mentees.find(m => m.id === formData.mentee_id)
+=======
+    return mentees.find(m => (m.user_id || m.id) === formData.mentee_id)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   }, [mentees, formData.mentee_id])
 
   // Close dropdown when clicking outside
@@ -97,7 +108,11 @@ export function MenteeFlagging() {
     setShowMenteeDropdown(false)
   }
 
+<<<<<<< HEAD
   const severityColors = {
+=======
+  const severityColors: Record<MenteeFlag['severity'], 'mint' | 'gold' | 'orange'> = {
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     low: 'mint',
     medium: 'gold',
     high: 'orange',
@@ -171,12 +186,20 @@ export function MenteeFlagging() {
                       <div
                         key={mentee.id}
                         onClick={() => {
+<<<<<<< HEAD
                           setFormData({ ...formData, mentee_id: mentee.id })
+=======
+                          setFormData({ ...formData, mentee_id: mentee.user_id || mentee.id })
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                           setMenteeSearchQuery('')
                           setShowMenteeDropdown(false)
                         }}
                         className={`px-4 py-2 cursor-pointer hover:bg-och-midnight/80 transition-colors ${
+<<<<<<< HEAD
                           formData.mentee_id === mentee.id ? 'bg-och-defender/20 border-l-2 border-och-defender' : ''
+=======
+                          formData.mentee_id === (mentee.user_id || mentee.id) ? 'bg-och-defender/20 border-l-2 border-och-defender' : ''
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -214,7 +237,7 @@ export function MenteeFlagging() {
           </div>
           <select
             value={formData.flag_type}
-            onChange={(e) => setFormData({ ...formData, flag_type: e.target.value as any })}
+            onChange={(e) => setFormData({ ...formData, flag_type: e.target.value as FlagType })}
             className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
           >
             <option value="struggling">Struggling</option>
@@ -224,7 +247,7 @@ export function MenteeFlagging() {
           </select>
           <select
             value={formData.severity}
-            onChange={(e) => setFormData({ ...formData, severity: e.target.value as any })}
+            onChange={(e) => setFormData({ ...formData, severity: e.target.value as FlagSeverity })}
             className="w-full px-3 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
           >
             <option value="low">Low</option>
@@ -258,7 +281,7 @@ export function MenteeFlagging() {
                 <div>
                   <h3 className="text-lg font-semibold text-white">{flag.mentee_name}</h3>
                   <div className="flex gap-2 mt-2">
-                    <Badge variant={severityColors[flag.severity] as any} className="text-xs capitalize">
+                    <Badge variant={severityColors[flag.severity]} className="text-xs capitalize">
                       {flag.severity}
                     </Badge>
                     {flag.flag_type && (

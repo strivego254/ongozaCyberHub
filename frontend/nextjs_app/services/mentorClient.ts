@@ -250,6 +250,8 @@ export const mentorClient = {
 
   /**
    * Flag a mentee who is struggling
+   * Backend endpoint: POST /api/v1/mentor/flags
+   * Note: Backend gets mentor from authenticated user, so mentorId is not needed in URL
    */
   async flagMentee(mentorId: string, data: {
     mentee_id: string
@@ -257,7 +259,13 @@ export const mentorClient = {
     severity: 'low' | 'medium' | 'high' | 'critical'
     description: string
   }): Promise<MenteeFlag> {
-    return apiGateway.post(`/mentors/${mentorId}/flags`, data)
+    // Backend expects: mentee_id, reason (not description), severity
+    // Map description to reason and flag_type is not used by backend but kept for frontend consistency
+    return apiGateway.post(`/mentor/flags`, {
+      mentee_id: data.mentee_id,
+      reason: data.description, // Backend expects 'reason' field
+      severity: data.severity,
+    })
   },
 
   /**
@@ -268,6 +276,17 @@ export const mentorClient = {
     severity?: 'low' | 'medium' | 'high' | 'critical'
   }): Promise<MenteeFlag[]> {
     return apiGateway.get(`/mentors/${mentorId}/flags`, { params })
+  },
+
+  /**
+   * Update a mentee flag (acknowledge/resolve)
+   * Expected backend route: PATCH /mentors/flags/{flagId}
+   */
+  async updateMenteeFlag(flagId: string, data: {
+    status?: 'acknowledged' | 'resolved'
+    resolution_notes?: string
+  }): Promise<MenteeFlag> {
+    return apiGateway.patch(`/mentors/flags/${flagId}`, data)
   },
 
   /**
@@ -329,3 +348,4 @@ export const mentorClient = {
     }))
   },
 }
+

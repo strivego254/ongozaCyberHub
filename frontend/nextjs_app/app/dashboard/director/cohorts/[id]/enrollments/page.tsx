@@ -10,6 +10,10 @@ import { useCohort } from '@/hooks/usePrograms'
 import { programsClient, type Enrollment } from '@/services/programsClient'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+<<<<<<< HEAD
+=======
+import { useUsers } from '@/hooks/useUsers'
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
 interface WaitlistEntry {
   id: string
@@ -27,25 +31,48 @@ export default function CohortEnrollmentsPage() {
   const params = useParams()
   const router = useRouter()
   const cohortId = params.id as string
+<<<<<<< HEAD
   const { cohort, isLoading: loadingCohort } = useCohort(cohortId)
+=======
+  const { cohort, isLoading: loadingCohort, reload: reloadCohort } = useCohort(cohortId)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+<<<<<<< HEAD
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [selectedSeatType, setSelectedSeatType] = useState<string>('all')
   const [selectedEnrollmentType, setSelectedEnrollmentType] = useState<string>('all')
+=======
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(['all']))
+  const [selectedSeatTypes, setSelectedSeatTypes] = useState<Set<string>>(new Set(['all']))
+  const [selectedEnrollmentTypes, setSelectedEnrollmentTypes] = useState<Set<string>>(new Set(['all']))
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [selectedEnrollments, setSelectedEnrollments] = useState<Set<string>>(new Set())
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [showSeatPoolModal, setShowSeatPoolModal] = useState(false)
+<<<<<<< HEAD
+=======
+  const [openFilter, setOpenFilter] = useState<string | null>(null)
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   const [seatPool, setSeatPool] = useState<{ paid: number; scholarship: number; sponsored: number }>({
     paid: 0,
     scholarship: 0,
     sponsored: 0,
   })
 
+<<<<<<< HEAD
+=======
+  // Student picker (fetch from backend users endpoint; directors can see all users)
+  const [studentSearch, setStudentSearch] = useState('')
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
+  const [assignSeatType, setAssignSeatType] = useState<'paid' | 'scholarship' | 'sponsored'>('paid')
+  const [assignEnrollmentType, setAssignEnrollmentType] = useState<'director' | 'invite' | 'sponsor' | 'self'>('director')
+
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   // Load data
   useEffect(() => {
     const loadData = async () => {
@@ -59,11 +86,14 @@ export default function CohortEnrollmentsPage() {
         ])
         setEnrollments(enrolls)
         setWaitlist(waitlistData)
+<<<<<<< HEAD
         
         // Load seat pool from cohort (if available)
         if (cohort && 'seat_pool' in cohort && cohort.seat_pool) {
           setSeatPool(cohort.seat_pool as any)
         }
+=======
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
       } catch (err: any) {
         console.error('Failed to load enrollment data:', err)
         setError(err?.message || 'Failed to load enrollment data')
@@ -74,6 +104,7 @@ export default function CohortEnrollmentsPage() {
     loadData()
   }, [cohortId, cohort])
 
+<<<<<<< HEAD
   // Filter enrollments
   const filteredEnrollments = useMemo(() => {
     return enrollments.filter((e) => {
@@ -83,11 +114,54 @@ export default function CohortEnrollmentsPage() {
       return true
     })
   }, [enrollments, selectedStatus, selectedSeatType, selectedEnrollmentType])
+=======
+  // Sync seat pool from cohort data
+  useEffect(() => {
+    if (cohort?.seat_pool && !showSeatPoolModal) {
+      const pool = cohort.seat_pool as any
+      setSeatPool({
+        paid: pool.paid || 0,
+        scholarship: pool.scholarship || 0,
+        sponsored: pool.sponsored || 0,
+      })
+    }
+  }, [cohort, showSeatPoolModal])
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openFilter) {
+        setOpenFilter(null)
+      }
+    }
+    if (openFilter) {
+      document.addEventListener('click', handleClickOutside)
+      return () => {
+        document.removeEventListener('click', handleClickOutside)
+      }
+    }
+  }, [openFilter])
+
+  // Filter enrollments
+  const filteredEnrollments = useMemo(() => {
+    return enrollments.filter((e) => {
+      // If 'all' is selected or the specific value is selected, include it
+      if (!selectedStatuses.has('all') && !selectedStatuses.has(e.status)) return false
+      if (!selectedSeatTypes.has('all') && !selectedSeatTypes.has(e.seat_type)) return false
+      if (!selectedEnrollmentTypes.has('all') && !selectedEnrollmentTypes.has(e.enrollment_type)) return false
+      return true
+    })
+  }, [enrollments, selectedStatuses, selectedSeatTypes, selectedEnrollmentTypes])
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
   // Calculate statistics
   const stats = useMemo(() => {
     const active = enrollments.filter((e) => e.status === 'active').length
+<<<<<<< HEAD
     const pending = enrollments.filter((e) => (e as any).status === 'pending_payment').length
+=======
+    const pending = enrollments.filter((e) => e.status === 'pending_payment').length
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     const withdrawn = enrollments.filter((e) => e.status === 'withdrawn').length
     const completed = enrollments.filter((e) => e.status === 'completed').length
     const seatUtilization = cohort ? (active / cohort.seat_cap) * 100 : 0
@@ -142,6 +216,7 @@ export default function CohortEnrollmentsPage() {
     setIsProcessing(true)
     setError(null)
     try {
+<<<<<<< HEAD
       // If activating, use approve endpoint
       if (status === 'active') {
         const updated = await programsClient.approveEnrollment(cohortId, enrollmentId)
@@ -154,6 +229,10 @@ export default function CohortEnrollmentsPage() {
         const enrolls = await programsClient.getCohortEnrollments(cohortId)
         setEnrollments(enrolls)
       }
+=======
+      const updated = await programsClient.updateEnrollmentStatus(cohortId, enrollmentId, status)
+      setEnrollments((prev) => prev.map((e) => (e.id === enrollmentId ? updated : e)))
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     } catch (err: any) {
       setError(err?.message || 'Failed to update enrollment status')
     } finally {
@@ -161,6 +240,140 @@ export default function CohortEnrollmentsPage() {
     }
   }
 
+<<<<<<< HEAD
+=======
+  const handleBulkStatus = async (statusValue: string) => {
+    if (selectedEnrollments.size === 0) return
+    setIsProcessing(true)
+    setError(null)
+    try {
+      await programsClient.bulkUpdateEnrollmentsStatus(cohortId, Array.from(selectedEnrollments), statusValue)
+      const enrolls = await programsClient.getCohortEnrollments(cohortId)
+      setEnrollments(enrolls)
+      setSelectedEnrollments(new Set())
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update enrollments')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleBulkRemove = async () => {
+    if (selectedEnrollments.size === 0) return
+    if (!confirm(`Remove ${selectedEnrollments.size} enrollment(s)? This will delete the enrollment records.`)) return
+    setIsProcessing(true)
+    setError(null)
+    try {
+      await programsClient.bulkRemoveEnrollments(cohortId, Array.from(selectedEnrollments))
+      const enrolls = await programsClient.getCohortEnrollments(cohortId)
+      setEnrollments(enrolls)
+      setSelectedEnrollments(new Set())
+    } catch (err: any) {
+      setError(err?.message || 'Failed to remove enrollments')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Handle seat pool update
+  const [seatPoolForm, setSeatPoolForm] = useState<{ paid: number; scholarship: number; sponsored: number }>({
+    paid: 0,
+    scholarship: 0,
+    sponsored: 0,
+  })
+  const [seatPoolError, setSeatPoolError] = useState<string | null>(null)
+  const [seatPoolSuccess, setSeatPoolSuccess] = useState<string | null>(null)
+
+  // Initialize seat pool form when cohort loads or modal opens
+  useEffect(() => {
+    if (showSeatPoolModal && cohort?.seat_pool) {
+      const pool = cohort.seat_pool as any
+      setSeatPoolForm({
+        paid: pool.paid || 0,
+        scholarship: pool.scholarship || 0,
+        sponsored: pool.sponsored || 0,
+      })
+    }
+  }, [showSeatPoolModal, cohort])
+
+  const handleUpdateSeatPool = async () => {
+    setSeatPoolError(null)
+    setSeatPoolSuccess(null)
+
+    // Validate total doesn't exceed seat cap
+    const total = seatPoolForm.paid + seatPoolForm.scholarship + seatPoolForm.sponsored
+    if (cohort && total > cohort.seat_cap) {
+      setSeatPoolError(`Total allocated seats (${total}) cannot exceed seat capacity (${cohort.seat_cap})`)
+      return
+    }
+
+    if (total < 0) {
+      setSeatPoolError('Seat allocations cannot be negative')
+      return
+    }
+
+    setIsProcessing(true)
+    try {
+      await programsClient.manageSeatPool(cohortId, seatPoolForm)
+      setSeatPoolSuccess('Seat pool updated successfully')
+      
+      // Reload cohort data to sync with backend
+      await reloadCohort()
+      
+      // Update local seat pool state
+      setSeatPool(seatPoolForm)
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowSeatPoolModal(false)
+        setSeatPoolSuccess(null)
+      }, 2000)
+    } catch (err: any) {
+      console.error('Failed to update seat pool:', err)
+      const errorMessage = err?.response?.data?.error || 
+                           err?.response?.data?.seat_pool?.[0] ||
+                           err?.message || 
+                           'Failed to update seat pool. Please check your permissions and try again.'
+      setSeatPoolError(errorMessage)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const toggleStudentSelection = (userId: string) => {
+    const next = new Set(selectedStudentIds)
+    if (next.has(userId)) next.delete(userId)
+    else next.add(userId)
+    setSelectedStudentIds(next)
+  }
+
+  const assignSelectedStudents = async () => {
+    if (selectedStudentIds.size === 0) return
+    setIsProcessing(true)
+    setError(null)
+    try {
+      await programsClient.bulkCreateEnrollments(cohortId, {
+        user_ids: Array.from(selectedStudentIds),
+        seat_type: assignSeatType,
+        enrollment_type: assignEnrollmentType,
+      })
+      // Reload enrollments/waitlist
+      const [enrolls, waitlistData] = await Promise.all([
+        programsClient.getCohortEnrollments(cohortId),
+        programsClient.getCohortWaitlist(cohortId).catch(() => []),
+      ])
+      setEnrollments(enrolls)
+      setWaitlist(waitlistData)
+      setSelectedStudentIds(new Set())
+      setShowAssignModal(false)
+    } catch (err: any) {
+      setError(err?.message || 'Failed to assign students')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   // Handle promote from waitlist
   const handlePromoteFromWaitlist = async (count?: number) => {
     setIsProcessing(true)
@@ -263,11 +476,17 @@ export default function CohortEnrollmentsPage() {
                 </div>
               </div>
               <div className="flex gap-3">
+<<<<<<< HEAD
                 <Link href={`/dashboard/director/enrollments/assign?cohort=${cohortId}`}>
                   <Button variant="defender" size="sm">
                     Assign Students
                   </Button>
                 </Link>
+=======
+                <Button variant="defender" size="sm" onClick={() => setShowAssignModal(true)}>
+                  Assign Students
+                </Button>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 <Link href={`/dashboard/director/cohorts/${cohortId}`}>
                   <Button variant="outline" size="sm">
                     ← Back to Cohort
@@ -318,6 +537,7 @@ export default function CohortEnrollmentsPage() {
           {/* Filters and Actions */}
           <Card className="mb-6">
             <div className="p-6">
+<<<<<<< HEAD
               <div className="flex flex-wrap items-center gap-4 mb-4">
                 <div>
                   <label className="text-sm text-och-steel mb-1 block">Status</label>
@@ -362,6 +582,273 @@ export default function CohortEnrollmentsPage() {
                   </select>
                 </div>
                 <div className="flex-1"></div>
+=======
+              <div className="flex flex-wrap items-start gap-4 mb-4">
+                {/* Status Filter */}
+                <div className="relative">
+                  <label className="text-sm text-och-steel mb-1 block">Status</label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="bg-och-midnight border border-och-steel/20 rounded px-3 py-2 text-white text-left w-full min-w-[180px] flex items-center justify-between hover:border-och-defender transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenFilter(openFilter === 'status' ? null : 'status')
+                      }}
+                    >
+                      <span>
+                        {selectedStatuses.has('all')
+                          ? 'All Status'
+                          : `${selectedStatuses.size} selected`}
+                      </span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {openFilter === 'status' && (
+                      <div
+                        className="absolute z-10 mt-1 w-full bg-och-midnight border border-och-steel/20 rounded-lg shadow-lg max-h-60 overflow-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                      <div className="p-2">
+                        <label className="flex items-center gap-2 p-2 hover:bg-och-midnight/50 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedStatuses.has('all') || selectedStatuses.size === 6}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedStatuses(new Set(['all', 'active', 'pending_payment', 'suspended', 'withdrawn', 'completed']))
+                              } else {
+                                setSelectedStatuses(new Set(['all']))
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-white text-sm">Select All</span>
+                        </label>
+                        <div className="border-t border-och-steel/20 my-1"></div>
+                        {['active', 'pending_payment', 'suspended', 'withdrawn', 'completed'].map((status) => (
+                          <label
+                            key={status}
+                            className="flex items-center gap-2 p-2 hover:bg-och-midnight/50 rounded cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const newSet = new Set(selectedStatuses)
+                              if (newSet.has('all')) newSet.delete('all')
+                              if (newSet.has(status)) {
+                                newSet.delete(status)
+                              } else {
+                                newSet.add(status)
+                              }
+                              // If all individual options are selected, add 'all'
+                              if (newSet.size === 5) {
+                                newSet.add('all')
+                              }
+                              // If no options selected, add 'all' back
+                              if (newSet.size === 0) {
+                                newSet.add('all')
+                              }
+                              setSelectedStatuses(newSet)
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedStatuses.has(status)}
+                              onChange={() => {}}
+                              className="rounded"
+                            />
+                            <span className="text-white text-sm capitalize">
+                              {status.replace('_', ' ')}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Seat Type Filter */}
+                <div className="relative">
+                  <label className="text-sm text-och-steel mb-1 block">Seat Type</label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="bg-och-midnight border border-och-steel/20 rounded px-3 py-2 text-white text-left w-full min-w-[180px] flex items-center justify-between hover:border-och-defender transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenFilter(openFilter === 'seat' ? null : 'seat')
+                      }}
+                    >
+                      <span>
+                        {selectedSeatTypes.has('all')
+                          ? 'All Types'
+                          : `${selectedSeatTypes.size} selected`}
+                      </span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {openFilter === 'seat' && (
+                      <div
+                        className="absolute z-10 mt-1 w-full bg-och-midnight border border-och-steel/20 rounded-lg shadow-lg max-h-60 overflow-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                      <div className="p-2">
+                        <label className="flex items-center gap-2 p-2 hover:bg-och-midnight/50 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedSeatTypes.has('all') || selectedSeatTypes.size === 4}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSeatTypes(new Set(['all', 'paid', 'scholarship', 'sponsored']))
+                              } else {
+                                setSelectedSeatTypes(new Set(['all']))
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-white text-sm">Select All</span>
+                        </label>
+                        <div className="border-t border-och-steel/20 my-1"></div>
+                        {['paid', 'scholarship', 'sponsored'].map((seatType) => (
+                          <label
+                            key={seatType}
+                            className="flex items-center gap-2 p-2 hover:bg-och-midnight/50 rounded cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const newSet = new Set(selectedSeatTypes)
+                              if (newSet.has('all')) newSet.delete('all')
+                              if (newSet.has(seatType)) {
+                                newSet.delete(seatType)
+                              } else {
+                                newSet.add(seatType)
+                              }
+                              // If all individual options are selected, add 'all'
+                              if (newSet.size === 3) {
+                                newSet.add('all')
+                              }
+                              // If no options selected, add 'all' back
+                              if (newSet.size === 0) {
+                                newSet.add('all')
+                              }
+                              setSelectedSeatTypes(newSet)
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSeatTypes.has(seatType)}
+                              onChange={() => {}}
+                              className="rounded"
+                            />
+                            <span className="text-white text-sm capitalize">{seatType}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Enrollment Type Filter */}
+                <div className="relative">
+                  <label className="text-sm text-och-steel mb-1 block">Enrollment Type</label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="bg-och-midnight border border-och-steel/20 rounded px-3 py-2 text-white text-left w-full min-w-[180px] flex items-center justify-between hover:border-och-defender transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenFilter(openFilter === 'enrollment' ? null : 'enrollment')
+                      }}
+                    >
+                      <span>
+                        {selectedEnrollmentTypes.has('all')
+                          ? 'All Types'
+                          : `${selectedEnrollmentTypes.size} selected`}
+                      </span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {openFilter === 'enrollment' && (
+                      <div
+                        className="absolute z-10 mt-1 w-full bg-och-midnight border border-och-steel/20 rounded-lg shadow-lg max-h-60 overflow-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                      <div className="p-2">
+                        <label className="flex items-center gap-2 p-2 hover:bg-och-midnight/50 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedEnrollmentTypes.has('all') || selectedEnrollmentTypes.size === 5}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedEnrollmentTypes(new Set(['all', 'self', 'sponsor', 'invite', 'director']))
+                              } else {
+                                setSelectedEnrollmentTypes(new Set(['all']))
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-white text-sm">Select All</span>
+                        </label>
+                        <div className="border-t border-och-steel/20 my-1"></div>
+                        {['self', 'sponsor', 'invite', 'director'].map((enrollmentType) => (
+                          <label
+                            key={enrollmentType}
+                            className="flex items-center gap-2 p-2 hover:bg-och-midnight/50 rounded cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const newSet = new Set(selectedEnrollmentTypes)
+                              if (newSet.has('all')) newSet.delete('all')
+                              if (newSet.has(enrollmentType)) {
+                                newSet.delete(enrollmentType)
+                              } else {
+                                newSet.add(enrollmentType)
+                              }
+                              // If all individual options are selected, add 'all'
+                              if (newSet.size === 4) {
+                                newSet.add('all')
+                              }
+                              // If no options selected, add 'all' back
+                              if (newSet.size === 0) {
+                                newSet.add('all')
+                              }
+                              setSelectedEnrollmentTypes(newSet)
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedEnrollmentTypes.has(enrollmentType)}
+                              onChange={() => {}}
+                              className="rounded"
+                            />
+                            <span className="text-white text-sm capitalize">
+                              {enrollmentType === 'self' ? 'Self-enroll' : enrollmentType === 'director' ? 'Director Assign' : enrollmentType}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1"></div>
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedStatuses(new Set(['all']))
+                      setSelectedSeatTypes(new Set(['all']))
+                      setSelectedEnrollmentTypes(new Set(['all']))
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                 {selectedEnrollments.size > 0 && (
                   <div className="flex gap-2">
                     <Button
@@ -375,6 +862,34 @@ export default function CohortEnrollmentsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+<<<<<<< HEAD
+=======
+                      onClick={() => handleBulkStatus('suspended')}
+                      disabled={isProcessing}
+                    >
+                      Suspend
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkStatus('withdrawn')}
+                      disabled={isProcessing}
+                    >
+                      Withdraw
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBulkRemove}
+                      disabled={isProcessing}
+                      className="text-och-orange hover:text-och-orange/80 hover:border-och-orange"
+                    >
+                      Remove
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                       onClick={() => setSelectedEnrollments(new Set())}
                     >
                       Clear Selection
@@ -420,11 +935,17 @@ export default function CohortEnrollmentsPage() {
                 <h2 className="text-xl font-bold text-white">
                   Enrollments ({filteredEnrollments.length})
                 </h2>
+<<<<<<< HEAD
                 <Link href={`/dashboard/director/enrollments/assign?cohort=${cohortId}`}>
                   <Button variant="defender" size="sm">
                     + Assign Student
                   </Button>
                 </Link>
+=======
+                <Button variant="defender" size="sm" onClick={() => setShowAssignModal(true)}>
+                  + Assign Students
+                </Button>
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
               </div>
 
               {filteredEnrollments.length === 0 ? (
@@ -512,7 +1033,11 @@ export default function CohortEnrollmentsPage() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex gap-2">
+<<<<<<< HEAD
                               {(enrollment as any).status === 'pending_payment' && (
+=======
+                              {enrollment.status === 'pending_payment' && (
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
                                 <Button
                                   variant="mint"
                                   size="sm"
@@ -602,6 +1127,137 @@ export default function CohortEnrollmentsPage() {
           )}
         </div>
       </DirectorLayout>
+<<<<<<< HEAD
     </RouteGuard>
   )
 }
+=======
+
+      {/* Assign Students Modal */}
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-3xl bg-och-midnight border border-och-steel/20 rounded-xl shadow-xl">
+            <div className="p-6 border-b border-och-steel/20 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white">Assign Students</h3>
+                <p className="text-sm text-och-steel mt-1">Search and select students, then assign in bulk.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowAssignModal(false)} disabled={isProcessing}>
+                Close
+              </Button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {(usersError || error) && (
+                <div className="p-3 rounded-lg border border-och-orange/50 bg-och-orange/10 text-och-orange text-sm">
+                  {error || usersError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-white mb-2">Search students</label>
+                  <input
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    placeholder="Search by name or email..."
+                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">Seat type</label>
+                  <select
+                    value={assignSeatType}
+                    onChange={(e) => setAssignSeatType(e.target.value as any)}
+                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                  >
+                    <option value="paid">Paid</option>
+                    <option value="scholarship">Scholarship</option>
+                    <option value="sponsored">Sponsored</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">Enrollment type</label>
+                  <select
+                    value={assignEnrollmentType}
+                    onChange={(e) => setAssignEnrollmentType(e.target.value as any)}
+                    className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                  >
+                    <option value="director">Director assign</option>
+                    <option value="invite">Invite</option>
+                    <option value="sponsor">Sponsor</option>
+                    <option value="self">Self</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2 flex items-end justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedStudentIds(new Set())}
+                    disabled={isProcessing || selectedStudentIds.size === 0}
+                  >
+                    Clear Selected
+                  </Button>
+                  <Button
+                    variant="defender"
+                    size="sm"
+                    onClick={assignSelectedStudents}
+                    disabled={isProcessing || selectedStudentIds.size === 0}
+                  >
+                    {isProcessing ? 'Assigning...' : `Assign Selected (${selectedStudentIds.size})`}
+                  </Button>
+                </div>
+              </div>
+
+              <Card className="border-och-steel/20">
+                <div className="p-4">
+                  </div>
+                  <div className="max-h-[340px] overflow-auto divide-y divide-och-steel/10">
+                    {students.map((u: any) => (
+                      <div
+                        key={u.id}
+                        className="py-3 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentIds.has(String(u.id))}
+                            onChange={() => toggleStudentSelection(String(u.id))}
+                            disabled={isProcessing}
+                          />
+                          <div>
+                            <div className="text-white font-medium">
+                              {(u.first_name || u.last_name) ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : u.email}
+                            </div>
+                            <div className="text-xs text-och-steel">{u.email}</div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          {u.roles?.slice(0, 2).map((r: any) => (
+                            <Badge key={r.id || r.role} variant="outline" className="text-xs">
+                              {r.role}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {usersLoading && studentPage > 1 && (
+                      <div className="py-4 text-center text-och-steel text-sm">
+                        Loading more students...
+                      </div>
+                    )}
+                    {!usersLoading && students.length === 0 && (
+                      <div className="py-10 text-center text-och-steel">No students found.</div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
+
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407

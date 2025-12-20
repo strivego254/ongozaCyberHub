@@ -106,6 +106,29 @@ export default function PlansManagementClient() {
   const loadPlans = async () => {
     try {
       setIsLoading(true)
+<<<<<<< HEAD
+=======
+      const response = await apiGateway.get<any>('/admin/plans/')
+      console.log('📡 Plans API Response:', response)
+      
+      // Handle paginated response
+      let plansData: SubscriptionPlan[] = []
+      if (response?.results && Array.isArray(response.results)) {
+        plansData = response.results
+      } else if (Array.isArray(response)) {
+        plansData = response
+      } else if (response?.data && Array.isArray(response.data)) {
+        plansData = response.data
+      }
+      
+      console.log('✅ Loaded plans:', plansData.length)
+      setPlans(plansData)
+    } catch (error: any) {
+      console.error('❌ Failed to load plans:', error)
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Failed to load plans'
+      alert(`Error loading plans: ${errorMessage}`)
+      setPlans([])
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
     } finally {
       setIsLoading(false)
     }

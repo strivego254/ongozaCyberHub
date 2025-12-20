@@ -28,7 +28,7 @@ export function getRedirectRoute(user: User | null): string {
   // Admin users should ALWAYS go to /dashboard/admin
   if (user.roles && Array.isArray(user.roles)) {
     const hasAdminRole = user.roles.some((ur: any) => {
-      const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || '')
+      const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
       return roleName?.toLowerCase().trim() === 'admin'
     })
     

@@ -138,6 +138,7 @@ class CreateSessionSerializer(serializers.Serializer):
 class CreateGroupSessionSerializer(serializers.Serializer):
     """Serializer for creating a group mentorship session."""
     title = serializers.CharField(max_length=200)
+<<<<<<< HEAD
     description = serializers.CharField(required=False, allow_blank=True, default='')
     scheduled_at = serializers.CharField()  # Accept as string first, then parse in validation
     duration_minutes = serializers.IntegerField(default=60, min_value=15, max_value=240)
@@ -149,10 +150,29 @@ class CreateGroupSessionSerializer(serializers.Serializer):
         """Parse scheduled_at string and ensure it's timezone-aware."""
         from django.utils import timezone
         from datetime import datetime
+=======
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    scheduled_at = serializers.CharField()  # Accept as string first, then parse in validation
+    duration_minutes = serializers.IntegerField(default=60, min_value=15, max_value=240, required=False)
+    meeting_type = serializers.ChoiceField(
+        choices=[('zoom', 'Zoom'), ('google_meet', 'Google Meet'), ('in_person', 'In Person')], 
+        default='zoom',
+        required=False
+    )
+    meeting_link = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    track_assignment = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=100, default='')
+    cohort_id = serializers.UUIDField(required=False, allow_null=True)
+    
+    def validate_scheduled_at(self, value):
+        """Parse scheduled_at string and ensure it's timezone-aware."""
+        from django.utils import timezone as django_timezone
+        from datetime import datetime, timezone as dt_timezone
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
         
         if not isinstance(value, str):
             raise serializers.ValidationError("scheduled_at must be a string")
         
+<<<<<<< HEAD
         # Handle Z suffix (UTC) - convert to +00:00 for fromisoformat
         if value.endswith('Z'):
             value = value[:-1] + '+00:00'
@@ -185,6 +205,53 @@ class CreateGroupSessionSerializer(serializers.Serializer):
             dt = timezone.make_aware(dt)
         
         return dt
+=======
+        original_value = value
+        
+        # Remove Z suffix and parse manually for better control
+        clean_value = value.replace('Z', '')
+        
+        # Try parsing with microseconds first
+        dt = None
+        try:
+            if '.' in clean_value:
+                # Has microseconds: 2026-02-02T06:00:00.000
+                dt = datetime.strptime(clean_value, '%Y-%m-%dT%H:%M:%S.%f')
+            else:
+                # No microseconds: 2026-02-02T06:00:00
+                dt = datetime.strptime(clean_value, '%Y-%m-%dT%H:%M:%S')
+            
+            # Make timezone-aware (UTC since original had Z)
+            if django_timezone.is_naive(dt):
+                dt = django_timezone.make_aware(dt, dt_timezone.utc)
+            
+            return dt
+        except ValueError as e:
+            # Try alternative formats
+            formats_to_try = [
+                ('%Y-%m-%dT%H:%M:%S.%f', clean_value if '.' in clean_value else None),
+                ('%Y-%m-%dT%H:%M:%S', clean_value),
+                ('%Y-%m-%d %H:%M:%S', clean_value.replace('T', ' ')),
+            ]
+            
+            for fmt, val in formats_to_try:
+                if val is None:
+                    continue
+                try:
+                    dt = datetime.strptime(val, fmt)
+                    if django_timezone.is_naive(dt):
+                        dt = django_timezone.make_aware(dt, dt_timezone.utc)
+                    return dt
+                except ValueError:
+                    continue
+            
+            # If all parsing attempts failed
+            raise serializers.ValidationError(
+                f"Invalid datetime format: '{original_value}'. "
+                f"Expected ISO 8601 format (e.g., '2026-02-02T06:00:00Z' or '2026-02-02T06:00:00.000Z'). "
+                f"Error: {str(e)}"
+            )
+>>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
 
 class MissionReviewSerializer(serializers.Serializer):
