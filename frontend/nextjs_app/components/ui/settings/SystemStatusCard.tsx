@@ -49,16 +49,16 @@ export function SystemStatusCard({ status }: SystemStatusCardProps) {
 
   return (
     <Card className={`${statusConfig.borderColor} ${statusConfig.bgColor} hover:shadow-lg transition-all duration-300 group`}>
-      <div className="p-6">
-        <div className="flex items-start gap-4 mb-3">
-          <Icon className={`w-8 h-8 ${statusConfig.textColor} mt-0.5 flex-shrink-0`} />
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <Icon className={`w-5 h-5 ${statusConfig.textColor} flex-shrink-0`} />
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-slate-100 text-lg truncate group-hover:text-slate-200 transition-colors">
+            <h3 className="font-semibold text-slate-100 text-sm truncate group-hover:text-slate-200 transition-colors">
               {status.title}
             </h3>
-            <p className="text-sm text-slate-400 truncate mt-1">{status.impact}</p>
+            <p className="text-xs text-slate-400 truncate mt-0.5">{status.impact}</p>
           </div>
-          <div className={`text-2xl font-bold ${statusConfig.textColor}`}>
+          <div className={`text-base font-bold ${statusConfig.textColor} flex-shrink-0`}>
             {typeof status.value === 'number' ? `${status.value}%` : status.value}
           </div>
         </div>

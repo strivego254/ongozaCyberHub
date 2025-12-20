@@ -33,7 +33,7 @@ export function SettingsShell({ children }: SettingsShellProps) {
   const { settings, entitlements, isLoading } = useSettingsMaster(userId);
   const { items } = usePortfolio(userId);
 
-  // Don't block children - let SettingsMasterDashboard handle loading states
+  // Always show system statuses - use defaults if data not loaded
   const systemStatuses = settings && entitlements ? [
     {
       title: 'Profile',
@@ -59,7 +59,32 @@ export function SettingsShell({ children }: SettingsShellProps) {
       status: settings.notificationsEmail ? ('healthy' as const) : ('warning' as const),
       impact: 'Mission deadlines',
     },
-  ] : [];
+  ] : [
+    {
+      title: 'Profile',
+      value: '0%',
+      status: 'warning' as const,
+      impact: 'Marketplace eligibility',
+    },
+    {
+      title: 'Plan',
+      value: 'Free',
+      status: 'upgrade' as const,
+      impact: 'Feature access',
+    },
+    {
+      title: 'Visibility',
+      value: 'Private',
+      status: 'warning' as const,
+      impact: 'Portfolio sharing',
+    },
+    {
+      title: 'Alerts',
+      value: 'On',
+      status: 'healthy' as const,
+      impact: 'Mission deadlines',
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-8 lg:px-12 lg:py-12">
@@ -82,23 +107,19 @@ export function SettingsShell({ children }: SettingsShellProps) {
               </div>
 
               {/* SYSTEM STATUS */}
-              {systemStatuses.length > 0 && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 w-full lg:w-auto">
-                  {systemStatuses.map((status, index) => (
-                    <motion.div
-                      key={status.title}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <SystemStatusCard status={status} />
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-              {systemStatuses.length === 0 && (
-                <div className="text-slate-400 text-sm">Loading system status...</div>
-              )}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 w-full lg:w-auto">
+                {systemStatuses.map((status, index) => (
+                  <motion.div
+                    key={status.title}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="min-w-0"
+                  >
+                    <SystemStatusCard status={status} />
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </div>
         </Card>
