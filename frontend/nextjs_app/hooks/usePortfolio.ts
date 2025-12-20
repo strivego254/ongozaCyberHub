@@ -13,9 +13,11 @@ import {
   updatePortfolioItem,
   deletePortfolioItem,
   getPortfolioHealthMetrics,
-  type CreatePortfolioItemInput,
-  type UpdatePortfolioItemInput,
 } from '@/lib/portfolio/api';
+import type {
+  CreatePortfolioItemInput,
+  UpdatePortfolioItemInput,
+} from '@/lib/portfolio/types';
 import { usePortfolioStore } from '@/lib/portfolio/store';
 import type { PortfolioItem } from '@/lib/portfolio/types';
 
@@ -48,11 +50,20 @@ export function usePortfolio(userId?: string) {
   } = useQuery({
     queryKey: ['portfolio-items', userId],
     queryFn: async () => {
-      const id = await getCurrentUserId();
-      if (!id) throw new Error('User not authenticated');
-      return getPortfolioItems(id);
+      const id = userId || await getCurrentUserId();
+      if (!id) {
+        console.warn('No user ID available for portfolio fetch');
+        return [];
+      }
+      try {
+        const items = await getPortfolioItems(id);
+        return items || [];
+      } catch (error) {
+        console.error('Error fetching portfolio items:', error);
+        return [];
+      }
     },
-    enabled: !!userId || true,
+    enabled: true, // Always enabled, will handle empty userId in queryFn
     staleTime: 30000, // 30 seconds
   });
 
@@ -64,11 +75,33 @@ export function usePortfolio(userId?: string) {
   } = useQuery({
     queryKey: ['portfolio-health', userId],
     queryFn: async () => {
-      const id = await getCurrentUserId();
-      if (!id) throw new Error('User not authenticated');
-      return getPortfolioHealthMetrics(id);
+      const id = userId || await getCurrentUserId();
+      if (!id) {
+        console.warn('No user ID available for health metrics');
+        return {
+          totalItems: 0,
+          approvedItems: 0,
+          pendingReviews: 0,
+          averageScore: 0,
+          healthScore: 0,
+          topSkills: [],
+        };
+      }
+      try {
+        return await getPortfolioHealthMetrics(id);
+      } catch (error) {
+        console.error('Error fetching health metrics:', error);
+        return {
+          totalItems: 0,
+          approvedItems: 0,
+          pendingReviews: 0,
+          averageScore: 0,
+          healthScore: 0,
+          topSkills: [],
+        };
+      }
     },
-    enabled: !!userId || true,
+    enabled: true, // Always enabled, will handle empty userId in queryFn
     staleTime: 60000, // 1 minute
   });
 
@@ -172,19 +205,33 @@ export function usePortfolio(userId?: string) {
     };
   }, [userId, refetchItems, refetchMetrics]);
 
+  // Use query data if available, otherwise fall back to store
+  const currentItems = (portfolioItems && portfolioItems.length > 0) ? portfolioItems : (items && items.length > 0 ? items : []);
+  const currentMetrics = metrics || healthMetrics || {
+    totalItems: 0,
+    approvedItems: 0,
+    pendingReviews: 0,
+    averageScore: 0,
+    healthScore: 0,
+    topSkills: [],
+  };
+
   return {
     // Data
-    items: portfolioItems || items,
-    healthMetrics: metrics || healthMetrics,
-    topSkills: metrics?.topSkills || [],
-    pendingReviews: items.filter((item) => item.status === 'in_review'),
-    approvedItems: items.filter((item) => item.status === 'approved'),
+    items: currentItems,
+    healthMetrics: currentMetrics,
+    topSkills: currentMetrics.topSkills || [],
+    pendingReviews: currentItems.filter((item) => item.status === 'in_review' || item.status === 'submitted'),
+    approvedItems: currentItems.filter((item) => item.status === 'approved'),
 
     // Loading states
     isLoading: itemsLoading || metricsLoading,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+
+    // Error
+    error: itemsError ? (itemsError instanceof Error ? itemsError.message : 'Failed to load portfolio') : null,
 
     // Actions
     createItem: createMutation.mutate,

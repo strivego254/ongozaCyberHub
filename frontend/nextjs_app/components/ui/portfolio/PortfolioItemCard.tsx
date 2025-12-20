@@ -14,6 +14,7 @@ import {
   Award,
   FileText,
   ExternalLink,
+  ArrowRight,
 } from 'lucide-react';
 
 function formatDistanceToNow(date: Date): string {
@@ -106,22 +107,24 @@ export function PortfolioItemCard({
                 {item.marketplaceViews.toLocaleString()}
               </div>
             )}
-            <span>{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</span>
+            <span>{formatDistanceToNow(new Date(item.createdAt))}</span>
           </div>
         </div>
 
         {/* Title & Summary */}
         <div>
           <h3 className="text-xl font-bold text-slate-50 group-hover:text-indigo-400 line-clamp-2 mb-3 leading-tight transition-colors">
-            {item.title}
+            {item.title || 'Untitled Portfolio Item'}
           </h3>
-          {item.summary && (
+          {item.summary ? (
             <p className="text-slate-400 text-sm leading-relaxed line-clamp-2">{item.summary}</p>
+          ) : (
+            <p className="text-slate-500 text-sm italic">No description available</p>
           )}
         </div>
 
         {/* Skill Tags */}
-        {item.skillTags.length > 0 && (
+        {item.skillTags && item.skillTags.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {item.skillTags.slice(0, 6).map((tag) => (
               <Badge key={tag} variant="outline" className="text-xs px-2.5 py-0.5">
@@ -134,12 +137,14 @@ export function PortfolioItemCard({
               </Badge>
             )}
           </div>
+        ) : (
+          <div className="text-xs text-slate-500 italic">No skills tagged</div>
         )}
 
         {/* Evidence Gallery */}
         {item.evidenceFiles.length > 0 && (
-          <div className="flex-1 min-h-[100px]">
-            <EvidenceGallery files={item.evidenceFiles.slice(0, 4)} />
+          <div className="flex-1 min-h-[80px]">
+            <EvidenceGallery files={item.evidenceFiles.slice(0, 3)} />
           </div>
         )}
 
@@ -170,20 +175,14 @@ export function PortfolioItemCard({
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer - EXACT SPEC */}
       <div className="pt-4 border-t border-slate-800/50 px-4 pb-4">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            {item.missionId && <Target className="w-3 h-3" />}
-            {item.type === 'github' && <Github className="w-3 h-3" />}
-            {item.externalProviders?.thm && <Award className="w-3 h-3" />}
-          </div>
-          <Link href={`/portfolio/${item.id}`}>
-            <Button variant="ghost" size="sm" className="text-xs px-3 h-8">
-              View details →
-            </Button>
-          </Link>
-        </div>
+        <Link href={`/portfolio/${item.id}`}>
+          <Button variant="ghost" size="sm" className="w-full justify-between text-xs h-10 group-hover:bg-indigo-500/10">
+            View Details
+            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        </Link>
       </div>
     </Card>
   );

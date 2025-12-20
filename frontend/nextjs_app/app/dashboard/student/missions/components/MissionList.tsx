@@ -189,13 +189,18 @@ export function MissionList({ missions, filters, onFiltersChange, onStartMission
                       </div>
                     )}
 
-                    {/* Portfolio Link */}
+                    {/* Portfolio Link - Auto-created when mission approved */}
                     {mission.status === 'approved' && (
                       <div className="mt-3">
                         {mission.portfolio_linked ? (
-                          <Badge variant="mint">Added to portfolio</Badge>
+                          <Badge variant="mint" className="flex items-center gap-1">
+                            <span>✓</span>
+                            <span>In Portfolio</span>
+                          </Badge>
                         ) : (
-                          <Button variant="outline" size="sm">Add to portfolio</Button>
+                          <div className="text-xs text-och-steel">
+                            Portfolio item will be auto-created (85%+ score)
+                          </div>
                         )}
                       </div>
                     )}

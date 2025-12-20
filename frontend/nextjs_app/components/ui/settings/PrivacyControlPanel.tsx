@@ -14,9 +14,10 @@ import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
 interface PrivacyControlPanelProps {
   settings: UserSettings | null;
   onUpdate: (updates: SettingsUpdate) => void;
+  userId?: string;
 }
 
-export function PrivacyControlPanel({ settings, onUpdate }: PrivacyControlPanelProps) {
+export function PrivacyControlPanel({ settings, onUpdate, userId }: PrivacyControlPanelProps) {
   if (!settings) return null;
 
   const visibilityOptions = [
@@ -80,6 +81,13 @@ export function PrivacyControlPanel({ settings, onUpdate }: PrivacyControlPanelP
                   onClick={() => {
                     if (!isDisabled) {
                       onUpdate({ portfolioVisibility: option.value });
+                      
+                      // Sync portfolio items visibility in realtime
+                      if (userId) {
+                        import('@/lib/portfolio/coordination').then(({ syncPortfolioVisibility }) => {
+                          syncPortfolioVisibility(userId, option.value).catch(console.error);
+                        });
+                      }
                     }
                   }}
                   disabled={isDisabled}
@@ -95,7 +103,7 @@ export function PrivacyControlPanel({ settings, onUpdate }: PrivacyControlPanelP
                       {option.label}
                     </span>
                     {isSelected && (
-                      <Badge variant="secondary" className="ml-auto">
+                      <Badge variant="outline" className="ml-auto">
                         Active
                       </Badge>
                     )}

@@ -1,9 +1,12 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
 import { motion } from 'framer-motion'
-import { useDashboardStore } from '../../lib/store/dashboardStore'
+import { usePortfolio } from '@/hooks/usePortfolio'
+import { createClient } from '@/lib/supabase/client'
 
 const COLORS = {
   approved: '#10b981',
@@ -13,13 +16,29 @@ const COLORS = {
 }
 
 export function PortfolioCard() {
-  const { portfolio } = useDashboardStore()
+  const router = useRouter()
+  const [userId, setUserId] = useState<string | undefined>()
+  const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserId(user?.id)
+    })
+  }, [supabase])
+
+  const { items, approvedItems, isLoading } = usePortfolio(userId)
+
+  const pendingCount = items.filter(item => item.status === 'in_review' || item.status === 'submitted').length
+  const draftCount = items.filter(item => item.status === 'draft').length
 
   const data = [
-    { name: 'Approved', value: portfolio?.approved || 0, color: COLORS.approved },
-    { name: 'Pending', value: portfolio?.pending || 0, color: COLORS.pending },
-    { name: 'Rejected', value: portfolio?.rejected || 0, color: COLORS.rejected },
+    { name: 'Approved', value: approvedItems.length, color: COLORS.approved },
+    { name: 'Pending', value: pendingCount, color: COLORS.pending },
+    { name: 'Draft', value: draftCount, color: COLORS.draft },
   ].filter(item => item.value > 0)
+
+  const totalItems = items.length
+  const approvedPercentage = totalItems > 0 ? Math.round((approvedItems.length / totalItems) * 100) : 0
 
   return (
     <motion.div
@@ -27,16 +46,23 @@ export function PortfolioCard() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.3 }}
     >
-      <Card className="glass-card p-3 md:p-4 hover:glass-hover transition-all">
+      <Card 
+        className="glass-card p-3 md:p-4 hover:glass-hover transition-all cursor-pointer"
+        onClick={() => router.push('/portfolio')}
+      >
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-och-steel">Portfolio</h3>
           <span className="text-[10px] text-dashboard-accent font-medium">
-            {Math.round(portfolio?.percentage || 0)}%
+            {approvedPercentage}%
           </span>
         </div>
 
         <div className="h-20 mb-2">
-          {data.length > 0 ? (
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center text-och-steel text-xs">
+              Loading...
+            </div>
+          ) : data.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -69,15 +95,15 @@ export function PortfolioCard() {
 
         <div className="grid grid-cols-3 gap-1 text-[10px]">
           <div className="text-center">
-            <div className="text-white font-semibold">{portfolio?.approved || 0}</div>
+            <div className="text-white font-semibold">{approvedItems.length}</div>
             <div className="text-och-steel">Approved</div>
           </div>
           <div className="text-center">
-            <div className="text-white font-semibold">{portfolio?.pending || 0}</div>
+            <div className="text-white font-semibold">{pendingCount}</div>
             <div className="text-och-steel">Pending</div>
           </div>
           <div className="text-center">
-            <div className="text-white font-semibold">{portfolio?.total || 0}</div>
+            <div className="text-white font-semibold">{totalItems}</div>
             <div className="text-och-steel">Total</div>
           </div>
         </div>

@@ -34,17 +34,48 @@ export function MentorReviewModal({ item, isOpen, onClose }: MentorReviewModalPr
     setScores((prev) => ({ ...prev, [criterionId]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!allCriteriaScored) {
       alert('Please score all criteria before submitting');
       return;
     }
 
-    createReview({
+    // Create review
+    await createReview({
       portfolioItemId: item.id,
       rubricScores: scores,
       comments,
     });
+
+    // Sync with TalentScope API
+    try {
+      // Map portfolio competency scores to TalentScope format
+      const talentscopeScores = Object.entries(scores).reduce((acc, [key, value]) => {
+        // Convert rubric criteria to skill names (e.g., "technical" -> "technical_skills")
+        const skillName = key.toLowerCase().replace(/\s+/g, '_');
+        acc[skillName] = value;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Call TalentScope API to sync scores
+      const response = await fetch('/api/talentscope/sync-portfolio-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: item.userId,
+          portfolioItemId: item.id,
+          competencyScores: talentscopeScores,
+          totalScore: totalScore,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('TalentScope sync failed, but review was saved');
+      }
+    } catch (error) {
+      console.error('Error syncing with TalentScope:', error);
+      // Don't block review submission if sync fails
+    }
 
     onClose();
   };

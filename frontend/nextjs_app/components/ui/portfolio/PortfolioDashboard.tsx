@@ -24,6 +24,8 @@ import { PortfolioDashboardSkeleton } from './PortfolioSkeleton';
 import { ErrorDisplay } from './ErrorDisplay';
 import { usePortfolioTimeline } from '@/hooks/usePortfolioTimeline';
 import { createClient } from '@/lib/supabase/client';
+import { getMarketplaceRank } from '@/lib/portfolio/api';
+import { useQuery } from '@tanstack/react-query';
 import type { PortfolioItem, PortfolioItemStatus, PortfolioItemType } from '@/lib/portfolio/types';
 
 export function PortfolioDashboard() {
@@ -38,11 +40,11 @@ export function PortfolioDashboard() {
   }, []);
   
   const {
-    items,
+    items = [],
     healthMetrics,
-    topSkills,
-    pendingReviews,
-    approvedItems,
+    topSkills = [],
+    pendingReviews = [],
+    approvedItems = [],
     isLoading,
     error,
     refetch,
@@ -51,13 +53,37 @@ export function PortfolioDashboard() {
   const { settings, entitlements } = useSettingsMaster(userId);
   const { timelineData } = usePortfolioTimeline(userId);
 
+  // Fetch marketplace rank
+  const { data: marketplaceRank = 999 } = useQuery({
+    queryKey: ['marketplace-rank', userId],
+    queryFn: async () => {
+      if (!userId) return 999;
+      return getMarketplaceRank(userId);
+    },
+    enabled: !!userId,
+    staleTime: 300000, // 5 minutes
+  });
+
   const [statusFilter, setStatusFilter] = useState<PortfolioItemStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<PortfolioItemType | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Filter items by status, type, and visibility (from Settings)
   const filteredItems = items.filter((item) => {
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
     if (typeFilter !== 'all' && item.type !== typeFilter) return false;
+    
+    // Settings integration: Filter by visibility preference
+    if (settings?.portfolioVisibilityFilter) {
+      const visibilityFilter = settings.portfolioVisibilityFilter;
+      if (visibilityFilter === 'marketplace_only' && item.visibility !== 'marketplace_preview' && item.visibility !== 'public') {
+        return false;
+      }
+      if (visibilityFilter === 'public_only' && item.visibility !== 'public') {
+        return false;
+      }
+    }
+    
     return true;
   });
 
@@ -72,9 +98,24 @@ export function PortfolioDashboard() {
     contactEnabled: settings?.marketplaceContactEnabled || false,
   };
 
-  const healthScore = healthMetrics?.overallHealth || 0;
+  // Convert health score from 0-10 to 0-100
+  const healthScore = healthMetrics?.healthScore ? Math.round(healthMetrics.healthScore * 10) : 0;
 
-  if (isLoading && items.length === 0) {
+  // Debug logging
+  useEffect(() => {
+    console.log('Portfolio Dashboard Data:', {
+      userId,
+      itemsCount: items.length,
+      items: items.slice(0, 2), // First 2 items for debugging
+      healthMetrics,
+      topSkills: topSkills.slice(0, 3),
+      isLoading,
+      error,
+    });
+  }, [userId, items, healthMetrics, topSkills, isLoading, error]);
+
+  // Show skeleton only on initial load
+  if (isLoading && items.length === 0 && !error) {
     return <PortfolioDashboardSkeleton />;
   }
 
@@ -86,104 +127,58 @@ export function PortfolioDashboard() {
         </div>
       )}
 
-      {/* HERO METRICS */}
+      {/* HERO: PORTFOLIO HEALTH 87/100 */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12"
+        className="mb-12"
       >
         <PortfolioHealthCard
           healthScore={healthScore}
-          itemsCount={items.length}
-          approvedCount={approvedItems.length}
+          totalItems={items.length}
+          approvedItems={approvedItems.length}
+          marketplaceRank={marketplaceRank}
         />
-        
-        {/* Marketplace Stats Card */}
-        <Card className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/40 glass-card-hover">
-          <div className="p-6">
-            <h3 className="text-sm uppercase tracking-wide text-slate-400 mb-2">Marketplace</h3>
-            <div className="text-3xl font-bold text-indigo-400 mb-1">{marketplaceStats.views}</div>
-            <p className="text-xs text-slate-500">Total views</p>
-            <div className="mt-4 pt-4 border-t border-slate-800/50">
-              <Badge className="capitalize bg-slate-800/50">
-                {marketplaceStats.profileStatus.replace('_', ' ')}
-              </Badge>
-            </div>
-          </div>
-        </Card>
-
-        {/* Quick Actions Card */}
-        <Card className="glass-card glass-card-hover">
-          <div className="p-6">
-            <h3 className="text-sm uppercase tracking-wide text-slate-400 mb-4">Quick Actions</h3>
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => router.push('/settings')}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Button>
-              <Button
-                variant="defender"
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => {/* TODO: Open create modal */}}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Item
-              </Button>
-            </div>
-          </div>
-        </Card>
       </motion.div>
 
-      {/* ENHANCED LAYOUT: Radar + Timeline + Grid */}
+      {/* 3-COLUMN MIDDLE SECTION */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-12"
+        className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-12"
       >
-        <div className="space-y-8">
-          <PortfolioSkillsRadar skills={topSkills} />
+        <div className="xl:col-span-1 space-y-6">
           <PortfolioTimeline data={timelineData} />
-        </div>
-        
-        {/* Pending Reviews Card */}
-        {pendingReviews.length > 0 ? (
-          <Card className="border-yellow-500/50 bg-yellow-500/5 glass-card-hover">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-yellow-400" />
-                Pending Reviews ({pendingReviews.length})
-              </h3>
-              <div className="space-y-3">
-                {pendingReviews.slice(0, 5).map((item) => (
-                  <div
-                    key={item.id}
-                    className="text-sm flex items-center justify-between p-3 rounded-lg hover:bg-yellow-500/10 transition-colors border border-yellow-500/20"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-slate-300 font-medium line-clamp-1">{item.title}</div>
-                      <div className="text-yellow-400 text-xs mt-1">Awaiting mentor review</div>
+          {pendingReviews.length > 0 && (
+            <Card className="border-yellow-500/50 bg-yellow-500/5 glass-card-hover">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-yellow-400" />
+                  Pending Reviews ({pendingReviews.length})
+                </h3>
+                <div className="space-y-3">
+                  {pendingReviews.slice(0, 5).map((item) => (
+                    <div
+                      key={item.id}
+                      className="text-sm flex items-center justify-between p-3 rounded-lg hover:bg-yellow-500/10 transition-colors border border-yellow-500/20 cursor-pointer"
+                      onClick={() => router.push(`/portfolio/${item.id}`)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-slate-300 font-medium line-clamp-1">{item.title}</div>
+                        <div className="text-yellow-400 text-xs mt-1">Awaiting mentor review</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          </Card>
-        ) : (
-          <Card className="glass-card glass-card-hover">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-slate-100 mb-4">Skills Heatmap</h3>
-              <PortfolioSkillsHeatmap topSkills={topSkills} />
-            </div>
-          </Card>
-        )}
+            </Card>
+          )}
+        </div>
+        <div className="xl:col-span-1">
+          <PortfolioSkillsRadar skills={topSkills} />
+        </div>
       </motion.div>
 
 

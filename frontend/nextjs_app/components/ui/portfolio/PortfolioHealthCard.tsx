@@ -1,97 +1,56 @@
 /**
  * Portfolio Health Card Component
- * Displays portfolio health score and metrics
+ * EXACT HERO LAYOUT: 87/100 | 12 Items | 8 Approved | #47 Rank
  */
 
 'use client';
 
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import type { PortfolioHealthMetrics } from '@/lib/portfolio/types';
 
 interface PortfolioHealthCardProps {
-  healthMetrics: PortfolioHealthMetrics | null;
+  healthScore: number; // 0-100
+  totalItems: number;
+  approvedItems: number;
+  marketplaceRank: number;
 }
 
-export function PortfolioHealthCard({ healthMetrics }: PortfolioHealthCardProps) {
-  if (!healthMetrics) {
-    return (
-      <Card className="border-indigo-500/50 bg-gradient-to-br from-indigo-500/5">
-        <div className="p-6">
-          <div className="text-slate-400 text-sm">Loading health metrics...</div>
-        </div>
-      </Card>
-    );
-  }
-
-  const healthPercentage = (healthMetrics.healthScore / 10) * 100;
-  const healthColor =
-    healthPercentage >= 80
-      ? 'text-emerald-400'
-      : healthPercentage >= 60
-      ? 'text-yellow-400'
-      : 'text-orange-400';
-
-  const healthBgColor =
-    healthPercentage >= 80
-      ? 'bg-emerald-500/20 border-emerald-500/50'
-      : healthPercentage >= 60
-      ? 'bg-yellow-500/20 border-yellow-500/50'
-      : 'bg-orange-500/20 border-orange-500/50';
-
+export function PortfolioHealthCard({ 
+  healthScore, 
+  totalItems, 
+  approvedItems, 
+  marketplaceRank 
+}: PortfolioHealthCardProps) {
   return (
-    <Card className={`border-2 ${healthBgColor}`}>
-      <div className="p-6">
-        <h3 className="text-sm font-semibold text-slate-400 mb-4">Portfolio Health</h3>
-        
-        <div className="text-center mb-6">
-          <div className={`text-5xl font-bold ${healthColor} mb-2`}>
-            {healthMetrics.healthScore.toFixed(1)}
-          </div>
-          <div className="text-sm text-slate-500">out of 10.0</div>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">Total Items</span>
-            <span className="text-slate-100 font-semibold">{healthMetrics.totalItems}</span>
+    <Card className="lg:col-span-2 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border-indigo-500/50 backdrop-blur-xl shadow-2xl mb-12">
+      <div className="p-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-8">
+          <div>
+            <h1 className="text-4xl lg:text-5xl font-black bg-gradient-to-r from-slate-100 via-indigo-100 to-slate-100 bg-clip-text text-transparent mb-4">
+              Portfolio
+            </h1>
+            <p className="text-xl text-slate-300 max-w-2xl">
+              Your verified proof of missions, mentor scores, and cyber skills transformation
+            </p>
           </div>
           
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">Approved</span>
-            <span className="text-emerald-400 font-semibold">
-              {healthMetrics.approvedItems}
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">Pending Reviews</span>
-            <span className="text-yellow-400 font-semibold">
-              {healthMetrics.pendingReviews}
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">Avg Score</span>
-            <span className="text-indigo-400 font-semibold">
-              {healthMetrics.averageScore.toFixed(1)}/10
-            </span>
-          </div>
-        </div>
-
-        {/* Health Progress Bar */}
-        <div className="mt-6">
-          <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-500 ${
-                healthPercentage >= 80
-                  ? 'bg-emerald-500'
-                  : healthPercentage >= 60
-                  ? 'bg-yellow-500'
-                  : 'bg-orange-500'
-              }`}
-              style={{ width: `${healthPercentage}%` }}
-            />
+          {/* METRICS - EXACT LAYOUT */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+            <div>
+              <div className="text-4xl font-black text-emerald-400 mb-1">{healthScore}</div>
+              <div className="text-sm uppercase tracking-wider text-slate-400">Health /100</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-slate-100">{totalItems}</div>
+              <div className="text-sm uppercase tracking-wider text-slate-400">Total Items</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-emerald-400">{approvedItems}</div>
+              <div className="text-sm uppercase tracking-wider text-slate-400">Approved</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-indigo-400">#{marketplaceRank}</div>
+              <div className="text-sm uppercase tracking-wider text-slate-400">Marketplace Rank</div>
+            </div>
           </div>
         </div>
       </div>

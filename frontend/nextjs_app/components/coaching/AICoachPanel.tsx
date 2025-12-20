@@ -1,13 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAICoaching } from '@/hooks/useAICoaching'
 import { useAuth } from '@/hooks/useAuth'
+import { usePortfolio } from '@/hooks/usePortfolio'
+import { Briefcase, TrendingUp } from 'lucide-react'
 
 export function AICoachPanel() {
+  const router = useRouter()
   const { user } = useAuth()
   const menteeId = user?.id?.toString()
   const {
@@ -19,6 +23,9 @@ export function AICoachPanel() {
     requestNewPlan,
     refreshRecommendations,
   } = useAICoaching(menteeId)
+
+  // Portfolio integration for coaching recommendations
+  const { items, approvedItems, healthMetrics } = usePortfolio(menteeId)
 
   const [isExpanded, setIsExpanded] = useState(false)
   const [isRequestingPlan, setIsRequestingPlan] = useState(false)
@@ -157,6 +164,44 @@ export function AICoachPanel() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Portfolio Integration */}
+        {isExpanded && items.length > 0 && (
+          <div className="mb-4 border-t border-white/20 pt-4">
+            <h4 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+              <Briefcase className="w-4 h-4" />
+              Portfolio Progress
+            </h4>
+            <div className="p-3 bg-och-midnight/50 rounded-lg">
+              <div className="grid grid-cols-2 gap-3 mb-2">
+                <div>
+                  <div className="text-lg font-bold text-white">{items.length}</div>
+                  <div className="text-xs text-och-steel">Total Items</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-och-mint">{approvedItems.length}</div>
+                  <div className="text-xs text-och-steel">Approved</div>
+                </div>
+              </div>
+              {healthMetrics && (
+                <div className="flex items-center gap-2 mt-2">
+                  <TrendingUp className="w-4 h-4 text-och-mint" />
+                  <span className="text-xs text-white">
+                    Health: {Math.round(healthMetrics.healthScore * 10)}/100
+                  </span>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full text-white border-white/20 hover:bg-white/10"
+                onClick={() => router.push('/portfolio')}
+              >
+                View Portfolio
+              </Button>
             </div>
           </div>
         )}

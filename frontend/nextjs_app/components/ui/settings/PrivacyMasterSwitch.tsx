@@ -186,9 +186,20 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
                       key={option.value}
                       whileHover={{ scale: isDisabled ? 1 : 1.02 }}
                       whileTap={{ scale: isDisabled ? 1 : 0.98 }}
-                      onClick={() => {
+                      onClick={async () => {
                         if (!isDisabled) {
+                          // Update settings
                           updateSettings({ portfolioVisibility: option.value });
+                          
+                          // Sync portfolio items visibility in realtime
+                          if (userId) {
+                            try {
+                              const { syncPortfolioVisibility } = await import('@/lib/portfolio/coordination');
+                              await syncPortfolioVisibility(userId, option.value);
+                            } catch (error) {
+                              console.error('Failed to sync portfolio visibility:', error);
+                            }
+                          }
                         }
                       }}
                       disabled={isDisabled}
