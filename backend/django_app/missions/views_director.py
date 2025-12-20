@@ -233,19 +233,33 @@ class MissionViewSet(viewsets.ModelViewSet):
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
-            # Check if it's a database column error
+            # Log the full error for debugging
+            import traceback
             error_message = str(e)
+            error_traceback = traceback.format_exc()
+            print(f"❌ Mission creation error: {error_message}")
+            print(f"Traceback: {error_traceback}")
+            
+            # Check if it's a database column error
             if 'column' in error_message.lower() and 'does not exist' in error_message.lower():
                 return Response(
                     {
                         'detail': 'Database schema is out of sync. Please run migrations: python manage.py migrate missions',
-                        'error': 'Missing database column. Run migrations to sync the database schema.',
+                        'error': error_message,
+                        'error_type': type(e).__name__,
                         'migration_command': 'python manage.py migrate missions'
                     },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
-            # Re-raise other errors
-            raise
+            # Return more detailed error for debugging
+            return Response(
+                {
+                    'detail': 'Failed to create mission',
+                    'error': error_message,
+                    'error_type': type(e).__name__,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def update(self, request, *args, **kwargs):
         """Update a mission (Program Director only)."""
@@ -307,7 +321,7 @@ class MissionViewSet(viewsets.ModelViewSet):
         submission_data = []
         for sub in submissions:
             # Get enrollment for cohort info
-            enrollment = Enrollment.objects.filter(user=sub.user, status='active').select_related('cohort', 'track').first()
+            enrollment = Enrollment.objects.filter(user=sub.user, status='active').select_related('cohort', 'cohort__track').first()
             
             # Get mentor assignment
             mentor_name = None

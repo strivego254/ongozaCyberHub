@@ -15,8 +15,17 @@ export default function TracksPage() {
   const router = useRouter()
   const { programs, isLoading: loadingPrograms, reload: reloadPrograms } = usePrograms()
   const [selectedProgramId, setSelectedProgramId] = useState<string>('all')
+  const [hasSetDefaultProgram, setHasSetDefaultProgram] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(12)
+  
+  // Set default to first program when programs are loaded
+  useEffect(() => {
+    if (!loadingPrograms && programs.length > 0 && !hasSetDefaultProgram && selectedProgramId === 'all') {
+      setSelectedProgramId(String(programs[0].id))
+      setHasSetDefaultProgram(true)
+    }
+  }, [programs, loadingPrograms, hasSetDefaultProgram, selectedProgramId])
   
   // Fetch selected program details dynamically to get latest updates
   const { program: selectedProgramFromApi, isLoading: loadingSelectedProgram, reload: reloadSelectedProgram } = useProgram(
@@ -28,6 +37,15 @@ export default function TracksPage() {
   const [filterType, setFilterType] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [cohortsMap, setCohortsMap] = useState<Record<string, number>>({})
+  
+  // State for assign cohorts modal
+  const [selectedTrackForAssignment, setSelectedTrackForAssignment] = useState<string | null>(null)
+  const [availableCohorts, setAvailableCohorts] = useState<any[]>([])
+  const [selectedCohortIds, setSelectedCohortIds] = useState<Set<string>>(new Set())
+  const [isLoadingCohorts, setIsLoadingCohorts] = useState(false)
+  const [isAssigningCohorts, setIsAssigningCohorts] = useState(false)
+  const [assignError, setAssignError] = useState<string | null>(null)
+  const [assignSuccess, setAssignSuccess] = useState<string | null>(null)
 
   // Use fetched program details if available, otherwise fall back to cached list
   const selectedProgram = useMemo(() => {
@@ -167,6 +185,108 @@ export default function TracksPage() {
     }
   }
 
+  // Handle opening assign cohorts modal
+  const handleOpenAssignCohorts = async (trackId: string) => {
+    setSelectedTrackForAssignment(trackId)
+    setSelectedCohortIds(new Set())
+    setAssignError(null)
+    setAssignSuccess(null)
+    setIsLoadingCohorts(true)
+    
+    try {
+      // Fetch all available cohorts (not filtered by track, so we can see all cohorts)
+      const response = await programsClient.getCohorts({ page: 1, pageSize: 1000 })
+      const allCohorts = Array.isArray(response) ? response : (response.results || [])
+      
+      // Filter out cohorts that are already assigned to this track
+      const trackCohorts = allCohorts.filter((c: any) => String(c.track) === String(trackId))
+      const trackCohortIds = new Set(trackCohorts.map((c: any) => String(c.id)))
+      
+      // Show all cohorts, but we'll indicate which are already assigned
+      setAvailableCohorts(allCohorts)
+    } catch (err: any) {
+      console.error('Failed to load cohorts:', err)
+      setAssignError(err?.message || 'Failed to load available cohorts')
+      setAvailableCohorts([])
+    } finally {
+      setIsLoadingCohorts(false)
+    }
+  }
+
+  // Handle assigning selected cohorts to track
+  const handleAssignCohorts = async () => {
+    if (!selectedTrackForAssignment) return
+    if (selectedCohortIds.size === 0) {
+      setAssignError('Please select at least one cohort to assign')
+      return
+    }
+
+    setAssignError(null)
+    setAssignSuccess(null)
+    setIsAssigningCohorts(true)
+
+    try {
+      // Update each selected cohort to assign it to the track
+      const updatePromises = Array.from(selectedCohortIds).map((cohortId) =>
+        programsClient.updateCohort(cohortId, { track: selectedTrackForAssignment })
+      )
+
+      await Promise.all(updatePromises)
+      
+      setAssignSuccess(`Successfully assigned ${selectedCohortIds.size} cohort(s) to the track`)
+      
+      // Reload tracks and cohorts map
+      await reload()
+      
+      // Reload cohort counts - refetch all tracks to get updated data
+      const updatedTracksResponse = await programsClient.getTracks(selectedProgramId === 'all' ? undefined : selectedProgramId)
+      const updatedTracks = Array.isArray(updatedTracksResponse) ? updatedTracksResponse : []
+      const counts: Record<string, number> = {}
+      await Promise.all(
+        updatedTracks.map(async (track: any) => {
+          if (!track.id) return
+          try {
+            const res = await programsClient.getCohorts({ trackId: track.id, page: 1, pageSize: 1 })
+            counts[track.id] = typeof res?.count === 'number' ? res.count : 0
+          } catch (err) {
+            counts[track.id] = 0
+          }
+        })
+      )
+      setCohortsMap(counts)
+
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setSelectedTrackForAssignment(null)
+        setSelectedCohortIds(new Set())
+        setAssignSuccess(null)
+      }, 2000)
+    } catch (err: any) {
+      console.error('Failed to assign cohorts:', err)
+      const errorMessage = err?.response?.data?.error || 
+                          err?.response?.data?.detail || 
+                          err?.response?.data?.track?.[0] ||
+                          err?.message || 
+                          'Failed to assign cohorts to track'
+      setAssignError(errorMessage)
+    } finally {
+      setIsAssigningCohorts(false)
+    }
+  }
+
+  // Toggle cohort selection
+  const toggleCohortSelection = (cohortId: string) => {
+    setSelectedCohortIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(cohortId)) {
+        newSet.delete(cohortId)
+      } else {
+        newSet.add(cohortId)
+      }
+      return newSet
+    })
+  }
+
   if (isLoading || loadingPrograms || (selectedProgramId !== 'all' && loadingSelectedProgram)) {
     return (
       <RouteGuard>
@@ -221,17 +341,25 @@ export default function TracksPage() {
               </div>
               <div className="flex gap-3">
                 {selectedProgramId !== 'all' && (
-                  <Link href={`/dashboard/director/programs/${selectedProgramId}`}>
+                  <Link href={`/dashboard/director/programs/${selectedProgramId}/edit`}>
                     <Button variant="defender" size="sm">
-                      Manage Program
+                      Manage Tracks
                     </Button>
                   </Link>
                 )}
-                <Link href="/dashboard/director/programs/new">
-                  <Button variant="outline" size="sm">
-                    + Create Program
-                  </Button>
-                </Link>
+                {selectedProgramId !== 'all' ? (
+                  <Link href={`/dashboard/director/programs/${selectedProgramId}/edit`}>
+                    <Button variant="outline" size="sm">
+                      + Create Track
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href="/dashboard/director/programs/new">
+                    <Button variant="outline" size="sm">
+                      + Create Program
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -246,6 +374,7 @@ export default function TracksPage() {
                     value={selectedProgramId}
                     onChange={(e) => {
                       setSelectedProgramId(e.target.value)
+                      setHasSetDefaultProgram(true) // Mark as manually changed
                       setSearchQuery('') // Reset search when changing program
                       setFilterType('all') // Reset filters
                       // Reload programs list to ensure we have latest data
@@ -503,10 +632,10 @@ export default function TracksPage() {
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    router.push(`/dashboard/director/cohorts/new?track_id=${track.id}`)
+                                    handleOpenAssignCohorts(track.id!)
                                   }}
                                 >
-                                  + Cohort
+                                  Cohorts
                                 </Button>
                               )}
                               {track.id && (
@@ -591,6 +720,172 @@ export default function TracksPage() {
             </div>
           )}
         </div>
+
+        {/* Assign Cohorts Modal */}
+        {selectedTrackForAssignment && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-och-steel/20 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Assign Cohorts to Track</h3>
+                  <p className="text-sm text-och-steel mt-1">
+                    {tracks.find((t) => t.id === selectedTrackForAssignment)?.name}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedTrackForAssignment(null)
+                    setSelectedCohortIds(new Set())
+                    setAssignError(null)
+                    setAssignSuccess(null)
+                  }}
+                  disabled={isAssigningCohorts}
+                >
+                  Close
+                </Button>
+              </div>
+
+              <div className="p-6 overflow-y-auto flex-1">
+                {assignError && (
+                  <div className="p-3 rounded-lg border border-och-orange/50 bg-och-orange/10 text-och-orange text-sm mb-4">
+                    {assignError}
+                  </div>
+                )}
+                {assignSuccess && (
+                  <div className="p-3 rounded-lg border border-och-mint/50 bg-och-mint/10 text-och-mint text-sm mb-4">
+                    {assignSuccess}
+                  </div>
+                )}
+
+                {isLoadingCohorts ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-och-mint mx-auto mb-4"></div>
+                      <p className="text-och-steel">Loading available cohorts...</p>
+                    </div>
+                  </div>
+                ) : availableCohorts.length === 0 ? (
+                  <div className="text-center py-12 text-och-steel">
+                    <p>No cohorts available. Create cohorts first.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-och-steel">
+                        Select cohorts to assign to this track ({selectedCohortIds.size} selected)
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Select all cohorts that aren't already assigned to this track
+                          const trackId = selectedTrackForAssignment
+                          const notAssignedCohorts = availableCohorts.filter(
+                            (c: any) => String(c.track) !== String(trackId)
+                          )
+                          setSelectedCohortIds(new Set(notAssignedCohorts.map((c: any) => String(c.id))))
+                        }}
+                      >
+                        Select All Available
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                      {availableCohorts.map((cohort: any) => {
+                        const isAlreadyAssigned = String(cohort.track) === String(selectedTrackForAssignment)
+                        const isSelected = selectedCohortIds.has(String(cohort.id))
+                        
+                        return (
+                          <div
+                            key={cohort.id}
+                            className={`p-4 rounded-lg border ${
+                              isAlreadyAssigned
+                                ? 'border-och-mint/50 bg-och-mint/10'
+                                : isSelected
+                                ? 'border-och-defender bg-och-defender/10'
+                                : 'border-och-steel/20 bg-och-midnight/50'
+                            } cursor-pointer hover:border-och-defender/50 transition-colors`}
+                            onClick={() => !isAlreadyAssigned && toggleCohortSelection(String(cohort.id))}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  {!isAlreadyAssigned && (
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => toggleCohortSelection(String(cohort.id))}
+                                      className="w-4 h-4 text-och-defender rounded focus:ring-och-defender"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  )}
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold text-white">{cohort.name}</span>
+                                      {isAlreadyAssigned && (
+                                        <Badge variant="mint">Already Assigned</Badge>
+                                      )}
+                                      <Badge
+                                        variant={
+                                          cohort.status === 'running'
+                                            ? 'mint'
+                                            : cohort.status === 'active'
+                                            ? 'defender'
+                                            : cohort.status === 'closed'
+                                            ? 'steel'
+                                            : 'orange'
+                                        }
+                                      >
+                                        {cohort.status}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-xs text-och-steel mt-1">
+                                      {cohort.track_name && `Current Track: ${cohort.track_name}`}
+                                      {cohort.start_date && ` • Start: ${new Date(cohort.start_date).toLocaleDateString()}`}
+                                      {cohort.seat_cap && ` • Capacity: ${cohort.seat_cap} seats`}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-och-steel/20 flex gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedTrackForAssignment(null)
+                    setSelectedCohortIds(new Set())
+                    setAssignError(null)
+                    setAssignSuccess(null)
+                  }}
+                  disabled={isAssigningCohorts}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="defender"
+                  size="sm"
+                  onClick={handleAssignCohorts}
+                  disabled={isAssigningCohorts || selectedCohortIds.size === 0 || isLoadingCohorts}
+                  className="flex-1"
+                >
+                  {isAssigningCohorts ? 'Assigning...' : `Assign ${selectedCohortIds.size} Cohort(s)`}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
       </DirectorLayout>
     </RouteGuard>
   )

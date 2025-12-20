@@ -349,8 +349,8 @@ export default function CompetencyRegistryPage() {
                           <Link href={`/dashboard/mentor/missions/${item.missionId}`}>
                             <Button variant="defender" size="sm" title="Mentor view">
                               View (Mentor)
-                            </Button>
-                          </Link>
+                          </Button>
+                        </Link>
                         </div>
                       </div>
                       <div className="mt-2">
@@ -403,13 +403,13 @@ export default function CompetencyRegistryPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                           <div className="flex items-center gap-2">
-                            <Link
-                              href={`/dashboard/director/curriculum/missions/${mission.id}`}
-                              className="font-semibold text-white hover:text-och-gold"
+                              <Link
+                                href={`/dashboard/director/curriculum/missions/${mission.id}`}
+                                className="font-semibold text-white hover:text-och-gold"
                               title="Director view"
-                            >
-                              {mission.code}: {mission.title}
-                            </Link>
+                              >
+                                {mission.code}: {mission.title}
+                              </Link>
                             <Link
                               href={`/dashboard/mentor/missions/${mission.id}`}
                               className="text-xs text-och-defender hover:text-och-mint"
@@ -424,7 +424,7 @@ export default function CompetencyRegistryPage() {
                             </p>
                           </div>
                           <div className="flex gap-2">
-                            <Link href={`/dashboard/director/curriculum/missions/${mission.id}`}>
+                          <Link href={`/dashboard/director/curriculum/missions/${mission.id}`}>
                               <Button variant="outline" size="sm" title="Director view">
                                 Director View
                               </Button>
@@ -432,8 +432,8 @@ export default function CompetencyRegistryPage() {
                             <Link href={`/dashboard/mentor/missions/${mission.id}`}>
                               <Button variant="defender" size="sm" title="Mentor view">
                                 Mentor View
-                              </Button>
-                            </Link>
+                            </Button>
+                          </Link>
                           </div>
                         </div>
 

@@ -12,6 +12,7 @@ from .views import (
     director_dashboard
 )
 from .views.calendar_views import CalendarEventViewSet
+from .views.director_views import DirectorCohortViewSet
 from .director_dashboard_views import (
     director_dashboard_summary,
     director_cohorts_list,
@@ -37,7 +38,7 @@ router.register(r'calendar-events', CalendarEventViewSet, basename='calendar-eve
 director_router = DefaultRouter()
 # director_router.register(r'programs', DirectorProgramViewSet, basename='director-program')
 # director_router.register(r'tracks', DirectorTrackViewSet, basename='director-track')
-# director_router.register(r'cohorts', DirectorCohortViewSet, basename='director-cohort')
+director_router.register(r'cohorts', DirectorCohortViewSet, basename='director-cohort')
 # director_router.register(r'mentors', DirectorMentorViewSet, basename='director-mentor')
 director_router.register(r'rules', DirectorProgramRuleViewSet, basename='director-rule')
 # director_router.register(r'dashboard', DirectorDashboardViewSet, basename='director-dashboard')

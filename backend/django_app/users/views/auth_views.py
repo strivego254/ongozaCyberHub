@@ -814,12 +814,15 @@ class ProfileView(APIView):
             enrollment = Enrollment.objects.filter(
                 user=user,
                 status='active'
-            ).select_related('track', 'cohort').first()
+            ).select_related('cohort', 'cohort__track').first()
             
             role_specific_data['student'] = {
-                'track_name': enrollment.track.name if enrollment and enrollment.track else None,
+                'track_name': enrollment.cohort.track.name if enrollment and enrollment.cohort and enrollment.cohort.track else None,
                 'cohort_name': enrollment.cohort.name if enrollment and enrollment.cohort else None,
                 'enrollment_status': enrollment.status if enrollment else None,
+                'enrollment_type': enrollment.enrollment_type if enrollment else None,
+                'seat_type': enrollment.seat_type if enrollment else None,
+                'payment_status': enrollment.payment_status if enrollment else None,
             }
         
         # Director-specific data

@@ -113,11 +113,9 @@ class Migration(migrations.Migration):
                 ),
             ],
             state_operations=[
-                migrations.RenameField(
-                    model_name='missionartifact',
-                    old_name='type',
-                    new_name='kind',
-                ),
+                # Note: State rename removed to avoid conflicts with merge migration
+                # The database operation handles the rename conditionally
+                # The merge migration (0010) will ensure the state is correct
             ]
         ),
         migrations.AlterField(

@@ -73,16 +73,59 @@ export default function EditProgramPage() {
   }
 
   const handleAddTrack = async () => {
-    if (!newTrack.name || !newTrack.key) {
-      setTrackError('Track name and key are required')
+    // Validate required fields
+    if (!newTrack.name || !newTrack.name.trim()) {
+      setTrackError('Track name is required')
       return
     }
+    
+    if (!newTrack.key || !newTrack.key.trim()) {
+      setTrackError('Track key is required')
+      return
+    }
+    
+      // Check for duplicate key in existing tracks (case-insensitive)
+      const normalizedKey = newTrack.key.trim().toLowerCase()
+      const duplicateTrack = tracks.find(t => {
+        const existingKey = t.key ? String(t.key).toLowerCase() : ''
+        return existingKey === normalizedKey
+      })
+      if (duplicateTrack) {
+        setTrackError(`A track with key "${newTrack.key}" already exists in this program. Please choose a different key.`)
+        return
+      }
+    
     setTrackError(null)
     try {
-      await createTrack({
-        ...newTrack,
-        program: programId,
-      })
+      // Prepare track data with required fields
+      const trackData: any = {
+        name: newTrack.name.trim(),
+        key: newTrack.key.trim(),
+        program: programId, // Program ID as UUID string
+        track_type: newTrack.track_type || 'primary',
+      }
+      
+      // Add optional fields
+      if (newTrack.description && newTrack.description.trim()) {
+        trackData.description = newTrack.description.trim()
+      }
+      
+      if (newTrack.director) {
+        // Ensure director is a number (User ID)
+        trackData.director = typeof newTrack.director === 'string' ? parseInt(newTrack.director) : newTrack.director
+      }
+      
+      // Set missions - ensure it's always an array
+      trackData.missions = Array.isArray(newTrack.missions) && newTrack.missions.length > 0 
+        ? newTrack.missions 
+        : []
+      
+      // Set competencies - ensure it's always an object
+      trackData.competencies = {}
+      
+      console.log('Creating track with data:', trackData)
+      
+      await createTrack(trackData)
       setNewTrack({
         name: '',
         key: '',
@@ -94,7 +137,133 @@ export default function EditProgramPage() {
       reloadTracks()
       reloadProgram()
     } catch (err: any) {
-      setTrackError(err.message || 'Failed to create track')
+      console.error('Failed to create track:', err)
+      console.error('Error details:', {
+        message: err?.message,
+        data: err?.data,
+        response: err?.response,
+        status: err?.status,
+        fullError: err
+      })
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to create track'
+      
+      // Check ApiError format (from fetcher)
+      if (err?.data) {
+        if (typeof err.data === 'string') {
+          errorMessage = err.data
+        } else if (err.data.detail) {
+          errorMessage = err.data.detail
+        } else if (err.data.error) {
+          errorMessage = err.data.error
+        } else if (typeof err.data === 'object') {
+          // Handle validation errors - check for non_field_errors first
+          if (err.data.non_field_errors) {
+            const nonFieldErrors = Array.isArray(err.data.non_field_errors) 
+              ? err.data.non_field_errors.join(', ')
+              : err.data.non_field_errors
+            
+            // Check if it's a unique constraint error
+            if (String(nonFieldErrors).includes('program, key') || String(nonFieldErrors).includes('unique set')) {
+              errorMessage = `A track with key "${newTrack.key}" already exists in this program. Please choose a different key.`
+            } else {
+              errorMessage = nonFieldErrors
+            }
+          } else {
+            // Handle field-specific errors
+            const errors = Object.entries(err.data)
+              .map(([field, messages]: [string, any]) => {
+                let msg = Array.isArray(messages) ? messages.join(', ') : String(messages)
+                
+                // Make error messages more user-friendly for unique constraint violations
+                if (msg.includes('unique') || msg.includes('already exists') || msg.includes('must make a unique set')) {
+                  if (field === 'key' || (msg.includes('program') && msg.includes('key')) || msg.includes('program, key')) {
+                    return `A track with key "${newTrack.key}" already exists in this program. Please choose a different key.`
+                  }
+                }
+                
+                // Handle the specific Django unique constraint error message
+                if (msg.includes('program, key') && msg.includes('unique set')) {
+                  return `A track with key "${newTrack.key}" already exists in this program. Please choose a different key.`
+                }
+                
+                // Format field name for display
+                const fieldName = field === 'key' ? 'Track Key' : 
+                                 field === 'name' ? 'Track Name' :
+                                 field === 'program' ? 'Program' :
+                                 field === 'non_field_errors' ? '' :
+                                 field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ')
+                
+                return fieldName ? `${fieldName}: ${msg}` : msg
+              })
+              .filter(msg => msg.trim() !== '') // Remove empty messages
+              .join('; ')
+            errorMessage = errors || errorMessage
+          }
+        }
+      } 
+      // Check response format (from axios/fetch)
+      else if (err?.response?.data) {
+        if (typeof err.response.data === 'string') {
+          // Check if it's a unique constraint error
+          if (err.response.data.includes('program, key') || err.response.data.includes('unique set')) {
+            errorMessage = `A track with key "${newTrack.key}" already exists in this program. Please choose a different key.`
+          } else {
+            errorMessage = err.response.data
+          }
+        } else if (err.response.data.detail) {
+          if (String(err.response.data.detail).includes('program, key') || String(err.response.data.detail).includes('unique set')) {
+            errorMessage = `A track with key "${newTrack.key}" already exists in this program. Please choose a different key.`
+          } else {
+            errorMessage = err.response.data.detail
+          }
+        } else if (err.response.data.error) {
+          if (String(err.response.data.error).includes('program, key') || String(err.response.data.error).includes('unique set')) {
+            errorMessage = `A track with key "${newTrack.key}" already exists in this program. Please choose a different key.`
+          } else {
+            errorMessage = err.response.data.error
+          }
+        } else if (err.response.data.non_field_errors) {
+          const nonFieldErrors = Array.isArray(err.response.data.non_field_errors) 
+            ? err.response.data.non_field_errors.join(', ')
+            : err.response.data.non_field_errors
+          
+          if (String(nonFieldErrors).includes('program, key') || String(nonFieldErrors).includes('unique set')) {
+            errorMessage = `A track with key "${newTrack.key}" already exists in this program. Please choose a different key.`
+          } else {
+            errorMessage = nonFieldErrors
+          }
+        } else if (typeof err.response.data === 'object') {
+          const errors = Object.entries(err.response.data)
+            .map(([field, messages]: [string, any]) => {
+              let msg = Array.isArray(messages) ? messages.join(', ') : String(messages)
+              
+              // Handle unique constraint error
+              if (msg.includes('program, key') || msg.includes('unique set')) {
+                return `A track with key "${newTrack.key}" already exists in this program. Please choose a different key.`
+              }
+              
+              // Format field name for display
+              const fieldName = field === 'key' ? 'Track Key' : 
+                               field === 'name' ? 'Track Name' :
+                               field === 'program' ? 'Program' :
+                               field === 'non_field_errors' ? '' :
+                               field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' ')
+              
+              return fieldName ? `${fieldName}: ${msg}` : msg
+            })
+            .filter(msg => msg.trim() !== '')
+            .join('; ')
+          errorMessage = errors || errorMessage
+        }
+      } 
+      // Fallback to message
+      else if (err?.message) {
+        errorMessage = err.message
+      }
+      
+      setTrackError(errorMessage)
     }
   }
 

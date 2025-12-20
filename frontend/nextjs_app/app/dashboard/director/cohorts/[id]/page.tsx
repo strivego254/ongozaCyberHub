@@ -7,8 +7,8 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { useCohort, useCohortDashboard } from '@/hooks/usePrograms'
-import { programsClient, type CalendarEvent, type Enrollment, type MentorAssignment } from '@/services/programsClient'
+import { useCohort, useCohortDashboard, useTracks, useUpdateCohort, useTrack } from '@/hooks/usePrograms'
+import { programsClient, type CalendarEvent, type Enrollment, type MentorAssignment, type Track } from '@/services/programsClient'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
@@ -19,11 +19,19 @@ export default function CohortDetailPage() {
   const cohortId = params.id as string
   const { cohort, isLoading: loadingCohort, reload: reloadCohort } = useCohort(cohortId)
   const { dashboard, isLoading: loadingDashboard } = useCohortDashboard(cohortId)
+  const { tracks, isLoading: tracksLoading } = useTracks()
+  const { updateCohort, isLoading: isUpdatingTrack } = useUpdateCohort()
+  // Fetch the specific track assigned to this cohort
+  const { track: fetchedTrack, isLoading: loadingTrack, reload: reloadTrack } = useTrack(cohort?.track || '')
   
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [mentors, setMentors] = useState<MentorAssignment[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showTrackAssignmentModal, setShowTrackAssignmentModal] = useState(false)
+  const [selectedTrackId, setSelectedTrackId] = useState<string>('')
+  const [trackAssignmentError, setTrackAssignmentError] = useState<string | null>(null)
+  const [trackAssignmentSuccess, setTrackAssignmentSuccess] = useState<string | null>(null)
 
   // Calculate derived values - moved before early returns to satisfy Rules of Hooks
   const activeEnrollments = enrollments.filter(e => e.status === 'active')
@@ -127,6 +135,71 @@ export default function CohortDetailPage() {
     }
     loadData()
   }, [cohortId])
+
+  // Handle track assignment
+  const handleAssignTrack = async () => {
+    if (!selectedTrackId) {
+      setTrackAssignmentError('Please select a track')
+      return
+    }
+
+    setTrackAssignmentError(null)
+    setTrackAssignmentSuccess(null)
+
+    try {
+      await updateCohort(cohortId, { track: selectedTrackId })
+      
+      // Reload cohort data to reflect the changes
+      await reloadCohort()
+      
+      // Reload track data to get the updated track details including key
+      // Note: useTrack will automatically reload when cohort.track changes,
+      // but we can also manually fetch the track to ensure we have the latest data
+      if (selectedTrackId) {
+        try {
+          const updatedTrack = await programsClient.getTrack(selectedTrackId)
+          // The useTrack hook will pick this up when cohort.track updates
+        } catch (err) {
+          console.error('Failed to reload track:', err)
+        }
+      }
+      
+      // Reload other data that might be affected
+      const [events, enrolls, mentorAssignments] = await Promise.all([
+        programsClient.getCohortCalendar(cohortId),
+        programsClient.getCohortEnrollments(cohortId),
+        programsClient.getCohortMentors(cohortId),
+      ])
+      setCalendarEvents(events)
+      setEnrollments(enrolls)
+      setMentors(mentorAssignments)
+      
+      setTrackAssignmentSuccess('Track assigned successfully!')
+      setSelectedTrackId('')
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowTrackAssignmentModal(false)
+        setTrackAssignmentSuccess(null)
+      }, 2000)
+    } catch (err: any) {
+      console.error('Failed to assign track:', err)
+      setTrackAssignmentError(err?.message || 'Failed to assign track. Please try again.')
+    }
+  }
+
+  // Get current track details - prefer fetched track, fallback to tracks array
+  const currentTrack = useMemo(() => {
+    if (!cohort?.track) return null
+    // Use the specifically fetched track if available (has full details including key)
+    if (fetchedTrack) return fetchedTrack
+    // Fallback to finding in tracks array
+    if (tracks.length) {
+      const foundTrack = tracks.find(t => String(t.id) === String(cohort.track))
+      if (foundTrack) return foundTrack
+    }
+    return null
+  }, [cohort?.track, fetchedTrack, tracks])
 
   if (loadingCohort || isLoading) {
     return (
@@ -238,8 +311,51 @@ export default function CohortDetailPage() {
               {/* Cohort Details */}
               <Card>
                 <div className="p-6">
-                  <h2 className="text-xl font-bold text-white mb-4">Cohort Details</h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-white">Cohort Details</h2>
+                    <Button
+                      variant="defender"
+                      size="sm"
+                      onClick={() => {
+                        setShowTrackAssignmentModal(true)
+                        setSelectedTrackId(cohort.track || '')
+                        setTrackAssignmentError(null)
+                        setTrackAssignmentSuccess(null)
+                      }}
+                    >
+                      {cohort.track ? 'Change Track' : 'Assign Track'}
+                    </Button>
+                  </div>
                   <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-och-steel">Track</span>
+                      <div className="flex items-center gap-2">
+                        {currentTrack ? (
+                          <>
+                            <span className="text-white font-medium">{currentTrack.name}</span>
+                            <Badge variant={currentTrack.track_type === 'primary' ? 'defender' : 'gold'}>
+                              {currentTrack.track_type}
+                            </Badge>
+                          </>
+                        ) : cohort.track_name ? (
+                          <span className="text-white">{cohort.track_name}</span>
+                        ) : (
+                          <span className="text-och-steel italic">No track assigned</span>
+                        )}
+                      </div>
+                    </div>
+                    {cohort.track && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-och-steel">Track Key</span>
+                        {currentTrack?.key ? (
+                          <span className="text-white font-medium">{currentTrack.key}</span>
+                        ) : loadingTrack || tracksLoading ? (
+                          <span className="text-och-steel text-sm">Loading...</span>
+                        ) : (
+                          <span className="text-och-steel italic text-sm">Not available</span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-och-steel">Mode</span>
                       <span className="text-white capitalize">{cohort.mode}</span>
@@ -496,8 +612,134 @@ export default function CohortDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Track Assignment Modal */}
+        {showTrackAssignmentModal && (
+          <div className="fixed inset-0 bg-och-midnight/90 z-50 flex items-center justify-center p-4">
+            <Card className="w-full max-w-2xl">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">
+                    {cohort.track ? 'Change Track Assignment' : 'Assign Track to Cohort'}
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowTrackAssignmentModal(false)
+                      setSelectedTrackId('')
+                      setTrackAssignmentError(null)
+                      setTrackAssignmentSuccess(null)
+                    }}
+                  >
+                    ✕
+                  </Button>
+                </div>
+
+                <p className="text-sm text-och-steel mb-4">
+                  Select a track to assign to <span className="text-white font-medium">{cohort.name}</span>
+                </p>
+
+                {trackAssignmentError && (
+                  <div className="mb-4 p-3 bg-och-orange/20 border border-och-orange/50 rounded text-sm text-och-orange">
+                    {trackAssignmentError}
+                  </div>
+                )}
+
+                {trackAssignmentSuccess && (
+                  <div className="mb-4 p-3 bg-och-mint/20 border border-och-mint/50 rounded text-sm text-och-mint">
+                    {trackAssignmentSuccess}
+                  </div>
+                )}
+
+                {tracksLoading ? (
+                  <div className="text-center py-8">
+                    <div className="text-och-steel">Loading tracks...</div>
+                  </div>
+                ) : tracks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-och-steel mb-4">No tracks available</div>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push('/dashboard/director/tracks')}
+                    >
+                      Create Track
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <label className="block text-sm text-och-steel mb-2">Select Track</label>
+                      <select
+                        value={selectedTrackId}
+                        onChange={(e) => setSelectedTrackId(e.target.value)}
+                        className="w-full px-4 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white focus:outline-none focus:ring-2 focus:ring-och-defender focus:border-och-defender"
+                      >
+                        <option value="">-- Select a track --</option>
+                        {tracks.map((track) => (
+                          <option key={track.id} value={track.id}>
+                            {track.name} {track.track_type === 'primary' ? '(Primary)' : '(Cross-Track)'}
+                            {track.program_name ? ` - ${track.program_name}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedTrackId && (
+                      <div className="mb-4 p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20">
+                        {(() => {
+                          const selectedTrack = tracks.find(t => String(t.id) === String(selectedTrackId))
+                          if (!selectedTrack) return null
+                          return (
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="text-white font-semibold">{selectedTrack.name}</h3>
+                                <Badge variant={selectedTrack.track_type === 'primary' ? 'defender' : 'gold'}>
+                                  {selectedTrack.track_type}
+                                </Badge>
+                              </div>
+                              {selectedTrack.description && (
+                                <p className="text-sm text-och-steel mb-2">{selectedTrack.description}</p>
+                              )}
+                              {selectedTrack.program_name && (
+                                <p className="text-xs text-och-steel">Program: {selectedTrack.program_name}</p>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 mt-6">
+                      <Button
+                        variant="defender"
+                        onClick={handleAssignTrack}
+                        disabled={!selectedTrackId || isUpdatingTrack}
+                      >
+                        {isUpdatingTrack ? 'Assigning...' : cohort.track ? 'Update Track' : 'Assign Track'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowTrackAssignmentModal(false)
+                          setSelectedTrackId('')
+                          setTrackAssignmentError(null)
+                          setTrackAssignmentSuccess(null)
+                        }}
+                        disabled={isUpdatingTrack}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </Card>
+          </div>
+        )}
       </DirectorLayout>
     </RouteGuard>
   )
 }
+
 

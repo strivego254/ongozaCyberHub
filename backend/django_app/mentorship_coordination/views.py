@@ -279,6 +279,122 @@ def mentor_mentee_talentscope(request, mentor_id, mentee_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def mentor_cohort_missions(request, mentor_id):
+    """
+    GET /api/v1/mentors/{mentor_id}/missions/cohorts
+    List missions from cohorts assigned to the mentor (read-only view).
+    """
+    if str(request.user.id) != str(mentor_id):
+        return Response({'error': 'You can only access your own missions view'}, status=status.HTTP_403_FORBIDDEN)
+
+    mentor = get_current_mentor(request.user)
+
+    # Get cohorts assigned to this mentor
+    try:
+        from programs.models import MentorAssignment, Cohort
+        from missions.models import Mission
+        
+        cohort_ids = MentorAssignment.objects.filter(
+            mentor=mentor, 
+            active=True
+        ).values_list('cohort_id', flat=True)
+        
+        if not cohort_ids:
+            return Response({
+                'results': [],
+                'count': 0,
+                'page': 1,
+                'page_size': 20,
+                'has_next': False,
+                'has_previous': False
+            })
+        
+        # Get tracks from assigned cohorts
+        cohorts = Cohort.objects.filter(id__in=cohort_ids).select_related('track')
+        track_ids = [cohort.track_id for cohort in cohorts if cohort.track_id]
+        
+        if not track_ids:
+            return Response({
+                'results': [],
+                'count': 0,
+                'page': 1,
+                'page_size': 20,
+                'has_next': False,
+                'has_previous': False
+            })
+        
+        # Get missions for these tracks
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        page = max(page, 1)
+        page_size = min(max(page_size, 1), 100)
+        offset = (page - 1) * page_size
+        
+        # Build query
+        qs = Mission.objects.filter(track_id__in=track_ids)
+        
+        # Apply filters
+        difficulty = request.query_params.get('difficulty')
+        if difficulty and difficulty != 'all':
+            qs = qs.filter(difficulty=difficulty)
+        
+        track_key = request.query_params.get('track')
+        if track_key and track_key != 'all':
+            qs = qs.filter(track_key=track_key)
+        
+        search = request.query_params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(title__icontains=search) |
+                Q(code__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        total = qs.count()
+        missions = qs.order_by('code', 'title')[offset:offset + page_size]
+        
+        # Build track lookup for context
+        from programs.models import Track
+        tracks = Track.objects.filter(id__in=track_ids).select_related('program')
+        track_lookup = {}
+        for track in tracks:
+            track_lookup[str(track.id)] = {
+                'name': track.name,
+                'key': track.key,
+                'program_id': str(track.program_id) if track.program_id else None,
+                'program_name': track.program.name if track.program else None,
+            }
+        
+        # Serialize missions
+        from missions.serializers import MissionSerializer
+        serializer = MissionSerializer(
+            missions, 
+            many=True,
+            context={'track_lookup': track_lookup, 'request': request}
+        )
+        
+        return Response({
+            'results': serializer.data,
+            'count': total,
+            'total': total,
+            'page': page,
+            'page_size': page_size,
+            'has_next': offset + page_size < total,
+            'has_previous': page > 1
+        })
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching mentor cohort missions: {e}")
+        return Response(
+            {'error': 'Failed to fetch missions'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def mentor_mission_submissions(request, mentor_id):
     """
     GET /api/v1/mentors/{mentor_id}/missions/submissions
@@ -1570,71 +1686,8 @@ def mentor_flags(request, mentor_id):
     return Response(serializer.data)
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def mentor_mentee_talentscope(request, mentor_id, mentee_id):
-    """
-    GET /api/v1/mentors/{mentor_id}/mentees/{mentee_id}/talentscope
-    Get TalentScope mentor view for a mentee.
-    """
-    # Verify the mentor_id matches the authenticated user
-    if str(request.user.id) != str(mentor_id):
-        return Response(
-            {'error': 'You can only view your own mentees'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
-    mentor = get_current_mentor(request.user)
-    
-    # Verify assignment
-    assignment = MenteeMentorAssignment.objects.filter(
-        mentor=mentor,
-        mentee_id=mentee_id,
-        status='active'
-    ).first()
-    
-    if not assignment:
-        return Response(
-            {'error': 'Mentee not assigned to this mentor'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    try:
-        mentee = User.objects.get(id=mentee_id)
-    except User.DoesNotExist:
-        return Response(
-            {'error': 'Mentee not found'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    # Get TalentScope data (simplified - would integrate with actual TalentScope service)
-    from student_dashboard.models import StudentDashboardCache
-    
-    try:
-        cache = StudentDashboardCache.objects.filter(user=mentee).only(
-            'readiness_score', 'estimated_readiness_window', 'skills_heatmap'
-        ).first()
-        
-        skills_heatmap = cache.skills_heatmap if cache and hasattr(cache, 'skills_heatmap') else {}
-        readiness_score = cache.readiness_score if cache and hasattr(cache, 'readiness_score') else None
-    except Exception as e:
-        logger.warning(f"Failed to load TalentScope cache: {e}")
-        skills_heatmap = {}
-        readiness_score = None
-    
-    return Response({
-        'mentee_id': str(mentee.id),
-        'mentee_name': mentee.get_full_name() or mentee.email,
-        'readiness_score': float(readiness_score) if readiness_score else None,
-        'skills_heatmap': skills_heatmap if isinstance(skills_heatmap, dict) else {},
-        'ingested_signals': {
-            'mission_scores': MissionSubmission.objects.filter(user=mentee).count(),
-            'habit_logs': 0,  # Would integrate with coaching module
-            'mentor_evaluations': 0,  # Would integrate with evaluation system
-            'community_engagement': 0,  # Would integrate with community module
-        },
-        'performance_trend': []  # Would come from TalentScope
-    })
+# Note: Duplicate function removed - using the more comprehensive version at line 126
+# which uses _mentor_can_view_mentee to check both direct assignments and cohort-based assignments
 
 
 @api_view(['GET'])

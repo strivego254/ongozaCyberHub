@@ -161,7 +161,7 @@ export function getUserRoles(user: User | null): Role[] {
     if (normalized === 'sponsor_admin' || normalized === 'sponsor' || normalized === 'sponsor/employer admin' || normalized === 'sponsoremployer admin') return 'sponsor_admin'
     if (normalized === 'analyst') return 'analyst'
     if (normalized === 'employer') return 'employer'
-    if (normalized === 'finance') return 'finance'
+    if (normalized === 'finance' || normalized === 'finance_admin') return 'finance'
     
     // Log unknown roles for debugging
     console.warn('⚠️ Unknown role name:', roleName, 'normalized:', normalized, 'from user role:', ur)

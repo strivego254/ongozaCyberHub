@@ -353,6 +353,83 @@ class DirectorService:
         return {'deleted': deleted_count, 'total': len(enrollment_ids)}
     
     @staticmethod
+    @transaction.atomic
+    def bulk_create_enrollments(
+        cohort: Cohort,
+        user_ids: List[str],
+        user: User,
+        seat_type: str = 'paid',
+        enrollment_type: str = 'director'
+    ) -> Dict[str, Any]:
+        """Bulk create enrollments for multiple users."""
+        if not DirectorService.can_manage_cohort(user, cohort):
+            raise PermissionError("User cannot manage this cohort")
+        
+        from programs.core_services import EnrollmentService
+        from django.contrib.auth import get_user_model
+        UserModel = get_user_model()
+        
+        created = []
+        waitlisted = []
+        errors = []
+        
+        for user_id in user_ids:
+            try:
+                # Convert user_id to int if needed
+                if isinstance(user_id, str):
+                    try:
+                        user_id = int(user_id)
+                    except ValueError:
+                        errors.append({'user_id': str(user_id), 'error': 'Invalid user ID format'})
+                        continue
+                
+                # Get user
+                try:
+                    target_user = UserModel.objects.get(id=user_id)
+                except UserModel.DoesNotExist:
+                    errors.append({'user_id': str(user_id), 'error': 'User not found'})
+                    continue
+                
+                # Create enrollment using EnrollmentService
+                enrollment, is_waitlisted, error = EnrollmentService.create_enrollment(
+                    user=target_user,
+                    cohort=cohort,
+                    enrollment_type=enrollment_type,
+                    seat_type=seat_type,
+                    org=None
+                )
+                
+                if error:
+                    errors.append({'user_id': str(user_id), 'error': error})
+                elif is_waitlisted:
+                    waitlisted.append({
+                        'user_id': str(user_id),
+                        'waitlist_id': str(enrollment.id) if enrollment else None
+                    })
+                else:
+                    created.append({
+                        'id': str(enrollment.id),
+                        'user_id': str(user_id),
+                        'status': enrollment.status
+                    })
+                    
+            except Exception as e:
+                logger.error(f"Error creating enrollment for user {user_id}: {e}")
+                errors.append({'user_id': str(user_id), 'error': str(e)})
+        
+        logger.info(f"Bulk created {len(created)} enrollments, {len(waitlisted)} waitlisted, {len(errors)} errors for cohort {cohort.id}")
+        
+        return {
+            'created': created,
+            'waitlisted': waitlisted,
+            'errors': errors,
+            'requested': len(user_ids),
+            'created_count': len(created),
+            'waitlisted_count': len(waitlisted),
+            'error_count': len(errors)
+        }
+    
+    @staticmethod
     def get_cohort_readiness_analytics(cohort: Cohort) -> Dict[str, Any]:
         """Get cohort readiness dashboard data."""
         enrollments = Enrollment.objects.filter(cohort=cohort, status='active')

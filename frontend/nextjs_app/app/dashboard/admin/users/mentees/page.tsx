@@ -10,16 +10,16 @@ import { useUsers } from '@/hooks/useUsers'
 
 export default function MenteesPage() {
   const { users, isLoading } = useUsers({ page: 1, page_size: 100 })
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState<'all' | 'mentee' | 'student'>('all')
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<'all' | 'student'>('all')
 
-  const mentees = useMemo(() => {
+  const students = useMemo(() => {
     const filtered = users.filter((u) => 
       u.roles?.some((r: any) => r.role === 'mentee' || r.role === 'student')
     )
     
     if (selectedRoleFilter === 'all') return filtered
     return filtered.filter((u) => 
-      u.roles?.some((r: any) => r.role === selectedRoleFilter)
+      u.roles?.some((r: any) => r.role === 'student')
     )
   }, [users, selectedRoleFilter])
 
@@ -30,7 +30,7 @@ export default function MenteesPage() {
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-och-mint mx-auto mb-4"></div>
-              <p className="text-och-steel">Loading mentees...</p>
+              <p className="text-och-steel">Loading students...</p>
             </div>
           </div>
         </AdminLayout>
@@ -44,11 +44,11 @@ export default function MenteesPage() {
         <div className="max-w-7xl mx-auto">
           <div className="mb-8 flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold mb-2 text-och-gold">Mentees & Students</h1>
-              <p className="text-och-steel">Manage mentees and students</p>
+              <h1 className="text-4xl font-bold mb-2 text-och-gold">Students</h1>
+              <p className="text-och-steel">Manage students</p>
             </div>
             <Button variant="mint" size="sm">
-              + Add Mentee
+              + Add Student
             </Button>
           </div>
 
@@ -57,11 +57,10 @@ export default function MenteesPage() {
               <div className="mb-4 flex items-center gap-4">
                 <select
                   value={selectedRoleFilter}
-                  onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'mentee' | 'student')}
+                  onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'student')}
                   className="px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-mint"
                 >
-                  <option value="all">All</option>
-                  <option value="mentee">Mentees Only</option>
+                  <option value="all">All Students</option>
                   <option value="student">Students Only</option>
                 </select>
               </div>
@@ -77,7 +76,7 @@ export default function MenteesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mentees.slice(0, 50).map((u) => (
+                    {students.slice(0, 50).map((u) => (
                       <tr key={u.id} className="border-b border-och-steel/10 hover:bg-och-midnight/50">
                         <td className="p-3">
                           <p className="text-white font-semibold">

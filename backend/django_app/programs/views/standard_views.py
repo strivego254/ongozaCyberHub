@@ -317,7 +317,7 @@ class TrackViewSet(viewsets.ModelViewSet):
         if track_type:
             queryset = queryset.filter(track_type=track_type)
         
-        # Permission filtering: Allow access if user is staff, director of track, or has program_director role
+        # Permission filtering: Allow access if user is staff, director of track, has program_director role, or is a mentor assigned to cohorts with this track
         if not user.is_staff:
             # Check if user has program_director or admin role
             from users.models import UserRole, Role
@@ -336,10 +336,11 @@ class TrackViewSet(viewsets.ModelViewSet):
                 # (Permission to view the program itself is checked at the program level)
                 logger.info(f"TrackViewSet: Program director user, returning all tracks for program {program_id}")
             else:
-                # Regular users can only see tracks they are directors of
+                # Regular users can see tracks they are directors of OR tracks from cohorts they're assigned as mentors
                 queryset = queryset.filter(
                     Q(director=user) | 
-                    Q(program__tracks__director=user)
+                    Q(program__tracks__director=user) |
+                    Q(cohorts__mentor_assignments__mentor=user, cohorts__mentor_assignments__active=True)
                 ).distinct()
                 logger.info(f"TrackViewSet: Filtered queryset count: {queryset.count()}")
         else:

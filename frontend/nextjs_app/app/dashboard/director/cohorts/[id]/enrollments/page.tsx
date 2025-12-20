@@ -53,14 +53,19 @@ export default function CohortEnrollmentsPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
   const [assignSeatType, setAssignSeatType] = useState<'paid' | 'scholarship' | 'sponsored'>('paid')
   const [assignEnrollmentType, setAssignEnrollmentType] = useState<'director' | 'invite' | 'sponsor' | 'self'>('director')
-  const [studentPage, setStudentPage] = useState(1)
   
-  // Fetch students for assignment modal
-  const { users: students, isLoading: usersLoading, error: usersError } = useUsers({
-    page: studentPage,
-    page_size: 20,
-    search: studentSearch || undefined,
+  // Fetch users for student selection with search
+  const { users, isLoading: usersLoading, error: usersError } = useUsers({
+    page: 1,
+    page_size: 200,
+    search: studentSearch.trim() || undefined,
   })
+  
+  // Filter students from users (excluding already enrolled users)
+  const students = useMemo(() => {
+    const enrolledUserIds = new Set(enrollments.map(e => String(e.user)))
+    return users.filter(u => !enrolledUserIds.has(String(u.id)))
+  }, [users, enrollments])
 
   // Load data
   useEffect(() => {
@@ -1114,13 +1119,15 @@ export default function CohortEnrollmentsPage() {
                         </div>
                       </div>
                     ))}
-                    {usersLoading && studentPage > 1 && (
+                    {usersLoading && (
                       <div className="py-4 text-center text-och-steel text-sm">
-                        Loading more students...
+                        Loading students...
                       </div>
                     )}
                     {!usersLoading && students.length === 0 && (
-                      <div className="py-10 text-center text-och-steel">No students found.</div>
+                      <div className="py-10 text-center text-och-steel">
+                        {studentSearch ? 'No students found matching your search.' : 'No students available.'}
+                      </div>
                     )}
                   </div>
                 </div>

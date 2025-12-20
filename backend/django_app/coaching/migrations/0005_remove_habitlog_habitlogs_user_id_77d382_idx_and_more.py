@@ -20,56 +20,28 @@ class Migration(migrations.Migration):
             model_name='habitlog',
             name='habitlogs_habit_i_634629_idx',
         ),
-        migrations.RemoveField(
-            model_name='goal',
-            name='completed_at',
-        ),
+        # Note: completed_at, target_date, and last_completed_at removals are handled conditionally in migration 0006
+        # We skip removing them here to avoid conflicts
         migrations.RemoveField(
             model_name='goal',
             name='mentor_feedback',
         ),
-        migrations.RemoveField(
-            model_name='goal',
-            name='type',
-        ),
-        migrations.RemoveField(
-            model_name='habit',
-            name='category',
-        ),
-        migrations.RemoveField(
-            model_name='habit',
-            name='last_completed_at',
-        ),
-        migrations.RemoveField(
-            model_name='habit',
-            name='streak_current',
-        ),
-        migrations.RemoveField(
-            model_name='habit',
-            name='streak_longest',
-        ),
-        migrations.RemoveField(
-            model_name='habit',
-            name='target_frequency',
-        ),
-        migrations.RemoveField(
-            model_name='reflection',
-            name='behavior_tags',
-        ),
-        migrations.RemoveField(
-            model_name='reflection',
-            name='response',
-        ),
-        migrations.RemoveField(
-            model_name='reflection',
-            name='sentiment_score',
-        ),
-        migrations.AddField(
-            model_name='goal',
-            name='scope',
-            field=models.CharField(choices=[('daily', 'Daily'), ('weekly', 'Weekly'), ('monthly', 'Monthly')], default=1, max_length=20),
-            preserve_default=False,
-        ),
+        # Note: type field is kept in Goal model, so we don't remove it
+        # The scope field added below might conflict with 0006, but 0006 handles it
+        # Note: category, streak_current, streak_longest, and target_frequency 
+        # were renamed in 0005_add_coaching_os_models to type, streak, longest_streak, and frequency
+        # These fields don't need to be removed as they've been renamed
+        # If the old fields still exist in the database, migration 0006 will handle them conditionally
+        # Note: behavior_tags, response, and sentiment_score are handled in migration 0006
+        # behavior_tags -> emotion_tags, sentiment_score -> sentiment in 0006
+        # We skip removing them here to avoid conflicts
+        # Note: scope field addition removed - conflicts with 0006 which keeps type field
+        # migrations.AddField(
+        #     model_name='goal',
+        #     name='scope',
+        #     field=models.CharField(choices=[('daily', 'Daily'), ('weekly', 'Weekly'), ('monthly', 'Monthly')], default=1, max_length=20),
+        #     preserve_default=False,
+        # ),
         migrations.AddField(
             model_name='habit',
             name='frequency',
@@ -97,19 +69,19 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name='goal',
-            name='target_date',
+            name='due_date',
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AlterUniqueTogether(
             name='habitlog',
-            unique_together={('habit', 'log_date')},
+            unique_together={('habit', 'date')},
         ),
         migrations.AddIndex(
             model_name='habitlog',
-            index=models.Index(fields=['user', 'log_date'], name='habitlogs_user_id_b1ad3e_idx'),
+            index=models.Index(fields=['user', 'date'], name='habitlogs_user_id_b1ad3e_idx'),
         ),
         migrations.AddIndex(
             model_name='habitlog',
-            index=models.Index(fields=['habit', 'log_date'], name='habitlogs_habit_i_fda112_idx'),
+            index=models.Index(fields=['habit', 'date'], name='habitlogs_habit_i_fda112_idx'),
         ),
     ]

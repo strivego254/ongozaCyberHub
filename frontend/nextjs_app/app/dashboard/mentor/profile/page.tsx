@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { djangoClient } from '@/services/djangoClient'
+import { programsClient } from '@/services/programsClient'
 import { useAuth } from '@/hooks/useAuth'
 import type { User, UserRole } from '@/services/types'
 import { MentorSupportAndHelp } from '@/components/mentor/MentorSupportAndHelp'
@@ -17,7 +18,7 @@ interface ProfileData extends User {
   entitlements?: string[]
   role_specific_data?: {
     mentor?: {
-      active_mentees: number
+      active_mentees?: number  // Legacy field, kept for compatibility
       total_sessions: number
       pending_work_items: number
       capacity_weekly: number
@@ -64,10 +65,22 @@ export default function MentorProfilePage() {
   const [availabilityDay, setAvailabilityDay] = useState('')
   const [availabilityStart, setAvailabilityStart] = useState('')
   const [availabilityEnd, setAvailabilityEnd] = useState('')
+  
+  // Student data from assigned cohorts
+  const [studentStats, setStudentStats] = useState<{
+    totalStudents: number
+    assignedCohorts: number
+    loading: boolean
+  }>({
+    totalStudents: 0,
+    assignedCohorts: 0,
+    loading: true,
+  })
 
   useEffect(() => {
     loadProfile()
-  }, [])
+    loadStudentStats()
+  }, [authUser?.id])
 
   const loadProfile = async () => {
     try {
@@ -80,6 +93,58 @@ export default function MentorProfilePage() {
       setError(err.message || 'Failed to load profile')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadStudentStats = async () => {
+    if (!authUser?.id) return
+    
+    setStudentStats(prev => ({ ...prev, loading: true }))
+    try {
+      // Get all cohorts
+      const cohortsData = await programsClient.getCohorts({ page: 1, pageSize: 1000 })
+      const cohorts = Array.isArray(cohortsData) ? cohortsData : (cohortsData?.results || [])
+      
+      // Find cohorts where this mentor is assigned
+      const assignedCohortIds: string[] = []
+      let totalStudents = 0
+      
+      for (const cohort of cohorts) {
+        try {
+          const cohortMentors = await programsClient.getCohortMentors(String(cohort.id))
+          const isAssigned = cohortMentors.some(
+            (assignment: any) => 
+              String(assignment.mentor) === String(authUser.id) && assignment.active
+          )
+          
+          if (isAssigned) {
+            assignedCohortIds.push(String(cohort.id))
+            
+            // Get enrollments for this cohort
+            try {
+              const enrollments = await programsClient.getCohortEnrollments(String(cohort.id))
+              // Count active students
+              const activeStudents = enrollments.filter(
+                (e: any) => e.status === 'active' || e.status === 'pending_payment'
+              ).length
+              totalStudents += activeStudents
+            } catch (err) {
+              console.warn(`Failed to load enrollments for cohort ${cohort.id}:`, err)
+            }
+          }
+        } catch (err) {
+          console.warn(`Failed to check assignment for cohort ${cohort.id}:`, err)
+        }
+      }
+      
+      setStudentStats({
+        totalStudents,
+        assignedCohorts: assignedCohortIds.length,
+        loading: false,
+      })
+    } catch (err: any) {
+      console.error('Error loading student stats:', err)
+      setStudentStats(prev => ({ ...prev, loading: false }))
     }
   }
 
@@ -464,17 +529,27 @@ export default function MentorProfilePage() {
               </Card>
 
               {/* Mentor Stats */}
-              {mentorData && (
                 <Card>
                   <h3 className="text-lg font-bold mb-4 text-white">Mentor Statistics</h3>
                   
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm text-och-steel mb-1">Active Mentees</p>
+                    <p className="text-sm text-och-steel mb-1">Students in Assigned Cohorts</p>
+                    {studentStats.loading ? (
+                      <p className="text-2xl font-bold text-och-steel">Loading...</p>
+                    ) : (
                       <p className="text-2xl font-bold text-och-mint">
-                        {mentorData.active_mentees}
+                        {studentStats.totalStudents}
                       </p>
+                    )}
+                    {!studentStats.loading && (
+                      <p className="text-xs text-och-steel mt-1">
+                        Across {studentStats.assignedCohorts} cohort{studentStats.assignedCohorts !== 1 ? 's' : ''}
+                      </p>
+                    )}
                     </div>
+                  {mentorData && (
+                    <>
                     <div>
                       <p className="text-sm text-och-steel mb-1">Total Sessions</p>
                       <p className="text-2xl font-bold text-och-mint">
@@ -493,9 +568,10 @@ export default function MentorProfilePage() {
                         {mentorData.capacity_weekly} hours
                       </p>
                     </div>
+                    </>
+                  )}
                   </div>
                 </Card>
-              )}
             </div>
           </div>
         </form>

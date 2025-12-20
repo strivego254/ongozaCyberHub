@@ -536,13 +536,6 @@ class ProgramsClient {
   }
 
   async approveEnrollment(cohortId: string, enrollmentId: string): Promise<Enrollment> {
-<<<<<<< HEAD
-    return apiGateway.post(`/programs/cohorts/${cohortId}/approve_enrollment/`, { enrollment_id: enrollmentId })
-  }
-
-  async bulkApproveEnrollments(cohortId: string, enrollmentIds: string[]): Promise<any> {
-    return apiGateway.post(`/programs/cohorts/${cohortId}/bulk_approve_enrollments/`, { enrollment_ids: enrollmentIds })
-=======
     return apiGateway.post(`/director/cohorts/${cohortId}/approve_enrollment/`, { enrollment_id: enrollmentId })
   }
 
@@ -576,7 +569,6 @@ class ProgramsClient {
     error_count: number
   }> {
     return apiGateway.post(`/director/cohorts/${cohortId}/bulk_create_enrollments/`, data)
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   }
 
   async getCohortWaitlist(cohortId: string): Promise<any[]> {

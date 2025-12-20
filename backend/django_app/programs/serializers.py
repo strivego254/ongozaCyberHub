@@ -74,6 +74,51 @@ class TrackSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
     
+    def validate(self, data):
+        """Validate track data."""
+        # For updates (PATCH), only validate fields that are being updated
+        is_update = self.instance is not None
+        
+        # Validate name field - check for empty strings (only if being updated)
+        if not is_update or 'name' in data:
+            name = data.get('name')
+            if name is not None:  # Only validate if name is provided
+                if not name or (isinstance(name, str) and name.strip() == ''):
+                    raise serializers.ValidationError({'name': 'This field may not be blank.'})
+        
+        # Validate key field - check for empty strings (only if being updated)
+        if not is_update or 'key' in data:
+            key = data.get('key')
+            if key is not None:  # Only validate if key is provided
+                if not key or (isinstance(key, str) and key.strip() == ''):
+                    raise serializers.ValidationError({'key': 'This field may not be blank.'})
+        
+        # Validate program field (only required on create)
+        if not is_update:
+            program = data.get('program')
+            if not program:
+                raise serializers.ValidationError({'program': 'This field is required.'})
+        
+        # Check for unique constraint (program + key)
+        # Get program from instance if not in data (for updates)
+        program = data.get('program')
+        if not program and self.instance:
+            program = self.instance.program_id
+        
+        key = data.get('key')
+        if not key and self.instance:
+            key = self.instance.key
+        
+        # Only check unique constraint if both program and key are available
+        if program and key:
+            existing_track = Track.objects.filter(program=program, key=key.strip()).first()
+            if existing_track and (not self.instance or existing_track.id != self.instance.id):
+                raise serializers.ValidationError({
+                    'key': f'A track with key "{key.strip()}" already exists in this program. Please choose a different key.'
+                })
+        
+        return data
+    
     def get_specializations(self, obj):
         """Get specializations for this track."""
         if hasattr(obj, 'specializations'):

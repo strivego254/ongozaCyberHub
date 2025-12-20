@@ -8,11 +8,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-<<<<<<< HEAD
-import { useCohort, usePrograms, useTracks, useTrack } from '@/hooks/usePrograms'
-=======
+
 import { useCohort, usePrograms, useTracks } from '@/hooks/usePrograms'
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 import { programsClient, type MentorAssignment } from '@/services/programsClient'
 import { useUsers } from '@/hooks/useUsers'
 
@@ -22,27 +19,18 @@ export default function AssignMentorsPage() {
   const cohortId = params.id as string
   const { cohort, isLoading: loadingCohort } = useCohort(cohortId)
   const { programs, isLoading: loadingPrograms } = usePrograms()
-<<<<<<< HEAD
-  const { track: cohortTrack, isLoading: loadingTrack } = useTrack(cohort?.track || '')
-  const { tracks, isLoading: loadingTracks } = useTracks(cohortTrack?.program || undefined)
-=======
+
   const { tracks, isLoading: loadingTracks } = useTracks(cohort?.track?.program || undefined)
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   
   // Fetch only users with mentor role directly from the API
   const { users: mentorsFromApi, isLoading: loadingUsers } = useUsers({ page: 1, page_size: 200, role: 'mentor' })
   
   // Get program and track info from cohort
   const selectedProgram = useMemo(() => {
-<<<<<<< HEAD
-    if (!cohortTrack?.program) return null
-    return programs.find(p => p.id === cohortTrack.program)
-  }, [cohortTrack, programs])
-=======
+
     if (!cohort?.track?.program) return null
     return programs.find(p => p.id === cohort.track.program)
   }, [cohort, programs])
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
   
   const selectedTrack = useMemo(() => {
     if (!cohort?.track) return null

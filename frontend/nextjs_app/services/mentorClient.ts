@@ -145,6 +145,27 @@ export const mentorClient = {
   },
 
   /**
+   * Get missions from cohorts assigned to mentor (read-only view)
+   */
+  async getCohortMissions(mentorId: string, params?: {
+    page?: number
+    page_size?: number
+    difficulty?: string
+    track?: string
+    search?: string
+  }): Promise<{
+    results: any[]
+    count: number
+    total: number
+    page: number
+    page_size: number
+    has_next: boolean
+    has_previous: boolean
+  }> {
+    return apiGateway.get(`/mentors/${mentorId}/missions/cohorts`, { params })
+  },
+
+  /**
    * Score capstone project
    */
   async scoreCapstone(capstoneId: string, data: {
