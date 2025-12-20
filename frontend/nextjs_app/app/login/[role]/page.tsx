@@ -240,22 +240,17 @@ function LoginForm() {
       hasRedirectedRef.current = true;
       
       // Additional delay to ensure auth state is fully updated and cookies are set
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // This gives time for the HttpOnly cookies to be set by the API route
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Use router.push instead of window.location.href to preserve React state
-      // This ensures the auth state is maintained across navigation
       console.log('🚀 Redirecting to:', route);
       
-      // Reset logging in flag after a short delay to allow redirect to happen
-      setTimeout(() => setIsLoggingIn(false), 1000);
-      
-      // Use replace to avoid keeping the login page in history, then refresh to
-      // ensure middleware/server components see the newly-set cookies immediately.
-      router.replace(route);
-      
-      // Small delay before refresh to ensure navigation has started
-      await new Promise(resolve => setTimeout(resolve, 100));
-      router.refresh();
+      // Use window.location.href for a full page reload to ensure:
+      // 1. Cookies are properly set and visible to middleware
+      // 2. Middleware can properly redirect based on cookies
+      // 3. The page fully reloads with the new authentication state
+      // This is more reliable than router.replace() after login
+      window.location.href = route;
 
     } catch (err: any) {
       setIsLoggingIn(false);

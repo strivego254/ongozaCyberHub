@@ -107,7 +107,7 @@ export function SettingsShell({ children }: SettingsShellProps) {
               </div>
 
               {/* SYSTEM STATUS */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 w-full lg:w-auto">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 w-full lg:w-auto">
                 {systemStatuses.map((status, index) => (
                   <motion.div
                     key={status.title}

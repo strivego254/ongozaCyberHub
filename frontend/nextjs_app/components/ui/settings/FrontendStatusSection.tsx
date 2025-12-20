@@ -25,6 +25,8 @@ export function FrontendStatusSection() {
     { name: 'Frontend', url: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000', status: 'online' },
   ]);
 
+  const [currentTime, setCurrentTime] = useState<string>('');
+
   const [frontendInfo, setFrontendInfo] = useState({
     version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     environment: process.env.NODE_ENV || 'development',
@@ -39,6 +41,14 @@ export function FrontendStatusSection() {
   });
 
   useEffect(() => {
+    // Set current time on client side only (prevents hydration mismatch)
+    setCurrentTime(new Date().toLocaleTimeString());
+    
+    // Update time every second
+    const timeInterval = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString());
+    }, 1000);
+
     // Check service statuses
     const checkServices = async () => {
       const initialServices: ServiceStatus[] = [
@@ -81,7 +91,10 @@ export function FrontendStatusSection() {
     // Refresh every 30 seconds
     const interval = setInterval(checkServices, 30000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearInterval(timeInterval);
+    };
   }, []);
 
   const getStatusIcon = (status: ServiceStatus['status']) => {
@@ -143,7 +156,7 @@ export function FrontendStatusSection() {
                 </Badge>
               </div>
               <div className="text-xs text-slate-400">
-                All systems operational • Last checked: {new Date().toLocaleTimeString()}
+                All systems operational{currentTime ? ` • Last checked: ${currentTime}` : ''}
               </div>
             </div>
 
