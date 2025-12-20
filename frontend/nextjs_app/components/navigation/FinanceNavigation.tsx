@@ -12,7 +12,8 @@ import {
   Wallet, 
   Gift, 
   Shield,
-  Home
+  Home,
+  User
 } from 'lucide-react'
 
 interface NavItem {
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { label: 'Sponsorship', href: '/dashboard/finance/sponsorship', icon: Wallet },
   { label: 'Rewards', href: '/dashboard/finance/rewards', icon: Gift },
   { label: 'Security', href: '/dashboard/finance/security', icon: Shield },
+  { label: 'Profile', href: '/dashboard/finance/profile', icon: User },
 ]
 
 export function FinanceNavigation() {
@@ -49,7 +51,7 @@ export function FinanceNavigation() {
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="p-2 bg-och-defender text-white rounded-lg hover:bg-och-defender/80"
           aria-label="Toggle menu"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,7 +67,7 @@ export function FinanceNavigation() {
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-gray-900/90 z-40"
+          className="lg:hidden fixed inset-0 bg-och-midnight/90 z-40"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -73,16 +75,16 @@ export function FinanceNavigation() {
       {/* Sidebar Navigation */}
       <aside
         className={clsx(
-          'fixed left-0 top-0 h-full w-64 bg-gray-900 border-r border-gray-800 z-40 transition-transform duration-300',
+          'fixed left-0 top-0 h-full w-64 bg-och-midnight border-r border-och-steel/20 z-40 transition-transform duration-300',
           'lg:translate-x-0',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo/Brand */}
-          <div className="p-6 border-b border-gray-800">
+          <div className="p-6 border-b border-och-steel/20">
             <Link href="/dashboard/finance" className="flex items-center gap-2">
-              <DollarSign className="h-8 w-8 text-blue-400" />
+              <DollarSign className="h-8 w-8 text-och-defender" />
               <span className="text-xl font-bold text-white">Finance</span>
             </Link>
           </div>
@@ -100,14 +102,14 @@ export function FinanceNavigation() {
                   className={clsx(
                     'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
                     active
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      ? 'bg-och-defender text-och-mint'
+                      : 'text-och-steel hover:bg-och-midnight/50 hover:text-white'
                   )}
                 >
                   <Icon className="h-5 w-5" />
                   <span className="font-medium">{item.label}</span>
                   {item.badge && (
-                    <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                    <span className="ml-auto bg-och-defender text-white text-xs px-2 py-1 rounded-full">
                       {item.badge}
                     </span>
                   )}
@@ -117,8 +119,8 @@ export function FinanceNavigation() {
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-gray-800">
-            <div className="text-xs text-gray-400 text-center">
+          <div className="p-4 border-t border-och-steel/20">
+            <div className="text-xs text-och-steel text-center">
               MFA Required
             </div>
           </div>
