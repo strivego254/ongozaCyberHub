@@ -22,11 +22,12 @@ import {
   Key,
   Save,
   Upload,
-  Camera
+  Camera,
+  LogOut
 } from 'lucide-react'
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const userRole = getUserRoleDisplay(user)
   const [isEditing, setIsEditing] = useState(false)
 
@@ -257,6 +258,34 @@ export default function ProfilePage() {
                       <Button>
                         <Save className="h-4 w-4 mr-2" />
                         Save Preferences
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Logout Section */}
+                <Card className="p-6 bg-och-midnight border border-och-orange/30">
+                  <div className="flex items-center gap-3 mb-6">
+                    <LogOut className="h-5 w-5 text-och-orange" />
+                    <h2 className="text-h2 font-semibold text-white">Sign Out</h2>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="p-4 bg-och-midnight/50 border border-och-steel/20 rounded-lg">
+                      <p className="body-m text-och-steel mb-4">
+                        Sign out of your current session. You will need to log in again to access your account.
+                      </p>
+                      <Button
+                        variant="orange"
+                        className="w-full sm:w-auto"
+                        onClick={async () => {
+                          if (confirm('Are you sure you want to logout?')) {
+                            await logout()
+                          }
+                        }}
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Logout
                       </Button>
                     </div>
                   </div>

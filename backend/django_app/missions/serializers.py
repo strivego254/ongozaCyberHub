@@ -30,12 +30,9 @@ class MissionSerializer(serializers.ModelSerializer):
         model = Mission
         fields = [
             'id', 'code', 'title', 'description', 'difficulty', 'type',
-<<<<<<< HEAD
-            'track_id', 'track_key', 'est_hours', 'estimated_duration_minutes', 'estimated_time_minutes',
-=======
+
             'track_id', 'track_key', 'est_hours', 'estimated_time_minutes',
             'track_name', 'program_id', 'program_name',
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             'competencies', 'requirements', 'created_at'
         ]
         read_only_fields = ['id', 'created_at', 'estimated_time_minutes']

@@ -16,7 +16,7 @@ export interface RoutePermission {
 // Route permissions mapping
 export const ROUTE_PERMISSIONS: RoutePermission[] = [
   // Dashboard root (redirect page) - allow any authenticated role
-  { path: '/dashboard', roles: ['mentee', 'student', 'mentor', 'admin', 'program_director', 'sponsor_admin', 'analyst', 'employer'] },
+  { path: '/dashboard', roles: ['mentee', 'student', 'mentor', 'admin', 'program_director', 'sponsor_admin', 'analyst', 'employer', 'finance'] },
 
   // Student/Mentee routes
   { path: '/dashboard/student', roles: ['mentee', 'student'] },
@@ -89,6 +89,16 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   // Analyst routes
   { path: '/dashboard/analyst', roles: ['analyst'] },
   { path: '/dashboard/analytics', roles: ['analyst', 'admin', 'program_director'] },
+  
+  // Finance routes
+  { path: '/dashboard/finance', roles: ['finance'] },
+  { path: '/dashboard/finance/catalog', roles: ['finance'] },
+  { path: '/dashboard/finance/analytics', roles: ['finance'] },
+  { path: '/dashboard/finance/billing', roles: ['finance'] },
+  { path: '/dashboard/finance/sponsorship', roles: ['finance'] },
+  { path: '/dashboard/finance/rewards', roles: ['finance'] },
+  { path: '/dashboard/finance/security', roles: ['finance'] },
+  { path: '/dashboard/finance/profile', roles: ['finance'] },
 ]
 
 /**
