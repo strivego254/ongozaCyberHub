@@ -10,12 +10,15 @@ import { Github, ExternalLink, BookOpen, Link2, CheckCircle, XCircle } from 'luc
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useSettingsMaster } from '@/hooks/useSettingsMaster';
+import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
 
-export function IntegrationHub() {
-  const { settings, updateSettings } = useSettingsMaster();
+interface IntegrationHubProps {
+  settings: UserSettings;
+  updateSettings: (updates: SettingsUpdate) => void;
+  userId?: string;
+}
 
-  if (!settings) return null;
+export function IntegrationHub({ settings, updateSettings, userId }: IntegrationHubProps) {
 
   const integrations = [
     {

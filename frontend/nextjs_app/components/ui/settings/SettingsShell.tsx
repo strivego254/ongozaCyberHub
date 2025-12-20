@@ -5,31 +5,36 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Settings } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { SystemStatusCard } from './SystemStatusCard';
 import { useSettingsMaster } from '@/hooks/useSettingsMaster';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { createClient } from '@/lib/supabase/client';
 import type { ReactNode } from 'react';
+
+const supabase = createClient();
 
 interface SettingsShellProps {
   children: ReactNode;
 }
 
 export function SettingsShell({ children }: SettingsShellProps) {
-  const { settings, entitlements, isLoading } = useSettingsMaster();
-  const { items } = usePortfolio();
+  const [userId, setUserId] = useState<string | undefined>();
+  
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserId(user?.id);
+    });
+  }, []);
 
-  if (isLoading || !settings || !entitlements) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-8 lg:px-12 lg:py-12">
-        <div className="text-center text-slate-400">Loading settings...</div>
-      </div>
-    );
-  }
+  const { settings, entitlements, isLoading } = useSettingsMaster(userId);
+  const { items } = usePortfolio(userId);
 
-  const systemStatuses = [
+  // Don't block children - let SettingsMasterDashboard handle loading states
+  const systemStatuses = settings && entitlements ? [
     {
       title: 'Profile',
       value: `${settings.profileCompleteness}%`,
@@ -54,7 +59,7 @@ export function SettingsShell({ children }: SettingsShellProps) {
       status: settings.notificationsEmail ? ('healthy' as const) : ('warning' as const),
       impact: 'Mission deadlines',
     },
-  ];
+  ] : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-8 lg:px-12 lg:py-12">
@@ -77,18 +82,23 @@ export function SettingsShell({ children }: SettingsShellProps) {
               </div>
 
               {/* SYSTEM STATUS */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 w-full lg:w-auto">
-                {systemStatuses.map((status, index) => (
-                  <motion.div
-                    key={status.title}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <SystemStatusCard status={status} />
-                  </motion.div>
-                ))}
-              </div>
+              {systemStatuses.length > 0 && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 w-full lg:w-auto">
+                  {systemStatuses.map((status, index) => (
+                    <motion.div
+                      key={status.title}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <SystemStatusCard status={status} />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+              {systemStatuses.length === 0 && (
+                <div className="text-slate-400 text-sm">Loading system status...</div>
+              )}
             </div>
           </div>
         </Card>

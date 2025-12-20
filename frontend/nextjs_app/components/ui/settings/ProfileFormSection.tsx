@@ -11,13 +11,15 @@ import { User, MapPin, FileText, Globe, Languages } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useSettingsMaster } from '@/hooks/useSettingsMaster';
+import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
 
-export function ProfileFormSection() {
-  const { settings, updateSettings } = useSettingsMaster();
+interface ProfileFormSectionProps {
+  settings: UserSettings;
+  updateSettings: (updates: SettingsUpdate) => void;
+}
+
+export function ProfileFormSection({ settings, updateSettings }: ProfileFormSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
-
-  if (!settings) return null;
 
   const timezones = [
     // Africa
@@ -182,19 +184,39 @@ export function ProfileFormSection() {
     { code: 'hu', name: 'Hungarian', native: 'Magyar' },
   ];
 
+  // Debug: Log to verify component is receiving data
+  console.log('ProfileFormSection render:', { 
+    hasSettings: !!settings, 
+    name: settings?.name,
+    headline: settings?.headline 
+  });
+
+  if (!settings) {
+    return (
+      <Card className="glass-card">
+        <div className="p-8 text-center text-red-400">
+          Error: Settings not provided to ProfileFormSection
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.1 }}
+      style={{ position: 'relative', zIndex: 10, color: '#ffffff' }}
     >
-      <Card className="glass-card glass-card-hover">
-        <div className="p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <User className="w-8 h-8 text-indigo-400" />
+      <div style={{ position: 'relative', zIndex: 10, color: '#ffffff' }}>
+        <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', borderColor: 'rgba(30, 41, 59, 0.6)', borderRadius: '12px', border: '1px solid rgba(30, 41, 59, 0.6)', padding: '0' }}>
+          <Card className="glass-card glass-card-hover">
+            <div className="p-8" style={{ minHeight: '400px', color: '#ffffff', zIndex: 10, position: 'relative' }}>
+              <div className="flex items-center gap-3 mb-6" style={{ color: '#ffffff' }}>
+            <User className="w-8 h-8 text-indigo-400" style={{ color: '#818cf8', display: 'block' }} />
             <div>
-              <h2 className="text-2xl font-bold text-slate-100">Profile Information</h2>
-              <p className="text-xs text-slate-500 mt-1">
+              <h2 className="text-2xl font-bold text-slate-100" style={{ color: '#ffffff', display: 'block' }}>Profile Information</h2>
+              <p className="text-xs text-slate-500 mt-1" style={{ color: '#ffffff', display: 'block' }}>
                 Basic information that appears on your marketplace profile
               </p>
             </div>
@@ -203,9 +225,9 @@ export function ProfileFormSection() {
           <div className="space-y-6">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Full Name
+              <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2" style={{ color: '#ffffff', display: 'block' }}>
+                <User className="w-4 h-4" style={{ color: '#ffffff', display: 'inline-block' }} />
+                <span style={{ color: '#ffffff' }}>Full Name</span>
               </label>
               <input
                 type="text"
@@ -217,6 +239,15 @@ export function ProfileFormSection() {
                   }
                 }}
                 className="w-full bg-slate-900/70 border border-slate-800/70 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:border-indigo-500/70 focus:outline-none transition-colors"
+                style={{ 
+                  backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                  borderColor: 'rgba(30, 41, 59, 0.9)',
+                  color: '#ffffff',
+                  zIndex: 10,
+                  display: 'block',
+                  width: '100%',
+                  padding: '12px 16px'
+                }}
               />
             </div>
 
@@ -412,7 +443,7 @@ export function ProfileFormSection() {
                     }}
                   />
                   {settings.linkedinLinked && (
-                    <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
+                    <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400">
                       Connected
                     </Badge>
                   )}
@@ -426,7 +457,7 @@ export function ProfileFormSection() {
             {/* Impact Callout */}
             <div className="bg-gradient-to-r from-indigo-500/10 to-emerald-500/10 border border-indigo-500/30 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
-                <Badge variant="secondary" className="bg-indigo-500/20 text-indigo-400 text-[10px]">
+                <Badge variant="outline" className="bg-indigo-500/20 text-indigo-400 text-[10px]">
                   Impact
                 </Badge>
                 How this affects your platform experience
@@ -438,9 +469,11 @@ export function ProfileFormSection() {
               </ul>
             </div>
           </div>
+            </div>
+            </Card>
+          </div>
         </div>
-      </Card>
-    </motion.div>
-  );
-}
+      </motion.div>
+    );
+  }
 

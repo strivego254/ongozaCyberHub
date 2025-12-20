@@ -17,8 +17,12 @@ import { useSettingsMaster } from '@/hooks/useSettingsMaster';
 import { PortfolioItemCard } from './PortfolioItemCard';
 import { PortfolioHealthCard } from './PortfolioHealthCard';
 import { PortfolioSkillsHeatmap } from './PortfolioSkillsHeatmap';
+import { PortfolioSkillsRadar } from './PortfolioSkillsRadar';
+import { PortfolioTimeline } from './PortfolioTimeline';
+import { EmployerPreviewFAB } from './EmployerPreviewFAB';
 import { PortfolioDashboardSkeleton } from './PortfolioSkeleton';
 import { ErrorDisplay } from './ErrorDisplay';
+import { usePortfolioTimeline } from '@/hooks/usePortfolioTimeline';
 import { createClient } from '@/lib/supabase/client';
 import type { PortfolioItem, PortfolioItemStatus, PortfolioItemType } from '@/lib/portfolio/types';
 
@@ -45,6 +49,7 @@ export function PortfolioDashboard() {
   } = usePortfolio(userId);
 
   const { settings, entitlements } = useSettingsMaster(userId);
+  const { timelineData } = usePortfolioTimeline(userId);
 
   const [statusFilter, setStatusFilter] = useState<PortfolioItemStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<PortfolioItemType | 'all'>('all');
@@ -81,134 +86,106 @@ export function PortfolioDashboard() {
         </div>
       )}
 
-      {/* HERO: Health + Marketplace */}
+      {/* HERO METRICS */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12"
       >
-        {/* Portfolio Overview */}
-        <Card className="lg:col-span-2 glass-card glass-card-hover">
-          <div className="p-6 lg:p-8">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-              <div>
-                <h1 className="text-3xl lg:text-4xl font-bold text-slate-50 mb-2">
-                  Portfolio
-                </h1>
-                <p className="text-slate-400">
-                  Your verified proof of missions, projects, and mentor-scored work.
-                </p>
-              </div>
-              <div className="flex gap-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-emerald-400">
-                    {healthScore}
-                  </div>
-                  <div className="text-xs uppercase tracking-wide text-slate-500">
-                    Health / 100
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-indigo-400">
-                    {marketplaceStats.views}
-                  </div>
-                  <div className="text-xs uppercase tracking-wide text-slate-500">
-                    Marketplace views
-                  </div>
-                </div>
-              </div>
+        <PortfolioHealthCard
+          healthScore={healthScore}
+          itemsCount={items.length}
+          approvedCount={approvedItems.length}
+        />
+        
+        {/* Marketplace Stats Card */}
+        <Card className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/40 glass-card-hover">
+          <div className="p-6">
+            <h3 className="text-sm uppercase tracking-wide text-slate-400 mb-2">Marketplace</h3>
+            <div className="text-3xl font-bold text-indigo-400 mb-1">{marketplaceStats.views}</div>
+            <p className="text-xs text-slate-500">Total views</p>
+            <div className="mt-4 pt-4 border-t border-slate-800/50">
+              <Badge className="capitalize bg-slate-800/50">
+                {marketplaceStats.profileStatus.replace('_', ' ')}
+              </Badge>
             </div>
           </div>
         </Card>
 
-        {/* Status Pill */}
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-indigo-500/10 border border-emerald-500/40 glass-card-hover">
-          <div className="p-6 flex flex-col justify-between h-full">
-            <div>
-              <p className="text-sm uppercase tracking-wide text-slate-400 mb-1">
-                Marketplace status
-              </p>
-              <p className="text-xl font-semibold text-slate-50 capitalize">
-                {marketplaceStats.profileStatus.replace('_', ' ')}
-              </p>
-            </div>
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-xs text-slate-400">
-                {marketplaceStats.contactEnabled
-                  ? 'Employers can contact you directly.'
-                  : 'Enable contact in Settings to receive employer messages.'}
-              </p>
+        {/* Quick Actions Card */}
+        <Card className="glass-card glass-card-hover">
+          <div className="p-6">
+            <h3 className="text-sm uppercase tracking-wide text-slate-400 mb-4">Quick Actions</h3>
+            <div className="space-y-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="border-emerald-500/60 text-emerald-400 hover:bg-emerald-500/10"
+                className="w-full justify-start"
                 onClick={() => router.push('/settings')}
               >
-                <Settings className="w-3 h-3 mr-1" />
-                Adjust
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Button>
+              <Button
+                variant="defender"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => {/* TODO: Open create modal */}}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Item
               </Button>
             </div>
           </div>
         </Card>
       </motion.div>
 
-      {/* ACTIVITY + SKILLS */}
+      {/* ENHANCED LAYOUT: Radar + Timeline + Grid */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10"
+        className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-12"
       >
-        {/* Recent Activity */}
-        <Card className="glass-card glass-card-hover">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-slate-100 mb-4">Recent Activity</h3>
-            <div className="space-y-3">
-              {items.slice(0, 6).map((item) => (
-                <div key={item.id} className="text-sm flex items-center justify-between p-2 rounded-lg hover:bg-slate-800/30 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-slate-300 font-medium line-clamp-1">{item.title}</div>
-                    <div className="text-slate-500 text-xs mt-1">
-                      {new Date(item.createdAt).toLocaleDateString()}
+        <div className="space-y-8">
+          <PortfolioSkillsRadar skills={topSkills} />
+          <PortfolioTimeline data={timelineData} />
+        </div>
+        
+        {/* Pending Reviews Card */}
+        {pendingReviews.length > 0 ? (
+          <Card className="border-yellow-500/50 bg-yellow-500/5 glass-card-hover">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-yellow-400" />
+                Pending Reviews ({pendingReviews.length})
+              </h3>
+              <div className="space-y-3">
+                {pendingReviews.slice(0, 5).map((item) => (
+                  <div
+                    key={item.id}
+                    className="text-sm flex items-center justify-between p-3 rounded-lg hover:bg-yellow-500/10 transition-colors border border-yellow-500/20"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-slate-300 font-medium line-clamp-1">{item.title}</div>
+                      <div className="text-yellow-400 text-xs mt-1">Awaiting mentor review</div>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[10px] ml-2">
-                    {item.status.replace('_', ' ')}
-                  </Badge>
-                </div>
-              ))}
-              {items.length === 0 && (
-                <div className="text-sm text-slate-500 italic text-center py-4">
-                  No items yet
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-          </div>
-        </Card>
-
-        {/* Skills Heatmap */}
-        <PortfolioSkillsHeatmap topSkills={topSkills} />
+          </Card>
+        ) : (
+          <Card className="glass-card glass-card-hover">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-slate-100 mb-4">Skills Heatmap</h3>
+              <PortfolioSkillsHeatmap topSkills={topSkills} />
+            </div>
+          </Card>
+        )}
       </motion.div>
 
-      {/* Pending Reviews */}
-      {pendingReviews.length > 0 && (
-        <Card className="border-yellow-500/50 bg-yellow-500/5 glass-card-hover mb-10">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-slate-100 mb-4">Pending Reviews</h3>
-            <div className="space-y-3">
-              {pendingReviews.slice(0, 3).map((item) => (
-                <div key={item.id} className="text-sm flex items-center justify-between p-2 rounded-lg hover:bg-yellow-500/10 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-slate-300 font-medium line-clamp-1">{item.title}</div>
-                    <div className="text-yellow-400 text-xs mt-1">Awaiting mentor review</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* FILTERS AND ACTIONS */}
       <div className="flex items-center justify-between mb-6">
@@ -323,6 +300,9 @@ export function PortfolioDashboard() {
           </div>
         )}
       </div>
+
+      {/* FAB: Employer Preview */}
+      <EmployerPreviewFAB />
     </div>
   );
 }

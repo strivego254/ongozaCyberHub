@@ -40,11 +40,15 @@ export function useSettingsMaster(userId?: string) {
     queryKey: ['user-settings', userId],
     queryFn: async () => {
       const id = await getCurrentUserId();
-      if (!id) throw new Error('User not authenticated');
+      if (!id) {
+        // Return null instead of throwing - let the component handle unauthenticated state
+        return null;
+      }
       return getUserSettings(id);
     },
-    enabled: !!userId || true,
+    enabled: !!userId,
     staleTime: 30000,
+    retry: false,
   });
 
   // Fetch entitlements
@@ -57,11 +61,15 @@ export function useSettingsMaster(userId?: string) {
     queryKey: ['user-entitlements', userId],
     queryFn: async () => {
       const id = await getCurrentUserId();
-      if (!id) throw new Error('User not authenticated');
+      if (!id) {
+        // Return null instead of throwing - let the component handle unauthenticated state
+        return null;
+      }
       return getUserEntitlements(id);
     },
-    enabled: !!userId || true,
+    enabled: !!userId,
     staleTime: 30000,
+    retry: false,
   });
 
   // Update settings mutation

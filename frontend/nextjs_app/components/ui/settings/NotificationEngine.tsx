@@ -9,12 +9,14 @@ import { motion } from 'framer-motion';
 import { Bell, Target, MessageSquare, Briefcase, Mail, Smartphone } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { useSettingsMaster } from '@/hooks/useSettingsMaster';
+import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
 
-export function NotificationEngine() {
-  const { settings, updateSettings } = useSettingsMaster();
+interface NotificationEngineProps {
+  settings: UserSettings;
+  updateSettings: (updates: SettingsUpdate) => void;
+}
 
-  if (!settings) return null;
+export function NotificationEngine({ settings, updateSettings }: NotificationEngineProps) {
 
   const categories = [
     {

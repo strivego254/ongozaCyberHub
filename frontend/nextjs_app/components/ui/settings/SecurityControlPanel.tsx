@@ -11,13 +11,18 @@ import { Shield, Lock, Smartphone, Monitor, MapPin, Clock, LogOut } from 'lucide
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useSettingsMaster } from '@/hooks/useSettingsMaster';
 import { createClient } from '@/lib/supabase/client';
+import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
 
 const supabase = createClient();
 
-export function SecurityControlPanel() {
-  const { settings, updateSettings } = useSettingsMaster();
+interface SecurityControlPanelProps {
+  settings: UserSettings;
+  updateSettings: (updates: SettingsUpdate) => void;
+  userId?: string;
+}
+
+export function SecurityControlPanel({ settings, updateSettings, userId }: SecurityControlPanelProps) {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordData, setPasswordData] = useState({
     current: '',
@@ -25,8 +30,6 @@ export function SecurityControlPanel() {
     confirm: '',
   });
   const [activeSessions, setActiveSessions] = useState(settings?.activeSessions || []);
-
-  if (!settings) return null;
 
   const handlePasswordChange = async () => {
     if (passwordData.new !== passwordData.confirm) {

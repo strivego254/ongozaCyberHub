@@ -10,14 +10,18 @@ import { Shield, Lock, Eye, Globe, Mail, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useSettingsMaster } from '@/hooks/useSettingsMaster';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import type { UserSettings, UserEntitlements, SettingsUpdate } from '@/lib/settings/types';
 
-export function PrivacyMasterSwitch() {
-  const { settings, entitlements, updateSettings } = useSettingsMaster();
-  const { items } = usePortfolio();
+interface PrivacyMasterSwitchProps {
+  settings: UserSettings;
+  entitlements: UserEntitlements;
+  updateSettings: (updates: SettingsUpdate) => void;
+  userId?: string;
+}
 
-  if (!settings || !entitlements) return null;
+export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, userId }: PrivacyMasterSwitchProps) {
+  const { items } = usePortfolio(userId);
 
   const visibleItemsCount = items.filter(
     item => item.status === 'approved' && 
