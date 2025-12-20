@@ -20,9 +20,26 @@ interface CoachingControlPanelProps {
 }
 
 export function CoachingControlPanel({ settings, onUpdate }: CoachingControlPanelProps) {
-  if (!settings) return null;
-
   const [showAdvanced, setShowAdvanced] = useState(false);
+  
+  // Handle missing settings gracefully
+  if (!settings) {
+    return (
+      <Card className="glass-card glass-card-hover">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Brain className="w-8 h-8 text-indigo-400" />
+            <div>
+              <h2 className="text-2xl font-bold text-slate-100">Coaching Preferences</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Coaching settings are loading...
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
   const [coachingIntensity, setCoachingIntensity] = useState<'gentle' | 'moderate' | 'intensive'>('moderate');
   const [coachingFrequency, setCoachingFrequency] = useState<'low' | 'medium' | 'high'>('medium');
 

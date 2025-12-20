@@ -208,85 +208,95 @@ export function SettingsMasterDashboard() {
             <strong style={{ color: '#ffffff' }}>Debug Info:</strong> settings={settings ? '✓ Loaded' : '✗ Missing'}, entitlements={entitlements ? '✓ Loaded' : '✗ Missing'}, activeTab={activeTab}, userId={userId ? '✓' : '✗'}
           </div>
           
-          {/* Profile Tab - Always render, show message if no settings */}
+          {/* Profile Tab - Always render with defaults */}
           {activeTab === 'profile' && (
             <div className="space-y-8" style={{ color: '#ffffff', position: 'relative', zIndex: 10 }}>
-              {settings ? (
-                <>
-                  <div style={{ padding: '20px', backgroundColor: 'rgba(99, 102, 241, 0.2)', borderRadius: '8px', marginBottom: '20px', color: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.5)' }}>
-                    <h3 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>Profile Settings</h3>
-                    <p style={{ color: '#ffffff' }}>Manage your profile information and completeness</p>
-                  </div>
-                  <ProfileCompleteness settings={settings} updateSettings={updateSettings} userId={userId} />
-                  <ProfileFormSection settings={settings} updateSettings={updateSettings} />
-                  <CoachingControlPanel settings={settings} onUpdate={updateSettings} />
-                  <FrontendStatusSection />
-                </>
-              ) : (
-                <div style={{ padding: '40px', textAlign: 'center', color: '#ffffff', backgroundColor: 'rgba(15, 23, 42, 0.8)', borderRadius: '12px', border: '2px solid rgba(239, 68, 68, 0.5)' }}>
-                  <h3 style={{ color: '#ffffff', fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>Settings Not Loaded</h3>
-                  <p style={{ color: '#ffffff', marginBottom: '20px' }}>Please wait while we load your settings...</p>
-                  <Button onClick={() => refetch()} variant="defender" style={{ color: '#ffffff' }}>
-                    Retry Loading
-                  </Button>
+              {!settings && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <p className="text-sm text-amber-300">
+                    Settings are loading... Displaying default values. Changes will be saved once settings are loaded.
+                  </p>
                 </div>
               )}
+              <div style={{ padding: '20px', backgroundColor: 'rgba(99, 102, 241, 0.2)', borderRadius: '8px', marginBottom: '20px', color: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.5)' }}>
+                <h3 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>Profile Settings</h3>
+                <p style={{ color: '#ffffff' }}>Manage your profile information and completeness</p>
+              </div>
+              <ProfileCompleteness settings={displaySettings} updateSettings={updateSettings} userId={userId} />
+              <ProfileFormSection settings={displaySettings} updateSettings={updateSettings} />
+              <CoachingControlPanel settings={displaySettings} onUpdate={updateSettings} />
+              <FrontendStatusSection />
             </div>
           )}
 
           {/* Subscription Tab */}
           {activeTab === 'subscription' && (
-            settings && entitlements ? (
-              <SubscriptionControlPanel entitlements={entitlements} settings={settings} />
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#ffffff', backgroundColor: 'rgba(15, 23, 42, 0.8)', borderRadius: '12px' }}>
-                <p style={{ color: '#ffffff' }}>Loading subscription information...</p>
-              </div>
-            )
+            <>
+              {(!settings || !entitlements) && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <p className="text-sm text-amber-300">
+                    Subscription data is loading... Displaying default values.
+                  </p>
+                </div>
+              )}
+              <SubscriptionControlPanel entitlements={displayEntitlements} settings={displaySettings} />
+            </>
           )}
 
           {/* Privacy Tab */}
           {activeTab === 'privacy' && (
-            settings && entitlements ? (
-              <PrivacyMasterSwitch settings={settings} entitlements={entitlements} updateSettings={updateSettings} userId={userId} />
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#ffffff', backgroundColor: 'rgba(15, 23, 42, 0.8)', borderRadius: '12px' }}>
-                <p style={{ color: '#ffffff' }}>Loading privacy settings...</p>
-              </div>
-            )
+            <>
+              {(!settings || !entitlements) && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <p className="text-sm text-amber-300">
+                    Privacy settings are loading... Displaying default values.
+                  </p>
+                </div>
+              )}
+              <PrivacyMasterSwitch settings={displaySettings} entitlements={displayEntitlements} updateSettings={updateSettings} userId={userId} />
+            </>
           )}
 
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
-            settings ? (
-              <NotificationEngine settings={settings} updateSettings={updateSettings} />
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#ffffff', backgroundColor: 'rgba(15, 23, 42, 0.8)', borderRadius: '12px' }}>
-                <p style={{ color: '#ffffff' }}>Loading notification settings...</p>
-              </div>
-            )
+            <>
+              {!settings && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <p className="text-sm text-amber-300">
+                    Notification settings are loading... Displaying default values.
+                  </p>
+                </div>
+              )}
+              <NotificationEngine settings={displaySettings} updateSettings={updateSettings} />
+            </>
           )}
 
           {/* Integrations Tab */}
           {activeTab === 'integrations' && (
-            settings ? (
-              <IntegrationHub settings={settings} updateSettings={updateSettings} userId={userId} />
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#ffffff', backgroundColor: 'rgba(15, 23, 42, 0.8)', borderRadius: '12px' }}>
-                <p style={{ color: '#ffffff' }}>Loading integrations...</p>
-              </div>
-            )
+            <>
+              {!settings && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <p className="text-sm text-amber-300">
+                    Integration settings are loading... Displaying default values.
+                  </p>
+                </div>
+              )}
+              <IntegrationHub settings={displaySettings} updateSettings={updateSettings} userId={userId} />
+            </>
           )}
 
           {/* Security Tab */}
           {activeTab === 'security' && (
-            settings ? (
-              <SecurityControlPanel settings={settings} updateSettings={updateSettings} userId={userId} />
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#ffffff', backgroundColor: 'rgba(15, 23, 42, 0.8)', borderRadius: '12px' }}>
-                <p style={{ color: '#ffffff' }}>Loading security settings...</p>
-              </div>
-            )
+            <>
+              {!settings && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <p className="text-sm text-amber-300">
+                    Security settings are loading... Displaying default values.
+                  </p>
+                </div>
+              )}
+              <SecurityControlPanel settings={displaySettings} updateSettings={updateSettings} userId={userId} />
+            </>
           )}
         </motion.div>
       </AnimatePresence>

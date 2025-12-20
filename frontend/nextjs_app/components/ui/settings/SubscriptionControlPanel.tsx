@@ -20,7 +20,26 @@ interface SubscriptionControlPanelProps {
 }
 
 export function SubscriptionControlPanel({ entitlements, settings }: SubscriptionControlPanelProps) {
-  if (!entitlements || !settings) return null;
+  // Always render with defaults if data is missing
+  if (!entitlements || !settings) {
+    return (
+      <div className="space-y-6">
+        <Card className="glass-card glass-card-hover">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Sparkles className="w-8 h-8 text-indigo-400" />
+              <div>
+                <h2 className="text-2xl font-bold text-slate-100">Subscription</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Subscription data is loading...
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const [showBillingHistory, setShowBillingHistory] = useState(false);
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);

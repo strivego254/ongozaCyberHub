@@ -29,6 +29,31 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
   const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<'json' | 'csv' | 'pdf'>('json');
 
+  // Handle missing data gracefully
+  if (!settings || !entitlements) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Card className="glass-card glass-card-hover">
+          <div className="p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <Shield className="w-9 h-9 text-indigo-400" />
+              <div>
+                <h2 className="text-3xl font-bold text-slate-100">Privacy & Visibility</h2>
+                <p className="text-slate-400 text-lg mt-1">
+                  Privacy settings are loading...
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </motion.div>
+    );
+  }
+
   const visibleItemsCount = items.filter(
     item => item.status === 'approved' && 
     (settings.portfolioVisibility === 'marketplace_preview' || settings.portfolioVisibility === 'public')
