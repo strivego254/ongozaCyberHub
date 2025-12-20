@@ -10,7 +10,7 @@ The backend is already running in Docker containers:
 
 ```bash
 cd backend
-docker compose ps  # Check status
+docker compose ps  # Checkstatus
 docker compose logs django  # View logs
 ```
 
