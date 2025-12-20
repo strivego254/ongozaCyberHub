@@ -5,31 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import clsx from 'clsx'
 import { useAuth } from '@/hooks/useAuth'
-<<<<<<< HEAD
 import { getUserRoleDisplay } from '@/utils/formatRole'
-=======
-import { useNavigation } from '@/hooks/useNavigation'
-import { getPrimaryRole } from '@/utils/rbac'
-
-// Helper function to get role display name
-function getRoleDisplayName(role: string | null): string {
-  if (!role) return 'Director'
-  
-  const roleMap: Record<string, string> = {
-    'student': 'Student',
-    'mentee': 'Student',
-    'mentor': 'Mentor',
-    'admin': 'Admin',
-    'program_director': 'Program Director',
-    'sponsor_admin': 'Sponsor',
-    'employer': 'Employer',
-    'analyst': 'Analyst',
-    'finance': 'Finance Director',
-  }
-  
-  return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, ' ')
-}
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
 interface NavItem {
   label: string
@@ -111,10 +87,6 @@ export function DirectorNavigation() {
     searchQuery,
     setSearchQuery,
   } = useNavigation({ storageKey: 'director-nav-expanded', autoExpandActive: true })
-
-  // Get primary role dynamically
-  const primaryRole = useMemo(() => getPrimaryRole(user), [user])
-  const roleDisplayName = useMemo(() => getRoleDisplayName(primaryRole), [primaryRole])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -615,16 +587,9 @@ export function DirectorNavigation() {
                   ? `${user.first_name} ${user.last_name}`
                   : 'Director')}
               </p>
-<<<<<<< HEAD
-              <p className="text-xs text-och-steel truncate">
-                {user?.email || ''}
-              </p>
               <p className="text-xs text-och-mint truncate mt-0.5">
                 {getUserRoleDisplay(user)}
               </p>
-=======
-              <p className="text-xs text-och-steel truncate">{roleDisplayName}</p>
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
             </div>
             <svg
               className={`w-4 h-4 text-och-steel transition-transform flex-shrink-0 ${isProfileOpen ? 'rotate-180' : ''}`}

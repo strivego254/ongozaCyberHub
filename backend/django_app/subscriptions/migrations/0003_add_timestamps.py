@@ -43,22 +43,3 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(add_timestamp_columns, reverse_migration),
     ]
-<<<<<<< HEAD
-=======
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407

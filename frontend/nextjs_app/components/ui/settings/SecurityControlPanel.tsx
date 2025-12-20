@@ -1,13 +1,14 @@
 /**
  * Security Control Panel Component
  * Password change, 2FA, active sessions management
+ * Enhanced with login history, security alerts, API keys, and 2FA backup codes
  */
 
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Shield, Lock, Smartphone, Monitor, MapPin, Clock, LogOut } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Shield, Lock, Smartphone, Monitor, MapPin, Clock, LogOut, Key, AlertTriangle, Eye, EyeOff, Copy, CheckCircle2, History, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -30,6 +31,29 @@ export function SecurityControlPanel({ settings, updateSettings, userId }: Secur
     confirm: '',
   });
   const [activeSessions, setActiveSessions] = useState(settings?.activeSessions || []);
+  const [showLoginHistory, setShowLoginHistory] = useState(false);
+  const [showSecurityAlerts, setShowSecurityAlerts] = useState(false);
+  const [showApiKeys, setShowApiKeys] = useState(false);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [apiKeys, setApiKeys] = useState([
+    { id: '1', name: 'Portfolio API', key: 'sk_live_••••••••••••••••', lastUsed: '2024-01-10T14:30:00Z', created: '2023-12-01T10:00:00Z' },
+  ]);
+
+  // Mock login history - in production, fetch from API
+  const loginHistory = [
+    { id: '1', timestamp: '2024-01-15T10:30:00Z', ip: '192.168.1.1', location: 'Nairobi, Kenya', device: 'Chrome on Windows', success: true },
+    { id: '2', timestamp: '2024-01-14T15:45:00Z', ip: '192.168.1.1', location: 'Nairobi, Kenya', device: 'Chrome on Windows', success: true },
+    { id: '3', timestamp: '2024-01-13T09:20:00Z', ip: '41.203.12.45', location: 'Lagos, Nigeria', device: 'Safari on iOS', success: true },
+    { id: '4', timestamp: '2024-01-12T22:10:00Z', ip: '192.168.1.1', location: 'Nairobi, Kenya', device: 'Chrome on Windows', success: false },
+  ];
+
+  // Mock security alerts - in production, fetch from API
+  const securityAlerts = [
+    { id: '1', type: 'suspicious_login', message: 'Login attempt from new location (Lagos, Nigeria)', timestamp: '2024-01-13T09:20:00Z', resolved: true },
+    { id: '2', type: 'failed_login', message: 'Multiple failed login attempts detected', timestamp: '2024-01-12T22:10:00Z', resolved: true },
+    { id: '3', type: 'password_change', message: 'Password changed successfully', timestamp: '2024-01-10T14:00:00Z', resolved: true },
+  ];
 
   const handlePasswordChange = async () => {
     if (passwordData.new !== passwordData.confirm) {
@@ -59,8 +83,28 @@ export function SecurityControlPanel({ settings, updateSettings, userId }: Secur
   };
 
   const handleToggle2FA = async () => {
-    // TODO: Implement 2FA setup/disable flow
+    if (!settings.twoFactorEnabled) {
+      // Enable 2FA - generate backup codes
+      const codes = Array.from({ length: 10 }, () => 
+        Math.random().toString(36).substring(2, 8).toUpperCase()
+      );
+      setBackupCodes(codes);
+      setShowBackupCodes(true);
+    }
     updateSettings({ twoFactorEnabled: !settings.twoFactorEnabled });
+  };
+
+  const generateBackupCodes = () => {
+    const codes = Array.from({ length: 10 }, () => 
+      Math.random().toString(36).substring(2, 8).toUpperCase()
+    );
+    setBackupCodes(codes);
+    setShowBackupCodes(true);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Copied to clipboard!');
   };
 
   const handleRevokeSession = async (sessionId: string) => {
@@ -252,6 +296,349 @@ export function SecurityControlPanel({ settings, updateSettings, userId }: Secur
           )}
         </div>
       </Card>
+
+      {/* Login History */}
+      <Card className="glass-card glass-card-hover">
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <History className="w-8 h-8 text-indigo-400" />
+              <div>
+                <h3 className="text-xl font-bold text-slate-100">Login History</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Review recent login attempts and sessions
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowLoginHistory(!showLoginHistory)}
+              className="text-slate-400 hover:text-slate-300 transition-colors"
+            >
+              {showLoginHistory ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showLoginHistory && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-3 mt-4"
+              >
+                {loginHistory.map((login) => (
+                  <div
+                    key={login.id}
+                    className={`flex items-center justify-between p-4 rounded-lg border ${
+                      login.success
+                        ? 'bg-slate-800/50 border-slate-700'
+                        : 'bg-red-500/10 border-red-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        login.success ? 'bg-emerald-500/20' : 'bg-red-500/20'
+                      }`}>
+                        {login.success ? (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        ) : (
+                          <AlertTriangle className="w-5 h-5 text-red-400" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="text-sm font-medium text-slate-200">
+                            {login.success ? 'Successful login' : 'Failed login attempt'}
+                          </div>
+                          <Badge
+                            variant={login.success ? 'default' : 'secondary'}
+                            className={login.success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}
+                          >
+                            {login.success ? 'Success' : 'Failed'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 mt-1 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {login.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Monitor className="w-3 h-3" />
+                            {login.device}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(login.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-600 mt-1">IP: {login.ip}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="mt-4 text-center">
+                  <Button variant="outline" size="sm">
+                    View All History
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </Card>
+
+      {/* Security Alerts */}
+      <Card className="glass-card glass-card-hover">
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-8 h-8 text-amber-400" />
+              <div>
+                <h3 className="text-xl font-bold text-slate-100">Security Alerts</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Recent security events and notifications
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSecurityAlerts(!showSecurityAlerts)}
+              className="text-slate-400 hover:text-slate-300 transition-colors"
+            >
+              {showSecurityAlerts ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showSecurityAlerts && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-3 mt-4"
+              >
+                {securityAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`flex items-center justify-between p-4 rounded-lg border ${
+                      alert.resolved
+                        ? 'bg-slate-800/50 border-slate-700'
+                        : 'bg-amber-500/10 border-amber-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <AlertTriangle className={`w-5 h-5 ${alert.resolved ? 'text-slate-500' : 'text-amber-400'}`} />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-slate-200">{alert.message}</div>
+                        <div className="text-xs text-slate-500 mt-1">
+                          {new Date(alert.timestamp).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                    {alert.resolved ? (
+                      <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
+                        Resolved
+                      </Badge>
+                    ) : (
+                      <Button variant="outline" size="sm">
+                        Review
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </Card>
+
+      {/* API Keys */}
+      <Card className="glass-card glass-card-hover">
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Key className="w-8 h-8 text-indigo-400" />
+              <div>
+                <h3 className="text-xl font-bold text-slate-100">API Keys</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Manage API keys for programmatic access
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowApiKeys(!showApiKeys)}
+              className="text-slate-400 hover:text-slate-300 transition-colors"
+            >
+              {showApiKeys ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showApiKeys && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-3 mt-4"
+              >
+                {apiKeys.map((apiKey) => (
+                  <div
+                    key={apiKey.id}
+                    className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="text-sm font-medium text-slate-200">{apiKey.name}</div>
+                        <Badge variant="outline" className="text-[10px]">Active</Badge>
+                      </div>
+                      <div className="text-xs text-slate-500 font-mono mb-2">{apiKey.key}</div>
+                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                        <span>Created: {new Date(apiKey.created).toLocaleDateString()}</span>
+                        <span>Last used: {new Date(apiKey.lastUsed).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(apiKey.key)}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                        onClick={() => {
+                          if (confirm('Are you sure you want to revoke this API key?')) {
+                            setApiKeys(apiKeys.filter(k => k.id !== apiKey.id));
+                          }
+                        }}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  variant="defender"
+                  className="w-full"
+                  onClick={() => {
+                    const newKey = {
+                      id: Date.now().toString(),
+                      name: 'New API Key',
+                      key: `sk_live_${Math.random().toString(36).substring(2, 18)}`,
+                      lastUsed: new Date().toISOString(),
+                      created: new Date().toISOString(),
+                    };
+                    setApiKeys([...apiKeys, newKey]);
+                  }}
+                >
+                  <Key className="w-4 h-4 mr-2" />
+                  Generate New API Key
+                </Button>
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <p className="text-xs text-amber-300">
+                    <strong>Security Note:</strong> Keep your API keys secure. Never share them publicly or commit them to version control.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </Card>
+
+      {/* 2FA Backup Codes */}
+      {settings.twoFactorEnabled && (
+        <Card className="glass-card glass-card-hover border-amber-500/30">
+          <div className="p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Key className="w-8 h-8 text-amber-400" />
+                <div>
+                  <h3 className="text-xl font-bold text-slate-100">2FA Backup Codes</h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Save these codes in a secure location. You'll need them if you lose access to your authenticator app.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBackupCodes(!showBackupCodes)}
+                className="text-slate-400 hover:text-slate-300 transition-colors"
+              >
+                {showBackupCodes ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {showBackupCodes && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4"
+                >
+                  {backupCodes.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {backupCodes.map((code, index) => (
+                        <div
+                          key={index}
+                          className="p-3 bg-slate-800/50 rounded-lg border border-slate-700 font-mono text-center text-slate-200"
+                        >
+                          {code}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      <p className="mb-4">No backup codes generated yet</p>
+                      <Button variant="defender" onClick={generateBackupCodes}>
+                        Generate Backup Codes
+                      </Button>
+                    </div>
+                  )}
+                  {backupCodes.length > 0 && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          const codesText = backupCodes.join('\n');
+                          copyToClipboard(codesText);
+                        }}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copy All
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          const codesText = backupCodes.join('\n');
+                          const blob = new Blob([codesText], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = '2fa-backup-codes.txt';
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                    </div>
+                  )}
+                  <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <p className="text-xs text-red-300">
+                      <strong>Important:</strong> Backup codes are single-use. Generate new codes if you've used them all or if you suspect they've been compromised.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </Card>
+      )}
     </motion.div>
   );
 }

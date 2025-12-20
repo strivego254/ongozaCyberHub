@@ -20,6 +20,7 @@ import { IntegrationHub } from './IntegrationHub';
 import { SystemStatusRail } from './SystemStatusRail';
 import { CoachingControlPanel } from './CoachingControlPanel';
 import { SecurityControlPanel } from './SecurityControlPanel';
+import { FrontendStatusSection } from './FrontendStatusSection';
 import { PortfolioDashboardSkeleton } from '../portfolio/PortfolioSkeleton';
 import { ErrorDisplay } from '../portfolio/ErrorDisplay';
 import { useSettingsMaster } from '@/hooks/useSettingsMaster';
@@ -50,6 +51,57 @@ export function SettingsMasterDashboard() {
     refetch,
   } = useSettingsMaster(userId);
 
+  // Create default settings/entitlements for graceful rendering
+  const defaultSettings = {
+    userId: userId || '',
+    profileCompleteness: 0,
+    avatarUploaded: false,
+    linkedinLinked: false,
+    bioCompleted: false,
+    name: '',
+    headline: '',
+    location: '',
+    track: 'defender' as const,
+    timezoneSet: 'Africa/Nairobi',
+    languagePreference: 'en',
+    portfolioVisibility: 'private' as const,
+    marketplaceContactEnabled: false,
+    dataSharingConsent: {},
+    notificationsEmail: true,
+    notificationsPush: true,
+    notificationsCategories: {
+      missions: true,
+      coaching: true,
+      mentor: false,
+      marketplace: false,
+    },
+    aiCoachStyle: 'motivational' as const,
+    habitFrequency: 'daily' as const,
+    reflectionPromptStyle: 'guided' as const,
+    integrations: {},
+    twoFactorEnabled: false,
+    activeSessions: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const defaultEntitlements = {
+    userId: userId || '',
+    profileCompleteness: 0,
+    tier: 'free' as const,
+    subscriptionStatus: 'inactive' as const,
+    marketplaceFullAccess: false,
+    aiCoachFullAccess: false,
+    mentorAccess: false,
+    portfolioExportEnabled: false,
+    missionAccess: 'basic' as const,
+    portfolioCapabilities: [],
+  };
+
+  // Use actual data or fallback to defaults
+  const displaySettings = settings || defaultSettings;
+  const displayEntitlements = entitlements || defaultEntitlements;
+
   // Debug logging
   useEffect(() => {
     console.log('SettingsMasterDashboard Debug:', {
@@ -59,6 +111,7 @@ export function SettingsMasterDashboard() {
       isLoading,
       error: error?.message,
       settingsKeys: settings ? Object.keys(settings) : [],
+      usingDefaults: !settings || !entitlements,
     });
   }, [userId, settings, entitlements, isLoading, error]);
 
@@ -167,6 +220,7 @@ export function SettingsMasterDashboard() {
                   <ProfileCompleteness settings={settings} updateSettings={updateSettings} userId={userId} />
                   <ProfileFormSection settings={settings} updateSettings={updateSettings} />
                   <CoachingControlPanel settings={settings} onUpdate={updateSettings} />
+                  <FrontendStatusSection />
                 </>
               ) : (
                 <div style={{ padding: '40px', textAlign: 'center', color: '#ffffff', backgroundColor: 'rgba(15, 23, 42, 0.8)', borderRadius: '12px', border: '2px solid rgba(239, 68, 68, 0.5)' }}>

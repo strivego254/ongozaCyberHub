@@ -1,12 +1,13 @@
 /**
  * Subscription Control Panel Component
- * Modern feature grid with upgrade CTAs
+ * Modern feature grid with upgrade CTAs, billing history, payment methods, and usage analytics
  */
 
 'use client';
 
-import { motion } from 'framer-motion';
-import { Sparkles, Check, ArrowRight, X } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Check, ArrowRight, X, CreditCard, Calendar, TrendingUp, BarChart3, Receipt, Clock, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -21,11 +22,35 @@ interface SubscriptionControlPanelProps {
 export function SubscriptionControlPanel({ entitlements, settings }: SubscriptionControlPanelProps) {
   if (!entitlements || !settings) return null;
 
+  const [showBillingHistory, setShowBillingHistory] = useState(false);
+  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
+  const [showUsageAnalytics, setShowUsageAnalytics] = useState(false);
+
   const recommendations = getUpgradeRecommendations(entitlements, settings);
   const marketplaceAccess = checkFeatureAccess(entitlements, settings, 'marketplace_full');
   const aiCoachAccess = checkFeatureAccess(entitlements, settings, 'ai_coach_full');
   const mentorAccess = checkFeatureAccess(entitlements, settings, 'mentor_access');
   const portfolioExport = checkFeatureAccess(entitlements, settings, 'portfolio_export');
+
+  // Mock billing history - in production, fetch from API
+  const billingHistory = [
+    { id: '1', date: '2024-01-15', amount: 99, status: 'paid', description: 'Professional Plan - January 2024' },
+    { id: '2', date: '2023-12-15', amount: 99, status: 'paid', description: 'Professional Plan - December 2023' },
+    { id: '3', date: '2023-11-15', amount: 99, status: 'paid', description: 'Professional Plan - November 2023' },
+  ];
+
+  // Mock payment methods - in production, fetch from Stripe/Paystack
+  const paymentMethods = [
+    { id: '1', type: 'card', last4: '4242', brand: 'Visa', expiryMonth: 12, expiryYear: 2025, isDefault: true },
+  ];
+
+  // Mock usage analytics
+  const usageStats = {
+    aiCoachMessages: { used: 245, limit: entitlements.tier === 'professional' ? -1 : entitlements.tier === 'starter' ? 600 : 150 },
+    mentorSessions: { used: 3, limit: entitlements.mentorAccess ? -1 : 0 },
+    portfolioExports: { used: 2, limit: entitlements.portfolioExportEnabled ? -1 : 0 },
+    marketplaceViews: { used: 47, limit: entitlements.marketplaceFullAccess ? -1 : 0 },
+  };
 
   const tiers = [
     {
@@ -301,7 +326,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
         </div>
       </Card>
 
-      {/* Upgrade Recommendations */}
+          {/* Upgrade Recommendations */}
       {recommendations.length > 0 && (
         <Card className="bg-amber-500/10 border border-amber-500/30 glass-card-hover">
           <div className="p-6">
@@ -317,6 +342,333 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
           </div>
         </Card>
       )}
+
+      {/* Billing History */}
+      <Card className="glass-card glass-card-hover">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Receipt className="w-8 h-8 text-indigo-400" />
+              <div>
+                <h3 className="text-xl font-bold text-slate-100">Billing History</h3>
+                <p className="text-xs text-slate-500 mt-1">View past invoices and payments</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowBillingHistory(!showBillingHistory)}
+              className="text-slate-400 hover:text-slate-300 transition-colors"
+            >
+              {showBillingHistory ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showBillingHistory && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-3 mt-4"
+              >
+                {billingHistory.length > 0 ? (
+                  billingHistory.map((invoice) => (
+                    <div
+                      key={invoice.id}
+                      className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="text-sm font-medium text-slate-200">{invoice.description}</div>
+                          <Badge
+                            variant={invoice.status === 'paid' ? 'default' : 'secondary'}
+                            className={invoice.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : ''}
+                          >
+                            {invoice.status}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-slate-500 flex items-center gap-3">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(invoice.date).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-slate-100">${invoice.amount}</div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 text-xs"
+                          onClick={() => {
+                            // Open invoice PDF
+                            window.open(`/api/billing/invoice/${invoice.id}`, '_blank');
+                          }}
+                        >
+                          Download
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    <Receipt className="w-12 h-12 mx-auto mb-3 text-slate-600" />
+                    <p>No billing history available</p>
+                  </div>
+                )}
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.open('/api/billing/portal', '_blank');
+                    }}
+                  >
+                    Manage Billing Portal
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </Card>
+
+      {/* Payment Methods */}
+      <Card className="glass-card glass-card-hover">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <CreditCard className="w-8 h-8 text-indigo-400" />
+              <div>
+                <h3 className="text-xl font-bold text-slate-100">Payment Methods</h3>
+                <p className="text-xs text-slate-500 mt-1">Manage your payment cards and methods</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPaymentMethods(!showPaymentMethods)}
+              className="text-slate-400 hover:text-slate-300 transition-colors"
+            >
+              {showPaymentMethods ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showPaymentMethods && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-3 mt-4"
+              >
+                {paymentMethods.length > 0 ? (
+                  paymentMethods.map((method) => (
+                    <div
+                      key={method.id}
+                      className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700"
+                    >
+                      <div className="flex items-center gap-3">
+                        <CreditCard className="w-5 h-5 text-indigo-400" />
+                        <div>
+                          <div className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                            {method.brand} •••• {method.last4}
+                            {method.isDefault && (
+                              <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 text-[10px]">
+                                Default
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            Expires {method.expiryMonth}/{method.expiryYear}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {!method.isDefault && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // Set as default
+                              alert('Setting as default payment method...');
+                            }}
+                          >
+                            Set Default
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to remove this payment method?')) {
+                              alert('Payment method removed');
+                            }
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    <CreditCard className="w-12 h-12 mx-auto mb-3 text-slate-600" />
+                    <p className="mb-4">No payment methods on file</p>
+                    <Button
+                      variant="defender"
+                      onClick={() => {
+                        window.open('/api/billing/add-payment-method', '_blank');
+                      }}
+                    >
+                      Add Payment Method
+                    </Button>
+                  </div>
+                )}
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      window.open('/api/billing/add-payment-method', '_blank');
+                    }}
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Add New Payment Method
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </Card>
+
+      {/* Usage Analytics */}
+      <Card className="glass-card glass-card-hover">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="w-8 h-8 text-indigo-400" />
+              <div>
+                <h3 className="text-xl font-bold text-slate-100">Usage Analytics</h3>
+                <p className="text-xs text-slate-500 mt-1">Track your feature usage and limits</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowUsageAnalytics(!showUsageAnalytics)}
+              className="text-slate-400 hover:text-slate-300 transition-colors"
+            >
+              {showUsageAnalytics ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showUsageAnalytics && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-4 mt-4"
+              >
+                {/* AI Coach Messages */}
+                <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-slate-200">AI Coach Messages</div>
+                    <div className="text-xs text-slate-400">
+                      {usageStats.aiCoachMessages.limit === -1
+                        ? 'Unlimited'
+                        : `${usageStats.aiCoachMessages.used} / ${usageStats.aiCoachMessages.limit}`}
+                    </div>
+                  </div>
+                  {usageStats.aiCoachMessages.limit !== -1 && (
+                    <div className="w-full bg-slate-700 rounded-full h-2">
+                      <div
+                        className="bg-indigo-500 h-2 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min((usageStats.aiCoachMessages.used / usageStats.aiCoachMessages.limit) * 100, 100)}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Mentor Sessions */}
+                {entitlements.mentorAccess && (
+                  <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium text-slate-200">Mentor Sessions</div>
+                      <div className="text-xs text-slate-400">
+                        {usageStats.mentorSessions.limit === -1
+                          ? 'Unlimited'
+                          : `${usageStats.mentorSessions.used} / ${usageStats.mentorSessions.limit}`}
+                      </div>
+                    </div>
+                    {usageStats.mentorSessions.limit !== -1 && (
+                      <div className="w-full bg-slate-700 rounded-full h-2">
+                        <div
+                          className="bg-emerald-500 h-2 rounded-full transition-all"
+                          style={{
+                            width: `${Math.min((usageStats.mentorSessions.used / usageStats.mentorSessions.limit) * 100, 100)}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Portfolio Exports */}
+                {entitlements.portfolioExportEnabled && (
+                  <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium text-slate-200">Portfolio Exports</div>
+                      <div className="text-xs text-slate-400">
+                        {usageStats.portfolioExports.limit === -1
+                          ? 'Unlimited'
+                          : `${usageStats.portfolioExports.used} / ${usageStats.portfolioExports.limit}`}
+                      </div>
+                    </div>
+                    {usageStats.portfolioExports.limit !== -1 && (
+                      <div className="w-full bg-slate-700 rounded-full h-2">
+                        <div
+                          className="bg-purple-500 h-2 rounded-full transition-all"
+                          style={{
+                            width: `${Math.min((usageStats.portfolioExports.used / usageStats.portfolioExports.limit) * 100, 100)}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Marketplace Views */}
+                {entitlements.marketplaceFullAccess && (
+                  <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium text-slate-200">Marketplace Profile Views</div>
+                      <div className="text-xs text-slate-400">
+                        {usageStats.marketplaceViews.limit === -1
+                          ? 'Unlimited'
+                          : `${usageStats.marketplaceViews.used} / ${usageStats.marketplaceViews.limit}`}
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                      <TrendingUp className="w-3 h-3" />
+                      <span>+12% from last month</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+                  <p className="text-xs text-indigo-300">
+                    <strong>Usage Period:</strong> Current billing cycle resets on{' '}
+                    {entitlements.nextBillingDate
+                      ? new Date(entitlements.nextBillingDate).toLocaleDateString()
+                      : 'N/A'}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </Card>
     </div>
   );
 }

@@ -124,14 +124,6 @@ function LoginForm() {
 
       // Determine redirect route
       const redirectTo = searchParams.get('redirect');
-<<<<<<< HEAD
-      let route: string;
-      
-      if (redirectTo && redirectTo.startsWith('/dashboard')) {
-        route = redirectTo;
-      } else {
-        route = getRedirectRoute(currentUser);
-=======
 
       // Wait for auth state to fully update and roles to be loaded
       // The login function already fetches full user profile from /auth/me
@@ -139,19 +131,19 @@ function LoginForm() {
       
       // Reload user to ensure we have the latest data with roles
       // The login function should have already updated the auth state, but we'll verify
-      let currentUser = result?.user;
+      let updatedUser = result?.user || currentUser;
       
       // Try to get the latest user from auth state (which should have roles from /auth/me)
       // Wait a bit more if user is not yet available
       let retries = 0;
-      while ((!currentUser || !currentUser.roles || currentUser.roles.length === 0) && retries < 5) {
+      while ((!updatedUser || !updatedUser.roles || updatedUser.roles.length === 0) && retries < 5) {
         await new Promise(resolve => setTimeout(resolve, 200));
-        currentUser = user || result?.user;
+        updatedUser = user || result?.user || currentUser;
         retries++;
       }
       
-      console.log('Current user for redirect:', currentUser);
-      console.log('User roles:', currentUser?.roles);
+      console.log('Current user for redirect:', updatedUser);
+      console.log('User roles:', updatedUser?.roles);
       
       // Fallback: Try to get dashboard route from cookie if user roles aren't available
       let dashboardFromCookie: string | null = null;
@@ -164,7 +156,9 @@ function LoginForm() {
         }
       }
       
-      if (!currentUser || !currentUser.roles || currentUser.roles.length === 0) {
+      let route: string;
+      
+      if (!updatedUser || !updatedUser.roles || updatedUser.roles.length === 0) {
         console.warn('⚠️ No user roles available, using cookie fallback');
         if (dashboardFromCookie) {
           route = dashboardFromCookie;
@@ -174,46 +168,46 @@ function LoginForm() {
           route = '/dashboard/student';
         }
       } else {
-        const userRoles = currentUser.roles || [];
+        const userRoles = updatedUser.roles || [];
         
         // If logging in through director login, verify role
         if (role === 'director') {
-        const isAdmin = userRoles.some((ur: any) => {
+          const isAdmin = userRoles.some((ur: any) => {
             const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-          return roleName?.toLowerCase().trim() === 'admin'
-        })
-        const isProgramDirector = userRoles.some((ur: any) => {
+            return roleName?.toLowerCase().trim() === 'admin'
+          })
+          const isProgramDirector = userRoles.some((ur: any) => {
             const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-          const normalized = roleName?.toLowerCase().trim()
-          return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
-        })
-        
-        if (!isAdmin && !isProgramDirector) {
-          setError('You do not have permission to access the Program Director dashboard. Your account must have program_director or admin role.');
-          setIsLoggingIn(false);
-          return;
+            const normalized = roleName?.toLowerCase().trim()
+            return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
+          })
+          
+          if (!isAdmin && !isProgramDirector) {
+            setError('You do not have permission to access the Program Director dashboard. Your account must have program_director or admin role.');
+            setIsLoggingIn(false);
+            return;
+          }
         }
-      }
 
-      // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
-      if (redirectTo && redirectTo.startsWith('/dashboard')) {
-        route = redirectTo;
-        console.log('📍 Using redirect parameter:', route);
+        // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
+        if (redirectTo && redirectTo.startsWith('/dashboard')) {
+          route = redirectTo;
+          console.log('📍 Using redirect parameter:', route);
         } else {
-        // CRITICAL: Check for admin role first
-        const isAdmin = userRoles.some((ur: any) => {
+          // CRITICAL: Check for admin role first
+          const isAdmin = userRoles.some((ur: any) => {
             const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-          return roleName?.toLowerCase().trim() === 'admin'
-        })
-        
-        if (isAdmin) {
-          console.log('✅ Admin user detected - redirecting to /dashboard/admin')
-          route = '/dashboard/admin'
-        } else {
-          // Use centralized redirect utility for other roles
-          route = getRedirectRoute(currentUser);
-          console.log('✅ Login redirect route determined (non-admin):', route);
-          console.log('User roles used for redirect:', userRoles);
+            return roleName?.toLowerCase().trim() === 'admin'
+          })
+          
+          if (isAdmin) {
+            console.log('✅ Admin user detected - redirecting to /dashboard/admin')
+            route = '/dashboard/admin'
+          } else {
+            // Use centralized redirect utility for other roles
+            route = getRedirectRoute(updatedUser);
+            console.log('✅ Login redirect route determined (non-admin):', route);
+            console.log('User roles used for redirect:', userRoles);
             
             // Special handling for program_director - ensure it goes to director dashboard
             const isProgramDirector = userRoles.some((ur: any) => {
@@ -232,7 +226,6 @@ function LoginForm() {
             }
           }
         }
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
       }
 
       // Validate route
@@ -246,13 +239,6 @@ function LoginForm() {
       setIsRedirecting(true);
       hasRedirectedRef.current = true;
       
-<<<<<<< HEAD
-      // Use router.push for client-side navigation (preserves cookies)
-      // Add a small delay to ensure cookie is set by browser
-      setTimeout(() => {
-        router.push(route);
-      }, 100);
-=======
       // Additional delay to ensure auth state is fully updated and cookies are set
       await new Promise(resolve => setTimeout(resolve, 300));
       
@@ -270,7 +256,6 @@ function LoginForm() {
       // Small delay before refresh to ensure navigation has started
       await new Promise(resolve => setTimeout(resolve, 100));
       router.refresh();
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
 
     } catch (err: any) {
       setIsLoggingIn(false);
