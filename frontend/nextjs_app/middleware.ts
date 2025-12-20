@@ -16,6 +16,7 @@ function getLoginRouteForPath(pathname: string) {
   if (pathname.startsWith('/dashboard/sponsor')) return '/login/sponsor'
   if (pathname.startsWith('/dashboard/analyst') || pathname.startsWith('/dashboard/analytics')) return '/login/analyst'
   if (pathname.startsWith('/dashboard/employer') || pathname.startsWith('/dashboard/marketplace')) return '/login/employer'
+  if (pathname.startsWith('/dashboard/finance')) return '/login/finance'
   return '/login/student'
 }
 
@@ -39,6 +40,7 @@ function dashboardForRole(role: string | null): string {
     case 'analyst': return '/dashboard/analyst'
     case 'sponsor_admin': return '/dashboard/sponsor'
     case 'employer': return '/dashboard/employer'
+    case 'finance': return '/dashboard/finance'
     case 'mentee':
     case 'student':
     default:
@@ -56,6 +58,7 @@ function canAccess(pathname: string, roles: string[]): boolean {
     if (pathname.startsWith('/dashboard/analyst')) return roles.includes('analyst')
     if (pathname.startsWith('/dashboard/analytics')) return roles.includes('analyst') || roles.includes('program_director')
     if (pathname.startsWith('/dashboard/employer') || pathname.startsWith('/dashboard/marketplace')) return roles.includes('employer')
+    if (pathname.startsWith('/dashboard/finance')) return roles.includes('finance')
     // Student routes (catch-all for other dashboard paths)
     return roles.includes('student') || roles.includes('mentee')
   }

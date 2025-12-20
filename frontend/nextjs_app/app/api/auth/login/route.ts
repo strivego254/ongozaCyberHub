@@ -16,6 +16,7 @@ function normalizeRoleName(roleName: string): string {
   if (normalized === 'sponsor_admin' || normalized === 'sponsor' || normalized === 'sponsor/employer admin' || normalized === 'sponsoremployer admin') return 'sponsor_admin'
   if (normalized === 'analyst') return 'analyst'
   if (normalized === 'employer') return 'employer'
+  if (normalized === 'finance') return 'finance'
   return normalized
 }
 
@@ -34,7 +35,7 @@ function extractNormalizedRoles(user: any): string[] {
 
 function getPrimaryRole(roles: string[]): string | null {
   if (roles.includes('admin')) return 'admin'
-  const priority = ['program_director', 'mentor', 'analyst', 'sponsor_admin', 'employer', 'mentee', 'student']
+  const priority = ['program_director', 'finance', 'mentor', 'analyst', 'sponsor_admin', 'employer', 'mentee', 'student']
   for (const r of priority) if (roles.includes(r)) return r
   return roles[0] || null
 }
@@ -47,6 +48,7 @@ function getDashboardForRole(role: string | null): string {
     case 'analyst': return '/dashboard/analyst'
     case 'sponsor_admin': return '/dashboard/sponsor'
     case 'employer': return '/dashboard/employer'
+    case 'finance': return '/dashboard/finance'
     case 'mentee':
     case 'student':
     default:

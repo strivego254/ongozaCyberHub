@@ -23,6 +23,7 @@ export function RouteGuard({ children, requiredRoles: _requiredRoles }: RouteGua
     if (path.startsWith('/dashboard/sponsor')) return '/login/sponsor'
     if (path.startsWith('/dashboard/analyst') || path.startsWith('/dashboard/analytics')) return '/login/analyst'
     if (path.startsWith('/dashboard/employer') || path.startsWith('/dashboard/marketplace')) return '/login/employer'
+    if (path.startsWith('/dashboard/finance')) return '/login/finance'
     return '/login/student'
   }
 
