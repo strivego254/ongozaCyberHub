@@ -89,12 +89,18 @@ export function PortfolioTimeline({ data, maxItems = 10 }: PortfolioTimelineProp
                   <Icon className="w-5 h-5" />
                 </div>
 
-                {/* Content */}
+                {/* Content - EXACT SPEC: ✅ DFIR Mission (2h ago) */}
                 <div className="flex-1 pb-4">
                   <div className="flex items-start justify-between gap-4 mb-1">
-                    <h4 className="font-semibold text-slate-200 text-sm">{event.title}</h4>
+                    <h4 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
+                      {event.type === 'item_approved' && '✅ '}
+                      {event.type === 'item_created' && '✨ '}
+                      {event.type === 'review_received' && '⏳ '}
+                      {event.type === 'marketplace_view' && '👀 '}
+                      {event.title}
+                    </h4>
                     <span className="text-xs text-slate-500 whitespace-nowrap">
-                      {formatDistanceToNow(new Date(event.createdAt))}
+                      ({formatDistanceToNow(new Date(event.createdAt))})
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">{event.description}</p>

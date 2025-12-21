@@ -27,30 +27,48 @@ export function FrontendStatusSection() {
 
   const [currentTime, setCurrentTime] = useState<string>('');
 
+  // Initialize with 'N/A' to prevent hydration mismatch
   const [frontendInfo, setFrontendInfo] = useState({
     version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     environment: process.env.NODE_ENV || 'development',
     buildTime: new Date().toISOString(),
-    userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'N/A',
-    screenResolution: typeof window !== 'undefined' 
-      ? `${window.screen.width}x${window.screen.height}` 
-      : 'N/A',
-    viewport: typeof window !== 'undefined'
-      ? `${window.innerWidth}x${window.innerHeight}`
-      : 'N/A',
+    userAgent: 'N/A',
+    screenResolution: 'N/A',
+    viewport: 'N/A',
   });
 
   useEffect(() => {
     // Set current time on client side only (prevents hydration mismatch)
     setCurrentTime(new Date().toLocaleTimeString());
     
-    // Update time every second
-    const timeInterval = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString());
-    }, 1000);
+    // Update frontend info on client side only (prevents hydration mismatch)
+    if (typeof window !== 'undefined') {
+      setFrontendInfo({
+        version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
+        environment: process.env.NODE_ENV || 'development',
+        buildTime: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+      });
 
-    // Check service statuses
-    const checkServices = async () => {
+      // Update viewport on resize
+      const handleResize = () => {
+        setFrontendInfo(prev => ({
+          ...prev,
+          viewport: `${window.innerWidth}x${window.innerHeight}`,
+        }));
+      };
+
+      window.addEventListener('resize', handleResize);
+      
+      // Update time every second
+      const timeInterval = setInterval(() => {
+        setCurrentTime(new Date().toLocaleTimeString());
+      }, 1000);
+
+      // Check service statuses
+      const checkServices = async () => {
       const initialServices: ServiceStatus[] = [
         { name: 'Django API', url: 'http://localhost:8000/api/v1/health/', status: 'checking' },
         { name: 'FastAPI', url: 'http://localhost:8001/health', status: 'checking' },
@@ -84,17 +102,19 @@ export function FrontendStatusSection() {
         })
       );
 
-      setServices(updatedServices);
-    };
+        setServices(updatedServices);
+      };
 
-    checkServices();
-    // Refresh every 30 seconds
-    const interval = setInterval(checkServices, 30000);
+      checkServices();
+      // Refresh every 30 seconds
+      const interval = setInterval(checkServices, 30000);
 
-    return () => {
-      clearInterval(interval);
-      clearInterval(timeInterval);
-    };
+      return () => {
+        clearInterval(interval);
+        clearInterval(timeInterval);
+        window.removeEventListener('resize', handleResize);
+      };
+    }
   }, []);
 
   const getStatusIcon = (status: ServiceStatus['status']) => {

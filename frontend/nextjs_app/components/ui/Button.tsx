@@ -2,7 +2,7 @@ import { ButtonHTMLAttributes, ReactNode } from 'react'
 import clsx from 'clsx'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'defender' | 'mint' | 'gold' | 'orange' | 'outline'
+  variant?: 'defender' | 'mint' | 'gold' | 'orange' | 'outline' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
   glow?: boolean
   children: ReactNode
@@ -24,6 +24,7 @@ export const Button = ({
     gold: 'bg-och-gold text-och-midnight hover:bg-opacity-90 focus:ring-och-gold',
     orange: 'bg-och-orange text-white hover:bg-opacity-90 focus:ring-och-orange',
     outline: 'border-2 border-och-defender text-och-defender hover:bg-och-defender hover:text-white focus:ring-och-defender',
+    ghost: 'bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 focus:ring-slate-400',
   }
   
   const sizes = {
