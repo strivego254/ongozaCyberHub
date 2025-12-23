@@ -5,27 +5,21 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, FileDown, Plus } from 'lucide-react';
 import { EmployerPreviewModal } from './EmployerPreviewModal';
 import { PortfolioExporter } from './PortfolioExporter';
 import { useMarketplaceProfile } from '@/hooks/useMarketplaceProfile';
 import { usePortfolio } from '@/hooks/usePortfolio';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 export function EmployerPreviewFAB() {
   const router = useRouter();
+  const { user } = useAuth();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [userId, setUserId] = useState<string | undefined>();
-  const supabase = createClient();
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id);
-    });
-  }, [supabase]);
+  const userId = user?.id;
 
   const { profile } = useMarketplaceProfile(userId);
   const { items } = usePortfolio(userId);

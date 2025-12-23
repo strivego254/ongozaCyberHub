@@ -7,7 +7,7 @@
 
 import { Card } from '@/components/ui/Card';
 import { Clock, CheckCircle, Eye, MessageSquare, Star, Plus } from 'lucide-react';
-import type { TimelineEvent } from '@/lib/portfolio/types';
+import type { TimelineEvent } from '@/hooks/usePortfolioTimeline';
 
 function formatDistanceToNow(date: Date): string {
   const now = new Date();

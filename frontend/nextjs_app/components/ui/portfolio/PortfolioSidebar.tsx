@@ -25,8 +25,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { usePortfolio } from '@/hooks/usePortfolio';
-import { createClient } from '@/lib/supabase/client';
-import { useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface PortfolioSidebarProps {
   onNavigate?: (section: string) => void;
@@ -37,14 +36,8 @@ export function PortfolioSidebar({ onNavigate }: PortfolioSidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [userId, setUserId] = useState<string | undefined>();
-  const supabase = createClient();
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id);
-    });
-  }, [supabase]);
+  const { user } = useAuth();
+  const userId = user?.id;
 
   const { items, approvedItems, pendingReviews, healthMetrics } = usePortfolio(userId);
 

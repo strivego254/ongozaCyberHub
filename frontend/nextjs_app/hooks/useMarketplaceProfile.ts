@@ -3,30 +3,25 @@
  * Fetches marketplace profile for current user
  */
 
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getMarketplaceProfileByUserId } from '@/lib/portfolio/api';
-import { createClient } from '@/lib/supabase/client';
+import { apiGateway } from '@/services/apiGateway';
 
-const supabase = createClient();
+// Stub function - TODO: Implement actual Django API endpoint
+const getMarketplaceProfileByUserId = async (userId: string) => {
+  try {
+    // TODO: Replace with actual Django endpoint when available
+    // const response = await apiGateway.get(`/marketplace/profiles/${userId}`);
+    // return response;
+    
+    // Return null for now until API is implemented
+    return null;
+  } catch (error) {
+    console.error('Error fetching marketplace profile:', error);
+    return null;
+  }
+};
 
 export function useMarketplaceProfile(userId?: string) {
-  const [username, setUsername] = useState<string | undefined>();
-
-  // Get username from user settings or profile
-  useEffect(() => {
-    if (userId) {
-      supabase
-        .from('marketplace_profiles')
-        .select('username')
-        .eq('user_id', userId)
-        .single()
-        .then(({ data }) => {
-          if (data) setUsername(data.username);
-        });
-    }
-  }, [userId]);
-
   const {
     data: profile,
     isLoading,

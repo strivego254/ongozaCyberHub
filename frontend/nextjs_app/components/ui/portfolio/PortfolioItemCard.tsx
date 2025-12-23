@@ -39,7 +39,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EvidenceGallery } from './EvidenceGallery';
-import type { PortfolioItem } from '@/lib/portfolio/types';
+import type { PortfolioItem } from '@/hooks/usePortfolio';
 
 interface PortfolioItemCardProps {
   item: PortfolioItem;

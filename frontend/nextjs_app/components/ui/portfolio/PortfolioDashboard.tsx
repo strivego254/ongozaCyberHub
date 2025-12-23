@@ -23,21 +23,17 @@ import { EmployerPreviewFAB } from './EmployerPreviewFAB';
 import { PortfolioDashboardSkeleton } from './PortfolioSkeleton';
 import { ErrorDisplay } from './ErrorDisplay';
 import { usePortfolioTimeline } from '@/hooks/usePortfolioTimeline';
-import { createClient } from '@/lib/supabase/client';
-import { getMarketplaceRank } from '@/lib/portfolio/api';
-import { useQuery } from '@tanstack/react-query';
-import type { PortfolioItem, PortfolioItemStatus, PortfolioItemType } from '@/lib/portfolio/types';
+import { useAuth } from '@/hooks/useAuth';
+import type { PortfolioItem } from '@/hooks/usePortfolio';
+
+// Local type definitions
+type PortfolioItemStatus = 'pending' | 'approved' | 'rejected' | 'draft' | 'in_review' | 'submitted' | 'published';
+type PortfolioItemType = 'mission' | 'reflection' | 'certification' | 'github' | 'thm' | 'external' | 'marketplace';
 
 export function PortfolioDashboard() {
   const router = useRouter();
-  const [userId, setUserId] = useState<string | undefined>();
-  const supabase = createClient();
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id);
-    });
-  }, []);
+  const { user } = useAuth();
+  const userId = user?.id;
   
   const {
     items = [],
@@ -51,7 +47,7 @@ export function PortfolioDashboard() {
   } = usePortfolio(userId);
 
   const { settings, entitlements } = useSettingsMaster(userId);
-  const { timelineData } = usePortfolioTimeline(userId);
+  const { timelineData } = usePortfolioTimeline({ items, isLoading });
   
   // Entitlement checks (Starter 3 vs Professional 7)
   const isProfessional = entitlements?.tier === 'professional';
@@ -60,16 +56,8 @@ export function PortfolioDashboard() {
   const canBulkActions = isProfessional;
   const maxItemsView = isProfessional ? Infinity : (isStarterEnhanced ? Infinity : 5);
 
-  // Fetch marketplace rank
-  const { data: marketplaceRank = 999 } = useQuery({
-    queryKey: ['marketplace-rank', userId],
-    queryFn: async () => {
-      if (!userId) return 999;
-      return getMarketplaceRank(userId);
-    },
-    enabled: !!userId,
-    staleTime: 300000, // 5 minutes
-  });
+  // Marketplace rank - TODO: Implement API endpoint for marketplace ranking
+  const marketplaceRank = 999; // Default placeholder until API is implemented
 
   const [statusFilter, setStatusFilter] = useState<PortfolioItemStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<PortfolioItemType | 'all'>('all');

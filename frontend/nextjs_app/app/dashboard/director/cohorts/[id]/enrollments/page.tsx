@@ -38,6 +38,7 @@ export default function CohortEnrollmentsPage() {
   const [selectedEnrollmentTypes, setSelectedEnrollmentTypes] = useState<Set<string>>(new Set(['all']))
   const [selectedEnrollments, setSelectedEnrollments] = useState<Set<string>>(new Set())
   const [isProcessing, setIsProcessing] = useState(false)
+  const [updatingEnrollments, setUpdatingEnrollments] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [showSeatPoolModal, setShowSeatPoolModal] = useState(false)
@@ -183,15 +184,36 @@ export default function CohortEnrollmentsPage() {
 
   // Handle status update
   const handleUpdateStatus = async (enrollmentId: string, status: string) => {
-    setIsProcessing(true)
+    // Optimistic update
+    const enrollment = enrollments.find(e => e.id === enrollmentId)
+    if (!enrollment) return
+    
+    // Store original status for rollback
+    const originalStatus = enrollment.status
+    
+    // Optimistically update UI
+    setEnrollments((prev) => prev.map((e) => 
+      e.id === enrollmentId ? { ...e, status: status as any } : e
+    ))
+    
+    setUpdatingEnrollments((prev) => new Set(prev).add(enrollmentId))
     setError(null)
+    
     try {
       const updated = await programsClient.updateEnrollmentStatus(cohortId, enrollmentId, status)
       setEnrollments((prev) => prev.map((e) => (e.id === enrollmentId ? updated : e)))
     } catch (err: any) {
+      // Rollback on error
+      setEnrollments((prev) => prev.map((e) => 
+        e.id === enrollmentId ? { ...e, status: originalStatus as any } : e
+      ))
       setError(err?.message || 'Failed to update enrollment status')
     } finally {
-      setIsProcessing(false)
+      setUpdatingEnrollments((prev) => {
+        const next = new Set(prev)
+        next.delete(enrollmentId)
+        return next
+      })
     }
   }
 
@@ -918,29 +940,42 @@ export default function CohortEnrollmentsPage() {
                             {new Date(enrollment.joined_at).toLocaleDateString()}
                           </td>
                           <td className="py-3 px-4">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                               {enrollment.status === 'pending_payment' && (
                                 <Button
                                   variant="mint"
                                   size="sm"
                                   onClick={() => handleApproveEnrollment(enrollment.id)}
-                                  disabled={isProcessing}
+                                  disabled={isProcessing || updatingEnrollments.has(enrollment.id)}
                                 >
                                   Approve
                                 </Button>
                               )}
-                              <select
-                                value={enrollment.status}
-                                onChange={(e) => handleUpdateStatus(enrollment.id, e.target.value)}
-                                className="bg-och-midnight border border-och-steel/20 rounded px-2 py-1 text-xs text-white"
-                                disabled={isProcessing}
-                              >
-                                <option value="active">Active</option>
-                                <option value="pending_payment">Pending Payment</option>
-                                <option value="suspended">Suspended</option>
-                                <option value="withdrawn">Withdrawn</option>
-                                <option value="completed">Completed</option>
-                              </select>
+                              <div className="relative">
+                                <select
+                                  value={enrollment.status}
+                                  onChange={(e) => {
+                                    handleUpdateStatus(enrollment.id, e.target.value)
+                                  }}
+                                  className="bg-och-midnight border border-och-steel/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-och-defender focus:ring-1 focus:ring-och-defender transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-8 min-w-[140px]"
+                                  disabled={isProcessing || updatingEnrollments.has(enrollment.id)}
+                                >
+                                  <option value="active" className="bg-och-midnight">Active</option>
+                                  <option value="pending_payment" className="bg-och-midnight">Pending Payment</option>
+                                  <option value="suspended" className="bg-och-midnight">Suspended</option>
+                                  <option value="withdrawn" className="bg-och-midnight">Withdrawn</option>
+                                  <option value="completed" className="bg-och-midnight">Completed</option>
+                                </select>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                                  {updatingEnrollments.has(enrollment.id) ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-och-defender"></div>
+                                  ) : (
+                                    <svg className="w-4 h-4 text-och-steel" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </td>
                         </tr>

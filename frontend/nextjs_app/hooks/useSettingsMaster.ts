@@ -3,32 +3,97 @@
  * Orchestrates ALL platform coordination
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import {
-  getUserSettings,
-  updateUserSettings,
-  getUserEntitlements,
-} from '@/lib/settings/api';
-import { subscribeToSettingsChanges } from '@/lib/settings/realtime';
-import { triggerSystemUpdates } from '@/lib/settings/system-triggers';
-import { calculateProfileCompleteness } from '@/lib/settings/profile-completeness';
-import type { UserSettings, UserEntitlements, SettingsUpdate } from '@/lib/settings/types';
+import { useAuth } from './useAuth';
 
-const supabase = createClient();
+// Type definitions
+export interface UserSettings {
+  portfolioVisibility?: 'private' | 'marketplace_preview' | 'public';
+  profileCompleteness?: number;
+  marketplaceContactEnabled?: boolean;
+  [key: string]: any;
+}
+
+export interface UserEntitlements {
+  tier?: 'starter' | 'professional';
+  mentorAccess?: boolean;
+  enhancedAccessUntil?: string;
+  [key: string]: any;
+}
+
+export interface SettingsUpdate {
+  portfolioVisibility?: 'private' | 'marketplace_preview' | 'public';
+  marketplaceContactEnabled?: boolean;
+  [key: string]: any;
+}
+
+// Stub functions - TODO: Implement Django API endpoints
+const getUserSettings = async (userId: string): Promise<UserSettings | null> => {
+  try {
+    // TODO: Replace with actual Django endpoint
+    // const response = await apiGateway.get(`/settings/${userId}`);
+    // return response;
+    return null;
+  } catch (error) {
+    console.error('Error fetching user settings:', error);
+    return null;
+  }
+};
+
+const updateUserSettings = async (
+  userId: string,
+  updates: SettingsUpdate,
+  hasPortfolioItems?: boolean
+): Promise<UserSettings> => {
+  try {
+    // TODO: Replace with actual Django endpoint
+    // const response = await apiGateway.patch(`/settings/${userId}`, updates);
+    // return response;
+    return updates as UserSettings;
+  } catch (error) {
+    console.error('Error updating user settings:', error);
+    throw error;
+  }
+};
+
+const getUserEntitlements = async (userId: string): Promise<UserEntitlements | null> => {
+  try {
+    // TODO: Replace with actual Django endpoint
+    // const response = await apiGateway.get(`/entitlements/${userId}`);
+    // return response;
+    return null;
+  } catch (error) {
+    console.error('Error fetching user entitlements:', error);
+    return null;
+  }
+};
+
+const triggerSystemUpdates = async (userId: string, updates: SettingsUpdate): Promise<void> => {
+  // TODO: Implement system update triggers
+  console.log('System updates triggered for user:', userId, updates);
+};
+
+const calculateProfileCompleteness = (
+  settings: UserSettings,
+  hasPortfolioItems: boolean
+): number => {
+  // Simple completeness calculation
+  let completeness = 0;
+  if (settings.portfolioVisibility) completeness += 30;
+  if (hasPortfolioItems) completeness += 40;
+  if (settings.marketplaceContactEnabled) completeness += 30;
+  return Math.min(100, completeness);
+};
 
 export function useSettingsMaster(userId?: string) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [entitlements, setEntitlements] = useState<UserEntitlements | null>(null);
 
-  // Get current user if not provided
-  const getCurrentUserId = useCallback(async () => {
-    if (userId) return userId;
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id;
-  }, [userId]);
+  // Use provided userId or get from auth
+  const currentUserId = userId || user?.id;
 
   // Fetch settings
   const {
@@ -37,16 +102,15 @@ export function useSettingsMaster(userId?: string) {
     error: settingsError,
     refetch: refetchSettings,
   } = useQuery({
-    queryKey: ['user-settings', userId],
+    queryKey: ['user-settings', currentUserId],
     queryFn: async () => {
-      const id = await getCurrentUserId();
-      if (!id) {
+      if (!currentUserId) {
         // Return null instead of throwing - let the component handle unauthenticated state
         return null;
       }
-      return getUserSettings(id);
+      return getUserSettings(currentUserId);
     },
-    enabled: !!userId,
+    enabled: !!currentUserId,
     staleTime: 30000,
     retry: false,
   });
@@ -58,16 +122,15 @@ export function useSettingsMaster(userId?: string) {
     error: entitlementsError,
     refetch: refetchEntitlements,
   } = useQuery({
-    queryKey: ['user-entitlements', userId],
+    queryKey: ['user-entitlements', currentUserId],
     queryFn: async () => {
-      const id = await getCurrentUserId();
-      if (!id) {
+      if (!currentUserId) {
         // Return null instead of throwing - let the component handle unauthenticated state
         return null;
       }
-      return getUserEntitlements(id);
+      return getUserEntitlements(currentUserId);
     },
-    enabled: !!userId,
+    enabled: !!currentUserId,
     staleTime: 30000,
     retry: false,
   });
@@ -75,16 +138,15 @@ export function useSettingsMaster(userId?: string) {
   // Update settings mutation
   const updateMutation = useMutation({
     mutationFn: async (updates: SettingsUpdate & { hasPortfolioItems?: boolean }) => {
-      const id = await getCurrentUserId();
-      if (!id) throw new Error('User not authenticated');
+      if (!currentUserId) throw new Error('User not authenticated');
       
       const { hasPortfolioItems, ...updateData } = updates;
       
       // Update settings
-      const result = await updateUserSettings(id, updateData, hasPortfolioItems);
+      const result = await updateUserSettings(currentUserId, updateData, hasPortfolioItems);
       
       // Trigger cross-system updates
-      await triggerSystemUpdates(id, updateData);
+      await triggerSystemUpdates(currentUserId, updateData);
       
       return result;
     },
@@ -102,8 +164,8 @@ export function useSettingsMaster(userId?: string) {
     },
     onSuccess: (data) => {
       setSettings(data);
-      queryClient.invalidateQueries({ queryKey: ['user-settings', userId] });
-      queryClient.invalidateQueries({ queryKey: ['user-entitlements', userId] });
+      queryClient.invalidateQueries({ queryKey: ['user-settings', currentUserId] });
+      queryClient.invalidateQueries({ queryKey: ['user-entitlements', currentUserId] });
       refetchSettings();
       refetchEntitlements();
     },
@@ -127,82 +189,8 @@ export function useSettingsMaster(userId?: string) {
     }
   }, [entitlementsData]);
 
-  // MASTER REALTIME SUBSCRIPTION (ALL SYSTEMS)
-  useEffect(() => {
-    const id = userId;
-    if (!id) return;
-
-    // Master channel for ALL settings coordination
-    const channel = supabase
-      .channel(`settings_master_${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_settings',
-          filter: `user_id=eq.${id}`,
-        },
-        (payload) => {
-          // Settings changed - update local state
-          if (payload.new) {
-            setSettings(payload.new as UserSettings);
-          }
-          // Trigger refetch to get calculated completeness
-          refetchSettings();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'subscriptions',
-          filter: `user_id=eq.${id}`,
-        },
-        () => {
-          // Subscription changed - refetch entitlements
-          refetchEntitlements();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'portfolio_items',
-          filter: `user_id=eq.${id}`,
-        },
-        () => {
-          // Portfolio items changed - may affect completeness
-          refetchSettings();
-        }
-      )
-      .subscribe();
-
-    // Also subscribe to custom notifications from triggers
-    const notificationChannel = supabase
-      .channel(`settings_notifications_${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'marketplace_profiles',
-          filter: `user_id=eq.${id}`,
-        },
-        () => {
-          // Marketplace profile updated from settings trigger
-          refetchEntitlements();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      supabase.removeChannel(notificationChannel);
-    };
-  }, [userId, refetchSettings, refetchEntitlements]);
+  // Note: Realtime subscriptions removed - using polling/refetch instead
+  // TODO: Implement Django WebSocket or polling for real-time updates if needed
 
   return {
     // Data

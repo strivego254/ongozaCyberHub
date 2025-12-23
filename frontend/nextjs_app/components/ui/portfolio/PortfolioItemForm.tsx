@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useSettingsMaster } from '@/hooks/useSettingsMaster';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import type { PortfolioItemType, PortfolioVisibility, EvidenceFile } from '@/lib/portfolio/types';
 
 interface PortfolioItemFormProps {
@@ -31,14 +31,8 @@ interface PortfolioItemFormProps {
 
 export function PortfolioItemForm({ itemId, onClose, initialData }: PortfolioItemFormProps) {
   const router = useRouter();
-  const [userId, setUserId] = useState<string | undefined>();
-  const supabase = createClient();
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id);
-    });
-  }, [supabase]);
+  const { user } = useAuth();
+  const userId = user?.id;
 
   const { createItem, updateItem, isLoading, isCreating, isUpdating } = usePortfolio(userId);
   const { settings } = useSettingsMaster(userId);

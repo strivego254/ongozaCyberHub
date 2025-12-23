@@ -11,15 +11,14 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { connectGitHub, importGitHubRepositories, connectTryHackMe, importTryHackMeProfile } from '@/lib/portfolio/oauth';
 import { usePortfolio } from '@/hooks/usePortfolio';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ExternalImport() {
   const [isImporting, setIsImporting] = useState<'github' | 'thm' | null>(null);
   const [importedCount, setImportedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   
-  const supabase = createClient();
-  const { data: { user } } = supabase.auth.getUser();
+  const { user } = useAuth();
   const userId = user?.id;
   const { refetch } = usePortfolio(userId);
 

@@ -544,7 +544,7 @@ class ProgramsClient {
   }
 
   async updateEnrollmentStatus(cohortId: string, enrollmentId: string, status: string): Promise<Enrollment> {
-    return apiGateway.post(`/director/cohorts/${cohortId}/update_enrollment_status/`, { enrollment_id: enrollmentId, status })
+    return apiGateway.patch(`/director/cohorts/${cohortId}/update_enrollment_status/`, { enrollment_id: enrollmentId, status })
   }
 
   async bulkUpdateEnrollmentsStatus(cohortId: string, enrollmentIds: string[], status: string): Promise<any> {

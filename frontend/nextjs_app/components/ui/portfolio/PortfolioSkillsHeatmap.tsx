@@ -6,7 +6,7 @@
 'use client';
 
 import { Card } from '@/components/ui/Card';
-import type { PortfolioHealthMetrics } from '@/lib/portfolio/types';
+// PortfolioHealthMetrics type not needed - using inline props
 
 interface PortfolioSkillsHeatmapProps {
   topSkills: Array<{ skill: string; score: number; count: number }>;

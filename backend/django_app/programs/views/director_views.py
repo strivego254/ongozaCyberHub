@@ -118,7 +118,7 @@ class DirectorCohortViewSet(viewsets.ViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post', 'patch'])
     def update_enrollment_status(self, request, pk=None):
         """Update a single enrollment status."""
         cohort, error_response = self.get_cohort(pk)
@@ -138,7 +138,17 @@ class DirectorCohortViewSet(viewsets.ViewSet):
             result = DirectorService.bulk_update_enrollments_status(
                 cohort, [enrollment_id], new_status, request.user
             )
-            return Response(result)
+            # Return the updated enrollment object
+            from programs.models import Enrollment
+            from programs.serializers import EnrollmentSerializer
+            enrollment = Enrollment.objects.get(id=enrollment_id, cohort=cohort)
+            serializer = EnrollmentSerializer(enrollment)
+            return Response(serializer.data)
+        except Enrollment.DoesNotExist:
+            return Response(
+                {'error': 'Enrollment not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         except ValueError as e:
             return Response(
                 {'error': str(e)},
