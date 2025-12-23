@@ -14,6 +14,7 @@ from .models import (
     PaymentTransaction, SubscriptionRule, PaymentSettings
 )
 from .serializers import SubscriptionPlanSerializer, UserSubscriptionSerializer
+from users.utils.audit_utils import log_audit_event
 
 User = get_user_model()
 
@@ -61,6 +62,46 @@ class UserSubscriptionAdminViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=status_filter)
         return queryset
     
+    def update(self, request, *args, **kwargs):
+        """Update subscription with audit logging."""
+        instance = self.get_object()
+        old_status = instance.status
+        old_plan_id = str(instance.plan.id)
+        
+        response = super().update(request, *args, **kwargs)
+        
+        if response.status_code == status.HTTP_200_OK:
+            instance.refresh_from_db()
+            changes = {}
+            
+            if 'status' in request.data and instance.status != old_status:
+                changes['status'] = {'old': old_status, 'new': instance.status}
+            
+            if 'plan_id' in request.data:
+                new_plan_id = request.data.get('plan_id')
+                if str(instance.plan.id) != old_plan_id:
+                    changes['plan'] = {
+                        'old': {'id': old_plan_id},
+                        'new': {'id': str(instance.plan.id), 'name': instance.plan.name}
+                    }
+            
+            if changes:
+                log_audit_event(
+                    request=request,
+                    user=request.user,
+                    action='update',
+                    resource_type='user_subscription',
+                    resource_id=str(instance.id),
+                    result='success',
+                    changes=changes,
+                    metadata={
+                        'user_email': instance.user.email,
+                        'user_id': str(instance.user.id)
+                    }
+                )
+        
+        return response
+    
     @action(detail=True, methods=['post'])
     def upgrade(self, request, pk=None):
         """Manually upgrade a user's subscription."""
@@ -81,6 +122,11 @@ class UserSubscriptionAdminViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Store old values for audit log
+        old_plan_id = str(subscription.plan.id)
+        old_plan_name = subscription.plan.name
+        old_enhanced_access = subscription.enhanced_access_expires_at
+        
         # Check if it's an upgrade
         tier_levels = {'free': 0, 'starter': 1, 'premium': 2}
         current_level = tier_levels.get(subscription.plan.tier, 0)
@@ -94,6 +140,33 @@ class UserSubscriptionAdminViewSet(viewsets.ModelViewSet):
                     timezone.now() + timezone.timedelta(days=new_plan.enhanced_access_days)
                 )
             subscription.save()
+            
+            # Log audit event
+            log_audit_event(
+                request=request,
+                user=request.user,
+                action='update',
+                resource_type='user_subscription',
+                resource_id=str(subscription.id),
+                result='success',
+                changes={
+                    'plan': {
+                        'old': {'id': old_plan_id, 'name': old_plan_name},
+                        'new': {'id': str(new_plan.id), 'name': new_plan.name}
+                    },
+                    'enhanced_access_expires_at': {
+                        'old': str(old_enhanced_access) if old_enhanced_access else None,
+                        'new': str(subscription.enhanced_access_expires_at) if subscription.enhanced_access_expires_at else None
+                    }
+                },
+                metadata={
+                    'action_type': 'upgrade',
+                    'user_email': subscription.user.email,
+                    'user_id': str(subscription.user.id),
+                    'old_tier': subscription.plan.tier if hasattr(subscription, '_old_plan') else None,
+                    'new_tier': new_plan.tier
+                }
+            )
         
         return Response({
             'message': 'Subscription upgraded successfully',
@@ -120,12 +193,45 @@ class UserSubscriptionAdminViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Store old values for audit log
+        old_plan_id = str(subscription.plan.id)
+        old_plan_name = subscription.plan.name
+        old_enhanced_access = subscription.enhanced_access_expires_at
+        
         # Downgrades take effect at end of billing cycle
         # Store pending downgrade in metadata or separate field
         # For now, apply immediately (can be enhanced later)
         subscription.plan = new_plan
         subscription.enhanced_access_expires_at = None  # Clear enhanced access
         subscription.save()
+        
+        # Log audit event
+        log_audit_event(
+            request=request,
+            user=request.user,
+            action='update',
+            resource_type='user_subscription',
+            resource_id=str(subscription.id),
+            result='success',
+            changes={
+                'plan': {
+                    'old': {'id': old_plan_id, 'name': old_plan_name},
+                    'new': {'id': str(new_plan.id), 'name': new_plan.name}
+                },
+                'enhanced_access_expires_at': {
+                    'old': str(old_enhanced_access) if old_enhanced_access else None,
+                    'new': None
+                }
+            },
+            metadata={
+                'action_type': 'downgrade',
+                'user_email': subscription.user.email,
+                'user_id': str(subscription.user.id),
+                'old_tier': subscription.plan.tier if hasattr(subscription, '_old_plan') else None,
+                'new_tier': new_plan.tier,
+                'scheduled_for': str(subscription.current_period_end) if subscription.current_period_end else None
+            }
+        )
         
         return Response({
             'message': 'Subscription downgrade scheduled',
@@ -161,8 +267,8 @@ class PaymentGatewayViewSet(viewsets.ModelViewSet):
         })
 
 
-class PaymentTransactionViewSet(viewsets.ReadOnlyModelViewSet):
-    """Admin viewset for viewing payment transactions."""
+class PaymentTransactionViewSet(viewsets.ModelViewSet):
+    """Admin viewset for viewing and managing payment transactions."""
     queryset = PaymentTransaction.objects.select_related('user', 'gateway', 'subscription').all()
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
     
@@ -195,6 +301,50 @@ class PaymentTransactionViewSet(viewsets.ReadOnlyModelViewSet):
         if gateway_id:
             queryset = queryset.filter(gateway_id=gateway_id)
         return queryset.order_by('-created_at')
+    
+    @action(detail=True, methods=['post'])
+    def refund(self, request, pk=None):
+        """Mark a transaction as refunded."""
+        transaction_obj = self.get_object()
+        old_status = transaction_obj.status
+        
+        if transaction_obj.status == 'refunded':
+            return Response(
+                {'error': 'Transaction is already refunded'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        transaction_obj.status = 'refunded'
+        transaction_obj.save()
+        
+        # Log audit event
+        log_audit_event(
+            request=request,
+            user=request.user,
+            action='update',
+            resource_type='payment_transaction',
+            resource_id=str(transaction_obj.id),
+            result='success',
+            changes={
+                'status': {
+                    'old': old_status,
+                    'new': 'refunded'
+                }
+            },
+            metadata={
+                'action_type': 'refund',
+                'user_email': transaction_obj.user.email,
+                'user_id': str(transaction_obj.user.id),
+                'amount': str(transaction_obj.amount),
+                'currency': transaction_obj.currency,
+                'gateway': transaction_obj.gateway.name if transaction_obj.gateway else None
+            }
+        )
+        
+        return Response({
+            'message': 'Transaction marked as refunded',
+            'transaction': self.get_serializer(transaction_obj).data
+        })
 
 
 class SubscriptionRuleViewSet(viewsets.ModelViewSet):

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import clsx from 'clsx'
 import { useAuth } from '@/hooks/useAuth'
+import { useNavigation } from '@/hooks/useNavigation'
 import { getUserRoleDisplay } from '@/utils/formatRole'
 
 interface NavItem {

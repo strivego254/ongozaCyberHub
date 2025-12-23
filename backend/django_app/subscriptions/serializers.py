@@ -24,15 +24,27 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
     plan = SubscriptionPlanSerializer(read_only=True)
     plan_id = serializers.UUIDField(write_only=True, required=False)
     days_enhanced_left = serializers.IntegerField(read_only=True)
+    user = serializers.SerializerMethodField()
+    stripe_subscription_id = serializers.CharField(read_only=True)
     
     class Meta:
         model = UserSubscription
         fields = [
-            'id', 'plan', 'plan_id', 'status', 'current_period_start',
+            'id', 'user', 'plan', 'plan_id', 'status', 'current_period_start',
             'current_period_end', 'enhanced_access_expires_at',
-            'days_enhanced_left', 'created_at', 'updated_at'
+            'days_enhanced_left', 'stripe_subscription_id', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_user(self, obj):
+        """Include user details in the response."""
+        return {
+            'id': str(obj.user.id),
+            'email': obj.user.email,
+            'username': obj.user.username,
+            'first_name': obj.user.first_name,
+            'last_name': obj.user.last_name,
+        }
 
 
 class SubscriptionStatusSerializer(serializers.Serializer):

@@ -96,6 +96,46 @@ class UserViewSet(viewsets.ModelViewSet):
         return queryset
     
     @action(detail=False, methods=['get'])
+    def role_distribution(self, request):
+        """
+        GET /api/v1/users/role_distribution/
+        Get role distribution statistics (admin only).
+        Returns counts of users by role, total users, and active users.
+        """
+        # Only allow admin/staff users to access this endpoint
+        if not request.user.is_staff:
+            return Response(
+                {'detail': 'Only administrators can access role distribution statistics'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        from ..models import Role, UserRole
+        from django.db.models import Count
+        
+        # Get total and active user counts
+        total_users = User.objects.count()
+        active_users = User.objects.filter(is_active=True).count()
+        
+        # Get role distribution by counting active UserRole assignments
+        role_distribution = {}
+        
+        # Get all roles and count active assignments
+        roles = Role.objects.all()
+        for role in roles:
+            count = UserRole.objects.filter(
+                role=role,
+                is_active=True
+            ).count()
+            if count > 0:
+                role_distribution[role.name] = count
+        
+        return Response({
+            'role_distribution': role_distribution,
+            'total_users': total_users,
+            'active_users': active_users,
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'])
     def me(self, request):
         """
         Get current user profile.

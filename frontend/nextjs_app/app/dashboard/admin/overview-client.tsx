@@ -105,12 +105,20 @@ export default function OverviewClient() {
   const stats = useMemo(() => {
     if (roleDistribution) {
       // Use backend data for accurate counts
+      const dist = roleDistribution.role_distribution || {}
+      // Combine finance and finance_admin roles
+      const financeUsers = (dist['finance'] || 0) + (dist['finance_admin'] || 0)
+      // Combine student and mentee roles
+      const students = (dist['student'] || 0) + (dist['mentee'] || 0)
+      
       return {
         total: roleDistribution.total_users,
         active: roleDistribution.active_users,
-        programDirectors: roleDistribution.role_distribution['program_director'] || 0,
-        financeUsers: roleDistribution.role_distribution['finance'] || 0,
-        mentors: roleDistribution.role_distribution['mentor'] || 0,
+        admins: dist['admin'] || 0,
+        programDirectors: dist['program_director'] || 0,
+        financeUsers,
+        mentors: dist['mentor'] || 0,
+        students,
       }
     }
     
@@ -119,19 +127,24 @@ export default function OverviewClient() {
       u.roles?.some((r: any) => r.role === 'program_director')
     ).length
     const financeUsers = users.filter((u) => 
-      u.roles?.some((r: any) => r.role === 'finance')
+      u.roles?.some((r: any) => r.role === 'finance' || r.role === 'finance_admin')
     ).length
     const students = users.filter((u) => 
       u.roles?.some((r: any) => r.role === 'student' || r.role === 'mentee')
+    ).length
+    const admins = users.filter((u) => 
+      u.roles?.some((r: any) => r.role === 'admin') || u.is_staff
     ).length
     const activeUsers = users.filter((u) => u.is_active && u.account_status === 'active').length
 
     return {
       total: totalCount || users.length,
       active: activeUsers,
+      admins,
       programDirectors,
       financeUsers,
       mentors: users.filter((u) => u.roles?.some((r: any) => r.role === 'mentor')).length,
+      students,
     }
   }, [users, totalCount, roleDistribution])
 
@@ -307,28 +320,6 @@ export default function OverviewClient() {
       .sort((a, b) => b.value - a.value)
   }, [users])
 
-  // Simple chart component
-  const SimpleBarChart = ({ data, labels, color }: { data: number[], labels: string[], color: string }) => {
-    const max = Math.max(...data, 1)
-    return (
-      <div className="flex items-end gap-2 h-32">
-        {data.map((value, idx) => (
-          <div key={idx} className="flex-1 flex flex-col items-center">
-            <div
-              className="w-full rounded-t transition-all hover:opacity-80"
-              style={{
-                height: `${(value / max) * 100}%`,
-                backgroundColor: color,
-                minHeight: value > 0 ? '4px' : '0',
-              }}
-            />
-            <span className="text-xs text-och-steel mt-1 text-center">{labels[idx]}</span>
-            <span className="text-xs font-semibold text-white mt-1">{value}</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
 
   if (isLoading || usersLoading) {
     return (
@@ -342,47 +333,149 @@ export default function OverviewClient() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2 text-och-gold">Admin Dashboard</h1>
         <p className="text-och-steel">Comprehensive platform management and oversight</p>
       </div>
 
-      {/* Overview Stats */}
-      <Card className="mb-6">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold mb-4 text-white">Platform Overview</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <div className="text-center p-4 bg-och-midnight/50 rounded-lg">
+      {/* Key Metrics - Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-och-mint">
+          <div className="flex items-center justify-between">
+            <div>
               <p className="text-och-steel text-sm mb-1">Total Users</p>
               <p className="text-3xl font-bold text-white">{stats.total}</p>
+              <p className="text-xs text-och-steel mt-1">All registered users</p>
             </div>
-            <div className="text-center p-4 bg-och-midnight/50 rounded-lg">
-              <p className="text-och-steel text-sm mb-1">Active Users</p>
-              <p className="text-3xl font-bold text-och-mint">{stats.active}</p>
-            </div>
-            <div className="text-center p-4 bg-och-midnight/50 rounded-lg">
-              <p className="text-och-steel text-sm mb-1">Program Directors</p>
-              <p className="text-3xl font-bold text-och-defender">{stats.programDirectors}</p>
-            </div>
-            <div className="text-center p-4 bg-och-midnight/50 rounded-lg">
-              <p className="text-och-steel text-sm mb-1">Finance Users</p>
-              <p className="text-3xl font-bold text-och-gold">{stats.financeUsers}</p>
-            </div>
-            <div className="text-center p-4 bg-och-midnight/50 rounded-lg">
-              <p className="text-och-steel text-sm mb-1">Students</p>
-              <p className="text-3xl font-bold text-och-mint">{stats.students}</p>
+            <div className="w-12 h-12 rounded-full bg-och-mint/20 flex items-center justify-center">
+              <span className="text-2xl">👥</span>
             </div>
           </div>
+        </Card>
 
-          {/* User Activity Chart */}
-          <Card className="mb-6">
+        <Card className="border-l-4 border-l-och-defender">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-och-steel text-sm mb-1">Active Users</p>
+              <p className="text-3xl font-bold text-och-mint">{stats.active}</p>
+              <p className="text-xs text-och-steel mt-1">
+                {stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-och-defender/20 flex items-center justify-center">
+              <span className="text-2xl">✓</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="border-l-4 border-l-och-gold">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-och-steel text-sm mb-1">Today's Activity</p>
+              <p className="text-3xl font-bold text-och-gold">{auditStats.today}</p>
+              <p className="text-xs text-och-steel mt-1">Audit log entries</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-och-gold/20 flex items-center justify-center">
+              <span className="text-2xl">📊</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="border-l-4 border-l-och-orange">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-och-steel text-sm mb-1">Success Rate</p>
+              <p className="text-3xl font-bold text-och-mint">
+                {auditStats.total > 0 ? Math.round((auditStats.success / auditStats.total) * 100) : 0}%
+              </p>
+              <p className="text-xs text-och-steel mt-1">
+                {auditStats.success}/{auditStats.total} successful
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-och-orange/20 flex items-center justify-center">
+              <span className="text-2xl">🎯</span>
+            </div>
+          </div>
+        </Card>
+          </div>
+
+      {/* Role Distribution - Enhanced Card Grid */}
+      <Card>
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold mb-6 text-white">Role Distribution</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-gold/50 transition-colors">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-och-gold/20 flex items-center justify-center">
+                  <span className="text-xl">👑</span>
+                </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white mb-1">User Activity</h2>
-                  <p className="text-och-steel text-sm">Platform activity over time</p>
+                  <p className="text-xs text-och-steel">Admins</p>
+                  <p className="text-2xl font-bold text-och-gold">{stats.admins || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-defender/50 transition-colors">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-och-defender/20 flex items-center justify-center">
+                  <span className="text-xl">👔</span>
+                </div>
+                <div>
+                  <p className="text-xs text-och-steel">Directors</p>
+                  <p className="text-2xl font-bold text-och-defender">{stats.programDirectors}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-gold/50 transition-colors">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-och-gold/20 flex items-center justify-center">
+                  <span className="text-xl">💰</span>
+                </div>
+                <div>
+                  <p className="text-xs text-och-steel">Finance</p>
+                  <p className="text-2xl font-bold text-och-gold">{stats.financeUsers}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-defender/50 transition-colors">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-och-defender/20 flex items-center justify-center">
+                  <span className="text-xl">🎯</span>
+                </div>
+                <div>
+                  <p className="text-xs text-och-steel">Mentors</p>
+                  <p className="text-2xl font-bold text-och-defender">{stats.mentors || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20 hover:border-och-mint/50 transition-colors">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-och-mint/20 flex items-center justify-center">
+                  <span className="text-xl">🎓</span>
+                </div>
+                <div>
+                  <p className="text-xs text-och-steel">Students</p>
+                  <p className="text-2xl font-bold text-och-mint">{stats.students || 0}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* User Activity Chart */}
+      <Card>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-1">Platform Activity</h2>
+              <p className="text-och-steel text-sm">User activity trends over time</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -461,120 +554,131 @@ export default function OverviewClient() {
             </div>
           </Card>
 
-          {/* Analytics Charts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-3">User Roles Distribution</h3>
-              <SimpleBarChart
-                data={[
-                  stats.programDirectors,
-                  stats.financeUsers,
-                  stats.mentors || 0,
-                ]}
-                labels={['Directors', 'Finance', 'Students', 'Mentors']}
-                color="#0648A8"
-              />
-            </div>
-            <Card>
+      {/* Analytics & Insights Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Track Distribution */}
+        <Card className="lg:col-span-2">
               <div className="p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Activity Summary</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-och-midnight/50 rounded-lg">
-                    <span className="text-och-steel">Total Activities</span>
-                    <span className="text-white font-semibold text-lg">{auditStats.total}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-och-midnight/50 rounded-lg">
-                    <span className="text-och-steel">Successful</span>
-                    <Badge variant="mint">{auditStats.success}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-och-midnight/50 rounded-lg">
-                    <span className="text-och-steel">Failed</span>
-                    <Badge variant="orange">{auditStats.failure}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-och-midnight/50 rounded-lg">
-                    <span className="text-och-steel">Today</span>
-                    <Badge variant="defender">{auditStats.today}</Badge>
-                  </div>
+            <h2 className="text-2xl font-bold mb-4 text-white">Track Distribution</h2>
+            <TrackDistributionChart data={trackDistribution} />
+        </div>
+      </Card>
+
+        {/* Activity Summary */}
+        <Card>
+          <div className="p-6">
+            <h3 className="text-xl font-semibold text-white mb-4">Activity Summary</h3>
+            <div className="space-y-4">
+              <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-och-steel text-sm">Total Activities</span>
+                  <span className="text-2xl font-bold text-white">{auditStats.total}</span>
+                </div>
+                <div className="h-2 bg-och-steel/20 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-och-mint transition-all"
+                    style={{ width: '100%' }}
+                  />
+            </div>
+              </div>
+              
+              <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-och-steel text-sm">Successful</span>
+                  <Badge variant="mint" className="text-base px-3 py-1">{auditStats.success}</Badge>
+                </div>
+                <div className="h-2 bg-och-steel/20 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-och-mint transition-all"
+                    style={{ width: auditStats.total > 0 ? `${(auditStats.success / auditStats.total) * 100}%` : '0%' }}
+                  />
                 </div>
               </div>
-            </Card>
-          </div>
-        </div>
-      </Card>
-
-      {/* Track Distribution Chart */}
-      <Card className="mb-6">
-        <div className="p-6">
-          <TrackDistributionChart data={trackDistribution} />
-        </div>
-      </Card>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Audit Logs</h3>
-              <span className="text-2xl">📋</span>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-och-steel">Total</span>
-                <span className="text-white font-semibold">{auditStats.total}</span>
+              
+              <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-steel/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-och-steel text-sm">Failed</span>
+                  <Badge variant="orange" className="text-base px-3 py-1">{auditStats.failure}</Badge>
+                </div>
+                <div className="h-2 bg-och-steel/20 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-och-orange transition-all"
+                    style={{ width: auditStats.total > 0 ? `${(auditStats.failure / auditStats.total) * 100}%` : '0%' }}
+                  />
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-och-steel">Success</span>
-                <Badge variant="mint">{auditStats.success}</Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-och-steel">Failures</span>
-                <Badge variant="orange">{auditStats.failure}</Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-och-steel">Today</span>
-                <Badge variant="defender">{auditStats.today}</Badge>
+              
+              <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-defender/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-och-steel text-sm">Today's Activity</span>
+                  <Badge variant="defender" className="text-base px-3 py-1">{auditStats.today}</Badge>
+                </div>
               </div>
             </div>
           </div>
         </Card>
+      </div>
 
-        <Card>
+      {/* Quick Actions & Insights */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="hover:border-och-mint/50 transition-colors cursor-pointer group">
+          <a href="/dashboard/admin/users" className="block">
           <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">User Status</h3>
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-12 h-12 rounded-lg bg-och-mint/20 flex items-center justify-center group-hover:bg-och-mint/30 transition-colors">
               <span className="text-2xl">👥</span>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-och-steel">Active</span>
-                <Badge variant="mint">{stats.active}</Badge>
+                <span className="text-och-mint group-hover:text-och-mint/80">→</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-och-steel">Inactive</span>
-                <Badge variant="orange">{stats.total - stats.active}</Badge>
-              </div>
+              <h3 className="text-lg font-semibold text-white mb-1">Manage Users</h3>
+              <p className="text-sm text-och-steel">View and manage all platform users</p>
             </div>
-          </div>
+          </a>
         </Card>
 
-        <Card>
+        <Card className="hover:border-och-defender/50 transition-colors cursor-pointer group">
+          <a href="/dashboard/admin/roles" className="block">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-12 h-12 rounded-lg bg-och-defender/20 flex items-center justify-center group-hover:bg-och-defender/30 transition-colors">
+                  <span className="text-2xl">🔐</span>
+                </div>
+                <span className="text-och-defender group-hover:text-och-defender/80">→</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1">Manage Roles</h3>
+              <p className="text-sm text-och-steel">Configure roles and permissions</p>
+            </div>
+          </a>
+        </Card>
+
+        <Card className="hover:border-och-gold/50 transition-colors cursor-pointer group">
+          <a href="/dashboard/admin/audit" className="block">
           <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Quick Actions</h3>
-              <span className="text-2xl">⚡</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-12 h-12 rounded-lg bg-och-gold/20 flex items-center justify-center group-hover:bg-och-gold/30 transition-colors">
+                  <span className="text-2xl">📋</span>
+                </div>
+                <span className="text-och-gold group-hover:text-och-gold/80">→</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1">Audit Logs</h3>
+              <p className="text-sm text-och-steel">View platform activity logs</p>
             </div>
-            <div className="space-y-2">
-              <a href="/dashboard/admin/users" className="block text-och-mint hover:text-och-mint/80 text-sm">
-                → Manage Users
-              </a>
-              <a href="/dashboard/admin/roles" className="block text-och-mint hover:text-och-mint/80 text-sm">
-                → Manage Roles
-              </a>
-              <a href="/dashboard/admin/audit" className="block text-och-mint hover:text-och-mint/80 text-sm">
-                → View Audit Logs
-              </a>
+          </a>
+        </Card>
+
+        <Card className="hover:border-och-orange/50 transition-colors cursor-pointer group">
+          <a href="/dashboard/admin/settings" className="block">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-12 h-12 rounded-lg bg-och-orange/20 flex items-center justify-center group-hover:bg-och-orange/30 transition-colors">
+                  <span className="text-2xl">⚙️</span>
+                </div>
+                <span className="text-och-orange group-hover:text-och-orange/80">→</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1">Settings</h3>
+              <p className="text-sm text-och-steel">Platform configuration</p>
             </div>
-          </div>
+          </a>
         </Card>
       </div>
     </div>

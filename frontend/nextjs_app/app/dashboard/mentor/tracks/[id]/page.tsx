@@ -155,9 +155,9 @@ export default function MentorTrackDetailPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => router.back()}>
-                Go Back
-              </Button>
+            <Button variant="outline" onClick={() => router.back()}>
+              Go Back
+            </Button>
               <Button variant="defender" onClick={() => reload()}>
                 Retry
               </Button>

@@ -189,6 +189,25 @@ function LoginForm() {
           }
         }
 
+        // If logging in through finance login, verify role
+        if (role === 'finance') {
+          const isFinance = userRoles.some((ur: any) => {
+            const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+            const normalized = roleName?.toLowerCase().trim()
+            return normalized === 'finance' || normalized === 'finance_admin'
+          })
+          const isAdmin = userRoles.some((ur: any) => {
+            const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+            return roleName?.toLowerCase().trim() === 'admin'
+          })
+          
+          if (!isFinance && !isAdmin) {
+            setError('You do not have permission to access the Finance dashboard. Your account must have finance or finance_admin role.');
+            setIsLoggingIn(false);
+            return;
+          }
+        }
+
         // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
         if (redirectTo && redirectTo.startsWith('/dashboard')) {
           route = redirectTo;
@@ -222,6 +241,22 @@ function LoginForm() {
                 route = '/dashboard/director'
               } else {
                 console.log('✅ Program Director detected - already redirecting to /dashboard/director')
+              }
+            }
+
+            // Special handling for finance - ensure it goes to finance dashboard
+            const isFinance = userRoles.some((ur: any) => {
+              const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+              const normalized = roleName?.toLowerCase().trim()
+              return normalized === 'finance' || normalized === 'finance_admin'
+            })
+            
+            if (isFinance) {
+              if (route !== '/dashboard/finance') {
+                console.log('✅ Finance role detected - forcing redirect to /dashboard/finance (was:', route, ')')
+                route = '/dashboard/finance'
+              } else {
+                console.log('✅ Finance role detected - already redirecting to /dashboard/finance')
               }
             }
           }

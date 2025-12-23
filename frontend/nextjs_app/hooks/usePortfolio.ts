@@ -3,43 +3,118 @@
  * Data fetching and mutations for portfolio items
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import {
-  getPortfolioItems,
-  getPortfolioItem,
-  createPortfolioItem,
-  updatePortfolioItem,
-  deletePortfolioItem,
-  getPortfolioHealthMetrics,
-} from '@/lib/portfolio/api';
-import type {
-  CreatePortfolioItemInput,
-  UpdatePortfolioItemInput,
-} from '@/lib/portfolio/types';
-import { usePortfolioStore } from '@/lib/portfolio/store';
-import type { PortfolioItem } from '@/lib/portfolio/types';
+import { useAuth } from './useAuth';
+import { apiGateway } from '@/services/apiGateway';
 
-const supabase = createClient();
+// Minimal type definitions
+export interface PortfolioItem {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'draft' | 'in_review' | 'submitted';
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
+}
+
+export interface CreatePortfolioItemInput {
+  title: string;
+  description?: string;
+  [key: string]: any;
+}
+
+export interface UpdatePortfolioItemInput {
+  title?: string;
+  description?: string;
+  status?: string;
+  [key: string]: any;
+}
+
+interface PortfolioHealthMetrics {
+  totalItems: number;
+  approvedItems: number;
+  pendingReviews: number;
+  averageScore: number;
+  healthScore: number;
+  topSkills: string[];
+}
+
+// Stub portfolio API functions - replace with actual Django backend calls
+const getPortfolioItems = async (userId: string): Promise<PortfolioItem[]> => {
+  try {
+    const response = await apiGateway.get(`/student/dashboard/portfolio/${userId}`);
+    return response.items || [];
+  } catch (error) {
+    console.error('Error fetching portfolio items:', error);
+    return [];
+  }
+};
+
+const getPortfolioItem = async (itemId: string): Promise<PortfolioItem | null> => {
+  try {
+    return await apiGateway.get(`/student/dashboard/portfolio/item/${itemId}`);
+  } catch (error) {
+    console.error('Error fetching portfolio item:', error);
+    return null;
+  }
+};
+
+const createPortfolioItem = async (userId: string, input: any): Promise<PortfolioItem> => {
+  return await apiGateway.post(`/student/dashboard/portfolio/${userId}/items`, input);
+};
+
+const updatePortfolioItem = async (itemId: string, input: any): Promise<PortfolioItem> => {
+  return await apiGateway.patch(`/student/dashboard/portfolio/item/${itemId}`, input);
+};
+
+const deletePortfolioItem = async (itemId: string): Promise<void> => {
+  await apiGateway.delete(`/student/dashboard/portfolio/item/${itemId}`);
+};
+
+const getPortfolioHealthMetrics = async (userId: string): Promise<any> => {
+  try {
+    const response = await apiGateway.get(`/student/dashboard/portfolio/${userId}/health`);
+    return response || {
+      totalItems: 0,
+      approvedItems: 0,
+      pendingReviews: 0,
+      averageScore: 0,
+      healthScore: 0,
+      topSkills: [],
+    };
+  } catch (error) {
+    console.error('Error fetching health metrics:', error);
+    return {
+      totalItems: 0,
+      approvedItems: 0,
+      pendingReviews: 0,
+      averageScore: 0,
+      healthScore: 0,
+      topSkills: [],
+    };
+  }
+};
 
 export function usePortfolio(userId?: string) {
   const queryClient = useQueryClient();
-  const {
-    items,
-    setItems,
-    healthMetrics,
-    setHealthMetrics,
-    setLoading,
-    setError,
-  } = usePortfolioStore();
+  const { user } = useAuth();
+  const [items, setItems] = useState<PortfolioItem[]>([]);
+  const [healthMetrics, setHealthMetrics] = useState<PortfolioHealthMetrics>({
+    totalItems: 0,
+    approvedItems: 0,
+    pendingReviews: 0,
+    averageScore: 0,
+    healthScore: 0,
+    topSkills: [],
+  });
 
   // Get current user if not provided
   const getCurrentUserId = useCallback(async () => {
     if (userId) return userId;
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id;
-  }, [userId]);
+    return user?.id?.toString();
+  }, [userId, user]);
 
   // Fetch portfolio items
   const {
@@ -119,7 +194,7 @@ export function usePortfolio(userId?: string) {
       refetchMetrics();
     },
     onError: (error: Error) => {
-      setError(error.message);
+      console.error('Error creating portfolio item:', error);
     },
   });
 
@@ -135,7 +210,7 @@ export function usePortfolio(userId?: string) {
       refetchMetrics();
     },
     onError: (error: Error) => {
-      setError(error.message);
+      console.error('Error updating portfolio item:', error);
     },
   });
 
@@ -151,58 +226,32 @@ export function usePortfolio(userId?: string) {
       refetchMetrics();
     },
     onError: (error: Error) => {
-      setError(error.message);
+      console.error('Error deleting portfolio item:', error);
     },
   });
 
-  // Sync store with query data
+  // Sync state with query data
   useEffect(() => {
     if (portfolioItems) {
       setItems(portfolioItems);
     }
-  }, [portfolioItems, setItems]);
+  }, [portfolioItems]);
 
   useEffect(() => {
     if (metrics) {
       setHealthMetrics(metrics);
     }
-  }, [metrics, setHealthMetrics]);
+  }, [metrics]);
 
+  // Note: Realtime subscriptions removed - using polling instead
+  // You can add polling here if needed, or implement WebSocket/Django Channels later
   useEffect(() => {
-    setLoading(itemsLoading || metricsLoading);
-  }, [itemsLoading, metricsLoading, setLoading]);
-
-  useEffect(() => {
-    if (itemsError) {
-      setError(itemsError instanceof Error ? itemsError.message : 'Failed to load portfolio');
-    }
-  }, [itemsError, setError]);
-
-  // Set up realtime subscription
-  useEffect(() => {
-    const id = userId;
-    if (!id) return;
-
-    const channel = supabase
-      .channel('portfolio-items-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'portfolio_items',
-          filter: `user_id=eq.${id}`,
-        },
-        () => {
-          refetchItems();
-          refetchMetrics();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Optional: Set up polling for portfolio updates
+    // const interval = setInterval(() => {
+    //   refetchItems();
+    //   refetchMetrics();
+    // }, 30000); // Poll every 30 seconds
+    // return () => clearInterval(interval);
   }, [userId, refetchItems, refetchMetrics]);
 
   // Use query data if available, otherwise fall back to store
@@ -259,29 +308,14 @@ export function usePortfolioItem(itemId: string) {
     enabled: !!itemId,
   });
 
-  // Set up realtime subscription for single item
+  // Note: Realtime subscriptions removed - using polling instead
+  // You can add polling here if needed, or implement WebSocket/Django Channels later
   useEffect(() => {
-    if (!itemId) return;
-
-    const channel = supabase
-      .channel(`portfolio-item-${itemId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'portfolio_items',
-          filter: `id=eq.${itemId}`,
-        },
-        () => {
-          refetch();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Optional: Set up polling for single item updates
+    // const interval = setInterval(() => {
+    //   refetch();
+    // }, 30000); // Poll every 30 seconds
+    // return () => clearInterval(interval);
   }, [itemId, refetch]);
 
   return {

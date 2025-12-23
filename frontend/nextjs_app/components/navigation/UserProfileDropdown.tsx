@@ -72,7 +72,7 @@ export function UserProfileDropdown() {
         <div className="absolute right-0 mt-2 w-56 bg-och-midnight border border-och-steel/20 rounded-lg shadow-lg z-50">
           <div className="p-4 border-b border-och-steel/20">
             <div className="text-sm font-medium text-white">{user?.email || userName}</div>
-            <div className="text-xs text-och-steel mt-1">{roleDisplayName}</div>
+            <div className="text-xs text-och-steel mt-1">{userRole}</div>
           </div>
           <div className="py-2">
             <Link

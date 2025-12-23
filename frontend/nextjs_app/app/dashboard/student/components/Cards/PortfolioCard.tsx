@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
 import { motion } from 'framer-motion'
 import { usePortfolio } from '@/hooks/usePortfolio'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
 
 const COLORS = {
   approved: '#10b981',
@@ -17,14 +16,8 @@ const COLORS = {
 
 export function PortfolioCard() {
   const router = useRouter()
-  const [userId, setUserId] = useState<string | undefined>()
-  const supabase = createClient()
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id)
-    })
-  }, [supabase])
+  const { user } = useAuth()
+  const userId = user?.id?.toString()
 
   const { items, approvedItems, isLoading } = usePortfolio(userId)
 

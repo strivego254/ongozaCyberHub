@@ -16,7 +16,7 @@ function normalizeRoleName(roleName: string): string {
   if (normalized === 'sponsor_admin' || normalized === 'sponsor' || normalized === 'sponsor/employer admin' || normalized === 'sponsoremployer admin') return 'sponsor_admin'
   if (normalized === 'analyst') return 'analyst'
   if (normalized === 'employer') return 'employer'
-  if (normalized === 'finance') return 'finance'
+  if (normalized === 'finance' || normalized === 'finance_admin') return 'finance'
   return normalized
 }
 

@@ -24,12 +24,23 @@ function parseRolesCookie(raw: string | undefined): string[] {
   if (!raw) return []
   try {
     const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) return parsed.map(String)
+    if (Array.isArray(parsed)) {
+      // Normalize roles: map finance_admin to finance
+      return parsed.map((r: string) => {
+        const normalized = String(r).toLowerCase().trim()
+        if (normalized === 'finance_admin') return 'finance'
+        return String(r)
+      })
+    }
   } catch {
     // ignore
   }
   // fallback comma-separated
-  return raw.split(',').map(s => s.trim()).filter(Boolean)
+  return raw.split(',').map(s => {
+    const normalized = s.trim().toLowerCase()
+    if (normalized === 'finance_admin') return 'finance'
+    return s.trim()
+  }).filter(Boolean)
 }
 
 function dashboardForRole(role: string | null): string {
@@ -58,7 +69,7 @@ function canAccess(pathname: string, roles: string[]): boolean {
     if (pathname.startsWith('/dashboard/analyst')) return roles.includes('analyst')
     if (pathname.startsWith('/dashboard/analytics')) return roles.includes('analyst') || roles.includes('program_director')
     if (pathname.startsWith('/dashboard/employer') || pathname.startsWith('/dashboard/marketplace')) return roles.includes('employer')
-    if (pathname.startsWith('/dashboard/finance')) return roles.includes('finance')
+    if (pathname.startsWith('/dashboard/finance')) return roles.includes('finance') || roles.includes('finance_admin')
     // Student routes (catch-all for other dashboard paths)
     return roles.includes('student') || roles.includes('mentee')
   }
