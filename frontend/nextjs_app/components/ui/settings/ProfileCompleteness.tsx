@@ -1,22 +1,34 @@
 /**
  * Profile Completeness Component
- * Gamified profile optimizer with Future-You persona
+ * Redesigned for OCH Mission Control
  */
 
 'use client';
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Upload, Sparkles, AlertTriangle, Linkedin, Globe, FileText } from 'lucide-react';
+import { User, Upload, Sparkles, AlertTriangle, Linkedin, Globe, FileText, Rocket, Target } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { MissingFieldsNudges } from './MissingFieldsNudges';
-import { createClient } from '@/lib/supabase/client';
-import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
+import { useAuth } from '@/hooks/useAuth';
+import clsx from 'clsx';
 
-const supabase = createClient();
+export interface UserSettings {
+  avatarUploaded?: boolean;
+  profileCompleteness?: number;
+  integrations?: {
+    futureYouPersona?: string;
+    recommendedTrack?: string;
+  };
+  [key: string]: any;
+}
+
+export interface SettingsUpdate {
+  [key: string]: any;
+}
 
 interface ProfileCompletenessProps {
   settings: UserSettings;
@@ -25,82 +37,51 @@ interface ProfileCompletenessProps {
 }
 
 export function ProfileCompleteness({ settings, updateSettings, userId }: ProfileCompletenessProps) {
+  const { user } = useAuth();
   const { items } = usePortfolio(userId);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  // Debug: Log to verify component is receiving data
-  console.log('ProfileCompleteness render:', { 
-    hasSettings: !!settings, 
-    profileCompleteness: settings?.profileCompleteness,
-  });
-
-  if (!settings) {
-    return (
-      <Card className="glass-card">
-        <div className="p-8 text-center text-red-400">
-          Error: Settings not provided to ProfileCompleteness
-        </div>
-      </Card>
-    );
-  }
-
-  const hasPortfolioItems = items.length > 0;
+  const hasPortfolioItems = (items || []).length > 0;
   const futureYouPersona = settings.integrations?.futureYouPersona || 'Cybersecurity Professional';
   const recommendedTrack = settings.integrations?.recommendedTrack || 'Defender';
 
   const handleAvatarUpload = async (file: File) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      setAvatarUrl(publicUrl);
+      // Mock successful upload
+      setAvatarUrl(URL.createObjectURL(file));
       updateSettings({ avatarUploaded: true });
-      
-      await supabase.auth.updateUser({
-        data: { avatar_url: publicUrl }
-      });
     } catch (error) {
       console.error('Avatar upload failed:', error);
-      alert('Failed to upload avatar. Please try again.');
     }
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* AVATAR + FUTURE-YOU */}
+      {/* AVATAR + FUTURE-YOU SECTION */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <Card className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/40 glass-card-hover" style={{ position: 'relative', zIndex: 1 }}>
-          <div className="p-8" style={{ color: '#f1f5f9', minHeight: '300px' }}>
-            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
-              {/* Avatar Upload */}
-              <div className="relative group" style={{ zIndex: 2 }}>
-                <div className="w-28 h-28 lg:w-32 lg:h-32 rounded-full border-4 border-slate-800/50 group-hover:border-indigo-500/70 shadow-2xl transition-all overflow-hidden bg-slate-800 flex items-center justify-center">
+        <Card className="bg-gradient-to-br from-och-gold/10 to-transparent border-och-gold/20 overflow-hidden relative group h-full">
+          <div className="absolute -right-4 -top-4 opacity-5 group-hover:scale-110 transition-transform">
+            <Rocket className="w-48 h-48 text-och-gold" />
+          </div>
+
+          <div className="p-8 flex flex-col h-full relative z-10">
+            <div className="flex flex-col sm:flex-row items-center gap-8 mb-8">
+              {/* Avatar Upload Terminal */}
+              <div className="relative group">
+                <div className="w-32 h-32 rounded-3xl border-2 border-och-steel/20 group-hover:border-och-gold/50 shadow-2xl transition-all overflow-hidden bg-och-midnight flex items-center justify-center">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <User className="w-16 h-16 text-slate-400" style={{ color: '#94a3b8' }} />
+                    <User className="w-12 h-12 text-och-steel/40" />
                   )}
                 </div>
-                <label className="absolute inset-0 flex items-center justify-center bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
-                  <Upload className="w-6 h-6 text-indigo-400" style={{ color: '#818cf8' }} />
+                <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-3xl backdrop-blur-[2px]">
+                  <Upload className="w-6 h-6 text-och-gold" />
                   <input
                     type="file"
                     accept="image/*"
@@ -113,43 +94,46 @@ export function ProfileCompleteness({ settings, updateSettings, userId }: Profil
                 </label>
               </div>
 
-              {/* Future-You Persona */}
-              <div className="flex-1" style={{ zIndex: 2 }}>
-                <div className="flex items-center gap-3 mb-4" style={{ color: '#ffffff' }}>
-                  <Sparkles className="w-7 h-7 text-purple-400" style={{ color: '#a78bfa', display: 'block' }} />
-                  <h2 className="text-2xl font-bold text-slate-100" style={{ color: '#ffffff', display: 'block' }}>Future-You</h2>
+              {/* Persona Metadata */}
+              <div className="text-center sm:text-left flex-1">
+                <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-och-gold animate-pulse" />
+                  <span className="text-[10px] font-black text-och-gold uppercase tracking-widest leading-none">Identity Archetype</span>
                 </div>
-                <p className="text-purple-300 text-lg mb-3" style={{ color: '#ffffff', display: 'block' }}>{futureYouPersona || 'Cybersecurity Professional'}</p>
-                <Badge className="bg-gradient-to-r from-indigo-500 to-purple-500 text-sm px-4 py-1.5" style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)', color: '#ffffff', display: 'inline-block' }}>
-                  {recommendedTrack || 'Defender'} Track
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-3 leading-tight">
+                  {futureYouPersona}
+                </h2>
+                <Badge variant="gold" className="px-4 py-1 text-[10px] font-black tracking-widest uppercase bg-och-gold text-black border-none">
+                  {recommendedTrack} Track
                 </Badge>
               </div>
             </div>
 
-            {/* Completeness Progress */}
-            <div className="mt-6 pt-6 border-t border-slate-800/50" style={{ borderTopColor: '#1e293b', zIndex: 10, borderTop: '1px solid #1e293b' }}>
-              <div className="flex items-center justify-between mb-2" style={{ color: '#ffffff' }}>
-                <span className="text-sm font-semibold text-slate-300" style={{ color: '#ffffff', display: 'block' }}>
-                  Profile Completeness
-                </span>
-                <span className="text-lg font-bold text-emerald-400" style={{ color: '#34d399', display: 'block' }}>
-                  {settings.profileCompleteness || 0}%
-                </span>
+            {/* Integrity Metrics */}
+            <div className="mt-auto space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-och-steel">
+                  <Target className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Node Integrity</span>
+                </div>
+                <span className="text-sm font-black text-och-mint">{settings.profileCompleteness || 0}%</span>
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden" style={{ backgroundColor: '#1e293b', height: '12px' }}>
-                <div 
-                  className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300"
-                  style={{ 
-                    width: `${Math.min(100, Math.max(0, settings.profileCompleteness))}%`,
-                    background: 'linear-gradient(to right, #6366f1, #10b981)',
-                    height: '100%'
-                  }}
+              
+              <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${settings.profileCompleteness || 0}%` }}
+                  className="h-full bg-gradient-to-r from-och-gold to-och-mint transition-all duration-1000"
                 />
               </div>
+
               {settings.profileCompleteness < 80 && (
-                <p className="text-xs text-amber-400 mt-2" style={{ color: '#fbbf24' }}>
-                  {80 - settings.profileCompleteness}% more needed for marketplace access
-                </p>
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-och-orange/5 border border-och-orange/20">
+                  <AlertTriangle className="w-3 h-3 text-och-orange" />
+                  <p className="text-[9px] text-och-orange font-bold uppercase tracking-wide italic">
+                    {80 - settings.profileCompleteness}% more needed for marketplace synchronization
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -157,8 +141,11 @@ export function ProfileCompleteness({ settings, updateSettings, userId }: Profil
       </motion.div>
 
       {/* MISSING FIELDS NUDGES */}
-      <MissingFieldsNudges settings={settings} hasPortfolioItems={hasPortfolioItems} onUpdate={updateSettings} />
+      <MissingFieldsNudges 
+        settings={settings} 
+        hasPortfolioItems={hasPortfolioItems} 
+        onUpdate={updateSettings} 
+      />
     </div>
   );
 }
-

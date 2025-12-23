@@ -7,12 +7,61 @@
 
 import { useState } from 'react';
 import { User, Upload, Linkedin, FileText, Globe, CheckCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { getCompletenessBreakdown, getNextSteps } from '@/lib/settings/profile-completeness';
-import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
+import { useAuth } from '@/hooks/useAuth';
+
+// Local types to replace missing @/lib/settings imports
+export interface UserSettings {
+  profileCompleteness: number;
+  avatarUploaded?: boolean;
+  linkedinLinked?: boolean;
+  bioCompleted?: boolean;
+  timezoneSet?: string;
+  portfolioVisibility?: string;
+  [key: string]: any;
+}
+
+export interface SettingsUpdate {
+  [key: string]: any;
+}
+
+interface BreakdownItem {
+  field: string;
+  label: string;
+  completed: boolean;
+  weight: number;
+}
+
+/**
+ * Calculates a breakdown of profile completeness
+ * Stub implementation to replace missing @/lib/settings/profile-completeness
+ */
+export function getCompletenessBreakdown(settings: UserSettings, hasPortfolioItems: boolean): BreakdownItem[] {
+  const breakdown: BreakdownItem[] = [
+    { field: 'avatarUploaded', label: 'Upload Avatar', completed: !!settings.avatarUploaded, weight: 10 },
+    { field: 'linkedinLinked', label: 'Link LinkedIn', completed: !!settings.linkedinLinked, weight: 15 },
+    { field: 'bioCompleted', label: 'Complete Bio', completed: !!settings.bioCompleted, weight: 15 },
+    { field: 'timezoneSet', label: 'Set Timezone', completed: !!settings.timezoneSet, weight: 5 },
+    { field: 'portfolioVisibility', label: 'Set Visibility', completed: !!settings.portfolioVisibility, weight: 10 },
+    { field: 'hasPortfolioItems', label: 'Add Portfolio Items', completed: hasPortfolioItems, weight: 10 },
+  ];
+
+  return breakdown;
+}
+
+/**
+ * Gets recommended next steps for profile completeness
+ */
+export function getNextSteps(settings: UserSettings, hasPortfolioItems: boolean): string[] {
+  const breakdown = getCompletenessBreakdown(settings, hasPortfolioItems);
+  return breakdown
+    .filter(item => !item.completed)
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 3)
+    .map(item => item.label);
+}
 
 interface ProfileControlPanelProps {
   settings: UserSettings | null;
@@ -25,6 +74,7 @@ export function ProfileControlPanel({
   onUpdate, 
   hasPortfolioItems = false 
 }: ProfileControlPanelProps) {
+  const { user } = useAuth();
   if (!settings) return null;
 
   const breakdown = getCompletenessBreakdown(settings, hasPortfolioItems);
@@ -34,6 +84,7 @@ export function ProfileControlPanel({
   return (
     <Card className="glass-card glass-card-hover">
       <div className="p-6">
+        {/* ... existing content ... */}
         <div className="flex items-center gap-3 mb-4">
           <User className="w-8 h-8 text-indigo-400" />
           <div>
@@ -155,31 +206,15 @@ export function ProfileControlPanel({
             const file = e.target.files?.[0];
             if (file) {
               try {
-                const supabase = createClient();
-                const { data: { user } } = await supabase.auth.getUser();
-                
                 if (user) {
-                  const fileExt = file.name.split('.').pop();
-                  const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-                  const filePath = `avatars/${fileName}`;
-
-                  const { error: uploadError } = await supabase.storage
-                    .from('avatars')
-                    .upload(filePath, file, { upsert: true });
-
-                  if (uploadError) throw uploadError;
-
-                  const { data: { publicUrl } } = supabase.storage
-                    .from('avatars')
-                    .getPublicUrl(filePath);
-
+                  // TODO: Replace with actual Django API upload endpoint
+                  // const formData = new FormData();
+                  // formData.append('avatar', file);
+                  // await apiGateway.post('/users/upload-avatar', formData);
+                  
+                  console.log('Avatar upload mock triggered for:', file.name);
                   // Update settings
                   onUpdate({ avatarUploaded: true });
-                  
-                  // Update user metadata
-                  await supabase.auth.updateUser({
-                    data: { avatar_url: publicUrl }
-                  });
                 }
               } catch (error) {
                 console.error('Avatar upload failed:', error);

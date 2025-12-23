@@ -7,7 +7,14 @@
 
 import { CheckCircle, AlertTriangle, Sparkles, XCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import type { SystemStatus } from '@/lib/settings/types';
+
+// Local types to replace missing @/lib/settings imports
+export interface SystemStatus {
+  title: string;
+  value: string | number;
+  status: 'healthy' | 'warning' | 'upgrade' | 'error';
+  impact: string;
+}
 
 interface SystemStatusCardProps {
   status: SystemStatus;

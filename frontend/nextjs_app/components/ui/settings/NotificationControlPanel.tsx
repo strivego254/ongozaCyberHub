@@ -8,7 +8,18 @@
 import { Bell, Mail, Smartphone, Target, MessageSquare, Briefcase } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
+
+// Local types to replace missing @/lib/settings imports
+export interface UserSettings {
+  notificationsEmail: boolean;
+  notificationsPush: boolean;
+  notificationsCategories: Record<string, boolean>;
+  [key: string]: any;
+}
+
+export interface SettingsUpdate {
+  [key: string]: any;
+}
 
 interface NotificationControlPanelProps {
   settings: UserSettings | null;

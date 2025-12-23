@@ -1,16 +1,56 @@
 /**
  * Missing Fields Nudges Component
- * Proactive completeness prompts with quick actions
+ * Redesigned for OCH Mission Control
  */
 
 'use client';
 
 import { motion } from 'framer-motion';
-import { AlertTriangle, Upload, Linkedin, FileText, Globe, CheckCircle, User } from 'lucide-react';
+import { AlertTriangle, Upload, Linkedin, FileText, Globe, CheckCircle, User, Zap, ChevronRight, Target } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { getCompletenessBreakdown, getNextSteps } from '@/lib/settings/profile-completeness';
-import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
+import { Badge } from '@/components/ui/Badge';
+import clsx from 'clsx';
+
+export interface UserSettings {
+  avatarUploaded?: boolean;
+  name?: string;
+  headline?: string;
+  location?: string;
+  track?: string;
+  linkedinLinked?: boolean;
+  bioCompleted?: boolean;
+  timezoneSet?: string | boolean;
+  portfolioVisibility?: string;
+  profileCompleteness?: number;
+  [key: string]: any;
+}
+
+export interface SettingsUpdate {
+  [key: string]: any;
+}
+
+interface BreakdownItem {
+  field: string;
+  label: string;
+  completed: boolean;
+  weight: number;
+}
+
+export function getCompletenessBreakdown(settings: UserSettings, hasPortfolioItems: boolean): BreakdownItem[] {
+  return [
+    { field: 'avatarUploaded', label: 'Biometric Avatar', completed: !!settings.avatarUploaded, weight: 10 },
+    { field: 'name', label: 'Operative Name', completed: !!settings.name, weight: 10 },
+    { field: 'headline', label: 'Specialization', completed: !!settings.headline, weight: 10 },
+    { field: 'location', label: 'Node Location', completed: !!settings.location, weight: 5 },
+    { field: 'track', label: 'Mission Track', completed: !!settings.track, weight: 10 },
+    { field: 'linkedinLinked', label: 'LinkedIn Sync', completed: !!settings.linkedinLinked, weight: 15 },
+    { field: 'bioCompleted', label: 'Operative Dossier', completed: !!settings.bioCompleted, weight: 15 },
+    { field: 'timezoneSet', label: 'Chronos Sync', completed: !!settings.timezoneSet, weight: 5 },
+    { field: 'portfolioVisibility', label: 'Market Visibility', completed: !!settings.portfolioVisibility, weight: 10 },
+    { field: 'hasPortfolioItems', label: 'Evidence Uploads', completed: hasPortfolioItems, weight: 10 },
+  ];
+}
 
 interface MissingFieldsNudgesProps {
   settings: UserSettings;
@@ -29,12 +69,14 @@ export function MissingFieldsNudges({ settings, hasPortfolioItems, onUpdate }: M
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-indigo-500/10 border-emerald-500/40 glass-card-hover">
-          <div className="p-8 text-center">
-            <CheckCircle className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-slate-100 mb-2">Profile Complete!</h3>
-            <p className="text-slate-400">
-              Your profile is ready for marketplace visibility
+        <Card className="bg-gradient-to-br from-och-mint/10 to-transparent border-och-mint/20 overflow-hidden relative">
+          <div className="p-8 text-center relative z-10">
+            <div className="w-16 h-16 rounded-full bg-och-mint/20 border border-och-mint/30 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-och-mint" />
+            </div>
+            <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2 italic">Node Fully Synchronized</h3>
+            <p className="text-och-steel text-[10px] font-black uppercase tracking-widest leading-relaxed">
+              Your profile integrity is optimized for marketplace engagement
             </p>
           </div>
         </Card>
@@ -45,9 +87,9 @@ export function MissingFieldsNudges({ settings, hasPortfolioItems, onUpdate }: M
   const fieldIcons = {
     avatarUploaded: Upload,
     name: User,
-    headline: User,
+    headline: Zap,
     location: Globe,
-    track: User,
+    track: Target,
     linkedinLinked: Linkedin,
     bioCompleted: FileText,
     timezoneSet: Globe,
@@ -61,50 +103,46 @@ export function MissingFieldsNudges({ settings, hasPortfolioItems, onUpdate }: M
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="border-amber-500/50 bg-gradient-to-r from-amber-500/5 glass-card-hover">
-        <div className="p-8">
-          <div className="flex items-start gap-4 mb-6">
-            <AlertTriangle className="w-8 h-8 text-amber-500 mt-0.5 flex-shrink-0" />
+      <Card className="border-och-gold/30 bg-och-midnight/60 backdrop-blur-md rounded-[2.5rem] overflow-hidden">
+        <div className="p-8 xl:p-10 relative z-10">
+          <div className="flex items-start gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-och-gold/10 border border-och-gold/20 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-6 h-6 text-och-gold animate-pulse" />
+            </div>
             <div>
-              <h3 className="text-2xl font-bold text-slate-100 mb-2">
-                Boost Marketplace Ranking
+              <h3 className="text-xl font-black text-white uppercase tracking-tight leading-tight">
+                Integrity Alerts
               </h3>
-              <p className="text-slate-400">
-                Complete these fields to unlock employer contact (requires 80%+)
+              <p className="text-[10px] text-och-steel font-black uppercase tracking-widest mt-1">
+                Complete synchronization to unlock marketplace engagement
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {missingFields.slice(0, 4).map((field) => {
               const Icon = fieldIcons[field.field as keyof typeof fieldIcons] || FileText;
               return (
-                <Button
+                <button
                   key={field.field}
-                  variant="outline"
-                  className="h-auto p-4 flex flex-col items-start gap-2 border-slate-700 hover:border-amber-500/50 hover:bg-amber-500/10 transition-all"
+                  className="p-4 rounded-2xl bg-white/5 border border-och-steel/10 hover:border-och-gold/40 hover:bg-och-gold/5 transition-all text-left flex items-center justify-between group"
                   onClick={() => {
-                    if (field.field === 'avatarUploaded') {
-                      document.getElementById('avatar-upload')?.click();
-                    } else if (field.field === 'linkedinLinked') {
-                      window.location.href = '/api/auth/linkedin';
-                    } else if (field.field === 'bioCompleted') {
-                      onUpdate({ bioCompleted: true });
-                    } else if (field.field === 'timezoneSet') {
-                      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                      onUpdate({ timezoneSet: timezone });
-                    } else if (field.field === 'portfolioVisibility') {
-                      onUpdate({ portfolioVisibility: 'marketplace_preview' });
-                    }
+                    // Quick actions for common fields
+                    if (field.field === 'bioCompleted') onUpdate({ bioCompleted: true });
+                    if (field.field === 'timezoneSet') onUpdate({ timezoneSet: 'Africa/Nairobi' });
                   }}
                 >
-                  <div className="flex items-center gap-2 w-full">
-                    <Icon className="w-4 h-4 text-amber-400" />
-                    <span className="text-sm font-medium text-slate-200 flex-1 text-left">
-                      {field.label}
-                    </span>
-                    <span className="text-xs text-amber-400">+{field.weight}%</span>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-och-midnight border border-och-steel/20 group-hover:border-och-gold/30 transition-colors">
+                      <Icon className="w-4 h-4 text-och-gold" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-white uppercase tracking-tighter">{field.label}</p>
+                      <p className="text-[8px] text-och-gold font-bold uppercase tracking-widest mt-0.5">+{field.weight}% Signal</p>
+                    </div>
                   </div>
-                </Button>
+                  <ChevronRight className="w-4 h-4 text-och-steel group-hover:text-white transition-all opacity-0 group-hover:opacity-100" />
+                </button>
               );
             })}
           </div>
@@ -113,4 +151,3 @@ export function MissingFieldsNudges({ settings, hasPortfolioItems, onUpdate }: M
     </motion.div>
   );
 }
-

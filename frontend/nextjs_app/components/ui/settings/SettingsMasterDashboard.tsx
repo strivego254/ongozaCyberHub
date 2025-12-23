@@ -1,45 +1,53 @@
 /**
  * Settings Master Dashboard Component
- * Complete Student Settings Engine - System nervous system
+ * Redesigned for OCH Mission Control
  */
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, User, Shield, Bell, CreditCard, Link2 } from 'lucide-react';
+import { 
+  Settings, 
+  User, 
+  Shield, 
+  Bell, 
+  CreditCard, 
+  Link2, 
+  Command,
+  Activity,
+  Cpu,
+  Lock,
+  Globe
+} from 'lucide-react';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { SettingsShell } from './SettingsShell';
+import { Badge } from '@/components/ui/Badge';
 import { ProfileCompleteness } from './ProfileCompleteness';
 import { ProfileFormSection } from './ProfileFormSection';
 import { PrivacyMasterSwitch } from './PrivacyMasterSwitch';
 import { SubscriptionControlPanel } from './SubscriptionControlPanel';
 import { NotificationEngine } from './NotificationEngine';
 import { IntegrationHub } from './IntegrationHub';
-import { SystemStatusRail } from './SystemStatusRail';
 import { CoachingControlPanel } from './CoachingControlPanel';
 import { SecurityControlPanel } from './SecurityControlPanel';
-import { FrontendStatusSection } from './FrontendStatusSection';
-import { PortfolioDashboardSkeleton } from '../portfolio/PortfolioSkeleton';
-import { ErrorDisplay } from '../portfolio/ErrorDisplay';
 import { useSettingsMaster } from '@/hooks/useSettingsMaster';
-import { createClient } from '@/lib/supabase/client';
-
-const supabase = createClient();
+import { useAuth } from '@/hooks/useAuth';
+import clsx from 'clsx';
 
 type SettingsTab = 'profile' | 'subscription' | 'privacy' | 'notifications' | 'integrations' | 'security';
 
 export function SettingsMasterDashboard() {
   const router = useRouter();
-  const [userId, setUserId] = useState<string | undefined>();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+  
+  // Initialize from URL param if present
+  const initialTab = (searchParams.get('tab') as SettingsTab) || 'profile';
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id);
-    });
-  }, []);
+  const userId = user?.id;
 
   const {
     settings,
@@ -51,14 +59,26 @@ export function SettingsMasterDashboard() {
     refetch,
   } = useSettingsMaster(userId);
 
-  // Create default settings/entitlements for graceful rendering
+  // Sync state with URL
+  useEffect(() => {
+    const tab = searchParams.get('tab') as SettingsTab;
+    if (tab && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tab: SettingsTab) => {
+    setActiveTab(tab);
+    router.push(`/dashboard/student/settings?tab=${tab}`, { scroll: false });
+  };
+
   const defaultSettings = {
     userId: userId || '',
     profileCompleteness: 0,
     avatarUploaded: false,
     linkedinLinked: false,
     bioCompleted: false,
-    name: '',
+    name: user?.first_name || '',
     headline: '',
     location: '',
     track: 'defender' as const,
@@ -98,212 +118,219 @@ export function SettingsMasterDashboard() {
     portfolioCapabilities: [],
   };
 
-  // Use actual data or fallback to defaults
   const displaySettings = settings || defaultSettings;
   const displayEntitlements = entitlements || defaultEntitlements;
 
-  // Debug logging
-  useEffect(() => {
-    console.log('SettingsMasterDashboard Debug:', {
-      userId,
-      hasSettings: !!settings,
-      hasEntitlements: !!entitlements,
-      isLoading,
-      error: error?.message,
-      settingsKeys: settings ? Object.keys(settings) : [],
-      usingDefaults: !settings || !entitlements,
-    });
-  }, [userId, settings, entitlements, isLoading, error]);
-
-  // Don't block rendering - show content even while loading
-  // Early returns only for critical errors
-  if (error && error instanceof Error && error.message === 'User not authenticated') {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 lg:p-12 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold text-slate-200 mb-4" style={{ color: '#ffffff' }}>Authentication Required</h2>
-          <p className="text-slate-400 mb-6" style={{ color: '#ffffff' }}>
-            Please log in to access your settings.
-          </p>
-          <Button
-            onClick={() => router.push('/login/student')}
-            variant="defender"
-            className="px-6 py-3"
-            style={{ color: '#ffffff' }}
-          >
-            Go to Login
-          </Button>
+      <div className="flex items-center justify-center min-h-[600px]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-och-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-och-steel animate-pulse font-black uppercase tracking-widest text-[10px]">Syncing Settings Telemetry...</p>
         </div>
       </div>
     );
   }
 
   const tabs = [
-    { id: 'profile' as const, label: 'Profile', icon: User },
-    { id: 'subscription' as const, label: 'Subscription', icon: CreditCard },
-    { id: 'privacy' as const, label: 'Privacy', icon: Shield },
-    { id: 'notifications' as const, label: 'Notifications', icon: Bell },
-    { id: 'integrations' as const, label: 'Integrations', icon: Link2 },
-    { id: 'security' as const, label: 'Security', icon: Shield },
+    { id: 'profile' as const, label: 'Identity & Persona', icon: User },
+    { id: 'subscription' as const, label: 'Subscription Tier', icon: CreditCard },
+    { id: 'privacy' as const, label: 'Data & Visibility', icon: Shield },
+    { id: 'notifications' as const, label: 'Alert Protocols', icon: Bell },
+    { id: 'integrations' as const, label: 'System Links', icon: Link2 },
+    { id: 'security' as const, label: 'Security Core', icon: Lock },
   ];
 
-  // Always render - don't block on loading
+  const systemStatuses = [
+    { label: 'Integrity', value: `${displaySettings.profileCompleteness}%`, status: displaySettings.profileCompleteness >= 80 ? 'active' : 'warning', color: 'text-och-mint' },
+    { label: 'Protocol', value: displayEntitlements.tier.toUpperCase(), status: 'active', color: 'text-och-gold' },
+    { label: 'Visibility', value: displaySettings.portfolioVisibility.toUpperCase(), status: 'active', color: 'text-och-defender' },
+  ];
+
   return (
-    <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', padding: '24px', color: '#ffffff' }}>
-      <SettingsShell>
-        {/* Test: Always visible header */}
-        <div style={{ padding: '20px', backgroundColor: 'rgba(99, 102, 241, 0.2)', borderRadius: '8px', marginBottom: '20px', color: '#ffffff', border: '2px solid rgba(99, 102, 241, 0.5)' }}>
-          <h2 style={{ color: '#ffffff', fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>Settings Dashboard</h2>
-          <p style={{ color: '#ffffff' }}>Active Tab: {activeTab} | Settings: {settings ? '✓' : '✗'} | Entitlements: {entitlements ? '✓' : '✗'}</p>
+    <div className="space-y-8 animate-in fade-in duration-700 pb-20">
+      
+      {/* 1. SETTINGS TELEMETRY HEADER */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 bg-gradient-to-br from-och-midnight via-och-midnight to-och-defender/5 p-8 rounded-[3rem] border border-och-steel/10 shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-och-gold/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-och-gold/10 transition-all duration-1000" />
+        
+        <div className="flex items-center gap-6 relative z-10">
+          <div className="w-20 h-20 rounded-3xl bg-och-gold/10 border border-och-gold/20 flex items-center justify-center relative group-hover:scale-105 transition-transform duration-500">
+             <div className="absolute inset-0 bg-och-gold/5 animate-pulse" />
+             <Command className="w-10 h-10 text-och-gold" />
+          </div>
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-black text-white uppercase tracking-tighter">System Configuration</h1>
+              <Badge variant="gold" className="text-[10px] font-black tracking-[0.2em] px-2 h-5 text-black">ADMIN MODE</Badge>
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <p className="text-och-steel text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-och-mint animate-ping" />
+                Node: {userId?.substring(0, 8) || 'GUEST-01'}
+              </p>
+              <div className="h-4 w-px bg-och-steel/20 hidden sm:block" />
+              <p className="text-och-gold text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                <Cpu className="w-3.5 h-3.5" />
+                Platform: OCH HUB v4.2
+              </p>
+            </div>
+          </div>
         </div>
 
-        {error && (
-          <div className="mb-6 animate-fade-in" style={{ color: '#ffffff', zIndex: 10, padding: '20px', backgroundColor: 'rgba(239, 68, 68, 0.2)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.5)' }}>
-            <ErrorDisplay error={error} onRetry={refetch} />
-          </div>
-        )}
+        <div className="flex flex-wrap gap-4 w-full xl:w-auto relative z-10">
+          {systemStatuses.map((stat, i) => (
+            <div key={i} className="flex-1 min-w-[160px] p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-all">
+               <p className="text-[9px] text-och-steel font-black uppercase tracking-widest leading-none mb-1.5">{stat.label}</p>
+               <div className="flex items-baseline gap-1.5">
+                 <span className={clsx("text-2xl font-black", stat.color)}>{stat.value}</span>
+               </div>
+               <div className="flex items-center gap-1.5 mt-2">
+                 <div className={clsx("w-1.5 h-1.5 rounded-full", stat.status === 'active' ? 'bg-och-mint' : 'bg-och-orange')} />
+                 <span className="text-[8px] text-och-steel font-bold uppercase">{stat.status.toUpperCase()}</span>
+               </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        {/* Tabs */}
-        <div className="mb-8" style={{ position: 'relative', zIndex: 10, marginBottom: '32px' }}>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-2 bg-slate-900/70 backdrop-blur-xl border border-slate-800/70 rounded-lg p-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', borderColor: 'rgba(30, 41, 59, 0.7)' }}>
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* 2. CONFIGURATION NAVIGATION (Left Column) */}
+        <aside className="lg:col-span-3 space-y-4">
+          <div className="flex flex-col gap-2">
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/50'
-                    : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/50'
-                }`}
-                style={{ 
-                  color: isActive ? '#818cf8' : '#94a3b8',
-                  backgroundColor: isActive ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                  border: isActive ? '1px solid rgba(99, 102, 241, 0.5)' : 'none'
-                }}
+                onClick={() => handleTabChange(tab.id)}
+                className={clsx(
+                  "flex items-center gap-4 px-5 py-4 rounded-2xl transition-all font-black uppercase tracking-widest text-[10px] border relative group",
+                  activeTab === tab.id
+                    ? "bg-och-gold text-black border-och-gold shadow-lg shadow-och-gold/20 scale-[1.02]"
+                    : "bg-white/5 text-och-steel border-white/5 hover:bg-white/10 hover:text-white"
+                )}
               >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <tab.icon className={clsx("w-4 h-4", activeTab === tab.id ? "text-black" : "text-och-gold/60 group-hover:text-och-gold")} />
+                {tab.label}
+                {activeTab === tab.id && (
+                  <motion.div layoutId="active-tab-indicator" className="absolute right-4 w-1.5 h-1.5 bg-black rounded-full" />
+                )}
               </button>
-            );
-          })}
+            ))}
           </div>
-        </div>
 
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.2 }}
-          className="space-y-6"
-          style={{ position: 'relative', zIndex: 1 }}
-        >
-          {/* Always show debug info */}
-          <div className="mb-4 p-4 bg-slate-800/50 rounded-lg text-xs" style={{ backgroundColor: 'rgba(30, 41, 59, 0.8)', color: '#ffffff', zIndex: 10, border: '1px solid rgba(99, 102, 241, 0.3)' }}>
-            <strong style={{ color: '#ffffff' }}>Debug Info:</strong> settings={settings ? '✓ Loaded' : '✗ Missing'}, entitlements={entitlements ? '✓ Loaded' : '✗ Missing'}, activeTab={activeTab}, userId={userId ? '✓' : '✗'}
+          {/* HELP CENTER NUDGE */}
+          <div className="p-6 rounded-[2.5rem] bg-och-midnight border border-och-steel/10 mt-8">
+             <div className="flex items-center gap-2 mb-4">
+               <Globe className="w-3.5 h-3.5 text-och-mint" />
+               <span className="text-[10px] font-black text-och-steel uppercase tracking-widest">Support Core</span>
+             </div>
+             <p className="text-[10px] text-slate-400 leading-relaxed italic mb-4">
+               "Need tactical assistance with your settings or subscription? Visit the Help Center."
+             </p>
+             <Button variant="outline" className="w-full h-10 rounded-xl border-och-steel/20 text-och-steel hover:text-white font-black uppercase tracking-widest text-[9px]">
+                Support Docs
+             </Button>
           </div>
-          
-          {/* Profile Tab - Always render with defaults */}
-          {activeTab === 'profile' && (
-            <div className="space-y-8" style={{ color: '#ffffff', position: 'relative', zIndex: 10 }}>
-              {!settings && (
-                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <p className="text-sm text-amber-300">
-                    Settings are loading... Displaying default values. Changes will be saved once settings are loaded.
-                  </p>
+        </aside>
+
+        {/* 3. CONFIGURATION TERMINAL (Right Column) */}
+        <main className="lg:col-span-9">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-8"
+            >
+              {activeTab === 'profile' && (
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                      <User className="w-6 h-6 text-och-gold" />
+                      Identity & Persona
+                    </h2>
+                    <Badge variant="mint" className="text-[9px] font-black uppercase">Sync Complete</Badge>
+                  </div>
+                  
+                  <ProfileCompleteness 
+                    settings={displaySettings} 
+                    updateSettings={updateSettings} 
+                    userId={userId} 
+                  />
+                  
+                  <ProfileFormSection 
+                    settings={displaySettings} 
+                    updateSettings={updateSettings} 
+                  />
+                  
+                  <CoachingControlPanel 
+                    settings={displaySettings} 
+                    onUpdate={updateSettings} 
+                  />
                 </div>
               )}
-              <div style={{ padding: '20px', backgroundColor: 'rgba(99, 102, 241, 0.2)', borderRadius: '8px', marginBottom: '20px', color: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.5)' }}>
-                <h3 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>Profile Settings</h3>
-                <p style={{ color: '#ffffff' }}>Manage your profile information and completeness</p>
-              </div>
-              <ProfileCompleteness settings={displaySettings} updateSettings={updateSettings} userId={userId} />
-              <ProfileFormSection settings={displaySettings} updateSettings={updateSettings} />
-              <CoachingControlPanel settings={displaySettings} onUpdate={updateSettings} />
-              <FrontendStatusSection />
-            </div>
-          )}
 
-          {/* Subscription Tab */}
-          {activeTab === 'subscription' && (
-            <>
-              {(!settings || !entitlements) && (
-                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <p className="text-sm text-amber-300">
-                    Subscription data is loading... Displaying default values.
-                  </p>
+              {activeTab === 'subscription' && (
+                <div className="space-y-8">
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                    <CreditCard className="w-6 h-6 text-och-gold" />
+                    Subscription Tier
+                  </h2>
+                  <SubscriptionControlPanel entitlements={displayEntitlements} settings={displaySettings} />
                 </div>
               )}
-              <SubscriptionControlPanel entitlements={displayEntitlements} settings={displaySettings} />
-            </>
-          )}
 
-          {/* Privacy Tab */}
-          {activeTab === 'privacy' && (
-            <>
-              {(!settings || !entitlements) && (
-                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <p className="text-sm text-amber-300">
-                    Privacy settings are loading... Displaying default values.
-                  </p>
+              {activeTab === 'privacy' && (
+                <div className="space-y-8">
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                    <Shield className="w-6 h-6 text-och-gold" />
+                    Data & Visibility
+                  </h2>
+                  <PrivacyMasterSwitch 
+                    settings={displaySettings} 
+                    entitlements={displayEntitlements} 
+                    updateSettings={updateSettings} 
+                    userId={userId} 
+                  />
                 </div>
               )}
-              <PrivacyMasterSwitch settings={displaySettings} entitlements={displayEntitlements} updateSettings={updateSettings} userId={userId} />
-            </>
-          )}
 
-          {/* Notifications Tab */}
-          {activeTab === 'notifications' && (
-            <>
-              {!settings && (
-                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <p className="text-sm text-amber-300">
-                    Notification settings are loading... Displaying default values.
-                  </p>
+              {activeTab === 'notifications' && (
+                <div className="space-y-8">
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                    <Bell className="w-6 h-6 text-och-gold" />
+                    Alert Protocols
+                  </h2>
+                  <NotificationEngine settings={displaySettings} updateSettings={updateSettings} />
                 </div>
               )}
-              <NotificationEngine settings={displaySettings} updateSettings={updateSettings} />
-            </>
-          )}
 
-          {/* Integrations Tab */}
-          {activeTab === 'integrations' && (
-            <>
-              {!settings && (
-                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <p className="text-sm text-amber-300">
-                    Integration settings are loading... Displaying default values.
-                  </p>
+              {activeTab === 'integrations' && (
+                <div className="space-y-8">
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                    <Link2 className="w-6 h-6 text-och-gold" />
+                    System Links
+                  </h2>
+                  <IntegrationHub settings={displaySettings} updateSettings={updateSettings} userId={userId} />
                 </div>
               )}
-              <IntegrationHub settings={displaySettings} updateSettings={updateSettings} userId={userId} />
-            </>
-          )}
 
-          {/* Security Tab */}
-          {activeTab === 'security' && (
-            <>
-              {!settings && (
-                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <p className="text-sm text-amber-300">
-                    Security settings are loading... Displaying default values.
-                  </p>
+              {activeTab === 'security' && (
+                <div className="space-y-8">
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                    <Lock className="w-6 h-6 text-och-gold" />
+                    Security Core
+                  </h2>
+                  <SecurityControlPanel settings={displaySettings} updateSettings={updateSettings} userId={userId} />
                 </div>
               )}
-              <SecurityControlPanel settings={displaySettings} updateSettings={updateSettings} userId={userId} />
-            </>
-          )}
-        </motion.div>
-      </AnimatePresence>
-
-        {/* System Status Rail - Live Impact Indicators */}
-        <SystemStatusRail />
-      </SettingsShell>
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   );
 }

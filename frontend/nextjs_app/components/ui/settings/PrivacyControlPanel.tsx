@@ -9,7 +9,19 @@ import { Shield, Lock, Eye, Mail, Globe } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
+
+// Local types to replace missing @/lib/settings imports
+export interface UserSettings {
+  portfolioVisibility: 'private' | 'unlisted' | 'marketplace_preview' | 'public';
+  profileCompleteness: number;
+  marketplaceContactEnabled: boolean;
+  dataSharingConsent: Record<string, boolean>;
+  [key: string]: any;
+}
+
+export interface SettingsUpdate {
+  [key: string]: any;
+}
 
 interface PrivacyControlPanelProps {
   settings: UserSettings | null;
@@ -82,11 +94,9 @@ export function PrivacyControlPanel({ settings, onUpdate, userId }: PrivacyContr
                     if (!isDisabled) {
                       onUpdate({ portfolioVisibility: option.value });
                       
-                      // Sync portfolio items visibility in realtime
+                      // Sync portfolio items visibility in realtime (TODO: Implement Django endpoint)
                       if (userId) {
-                        import('@/lib/portfolio/coordination').then(({ syncPortfolioVisibility }) => {
-                          syncPortfolioVisibility(userId, option.value).catch(console.error);
-                        });
+                        console.log('Syncing portfolio visibility for user', userId, 'to', option.value);
                       }
                     }
                   }}

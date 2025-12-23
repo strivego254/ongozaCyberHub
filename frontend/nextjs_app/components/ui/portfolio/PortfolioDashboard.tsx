@@ -1,22 +1,47 @@
 /**
- * Portfolio Dashboard Component
- * Modern SaaS control center - "Proof of transformation" hub
+ * Redesigned Portfolio Dashboard
+ * Immersive "Portfolio Engine" and "Proof of Transformation" Hub
+ * Follows the OCH dark theme and strictly implements the user story lifecycle.
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Briefcase, Plus, Filter, Eye, Settings, CheckCircle } from 'lucide-react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Briefcase, 
+  Plus, 
+  Filter, 
+  Eye, 
+  Settings, 
+  CheckCircle, 
+  TrendingUp, 
+  Shield, 
+  Award, 
+  FileCode, 
+  Zap, 
+  LayoutGrid, 
+  List, 
+  Search,
+  ExternalLink,
+  Globe,
+  User,
+  ArrowUpRight,
+  BarChart3,
+  Flame,
+  Clock,
+  EyeOff,
+  Users
+} from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useSettingsMaster } from '@/hooks/useSettingsMaster';
 import { PortfolioItemCard } from './PortfolioItemCard';
+import { PortfolioItemForm } from './PortfolioItemForm';
 import { PortfolioHealthCard } from './PortfolioHealthCard';
-import { PortfolioSkillsHeatmap } from './PortfolioSkillsHeatmap';
 import { PortfolioSkillsRadar } from './PortfolioSkillsRadar';
 import { PortfolioTimeline } from './PortfolioTimeline';
 import { EmployerPreviewFAB } from './EmployerPreviewFAB';
@@ -25,13 +50,15 @@ import { ErrorDisplay } from './ErrorDisplay';
 import { usePortfolioTimeline } from '@/hooks/usePortfolioTimeline';
 import { useAuth } from '@/hooks/useAuth';
 import type { PortfolioItem } from '@/hooks/usePortfolio';
+import clsx from 'clsx';
 
-// Local type definitions
-type PortfolioItemStatus = 'pending' | 'approved' | 'rejected' | 'draft' | 'in_review' | 'submitted' | 'published';
-type PortfolioItemType = 'mission' | 'reflection' | 'certification' | 'github' | 'thm' | 'external' | 'marketplace';
+// Local type definitions to match user story
+type PortfolioItemStatus = 'draft' | 'submitted' | 'in_review' | 'approved' | 'published';
+type PortfolioItemType = 'mission' | 'reflection' | 'certification' | 'github' | 'lab_report' | 'research';
 
 export function PortfolioDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const userId = user?.id;
   
@@ -44,6 +71,8 @@ export function PortfolioDashboard() {
     isLoading,
     error,
     refetch,
+    toggleVisibility,
+    isTogglingVisibility,
   } = usePortfolio(userId);
 
   const { settings, entitlements } = useSettingsMaster(userId);
@@ -53,331 +82,342 @@ export function PortfolioDashboard() {
   const isProfessional = entitlements?.tier === 'professional';
   const isStarterEnhanced = entitlements?.tier === 'starter' && entitlements?.enhancedAccessUntil && new Date(entitlements.enhancedAccessUntil) > new Date();
   const canRequestReview = isProfessional && entitlements?.mentorAccess === true;
-  const canBulkActions = isProfessional;
   const maxItemsView = isProfessional ? Infinity : (isStarterEnhanced ? Infinity : 5);
 
-  // Marketplace rank - TODO: Implement API endpoint for marketplace ranking
-  const marketplaceRank = 999; // Default placeholder until API is implemented
+  // TalentScope Metrics
+  const healthScore = healthMetrics?.healthScore ? Math.round(healthMetrics.healthScore * 10) : 0;
+  const readinessScore = 742; // TODO: Implement TalentScope API
 
   const [statusFilter, setStatusFilter] = useState<PortfolioItemStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<PortfolioItemType | 'all'>('all');
-  const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sortBy, setSortBy] = useState<'recent' | 'alphabetical' | 'score'>('recent');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isPublic, setIsPublic] = useState(settings?.is_public ?? true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
-  // Filter items by status, type, and visibility (from Settings)
-  const filteredItems = items.filter((item) => {
-    if (statusFilter !== 'all' && item.status !== statusFilter) return false;
-    if (typeFilter !== 'all' && item.type !== typeFilter) return false;
-    
-    // Settings integration: Filter by visibility preference
-    if (settings?.portfolioVisibility) {
-      const visibilityFilter = settings.portfolioVisibility;
-      if (visibilityFilter === 'marketplace_preview' && item.visibility !== 'marketplace_preview' && item.visibility !== 'public') {
-        return false;
-      }
-      if (visibilityFilter === 'public' && item.visibility !== 'public') {
-        return false;
-      }
+  // Check for 'new=true' in URL
+  useEffect(() => {
+    if (searchParams?.get('new') === 'true') {
+      setIsFormOpen(true);
+      // Clean up URL without reload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
     }
-    
-    return true;
-  });
+  }, [searchParams]);
 
-  // Calculate marketplace stats
-  const marketplaceStats = {
-    views: items.reduce((sum, item) => sum + item.marketplaceViews, 0),
-    profileStatus: (settings?.profileCompleteness ?? 0) >= 90 
-      ? 'job_ready' 
-      : (settings?.profileCompleteness ?? 0) >= 70 
-      ? 'emerging' 
-      : 'foundation',
-    contactEnabled: settings?.marketplaceContactEnabled || false,
+  // Toggle visibility
+  const handleToggleVisibility = () => {
+    const nextValue = !isPublic;
+    setIsPublic(nextValue);
+    toggleVisibility(nextValue);
   };
 
-  // Convert health score from 0-10 to 0-100
-  const healthScore = healthMetrics?.healthScore ? Math.round(healthMetrics.healthScore * 10) : 0;
+  // Filter items
+  const filteredItems = items.filter((item) => {
+    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    const matchesType = typeFilter === 'all' || item.type === typeFilter;
+    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          item.summary?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesType && matchesSearch;
+  });
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Portfolio Dashboard Data:', {
-      userId,
-      itemsCount: items.length,
-      items: items.slice(0, 2), // First 2 items for debugging
-      healthMetrics,
-      topSkills: topSkills.slice(0, 3),
-      isLoading,
-      error,
-    });
-  }, [userId, items, healthMetrics, topSkills, isLoading, error]);
-
-  // Show skeleton only on initial load
   if (isLoading && items.length === 0 && !error) {
     return <PortfolioDashboardSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex">
-      <div className="flex-1 lg:ml-80 px-4 py-6 lg:px-10 lg:py-10">
-      {error && (
-        <div className="mb-6 animate-fade-in">
-          <ErrorDisplay error={error} onRetry={refetch} />
-        </div>
-      )}
-
-      {/* HERO: PORTFOLIO HEALTH 87/100 */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="mb-12"
-      >
-        <PortfolioHealthCard
-          healthScore={healthScore}
-          totalItems={items.length}
-          approvedItems={approvedItems.length}
-          pendingItems={pendingReviews.length}
-          marketplaceRank={marketplaceRank}
-          totalRank={1247} // TODO: Get from API
-          topSkills={topSkills}
-          marketplaceViews={marketplaceStats.views}
-        />
-      </motion.div>
-
-      {/* 3-COLUMN MIDDLE SECTION - EXACT SPEC: Recent Activity ──────────── Skills Radar ────── Pending Reviews */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-        className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-12"
-      >
-        {/* Column 1: Recent Activity */}
-        <div className="xl:col-span-1 space-y-6">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-400 mb-3 uppercase tracking-wider">Recent Activity</h3>
-            <PortfolioTimeline data={timelineData} />
-          </div>
-          {pendingReviews.length > 0 && (
-            <Card className="border-yellow-500/50 bg-yellow-500/5 glass-card-hover">
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-yellow-400" />
-                  Pending Reviews ({pendingReviews.length})
-                </h3>
-                <div className="space-y-3">
-                  {pendingReviews.slice(0, 5).map((item) => (
-                    <div
-                      key={item.id}
-                      className="text-sm flex items-center justify-between p-3 rounded-lg hover:bg-yellow-500/10 transition-colors border border-yellow-500/20 cursor-pointer"
-                      onClick={() => router.push(`/portfolio/${item.id}`)}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="text-slate-300 font-medium line-clamp-1 flex items-center gap-2">
-                          <span>⏳</span>
-                          <span>{item.title}</span>
-                          {item.type === 'github' && <span className="text-xs text-slate-500">(Mentor)</span>}
-                          {item.type === 'marketplace' && <span className="text-xs text-slate-500">(Employer)</span>}
-                        </div>
-                        {item.mentorFeedback && (
-                          <div className="text-yellow-400 text-xs mt-1 line-clamp-1">
-                            "{item.mentorFeedback.substring(0, 50)}..."
-                          </div>
-                        )}
-                        {!item.mentorFeedback && (
-                          <div className="text-yellow-400 text-xs mt-1">Awaiting mentor review</div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          )}
-        </div>
-        {/* Column 2: Skills Radar */}
-        <div className="xl:col-span-1">
-          <div className="mb-3">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Skills Radar</h3>
-          </div>
-          <PortfolioSkillsRadar skills={topSkills} />
-        </div>
-        {/* Column 3: Empty in spec, but we show Pending Reviews in Column 1 for better UX */}
-      </motion.div>
-
-
-      {/* FILTERS AND ACTIONS */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            className="glass-card-hover"
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
-          </Button>
-          
-          {showFilters && (
-            <div className="flex items-center gap-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as PortfolioItemStatus | 'all')}
-                className="bg-slate-900/70 backdrop-blur-xl border border-slate-800/70 rounded-lg px-3 py-2 text-sm text-slate-100 focus:border-indigo-500/70 focus:outline-none transition-colors"
-                id="portfolio-filters"
-              >
-                <option value="all">All</option>
-                <option value="approved">Approved</option>
-                <option value="draft">Draft</option>
-                <option value="in_review">Pending</option>
-                <option value="submitted">Submitted</option>
-                <option value="published">Published</option>
-              </select>
-              
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value as PortfolioItemType | 'all')}
-                className="bg-slate-900/70 backdrop-blur-xl border border-slate-800/70 rounded-lg px-3 py-2 text-sm text-slate-100 focus:border-indigo-500/70 focus:outline-none transition-colors"
-              >
-                <option value="all">All Types</option>
-                <option value="mission">Missions</option>
-                <option value="reflection">Reflections</option>
-                <option value="certification">Certification</option>
-                <option value="github">GitHub</option>
-                <option value="thm">TryHackMe</option>
-                <option value="external">External</option>
-                <option value="marketplace">Marketplace</option>
-              </select>
-
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'recent' | 'alphabetical' | 'score')}
-                className="bg-slate-900/70 backdrop-blur-xl border border-slate-800/70 rounded-lg px-3 py-2 text-sm text-slate-100 focus:border-indigo-500/70 focus:outline-none transition-colors"
-              >
-                <option value="recent">Sort: Recent</option>
-                <option value="alphabetical">Sort: Alphabetical</option>
-                <option value="score">Sort: Score</option>
-              </select>
-
-              <div className="flex items-center gap-2 border border-slate-800/70 rounded-lg p-1 bg-slate-900/70">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`h-8 px-3 rounded text-sm transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  Grid
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`h-8 px-3 rounded text-sm transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  List
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Button 
-          variant="defender" 
-          onClick={() => router.push('/portfolio?new=true')}
-          className="glass-card-hover"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Item
-        </Button>
-      </div>
-
-      {/* ITEMS GRID */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-100 mb-6">
-          Portfolio Items Grid (Filter: {statusFilter === 'all' ? 'All' : statusFilter.replace('_', ' ')} | {typeFilter === 'all' ? 'All Types' : typeFilter})
-        </h2>
+    <div className="min-h-screen bg-och-midnight text-slate-200">
+      <div className="max-w-[1600px] mx-auto px-6 py-8">
         
-        {filteredItems.length === 0 ? (
-          <Card className="glass-card">
-            <div className="p-12 text-center">
-              <Briefcase className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-slate-300 mb-2">
-                {statusFilter !== 'all' || typeFilter !== 'all'
-                  ? 'No items match your filters'
-                  : 'No portfolio items yet'}
-              </h3>
-              <p className="text-slate-500 mb-4 max-w-md mx-auto">
-                {statusFilter !== 'all' || typeFilter !== 'all'
-                  ? 'Try adjusting your filters to see more items.'
-                  : 'Portfolio items showcase your cybersecurity achievements. They\'re automatically created when you complete missions, or you can add them manually.'}
-              </p>
-              {statusFilter === 'all' && typeFilter === 'all' && (
-                <div className="space-y-3">
-                  <div className="bg-slate-800/50 rounded-lg p-4 max-w-md mx-auto text-left">
-                    <h4 className="text-sm font-semibold text-slate-300 mb-2 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-emerald-400" />
-                      How to get portfolio items:
-                    </h4>
-                    <ul className="text-xs text-slate-400 space-y-1.5">
-                      <li>• Complete missions - items are auto-created</li>
-                      <li>• Import from GitHub repositories</li>
-                      <li>• Add certifications and achievements</li>
-                      <li>• Connect TryHackMe for automatic imports</li>
-                    </ul>
+        {/* 1. PORTFOLIO ENGINE HEADER */}
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 mb-12">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-och-gold/10 border border-och-gold/20 flex items-center justify-center relative overflow-hidden group">
+              <div className="absolute inset-0 bg-och-gold/5 animate-pulse group-hover:bg-och-gold/10 transition-colors" />
+              <Briefcase className="w-8 h-8 text-och-gold relative z-10" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Portfolio Engine</h1>
+                <Badge variant={isProfessional ? "gold" : "steel"} className="text-[10px] font-black tracking-widest px-2 py-0.5">
+                  {isProfessional ? "PROFESSIONAL TIER" : "STARTER TIER"}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-4">
+                <p className="text-och-steel text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-och-mint" />
+                  Verified Outcomes Repository
+                </p>
+                <div className="h-4 w-px bg-och-steel/20" />
+                <p className="text-och-steel text-xs font-black uppercase tracking-[0.2em]">
+                  {items.length} Registered Items
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* TALENTSCOPE TELEMETRY BAR */}
+          <div className="flex flex-wrap gap-4 w-full xl:w-auto">
+            {[
+              { label: 'Readiness Score', value: readinessScore, trend: '+14', icon: TrendingUp, color: 'text-och-mint' },
+              { label: 'Portfolio Health', value: `${healthScore}%`, icon: Shield, color: 'text-och-defender' },
+              { label: 'Verified Evidence', value: approvedItems.length, icon: CheckCircle, color: 'text-och-gold' },
+            ].map((stat, i) => (
+              <div key={i} className="flex-1 min-w-[200px] xl:min-w-[240px] px-6 py-4 rounded-2xl bg-och-steel/5 border border-och-steel/10 flex items-center gap-4 hover:border-och-steel/20 transition-all group">
+                <div className={clsx("p-2.5 rounded-xl bg-current/10 transition-transform group-hover:scale-110", stat.color)}>
+                  <stat.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-och-steel font-black uppercase tracking-widest leading-none mb-1.5">{stat.label}</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-white leading-none">{stat.value}</span>
+                    {stat.trend && (
+                      <span className="text-[10px] text-och-mint font-bold flex items-center gap-0.5">
+                        <ArrowUpRight className="w-2 h-2" />
+                        {stat.trend}
+                      </span>
+                    )}
                   </div>
-                  <Button variant="defender" onClick={() => {/* TODO: Open create modal */}}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create First Item
-                  </Button>
                 </div>
-              )}
-            </div>
-          </Card>
-        ) : (
-          <>
-            <div className={viewMode === 'grid' 
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
-              : "space-y-4"
-            }>
-              {filteredItems.slice(0, maxItemsView).map((item, index) => (
-                <div
-                  key={item.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${index * 0.05}s` }}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* 2. ANALYTICS & IDENTITY SIDEBAR */}
+          <aside className="lg:col-span-3 space-y-8 sticky top-24">
+            {/* PUBLIC IDENTITY CARD */}
+            <div className="p-6 rounded-[2rem] bg-gradient-to-br from-och-gold/20 to-transparent border border-och-gold/20 relative overflow-hidden group">
+              <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
+                <Globe className="w-32 h-32 text-och-gold" />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-4">
+                  <Badge variant="gold" className="text-[8px] px-2 py-0.5 font-black tracking-widest uppercase">Public Identity</Badge>
+                  <div className="flex-1 h-px bg-och-gold/20" />
+                </div>
+                <h4 className="text-sm font-black text-white mb-2 uppercase tracking-tight">Marketplace Profile</h4>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-och-midnight/80 border border-och-steel/10 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-och-gold/20 flex items-center justify-center">
+                    <User className="w-4 h-4 text-och-gold" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-och-steel font-black uppercase tracking-widest leading-none mb-1">och.africa/student/</p>
+                    <p className="text-xs text-white font-bold truncate">@{user?.email?.split('@')[0] || 'handle'}</p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed mb-6 italic">
+                  "{settings?.bio || 'No custom bio established. Curate your professional identity to showcase your best work.'}"
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-[10px] font-black uppercase tracking-widest border-och-gold/30 text-och-gold hover:bg-och-gold hover:text-black transition-all"
+                  onClick={() => router.push('/dashboard/student/settings?tab=profile')}
                 >
-                  <PortfolioItemCard
-                    item={item}
-                    onEdit={() => {}}
-                    onDelete={() => {}}
-                    canRequestReview={canRequestReview}
-                  />
-                </div>
-              ))}
-            </div>
-            {filteredItems.length > maxItemsView && !isProfessional && (
-              <Card className="border-amber-500/50 bg-amber-500/5 p-6 text-center mt-6">
-                <p className="text-slate-300 mb-2">
-                  Showing {maxItemsView} of {filteredItems.length} items
-                </p>
-                <p className="text-sm text-slate-500 mb-4">
-                  Upgrade to Professional tier to view all portfolio items
-                </p>
-                <Button variant="outline" onClick={() => router.push('/dashboard/student/settings?tab=subscription')}>
-                  Upgrade Now
+                  Configure Identity
+                  <Settings className="w-3 h-3 ml-2" />
                 </Button>
-              </Card>
+              </div>
+            </div>
+
+            {/* TALENTSCOPE HEALTH RADAR */}
+            <div className="space-y-4">
+               <div className="flex items-center gap-2 px-2">
+                 <BarChart3 className="w-4 h-4 text-och-mint" />
+                 <span className="text-[10px] font-black text-och-steel uppercase tracking-widest">TalentScope Radar</span>
+               </div>
+               <PortfolioSkillsRadar skills={topSkills} />
+            </div>
+
+            {/* RECENT REPOSITORY ACTIVITY */}
+            <div className="space-y-4">
+               <div className="flex items-center gap-2 px-2">
+                 <Clock className="w-4 h-4 text-och-defender" />
+                 <span className="text-[10px] font-black text-och-steel uppercase tracking-widest">Repository Activity</span>
+               </div>
+               <PortfolioTimeline data={timelineData} />
+            </div>
+          </aside>
+
+          {/* 3. REPOSITORY TERMINAL */}
+          <main className="lg:col-span-9 space-y-8">
+            
+            {/* TERMINAL BAR (Filters & Search) */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-och-midnight/50 p-4 rounded-3xl border border-och-steel/10 backdrop-blur-md shadow-2xl">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-och-steel" />
+                <input 
+                  type="text" 
+                  placeholder="SEARCH REPOSITORY, TAGS, OR EVIDENCE..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-och-midnight/80 border border-och-steel/20 rounded-2xl py-3 pl-12 pr-4 text-xs font-bold text-white placeholder:text-och-steel/50 focus:border-och-gold/50 outline-none transition-all shadow-inner uppercase tracking-wider"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as PortfolioItemStatus | 'all')}
+                  className="bg-och-midnight/80 border border-och-steel/20 rounded-2xl py-2.5 px-4 text-[10px] font-black text-white uppercase tracking-widest focus:border-och-gold/50 outline-none transition-all cursor-pointer shadow-inner"
+                >
+                  <option value="all">ALL STATUS</option>
+                  <option value="draft">DRAFT</option>
+                  <option value="submitted">SUBMITTED</option>
+                  <option value="in_review">MENTOR REVIEW</option>
+                  <option value="approved">APPROVED</option>
+                  <option value="published">PUBLISHED</option>
+                </select>
+                
+                <div className="flex bg-och-midnight/80 rounded-2xl border border-och-steel/20 p-1 shadow-inner">
+                  <button 
+                    onClick={() => setViewMode('grid')}
+                    className={clsx(
+                      "p-2.5 rounded-xl transition-all", 
+                      viewMode === 'grid' ? "bg-och-steel/20 text-white shadow-lg" : "text-och-steel hover:text-white"
+                    )}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('list')}
+                    className={clsx(
+                      "p-2.5 rounded-xl transition-all", 
+                      viewMode === 'list' ? "bg-och-steel/20 text-white shadow-lg" : "text-och-steel hover:text-white"
+                    )}
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* PEER PORTFOLIOS & VISIBILITY */}
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => router.push('/dashboard/student/portfolio/cohort')}
+                    className="h-[46px] px-6 rounded-2xl border-och-steel/20 text-och-steel hover:border-white transition-all font-black uppercase tracking-widest text-[10px]"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Peer Portfolios
+                  </Button>
+
+                  <button
+                    onClick={handleToggleVisibility}
+                    className={clsx(
+                      "h-[46px] px-6 rounded-2xl border transition-all flex items-center gap-2 group",
+                      isPublic 
+                        ? "bg-och-mint/10 border-och-mint/30 text-och-mint hover:bg-och-mint hover:text-black" 
+                        : "bg-och-steel/5 border-och-steel/20 text-och-steel hover:border-white"
+                    )}
+                  >
+                    {isPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      {isPublic ? 'Visible to Marketplace' : 'Anonymous Mode'}
+                    </span>
+                  </button>
+                </div>
+
+                <Button 
+                  variant="defender" 
+                  onClick={() => setIsFormOpen(true)}
+                  className="h-[46px] px-6 rounded-2xl bg-och-gold text-black hover:bg-white transition-all shadow-lg shadow-och-gold/20 font-black uppercase tracking-widest text-[10px]"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Outcome
+                </Button>
+              </div>
+            </div>
+
+            {/* STATUS LIFECYCLE INDICATOR */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+               {[
+                 { label: 'Drafts', count: items.filter(i => i.status === 'draft').length, color: 'text-och-steel' },
+                 { label: 'Submitted', count: items.filter(i => i.status === 'submitted').length, color: 'text-och-defender' },
+                 { label: 'In Review', count: pendingReviews.length, color: 'text-och-gold' },
+                 { label: 'Approved', count: approvedItems.length, color: 'text-och-mint' },
+               ].map((phase, i) => (
+                 <div key={i} className="p-4 rounded-2xl bg-white/5 border border-och-steel/10 flex items-center justify-between group hover:border-white/20 transition-all">
+                    <span className="text-[9px] font-black text-och-steel uppercase tracking-widest">{phase.label}</span>
+                    <span className={clsx("text-lg font-black", phase.color)}>{phase.count}</span>
+                 </div>
+               ))}
+            </div>
+
+            {/* REPOSITORY GRID */}
+            {filteredItems.length > 0 ? (
+              <div className={clsx(
+                viewMode === 'grid' 
+                  ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" 
+                  : "flex flex-col gap-4"
+              )}>
+                <AnimatePresence mode="popLayout">
+                  {filteredItems.slice(0, maxItemsView).map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <PortfolioItemCard 
+                        item={item} 
+                        canRequestReview={canRequestReview}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-och-steel/10 rounded-[3rem]">
+                <div className="w-24 h-24 rounded-full bg-och-steel/5 flex items-center justify-center mb-8 relative">
+                  <div className="absolute inset-0 rounded-full border border-och-steel/10 animate-ping" />
+                  <Briefcase className="w-12 h-12 text-och-steel/30" />
+                </div>
+                <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3">Repository Empty</h3>
+                <p className="text-och-steel text-sm max-w-md italic font-medium">
+                  "Your professional stat sheet is awaiting data. Complete missions or import certifications to build your verified highlight reel."
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-8 h-12 px-8 rounded-xl border-och-gold/30 text-och-gold font-black uppercase tracking-widest hover:bg-och-gold hover:text-black transition-all"
+                  onClick={() => router.push('/dashboard/student/missions')}
+                >
+                  Deploy First Mission
+                </Button>
+              </div>
             )}
-          </>
-        )}
+
+            {/* UPGRADE CALLOUT (If applicable) */}
+            {filteredItems.length > maxItemsView && !isProfessional && (
+              <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-och-gold/20 to-och-defender/10 border border-och-gold/30 flex flex-col md:flex-row items-center justify-between gap-6">
+                 <div>
+                   <h4 className="text-lg font-black text-white uppercase tracking-tight mb-2">Expansion Required</h4>
+                   <p className="text-xs text-slate-300 font-medium italic">"Starter tier handles 5 items. Professional tier unlocks unlimited repository depth for full marketplace visibility."</p>
+                 </div>
+                 <Button 
+                   variant="defender" 
+                   className="h-12 px-8 rounded-xl bg-och-gold text-black hover:bg-white transition-all font-black uppercase tracking-widest text-[10px]"
+                   onClick={() => router.push('/dashboard/student/settings?tab=subscription')}
+                 >
+                   Upgrade to Professional
+                 </Button>
+              </div>
+            )}
+          </main>
+        </div>
       </div>
 
-      {/* FAB: Employer Preview */}
+      {/* 4. IMMERSIVE OVERLAYS */}
       <EmployerPreviewFAB />
-      </div>
+
+      <AnimatePresence>
+        {isFormOpen && (
+          <PortfolioItemForm onClose={() => setIsFormOpen(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

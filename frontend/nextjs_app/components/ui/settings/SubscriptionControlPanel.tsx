@@ -11,8 +11,79 @@ import { Sparkles, Check, ArrowRight, X, CreditCard, Calendar, TrendingUp, BarCh
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { checkFeatureAccess, getUpgradeRecommendations } from '@/lib/settings/entitlements';
-import type { UserEntitlements, UserSettings } from '@/lib/settings/types';
+
+// Local types to replace missing @/lib/settings imports
+export interface UserEntitlements {
+  tier: 'free' | 'starter' | 'professional';
+  subscriptionStatus: 'active' | 'inactive' | 'trial';
+  marketplaceFullAccess?: boolean;
+  aiCoachFullAccess?: boolean;
+  mentorAccess?: boolean;
+  portfolioExportEnabled?: boolean;
+  missionAccess?: 'basic' | 'full';
+  portfolioCapabilities?: string[];
+  enhancedAccessUntil?: string;
+  nextBillingDate?: string;
+  [key: string]: any;
+}
+
+export interface UserSettings {
+  [key: string]: any;
+}
+
+/**
+ * Checks if a user has access to a feature based on entitlements
+ * Stub implementation to replace missing @/lib/settings/entitlements
+ */
+export function checkFeatureAccess(
+  entitlements: UserEntitlements, 
+  settings: UserSettings, 
+  feature: string
+): { enabled: boolean; reason: string } {
+  const tier = entitlements.tier;
+
+  if (feature === 'marketplace_full') {
+    return tier === 'professional' 
+      ? { enabled: true, reason: 'Included in Professional' }
+      : { enabled: false, reason: 'Requires Professional' };
+  }
+
+  if (feature === 'ai_coach_full') {
+    return tier === 'professional'
+      ? { enabled: true, reason: 'Unlimited with Professional' }
+      : tier === 'starter'
+      ? { enabled: true, reason: 'Enhanced with Starter' }
+      : { enabled: false, reason: 'Limited in Free' };
+  }
+
+  if (feature === 'mentor_access') {
+    return tier !== 'free'
+      ? { enabled: true, reason: 'Included in your plan' }
+      : { enabled: false, reason: 'Requires Starter+' };
+  }
+
+  if (feature === 'portfolio_export') {
+    return tier !== 'free'
+      ? { enabled: true, reason: 'Included in your plan' }
+      : { enabled: false, reason: 'Requires Starter+' };
+  }
+
+  return { enabled: true, reason: 'Basic access' };
+}
+
+/**
+ * Gets upgrade recommendations based on current status
+ */
+export function getUpgradeRecommendations(entitlements: UserEntitlements, settings: UserSettings): string[] {
+  const recs: string[] = [];
+  if (entitlements.tier === 'free') {
+    recs.push('Upgrade to Starter to unlock Mentor Reviews');
+    recs.push('Upgrade to Professional for full Marketplace visibility');
+  } else if (entitlements.tier === 'starter') {
+    recs.push('Upgrade to Professional for Unlimited AI Coaching');
+  }
+  return recs;
+}
 
 interface SubscriptionControlPanelProps {
   entitlements: UserEntitlements | null;

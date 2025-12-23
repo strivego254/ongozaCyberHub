@@ -13,7 +13,29 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { usePortfolio } from '@/hooks/usePortfolio';
-import type { UserSettings, UserEntitlements, SettingsUpdate } from '@/lib/settings/types';
+
+// Local types to replace missing @/lib/settings imports
+export interface UserSettings {
+  name?: string;
+  headline?: string;
+  location?: string;
+  track?: string;
+  integrations?: Record<string, any>;
+  portfolioVisibility: 'private' | 'marketplace_preview' | 'public';
+  marketplaceContactEnabled: boolean;
+  dataSharingConsent: Record<string, boolean>;
+  profileCompleteness: number;
+  [key: string]: any;
+}
+
+export interface UserEntitlements {
+  marketplaceFullAccess?: boolean;
+  [key: string]: any;
+}
+
+export interface SettingsUpdate {
+  [key: string]: any;
+}
 
 interface PrivacyMasterSwitchProps {
   settings: UserSettings;
@@ -193,12 +215,8 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
                           
                           // Sync portfolio items visibility in realtime
                           if (userId) {
-                            try {
-                              const { syncPortfolioVisibility } = await import('@/lib/portfolio/coordination');
-                              await syncPortfolioVisibility(userId, option.value);
-                            } catch (error) {
-                              console.error('Failed to sync portfolio visibility:', error);
-                            }
+                            // TODO: Implement Django-based portfolio visibility sync
+                            console.log('Syncing portfolio visibility to:', option.value);
                           }
                         }
                       }}

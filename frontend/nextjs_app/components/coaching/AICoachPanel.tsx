@@ -198,7 +198,7 @@ export function AICoachPanel() {
                 variant="outline"
                 size="sm"
                 className="mt-3 w-full text-white border-white/20 hover:bg-white/10"
-                onClick={() => router.push('/portfolio')}
+                onClick={() => router.push('/dashboard/student/portfolio')}
               >
                 View Portfolio
               </Button>

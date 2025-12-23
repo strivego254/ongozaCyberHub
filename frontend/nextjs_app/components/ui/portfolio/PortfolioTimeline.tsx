@@ -1,13 +1,27 @@
 /**
- * Portfolio Timeline Component
+ * Redesigned Portfolio Timeline Component
  * Activity timeline visualization for portfolio events
+ * Follows the OCH dark theme and user story activity feed style.
  */
 
 'use client';
 
 import { Card } from '@/components/ui/Card';
-import { Clock, CheckCircle, Eye, MessageSquare, Star, Plus } from 'lucide-react';
+import { 
+  Clock, 
+  CheckCircle, 
+  Eye, 
+  MessageSquare, 
+  Star, 
+  Plus, 
+  Zap, 
+  ShieldCheck, 
+  Target, 
+  Rocket,
+  Flame
+} from 'lucide-react';
 import type { TimelineEvent } from '@/hooks/usePortfolioTimeline';
+import clsx from 'clsx';
 
 function formatDistanceToNow(date: Date): string {
   const now = new Date();
@@ -19,13 +33,13 @@ function formatDistanceToNow(date: Date): string {
   const diffMonths = Math.floor(diffDays / 30);
   const diffYears = Math.floor(diffDays / 365);
 
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-  if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`;
-  if (diffMonths < 12) return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`;
-  return `${diffYears} year${diffYears > 1 ? 's' : ''} ago`;
+  if (diffMins < 1) return 'JUST NOW';
+  if (diffMins < 60) return `${diffMins}M AGO`;
+  if (diffHours < 24) return `${diffHours}H AGO`;
+  if (diffDays < 7) return `${diffDays}D AGO`;
+  if (diffWeeks < 4) return `${diffWeeks}W AGO`;
+  if (diffMonths < 12) return `${diffMonths}MO AGO`;
+  return `${diffYears}Y AGO`;
 }
 
 interface PortfolioTimelineProps {
@@ -34,19 +48,19 @@ interface PortfolioTimelineProps {
 }
 
 const eventIcons = {
-  item_created: Plus,
-  item_approved: CheckCircle,
-  review_received: Star,
+  item_created: Rocket,
+  item_approved: ShieldCheck,
+  review_received: Zap,
   marketplace_view: Eye,
   contact_received: MessageSquare,
 };
 
 const eventColors = {
-  item_created: 'text-blue-400 bg-blue-500/20',
-  item_approved: 'text-emerald-400 bg-emerald-500/20',
-  review_received: 'text-amber-400 bg-amber-500/20',
-  marketplace_view: 'text-indigo-400 bg-indigo-500/20',
-  contact_received: 'text-purple-400 bg-purple-500/20',
+  item_created: 'text-och-defender bg-och-defender/10 border-och-defender/20',
+  item_approved: 'text-och-mint bg-och-mint/10 border-och-mint/20',
+  review_received: 'text-och-gold bg-och-gold/10 border-och-gold/20',
+  marketplace_view: 'text-och-mint bg-och-mint/10 border-och-mint/20',
+  contact_received: 'text-och-gold bg-och-gold/10 border-och-gold/20',
 };
 
 export function PortfolioTimeline({ data, maxItems = 10 }: PortfolioTimelineProps) {
@@ -54,56 +68,63 @@ export function PortfolioTimeline({ data, maxItems = 10 }: PortfolioTimelineProp
 
   if (displayData.length === 0) {
     return (
-      <Card className="bg-gradient-to-br from-slate-900/80 to-slate-900/40 border-slate-800/60">
-        <div className="p-8 text-center">
-          <Clock className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-          <h3 className="font-bold text-lg text-slate-300 mb-2">Activity Timeline</h3>
-          <p className="text-sm text-slate-500">Your portfolio activity will appear here</p>
+      <Card className="bg-och-midnight/60 border border-och-steel/10 rounded-[2rem]">
+        <div className="p-10 text-center">
+          <Clock className="w-12 h-12 text-och-steel/20 mx-auto mb-4" />
+          <h3 className="font-black text-lg text-white uppercase tracking-tighter mb-2">Telemetry Archive</h3>
+          <p className="text-xs text-och-steel font-medium italic">"Your portfolio activity feed is currently inactive."</p>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card className="bg-gradient-to-br from-slate-900/80 to-slate-900/40 border-slate-800/60 backdrop-blur-xl">
-      <div className="p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Clock className="w-6 h-6 text-slate-400" />
-          <h3 className="font-bold text-xl text-slate-100">Activity Timeline</h3>
+    <Card className="bg-och-midnight/60 border border-och-steel/10 rounded-[2.5rem] backdrop-blur-xl relative overflow-hidden group">
+      <div className="p-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-2.5 rounded-xl bg-och-defender/10 text-och-defender border border-och-defender/20">
+            <Flame className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-black text-lg text-white uppercase tracking-tighter leading-none mb-1">Telemetry Feed</h3>
+            <p className="text-[10px] text-och-steel font-black uppercase tracking-widest">Real-time Activity Archive</p>
+          </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {displayData.map((event, index) => {
-            const Icon = eventIcons[event.type] || Clock;
-            const colorClass = eventColors[event.type] || 'text-slate-400 bg-slate-500/20';
+            const Icon = (eventIcons as any)[event.type] || Clock;
+            const themeClass = (eventColors as any)[event.type] || 'text-och-steel bg-white/5 border-white/10';
 
             return (
-              <div key={event.id} className="flex gap-4 relative">
+              <div key={event.id} className="flex gap-6 relative group/item">
                 {/* Timeline Line */}
                 {index < displayData.length - 1 && (
-                  <div className="absolute left-5 top-12 bottom-0 w-0.5 bg-slate-800/50" />
+                  <div className="absolute left-6 top-14 bottom-0 w-px bg-och-steel/10 group-hover/item:bg-och-defender/20 transition-colors" />
                 )}
 
                 {/* Icon */}
-                <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${colorClass} relative z-10`}>
+                <div className={clsx(
+                  "flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 relative z-10",
+                  themeClass,
+                  "group-hover/item:scale-110"
+                )}>
                   <Icon className="w-5 h-5" />
                 </div>
 
-                {/* Content - EXACT SPEC: ✅ DFIR Mission (2h ago) */}
-                <div className="flex-1 pb-4">
-                  <div className="flex items-start justify-between gap-4 mb-1">
-                    <h4 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
-                      {event.type === 'item_approved' && '✅ '}
-                      {event.type === 'item_created' && '✨ '}
-                      {event.type === 'review_received' && '⏳ '}
-                      {event.type === 'marketplace_view' && '👀 '}
+                {/* Content */}
+                <div className="flex-1 pb-6">
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <h4 className="font-black text-white text-xs uppercase tracking-tight group-hover/item:text-och-mint transition-colors">
                       {event.title}
                     </h4>
-                    <span className="text-xs text-slate-500 whitespace-nowrap">
-                      ({formatDistanceToNow(new Date(event.createdAt))})
+                    <span className="text-[9px] text-och-steel font-black uppercase tracking-widest whitespace-nowrap bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                      {formatDistanceToNow(new Date(event.createdAt))}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">{event.description}</p>
+                  <p className="text-[11px] text-och-steel font-medium leading-relaxed italic line-clamp-2">
+                    "{event.description}"
+                  </p>
                 </div>
               </div>
             );
@@ -111,9 +132,9 @@ export function PortfolioTimeline({ data, maxItems = 10 }: PortfolioTimelineProp
         </div>
 
         {data.length > maxItems && (
-          <div className="mt-6 pt-4 border-t border-slate-800/50 text-center">
-            <p className="text-xs text-slate-500">
-              Showing {maxItems} of {data.length} events
+          <div className="mt-4 pt-6 border-t border-och-steel/10 text-center">
+            <p className="text-[9px] text-och-steel font-black uppercase tracking-widest">
+              TELEMETRY LIMIT REACHED ({maxItems} OF {data.length} EVENTS)
             </p>
           </div>
         )}
@@ -121,4 +142,3 @@ export function PortfolioTimeline({ data, maxItems = 10 }: PortfolioTimelineProp
     </Card>
   );
 }
-

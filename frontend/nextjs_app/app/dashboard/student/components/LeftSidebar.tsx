@@ -1,211 +1,184 @@
-'use client'
+/**
+ * Redesigned Left Sidebar
+ * Consistent with Mission Control theme.
+ */
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { useDashboardStore } from '../lib/store/dashboardStore'
-import { useRSVPEvent } from '../lib/hooks/useDashboard'
-import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
-import { ProgressBar } from '@/components/ui/ProgressBar'
-import { Button } from '@/components/ui/Button'
-import { useRouter } from 'next/navigation'
-import '../styles/dashboard.css'
+'use client';
+
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useDashboardStore } from '../lib/store/dashboardStore';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import { Button } from '@/components/ui/Button';
+import { useRouter, usePathname } from 'next/navigation';
+import { 
+  Compass, 
+  Target, 
+  MessageSquare, 
+  Briefcase, 
+  Users, 
+  Settings, 
+  ChevronLeft, 
+  ChevronRight,
+  Flame,
+  Zap,
+  Star,
+  Shield,
+  LayoutDashboard,
+  Bell
+} from 'lucide-react';
+import clsx from 'clsx';
 
 export function LeftSidebar() {
-  const { quickStats, events, trackOverview, communityFeed } = useDashboardStore()
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const router = useRouter()
-  const rsvpEvent = useRSVPEvent()
+  const { 
+    quickStats, 
+    trackOverview, 
+    isSidebarCollapsed: isCollapsed, 
+    setSidebarCollapsed: setIsCollapsed 
+  } = useDashboardStore();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const getEventUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'high':
-        return 'text-dashboard-error'
-      case 'medium':
-        return 'text-dashboard-warning'
-      default:
-        return 'text-dashboard-success'
-    }
-  }
-
-  const getEventIcon = (type: string) => {
-    switch (type) {
-      case 'mission_due':
-        return '🔴'
-      case 'mentor_session':
-        return '🟢'
-      case 'review_meeting':
-        return '🟡'
-      default:
-        return '⚪'
-    }
-  }
-
-  if (isCollapsed) {
-    return (
-      <div className="w-16 fixed left-0 top-0 h-full bg-dashboard-card/80 backdrop-blur-md border-r border-white/20 p-2">
-        <button
-          onClick={() => setIsCollapsed(false)}
-          className="w-full p-2 text-dashboard-accent hover:bg-dashboard-accent/20 rounded"
-          aria-label="Expand sidebar"
-        >
-          →
-        </button>
-      </div>
-    )
-  }
+  const navLinks = [
+    { label: 'Control Center', icon: LayoutDashboard, href: '/dashboard/student' },
+    { label: 'Curriculum GPS', icon: Compass, href: '/dashboard/student/curriculum' },
+    { label: 'Mission Hub', icon: Target, href: '/dashboard/student/missions' },
+    { label: 'Coaching OS', icon: MessageSquare, href: '/dashboard/student/coaching' },
+    { label: 'Repository', icon: Briefcase, href: '/dashboard/student/portfolio' },
+    { label: 'Mentorship', icon: Users, href: '/dashboard/student/mentorship' },
+    { label: 'Settings', icon: Settings, href: '/dashboard/student/settings' },
+  ];
 
   return (
-    <>
-      <motion.div
-        initial={{ x: -280 }}
-        animate={{ x: 0 }}
-        className="w-[280px] fixed left-0 top-0 h-full bg-dashboard-card/80 backdrop-blur-md border-r border-white/20 overflow-y-auto p-4 space-y-4 z-40"
-      >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-white">Dashboard</h2>
-        <button
-          onClick={() => setIsCollapsed(true)}
-          className="text-och-steel hover:text-white"
-          aria-label="Collapse sidebar"
-        >
-          ←
-        </button>
-      </div>
-
-      <div>
-        <h3 className="text-sm font-semibold text-och-steel mb-3">Quick Stats</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <Card className="glass-card p-3 text-center h-20">
-            <div className="text-2xl font-bold text-white">{quickStats?.points || 0}</div>
-            <div className="text-xs text-och-steel">Points</div>
-          </Card>
-          <Card className="glass-card p-3 text-center h-20">
-            <div className="text-2xl font-bold text-white">{quickStats?.streak || 0} 🔥</div>
-            <div className="text-xs text-och-steel">Streak</div>
-          </Card>
-          <Card className="glass-card p-3 text-center h-20">
-            <div className="text-2xl font-bold text-white">{quickStats?.badges || 0} ⭐</div>
-            <div className="text-xs text-och-steel">Badges</div>
-          </Card>
-          <Card className="glass-card p-3 text-center h-20">
-            <div className="text-2xl font-bold text-white">{quickStats?.mentorRating || 0}/5</div>
-            <div className="text-xs text-och-steel">Mentor</div>
-          </Card>
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-sm font-semibold text-och-steel mb-3">Upcoming Events</h3>
-        <div className="space-y-2">
-          {(!events || events.length === 0) ? (
-            <div className="text-center py-4">
-              <p className="text-xs text-och-steel mb-2">No upcoming events</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => router.push('/dashboard/student/community')}
-              >
-                View All Events
-              </Button>
+    <div className="relative flex flex-col h-full bg-och-midnight border-r border-och-steel/10 w-full">
+      
+      {/* 1. BRANDING & TOGGLE */}
+      <div className="p-6 flex items-center justify-between">
+        {!isCollapsed ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-och-gold flex items-center justify-center">
+              <Shield className="w-5 h-5 text-black" />
             </div>
-          ) : (
-            (events || []).map((event) => (
-              <Card key={event.id} className="glass-card p-3">
-                <div className="flex items-start gap-2">
-                  <span className="text-lg">{getEventIcon(event.type)}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-white mb-1">{event.title}</div>
-                    <div className="text-xs text-och-steel mb-1">
-                      {new Date(event.date).toLocaleDateString()} {event.time}
-                    </div>
-                    {event.rsvpRequired && (
-                      <Button
-                        variant="mint"
-                        size="sm"
-                        className="w-full text-xs mt-1"
-                        onClick={async () => {
-                          if (!event.rsvpStatus || event.rsvpStatus === 'pending') {
-                            await rsvpEvent.mutateAsync({ eventId: event.id, status: 'accepted' })
-                          } else {
-                            router.push(event.actionUrl || '#')
-                          }
-                        }}
-                        disabled={rsvpEvent.isPending}
-                      >
-                        {rsvpEvent.isPending ? 'Saving...' : event.rsvpStatus === 'accepted' ? 'RSVP\'d' : 'RSVP'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
+            <span className="font-black text-white uppercase tracking-tighter text-lg">OCH HUB</span>
+          </motion.div>
+        ) : (
+          <div className="w-8 h-8 rounded-lg bg-och-gold flex items-center justify-center mx-auto">
+            <Shield className="w-5 h-5 text-black" />
+          </div>
+        )}
       </div>
 
-      <div>
-        <h3 className="text-sm font-semibold text-och-steel mb-3">Track Overview</h3>
-        <Card className="glass-card p-3">
-          <div className="text-sm font-semibold text-white mb-2">
-            {trackOverview?.name || 'Track'} ({trackOverview?.completedMilestones || 0}/{trackOverview?.totalMilestones || 0})
-          </div>
-          <div className="space-y-2">
-            {(trackOverview?.milestones || []).map((milestone: any) => (
-              <div key={milestone.id || milestone.code}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-och-steel">{milestone.code || milestone.name}</span>
-                  <span className="text-och-steel">{milestone.progress || 0}%</span>
-                </div>
-                <ProgressBar value={milestone.progress || 0} max={100} variant="mint" showLabel={false} className="h-1.5" />
+      {/* 1.5 NOTIFICATION & QUICK ACTIONS (New) */}
+      {!isCollapsed && (
+        <div className="px-6 pb-4 flex items-center gap-2">
+           <button className="flex-1 flex items-center justify-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/5 text-och-steel hover:text-och-gold hover:border-och-gold/20 transition-all relative group">
+              <Bell className="w-4 h-4 group-hover:animate-bounce" />
+              <span className="text-[9px] font-black uppercase tracking-widest">Alerts</span>
+              <div className="absolute top-2 right-3 w-2 h-2 bg-och-defender rounded-full border-2 border-och-midnight" />
+           </button>
+           <button 
+            onClick={() => setIsCollapsed(true)}
+            className="p-3 rounded-2xl bg-white/5 border border-white/5 text-och-steel hover:text-white transition-all"
+           >
+             <ChevronLeft className="w-4 h-4" />
+           </button>
+        </div>
+      )}
+
+      {isCollapsed && (
+        <div className="flex flex-col items-center gap-4 pb-4">
+           <button className="p-3 rounded-2xl bg-white/5 border border-white/5 text-och-steel hover:text-och-gold transition-all relative">
+              <Bell className="w-4 h-4" />
+              <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-och-defender rounded-full" />
+           </button>
+           <button 
+            onClick={() => setIsCollapsed(false)}
+            className="p-3 rounded-2xl bg-white/5 border border-white/5 text-och-steel hover:text-white transition-all"
+           >
+             <ChevronRight className="w-4 h-4" />
+           </button>
+        </div>
+      )}
+
+      {/* 2. NAVIGATION */}
+      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        {navLinks.map((link) => {
+          const isActive = pathname === link.href;
+          return (
+            <button
+              key={link.href}
+              onClick={() => router.push(link.href)}
+              className={clsx(
+                "w-full flex items-center gap-4 p-4 rounded-2xl transition-all group relative",
+                isActive 
+                  ? "bg-och-gold text-black shadow-lg shadow-och-gold/20" 
+                  : "text-och-steel hover:bg-white/5 hover:text-white"
+              )}
+            >
+              <link.icon className={clsx("w-5 h-5 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-black" : "text-och-gold/60 group-hover:text-och-gold")} />
+              {!isCollapsed && (
+                <span className="text-[10px] font-black uppercase tracking-widest truncate">{link.label}</span>
+              )}
+              {isActive && !isCollapsed && (
+                <motion.div layoutId="active-pill" className="absolute left-0 w-1 h-6 bg-black rounded-r-full" />
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* 3. QUICK TELEMETRY (Only if not collapsed) */}
+      <AnimatePresence>
+        {!isCollapsed && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="p-6 space-y-6"
+          >
+            <div className="p-4 rounded-3xl bg-white/5 border border-white/5 space-y-4">
+               <div className="flex items-center justify-between">
+                  <span className="text-[8px] font-black text-och-steel uppercase tracking-widest">Track Progress</span>
+                  <span className="text-[10px] font-black text-white">{trackOverview?.completedMilestones || 0}/{trackOverview?.totalMilestones || 0}</span>
+               </div>
+               <ProgressBar value={(trackOverview?.completedMilestones || 0) / (trackOverview?.totalMilestones || 1) * 100} max={100} variant="gold" showLabel={false} className="h-1.5" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+               {[
+                 { label: 'Rank', val: 'Gold', icon: Star, color: 'text-och-gold' },
+                 { label: 'Streak', val: '12d', icon: Flame, color: 'text-och-orange' },
+               ].map((stat, i) => (
+                 <div key={i} className="p-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center gap-1">
+                    <stat.icon className={clsx("w-3.5 h-3.5", stat.color)} />
+                    <span className="text-[8px] font-black text-och-steel uppercase tracking-widest">{stat.label}</span>
+                    <span className="text-[10px] font-bold text-white">{stat.val}</span>
+                 </div>
+               ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 4. USER PROFILE PREVIEW */}
+      <div className="p-4 mt-auto">
+         <button 
+          onClick={() => router.push('/dashboard/student/settings?tab=profile')}
+          className="w-full p-3 rounded-[2rem] bg-black/40 border border-och-steel/10 flex items-center gap-3 hover:border-och-gold/30 transition-all group"
+         >
+            <div className="w-10 h-10 rounded-full bg-och-gold/20 flex items-center justify-center border border-och-gold/30 shrink-0">
+               <span className="text-sm font-black text-och-gold uppercase">SB</span>
+            </div>
+            {!isCollapsed && (
+              <div className="min-w-0 text-left">
+                 <p className="text-[10px] font-black text-white truncate uppercase tracking-tighter">Student Builder</p>
+                 <p className="text-[8px] text-och-steel truncate">Professional Tier</p>
               </div>
-            ))}
-          </div>
-        </Card>
+            )}
+         </button>
       </div>
-
-      <div>
-        <h3 className="text-sm font-semibold text-och-steel mb-3">Community Feed</h3>
-        <div className="space-y-2">
-          {(!communityFeed || communityFeed.length === 0) ? (
-            <div className="text-center py-4">
-              <p className="text-xs text-och-steel mb-2">No recent activity</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => router.push('/dashboard/student/community')}
-              >
-                Join Community
-              </Button>
-            </div>
-          ) : (
-            (communityFeed || []).slice(0, 3).map((activity: any) => (
-              <Card key={activity.id || activity.content} className="glass-card p-3">
-                <div className="text-xs text-white mb-1">
-                  {activity.content || (
-                    <>
-                      <span className="font-semibold">{activity.author || activity.user || 'User'}</span> {activity.action || activity.type}
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-och-steel">{activity.timestamp || 'Recently'}</span>
-                  {activity.likes !== undefined && (
-                    <span className="text-xs text-och-steel">👍 {activity.likes}</span>
-                  )}
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-      </div>
-    </motion.div>
-    
-    {/* Desktop: Spacer for fixed sidebar */}
-    <div className="hidden lg:block w-[280px] flex-shrink-0" aria-hidden="true" />
-    </>
-  )
+    </div>
+  );
 }
-

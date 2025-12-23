@@ -12,7 +12,18 @@ import { Bell, Target, MessageSquare, Briefcase, Mail, Smartphone, Clock, Moon, 
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
+
+// Local types to replace missing @/lib/settings imports
+export interface UserSettings {
+  notificationsEmail: boolean;
+  notificationsPush: boolean;
+  notificationsCategories: Record<string, boolean>;
+  [key: string]: any;
+}
+
+export interface SettingsUpdate {
+  [key: string]: any;
+}
 
 interface NotificationEngineProps {
   settings: UserSettings;

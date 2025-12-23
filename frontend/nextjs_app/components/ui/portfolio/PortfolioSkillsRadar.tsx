@@ -1,12 +1,13 @@
 /**
- * Portfolio Skills Radar Component
+ * Redesigned Portfolio Skills Radar Component
  * Interactive radar chart visualization of skill mastery
+ * Follows the OCH dark theme and TalentScope aesthetic.
  */
 
 'use client';
 
 import { Card } from '@/components/ui/Card';
-import { Target } from 'lucide-react';
+import { Target, Hexagon, Zap } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 interface SkillData {
@@ -25,89 +26,96 @@ export function PortfolioSkillsRadar({ skills }: PortfolioSkillsRadarProps) {
     .map((skill) => ({
       name: skill.skill.length > 12 ? skill.skill.substring(0, 12) + '...' : skill.skill,
       fullName: skill.skill,
-      score: Math.min(100, skill.score), // Cap at 100
+      score: Math.min(100, skill.score * 10), // Scale 0-10 to 0-100
       count: skill.count,
     }));
 
   // If no skills, show empty state
   if (radarData.length === 0) {
     return (
-      <Card className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/40">
-        <div className="p-8 text-center">
-          <Target className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-          <h3 className="font-bold text-lg text-slate-300 mb-2">Skills Mastery</h3>
-          <p className="text-sm text-slate-500">Complete portfolio items to build your skills profile</p>
+      <Card className="bg-och-midnight/60 border border-och-steel/10 rounded-[2.5rem]">
+        <div className="p-12 text-center">
+          <Target className="w-16 h-16 text-och-steel/30 mx-auto mb-6" />
+          <h3 className="font-black text-xl text-white uppercase tracking-tighter mb-2">TalentScope Radar</h3>
+          <p className="text-sm text-och-steel font-medium italic">"Deploy missions to generate skill telemetry and calibrate your radar."</p>
         </div>
       </Card>
     );
   }
 
+  const avgMastery = Math.round(radarData.reduce((sum, s) => sum + s.score, 0) / radarData.length) || 0;
+
   return (
-    <Card className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/40 backdrop-blur-xl">
-      <div className="p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Target className="w-6 h-6 text-indigo-400" />
-          <h3 className="font-bold text-xl text-slate-100">Skills Mastery</h3>
+    <Card className="bg-och-midnight/60 border border-och-steel/10 rounded-[2.5rem] backdrop-blur-xl overflow-hidden relative group">
+      {/* WATERMARK */}
+      <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-700">
+         <Hexagon className="w-48 h-48 text-och-mint" />
+      </div>
+
+      <div className="p-8 relative z-10">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-och-mint/10 text-och-mint border border-och-mint/20">
+              <Target className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-white uppercase tracking-tighter leading-none mb-1">Skills Mastery</h3>
+              <p className="text-[10px] text-och-steel font-black uppercase tracking-widest">TalentScope Analytics Engine</p>
+            </div>
+          </div>
+          <div className="px-3 py-1 bg-och-mint/10 border border-och-mint/20 rounded-full">
+             <span className="text-[10px] font-black text-och-mint uppercase tracking-widest">{avgMastery}% AVG</span>
+          </div>
         </div>
 
-        <div className="relative h-80 w-full">
+        <div className="relative h-80 w-full mb-8">
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={radarData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-              <PolarGrid stroke="#374151" strokeWidth={1} />
+            <RadarChart data={radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+              <PolarGrid stroke="#334155" strokeWidth={1} />
               <PolarAngleAxis
                 dataKey="name"
-                tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 500 }}
-                tickLine={{ stroke: '#4B5563' }}
+                tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900, textTransform: 'uppercase' }}
+                tickLine={{ stroke: '#334155' }}
               />
               <PolarRadiusAxis
                 angle={90}
                 domain={[0, 100]}
-                tick={{ fill: '#6B7280', fontSize: 10 }}
+                tick={{ fill: '#475569', fontSize: 8 }}
                 tickCount={6}
+                axisLine={false}
               />
               <Radar
                 name="Mastery"
                 dataKey="score"
-                stroke="#6366F1"
-                fill="#6366F1"
-                fillOpacity={0.25}
-                strokeWidth={2}
+                stroke="#10b981"
+                fill="#10b981"
+                fillOpacity={0.15}
+                strokeWidth={3}
+                animationDuration={1500}
               />
             </RadarChart>
           </ResponsiveContainer>
-
-          {/* Legend */}
-          <div className="absolute bottom-0 left-0 right-0 flex flex-wrap gap-2 justify-center pt-4 border-t border-slate-800/50">
-            {radarData.slice(0, 6).map((skill) => (
-              <div
-                key={skill.fullName}
-                className="flex items-center gap-1.5 text-xs bg-slate-900/50 px-2 py-1 rounded-md border border-slate-800/50"
-              >
-                <div className="w-2 h-2 rounded-full bg-indigo-400" />
-                <span className="text-slate-300 font-medium">{skill.fullName}</span>
-                <span className="font-mono text-indigo-400">{Math.round(skill.score)}%</span>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Stats Summary */}
-        <div className="mt-6 grid grid-cols-3 gap-4 pt-4 border-t border-slate-800/50">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-indigo-400">{skills.length}</div>
-            <div className="text-xs text-slate-500 uppercase tracking-wide">Total Skills</div>
+        {/* Legend / Stats Summary */}
+        <div className="grid grid-cols-2 gap-4 pt-6 border-t border-och-steel/10">
+          <div className="p-4 rounded-2xl bg-white/5 border border-och-steel/5 flex items-center gap-4">
+             <div className="p-2 rounded-lg bg-och-gold/10 text-och-gold">
+               <Zap className="w-4 h-4" />
+             </div>
+             <div>
+               <p className="text-[9px] text-och-steel font-black uppercase tracking-widest leading-none mb-1">Items Scanned</p>
+               <p className="text-xl font-black text-white leading-none">{skills.reduce((sum, s) => sum + s.count, 0)}</p>
+             </div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-emerald-400">
-              {Math.round(skills.reduce((sum, s) => sum + s.score, 0) / skills.length) || 0}%
-            </div>
-            <div className="text-xs text-slate-500 uppercase tracking-wide">Avg Mastery</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-400">
-              {skills.reduce((sum, s) => sum + s.count, 0)}
-            </div>
-            <div className="text-xs text-slate-500 uppercase tracking-wide">Items</div>
+          <div className="p-4 rounded-2xl bg-white/5 border border-och-steel/5 flex items-center gap-4">
+             <div className="p-2 rounded-lg bg-och-mint/10 text-och-mint">
+               <TrendingUpIcon className="w-4 h-4" />
+             </div>
+             <div>
+               <p className="text-[9px] text-och-steel font-black uppercase tracking-widest leading-none mb-1">Diversity Index</p>
+               <p className="text-xl font-black text-white leading-none">{skills.length}</p>
+             </div>
           </div>
         </div>
       </div>
@@ -115,3 +123,22 @@ export function PortfolioSkillsRadar({ skills }: PortfolioSkillsRadarProps) {
   );
 }
 
+function TrendingUpIcon(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+      <polyline points="16 7 22 7 22 13" />
+    </svg>
+  );
+}

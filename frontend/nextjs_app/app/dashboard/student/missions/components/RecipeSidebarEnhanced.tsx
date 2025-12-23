@@ -1,17 +1,32 @@
 /**
- * Enhanced Recipe Sidebar Component
- * Draggable micro-skills recommendations with completion tracking
+ * Redesigned Recipe Sidebar Component
+ * Re-imagined as "Micro-Skill Boosters" for mission execution
+ * Features OCH dark theme, contextual boosters, and skill-gain previews
  */
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BookOpen, Search, CheckCircle2, ExternalLink } from 'lucide-react'
+import { 
+  BookOpen, 
+  Search, 
+  CheckCircle2, 
+  ExternalLink, 
+  Flame, 
+  Sparkles, 
+  Zap,
+  Target,
+  ArrowRight,
+  TrendingUp,
+  ChevronDown,
+  Info
+} from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useQuery } from '@tanstack/react-query'
 import { apiGateway } from '@/services/apiGateway'
+import clsx from 'clsx'
 
 interface Recipe {
   id: string
@@ -20,6 +35,7 @@ interface Recipe {
   duration?: number
   difficulty?: string
   completed?: boolean
+  skill_gain?: string
 }
 
 interface RecipeSidebarEnhancedProps {
@@ -31,17 +47,20 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
   const [completedRecipes, setCompletedRecipes] = useState<Set<string>>(new Set())
   const [isOpen, setIsOpen] = useState(true)
 
-  // TODO: Fetch recipe details from API
   const { data: recipesData } = useQuery<Recipe[]>({
     queryKey: ['recipes', recipeIds],
     queryFn: async () => {
-      // Placeholder - replace with actual API call
+      // Mock data for recipe boosters
       return recipeIds.map((id) => ({
         id,
-        title: `Recipe ${id}`,
-        description: 'Micro-skill recommendation for this mission',
-        duration: 15,
+        title: id.includes('log') ? 'Log Analysis Fundamentals' : 
+               id.includes('tri') ? 'Ransomware Triage Protocols' :
+               id.includes('win') ? 'Windows Event ID Mapping' : 
+               `Micro-Skill Booster: ${id}`,
+        description: 'Contextual tactical guide to help you overcome technical hurdles in this mission.',
+        duration: 12,
         difficulty: 'beginner',
+        skill_gain: '+15 Threat Intel'
       }))
     },
     enabled: recipeIds.length > 0,
@@ -52,92 +71,121 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
 
   const handleMarkComplete = (recipeId: string) => {
     setCompletedRecipes((prev) => new Set([...Array.from(prev), recipeId]))
-    // TODO: Save to backend
   }
 
   if (recipeIds.length === 0) {
-    return null
+    return (
+      <Card className="bg-och-midnight/40 border border-och-steel/10 p-6 rounded-[2rem] text-center">
+        <Info className="w-8 h-8 text-och-steel/30 mx-auto mb-3" />
+        <p className="text-[10px] font-black text-och-steel uppercase tracking-widest">No Contextual Boosters</p>
+        <p className="text-[9px] text-och-steel/60 font-medium italic mt-1">"You have the required intel for this sector."</p>
+      </Card>
+    )
   }
 
   return (
     <>
       {/* Desktop Sidebar */}
       <aside
-        className={`hidden lg:block bg-gradient-to-b from-emerald-50 to-green-50 rounded-2xl p-6 border border-emerald-200 h-full sticky top-6 ${className}`}
-        role="complementary"
-        aria-label="Recommended recipes"
+        className={clsx(
+          "hidden lg:flex flex-col gap-6 bg-och-midnight/40 rounded-[2.5rem] p-8 border border-och-steel/10 h-full sticky top-6 backdrop-blur-md",
+          className
+        )}
       >
-        <div className="flex items-center justify-between mb-6">
-          <h4 className="text-xl font-bold text-emerald-900 flex items-center">
-            <BookOpen className="w-5 h-5 mr-2" />
-            Recipes ({remainingRecipes.length})
-          </h4>
-          <Button variant="outline" size="sm" aria-label="Filter recipes">
-            <Search className="w-4 h-4 mr-1" />
-            Filter
-          </Button>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-och-gold/10 text-och-gold border border-och-gold/20">
+              <Flame className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-white uppercase tracking-tighter">Recipe Engine</h4>
+              <p className="text-[10px] text-och-steel font-bold uppercase tracking-widest">{remainingRecipes.length} Micro-Boosters</p>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
-          <AnimatePresence>
+        <div className="flex-1 space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar">
+          <AnimatePresence mode="popLayout">
             {remainingRecipes.map((recipe) => (
               <motion.div
                 key={recipe.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.2 }}
+                layout
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3 }}
               >
                 <RecipeCard
                   recipe={recipe}
                   onComplete={() => handleMarkComplete(recipe.id)}
-                  className="group hover:shadow-md transition-all border hover:border-emerald-400 cursor-grab active:cursor-grabbing"
                 />
               </motion.div>
             ))}
           </AnimatePresence>
 
           {remainingRecipes.length === 0 && (
-            <div className="text-center py-8 text-emerald-700">
-              <CheckCircle2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">All recipes completed!</p>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12"
+            >
+              <div className="w-16 h-16 rounded-full bg-och-mint/10 border border-och-mint/20 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-8 h-8 text-och-mint" />
+              </div>
+              <p className="text-sm font-black text-white uppercase tracking-tighter">Boosters Consumed</p>
+              <p className="text-[10px] text-och-steel font-medium italic mt-1">"Intel alignment complete."</p>
+            </motion.div>
           )}
+        </div>
+
+        {/* Intelligence Link */}
+        <div className="p-5 rounded-2xl bg-och-steel/5 border border-och-steel/10 group cursor-pointer hover:bg-och-steel/10 transition-all">
+           <div className="flex items-center justify-between mb-2">
+             <span className="text-[9px] font-black text-och-steel uppercase tracking-widest">Global Library</span>
+             <ExternalLink className="w-3 h-3 text-och-steel group-hover:text-white transition-colors" />
+           </div>
+           <p className="text-[10px] text-white font-bold group-hover:text-och-mint transition-colors">Access All Skill Boosters</p>
         </div>
       </aside>
 
-      {/* Mobile Bottom Sheet */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
+      {/* Mobile Bottom Sheet (Minimalist version) */}
+      <div className="lg:hidden fixed bottom-20 left-4 right-4 z-50">
         <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: isOpen ? 0 : '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="bg-gradient-to-b from-emerald-50 to-green-50 rounded-t-3xl border-t border-emerald-200 shadow-2xl"
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="bg-och-midnight/90 backdrop-blur-xl rounded-[2rem] border border-och-gold/20 shadow-2xl overflow-hidden"
         >
-          <div className="p-4 border-b border-emerald-200 flex items-center justify-between">
-            <h4 className="text-lg font-bold text-emerald-900 flex items-center">
-              <BookOpen className="w-5 h-5 mr-2" />
-              Recipes ({remainingRecipes.length})
-            </h4>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsOpen(!isOpen)}
-              aria-label={isOpen ? 'Close recipes' : 'Open recipes'}
-            >
-              {isOpen ? '▼' : '▲'}
-            </Button>
-          </div>
+          <button 
+            onClick={() => setIsOpen(!isOpen)}
+            className="w-full p-5 flex items-center justify-between border-b border-och-steel/10"
+          >
+            <div className="flex items-center gap-3">
+              <Flame className="w-5 h-5 text-och-gold" />
+              <span className="text-xs font-black text-white uppercase tracking-widest">Recipe Engine ({remainingRecipes.length})</span>
+            </div>
+            <ChevronDown className={clsx("w-4 h-4 text-och-steel transition-transform", isOpen ? "rotate-180" : "")} />
+          </button>
 
-          <div className="max-h-[60vh] overflow-y-auto p-4 space-y-3">
-            {remainingRecipes.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                recipe={recipe}
-                onComplete={() => handleMarkComplete(recipe.id)}
-              />
-            ))}
-          </div>
+          <AnimatePresence>
+            {isOpen && (
+              <motion.div
+                initial={{ height: 0 }}
+                animate={{ height: 'auto' }}
+                exit={{ height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 space-y-3 max-h-[50vh] overflow-y-auto">
+                  {remainingRecipes.map((recipe) => (
+                    <RecipeCard
+                      key={recipe.id}
+                      recipe={recipe}
+                      onComplete={() => handleMarkComplete(recipe.id)}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
     </>
@@ -147,58 +195,54 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
 function RecipeCard({
   recipe,
   onComplete,
-  className = '',
 }: {
   recipe: Recipe
   onComplete: () => void
-  className?: string
 }) {
-  const isCompleted = recipe.completed
-
   return (
     <Card
-      className={`p-4 bg-white border border-emerald-200 hover:border-emerald-400 transition-all ${className}`}
+      className="p-5 bg-white/5 border border-och-steel/10 hover:border-och-gold/30 hover:bg-white/10 transition-all rounded-2xl group"
     >
-      <div className="flex items-start justify-between mb-2">
-        <h5 className="font-semibold text-slate-900 text-sm flex-1">{recipe.title}</h5>
-        {recipe.difficulty && (
-          <Badge variant="steel" className="ml-2 text-xs">
-            {recipe.difficulty}
-          </Badge>
-        )}
+      <div className="flex items-start justify-between mb-3">
+        <h5 className="font-black text-white text-xs uppercase tracking-tight flex-1 group-hover:text-och-gold transition-colors">{recipe.title}</h5>
+        <Badge variant="steel" className="ml-2 text-[8px] px-1 py-0 font-black tracking-widest">
+          {recipe.duration} MIN
+        </Badge>
       </div>
-      <p className="text-xs text-slate-600 mb-3 line-clamp-2">{recipe.description}</p>
-      <div className="flex items-center gap-2">
+      
+      <p className="text-[11px] text-och-steel font-medium mb-4 line-clamp-2 leading-relaxed italic">
+        "{recipe.description}"
+      </p>
+
+      {recipe.skill_gain && (
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="w-3 h-3 text-och-mint" />
+          <span className="text-[9px] font-black text-och-mint uppercase tracking-widest">{recipe.skill_gain}</span>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 pt-2 border-t border-och-steel/5">
         <Button
           variant="outline"
           size="sm"
-          className="flex-1 text-xs"
-          onClick={() => {
-            // TODO: Navigate to recipe
-            console.log('Open recipe:', recipe.id)
-          }}
+          className="flex-1 h-9 rounded-xl border-och-steel/20 text-och-steel text-[9px] font-black uppercase tracking-widest hover:border-white transition-all"
         >
-          <ExternalLink className="w-3 h-3 mr-1" />
-          Read
+          <ExternalLink className="w-3 h-3 mr-2" />
+          Deploy
         </Button>
         <Button
-          variant="mint"
+          variant="outline"
           size="sm"
-          className="flex-1 text-xs"
-          onClick={onComplete}
-          disabled={isCompleted}
+          className="flex-1 h-9 rounded-xl border-och-mint/20 text-och-mint text-[9px] font-black uppercase tracking-widest hover:bg-och-mint hover:text-black transition-all"
+          onClick={(e) => {
+            e.stopPropagation()
+            onComplete()
+          }}
         >
-          {isCompleted ? (
-            <>
-              <CheckCircle2 className="w-3 h-3 mr-1" />
-              Done
-            </>
-          ) : (
-            'Mark Done'
-          )}
+          <CheckCircle2 className="w-3 h-3 mr-2" />
+          Got it
         </Button>
       </div>
     </Card>
   )
 }
-

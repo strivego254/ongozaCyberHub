@@ -1,13 +1,29 @@
 /**
- * Enhanced Mission View Component
- * 4-zone layout with story, objectives, subtask view, and recipe sidebar
+ * Redesigned Mission View Component (Immersive View)
+ * Integrated Command Center for Active Missions
+ * Features 4-zone layout: Briefing, Terminal (Subtasks), Intelligence (Recipes), and Status
  */
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Shield, Check, AlertCircle } from 'lucide-react'
+import { 
+  Shield, 
+  Check, 
+  AlertCircle, 
+  ChevronLeft, 
+  Clock, 
+  Target, 
+  Sparkles, 
+  Rocket, 
+  Save,
+  Pause,
+  Play,
+  ArrowRight,
+  Monitor,
+  Hexagon
+} from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -18,16 +34,17 @@ import { useMissionProgress } from '../hooks/useMissionProgress'
 import { apiGateway } from '@/services/apiGateway'
 import { useMissionStore } from '../lib/store/missionStore'
 import type { Mission } from '../types'
+import clsx from 'clsx'
 
 interface MissionViewEnhancedProps {
   missionId: string
 }
 
 export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
-  const { currentMission, setCurrentMission, currentSubtask, setCurrentSubtask } = useMissionStore()
+  const { currentMission, setCurrentMission, currentSubtask, setCurrentSubtask, setSubtasks } = useMissionStore()
   const [isPaused, setIsPaused] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState(0)
-  const { isOffline, lastSaved, saveNow } = useMissionProgress()
+  const { isOffline, lastSaved } = useMissionProgress()
 
   const { data: missionData, isLoading } = useQuery<Mission>({
     queryKey: ['mission', missionId],
@@ -40,183 +57,245 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
   useEffect(() => {
     if (missionData) {
       setCurrentMission(missionData)
-      setTimeRemaining((missionData.estimated_time_minutes || 0) * 60)
+      // If the mission has subtasks, load them into the store
+      if (missionData.subtasks && missionData.subtasks.length > 0) {
+        setSubtasks(missionData.subtasks)
+      } else {
+        // Create mock subtasks if none exist for demo/compatibility
+        setSubtasks([
+          { id: 0, title: 'Tactical Reconnaissance', description: 'Analyze the sector for anomalies and persistent threats.', mission: parseInt(missionId) },
+          { id: 1, title: 'Terminal Deployment', description: 'Configure the secure environment for payload analysis.', mission: parseInt(missionId) },
+          { id: 2, title: 'Final Intelligence Commit', description: 'Synthesize findings and upload evidence to the command hub.', mission: parseInt(missionId) }
+        ])
+      }
+      setTimeRemaining((missionData.estimated_time_minutes || 60) * 60)
     }
-  }, [missionData, setCurrentMission])
+  }, [missionData, setCurrentMission, setSubtasks, missionId])
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-slate-600">Loading mission...</p>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-12">
+        <div className="relative w-24 h-24 mb-8">
+          <div className="absolute inset-0 rounded-3xl border-4 border-och-defender/20 animate-spin" />
+          <div className="absolute inset-4 rounded-2xl border-4 border-och-mint/40 animate-spin [animation-direction:reverse]" />
+          <Hexagon className="absolute inset-0 m-auto w-8 h-8 text-och-defender animate-pulse" />
         </div>
+        <p className="text-och-steel font-black uppercase tracking-[0.2em] text-sm animate-pulse">Initializing Terminal...</p>
       </div>
     )
   }
 
   if (!missionData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6 flex items-center justify-center">
-        <Card className="p-6 text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Mission Not Found</h2>
-          <p className="text-slate-600">The mission you're looking for doesn't exist.</p>
+      <div className="min-h-[70vh] flex items-center justify-center p-12">
+        <Card className="p-12 bg-och-midnight/60 border border-och-defender/30 rounded-[3rem] text-center max-w-md">
+          <AlertCircle className="w-16 h-16 text-och-defender mx-auto mb-6" />
+          <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-3">Deployment Failed</h2>
+          <p className="text-och-steel font-medium italic mb-8 leading-relaxed">"The requested mission parameters could not be established. Verification required."</p>
+          <Button variant="defender" className="w-full h-12 rounded-xl font-black uppercase tracking-widest">Return to Control</Button>
         </Card>
       </div>
     )
   }
 
-  const objectivesProgress = missionData.objectives
-    ? Math.round(
-        (missionData.objectives.filter((_, i) => {
-          const progressThreshold = ((i + 1) / missionData.objectives!.length) * 100
-          return (missionData.progress_percent || 0) >= progressThreshold
-        }).length /
-          missionData.objectives.length) *
-          100
-      )
-    : 0
-
   return (
-    <div
-      className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6"
-      role="main"
-      aria-label={`Mission ${missionData.title}`}
-      aria-describedby="mission-story"
-    >
-      {/* HEADER: Story + Objectives */}
+    <div className="space-y-8 animate-in fade-in duration-700">
+      
+      {/* 1. MISSION BRIEFING ZONE */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8 p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200"
+        className="p-8 xl:p-12 bg-gradient-to-br from-och-midnight to-white/5 rounded-[2.5rem] border border-och-steel/10 relative overflow-hidden shadow-2xl"
       >
-        <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
-          <div className="flex-1 min-w-[300px]">
-            <h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-slate-700 bg-clip-text text-transparent mb-2">
-              {missionData.title}
-            </h1>
-            <div className="flex items-center text-sm text-slate-500 gap-4">
-              <div className="flex items-center">
-                <Shield className="w-4 h-4 mr-1" />
-                Track: {missionData.track?.toUpperCase() || missionData.track_key?.toUpperCase() || missionData.track_name?.toUpperCase() || 'DEFENDER'}
-              </div>
-              <div>|</div>
-              <div>Tier: {missionData.tier?.toUpperCase() || 'BEGINNER'}</div>
-            </div>
-          </div>
-          <TimerDisplay
-            timeLeft={timeRemaining}
-            isPaused={isPaused}
-            onPause={() => setIsPaused(true)}
-            onResume={() => setIsPaused(false)}
-          />
+        <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none select-none">
+          <Rocket className="w-48 h-48 text-och-defender" />
         </div>
 
-        {/* STORY */}
-        {missionData.description && (
-          <motion.section
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="prose prose-lg max-w-none mb-8 p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border-l-4 border-orange-400"
-            role="region"
-            aria-label="Mission story"
-            id="mission-story"
-            aria-live="polite"
-          >
-            <div className="bg-transparent border-none p-0">
-              <h3 className="text-xl font-semibold mb-2 flex items-center">
-                <span className="mr-2" aria-hidden="true">🛡️</span>
-                Mission Brief
-              </h3>
-              <p className="text-slate-700 leading-relaxed whitespace-pre-line">
-                {missionData.description}
-              </p>
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-8 relative z-10">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-4">
+              <Badge variant="defender" className="text-[10px] font-black tracking-widest px-3 py-1 bg-och-defender/20 border border-och-defender/30">
+                ACTIVE DEPLOYMENT
+              </Badge>
+              <div className="h-4 w-px bg-och-steel/20" />
+              <div className="flex items-center gap-2 text-och-steel text-[10px] font-black uppercase tracking-widest">
+                <Monitor className="w-3 h-3" />
+                Sector: {missionData.track?.toUpperCase() || 'CORE'}
+              </div>
             </div>
-          </motion.section>
-        )}
+            
+            <h1 className="text-4xl xl:text-5xl font-black text-white uppercase tracking-tighter mb-6 leading-none">
+              {missionData.title}
+            </h1>
+            
+            <div className="flex flex-wrap gap-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-och-steel/10 text-och-steel">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-[9px] text-och-steel font-black uppercase tracking-widest leading-none mb-1">Time Elapsed</p>
+                  <TimerDisplay
+                    timeLeft={timeRemaining}
+                    isPaused={isPaused}
+                    onPause={() => setIsPaused(true)}
+                    onResume={() => setIsPaused(false)}
+                    className="!p-0 !bg-transparent !border-0 font-black text-white text-base tracking-widest"
+                  />
+                </div>
+              </div>
 
-        {/* OBJECTIVES CHECKLIST */}
-        {missionData.objectives && missionData.objectives.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {missionData.objectives.map((obj, i) => {
-              const isCompleted = objectivesProgress >= ((i + 1) / missionData.objectives!.length) * 100
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + i * 0.1 }}
-                  className={`flex items-start p-3 rounded-lg transition-colors ${
-                    isCompleted ? 'bg-green-50 border border-green-200' : 'hover:bg-slate-100'
-                  }`}
-                >
-                  <div
-                    className={`mt-0.5 mr-3 w-5 h-5 rounded border-2 flex items-center justify-center ${
-                      isCompleted
-                        ? 'bg-green-500 border-green-500'
-                        : 'border-slate-300'
-                    }`}
-                  >
-                    {isCompleted && <Check className="w-3 h-3 text-white" />}
-                  </div>
-                  <span className={`text-sm ${isCompleted ? 'line-through text-slate-500' : 'text-slate-700'}`}>
-                    {obj}
-                  </span>
-                </motion.div>
-              )
-            })}
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-och-mint/10 text-och-mint">
+                  <Target className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-[9px] text-och-steel font-black uppercase tracking-widest leading-none mb-1">Success Criteria</p>
+                  <p className="text-base font-black text-white tracking-widest uppercase">
+                    {missionData.objectives?.length || 0} Objectives
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-och-gold/10 text-och-gold">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-[9px] text-och-steel font-black uppercase tracking-widest leading-none mb-1">Expected Gain</p>
+                  <p className="text-base font-black text-white tracking-widest uppercase">
+                    +45 Readiness
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
+
+          {/* PAUSE / SAVE ACTIONS */}
+          <div className="flex gap-2 w-full lg:w-auto">
+            <Button 
+              variant="outline" 
+              className="flex-1 lg:flex-none h-14 px-8 rounded-2xl border-och-steel/20 bg-och-midnight/40 text-och-steel font-black uppercase tracking-widest hover:border-white transition-all"
+              onClick={() => setIsPaused(!isPaused)}
+            >
+              {isPaused ? <Play className="w-4 h-4 mr-2" /> : <Pause className="w-4 h-4 mr-2" />}
+              {isPaused ? 'RESUME' : 'PAUSE'}
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex-1 lg:flex-none h-14 px-8 rounded-2xl border-och-mint/20 bg-och-mint/5 text-och-mint font-black uppercase tracking-widest hover:bg-och-mint hover:text-black transition-all"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              SYNC PROGRESS
+            </Button>
+          </div>
+        </div>
+
+        {/* MISSION BRIEF CONTENT */}
+        <div className="mt-12 grid grid-cols-1 xl:grid-cols-2 gap-12 relative z-10">
+          <div className="space-y-6">
+            <h4 className="text-xs font-black text-och-steel uppercase tracking-[0.2em] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-och-defender animate-pulse" />
+              Strategic Intel Briefing
+            </h4>
+            <p className="text-slate-300 text-sm font-medium leading-relaxed italic border-l-2 border-och-defender/30 pl-6 py-2">
+              "{missionData.description}"
+            </p>
+          </div>
+          
+          <div className="space-y-6">
+            <h4 className="text-xs font-black text-och-steel uppercase tracking-[0.2em] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-och-mint" />
+              Operational Objectives
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {missionData.objectives?.map((obj, i) => (
+                <div key={i} className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-och-steel/5 hover:border-och-mint/30 transition-all group">
+                   <div className="w-6 h-6 rounded-lg bg-och-midnight/80 border border-och-steel/20 flex items-center justify-center group-hover:bg-och-mint group-hover:text-black transition-all">
+                      <Check className="w-3.5 h-3.5" />
+                   </div>
+                   <span className="text-[11px] font-bold text-slate-300 group-hover:text-white transition-colors">{obj}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </motion.div>
 
-      {/* MAIN CONTENT: 4-Zone Layout */}
-      <nav role="navigation" aria-label="Subtasks" className="grid grid-cols-1 lg:grid-cols-4 gap-6 auto-rows-fr min-h-[70vh]">
-        {/* LEFT: CURRENT SUBTASK (70%) */}
-        <div className="lg:col-span-3">
+      {/* 2. OPERATIONAL TERMINAL (4-Zone Layout) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[700px]">
+        {/* LEFT: SUBTASK TERMINAL (70%) */}
+        <div className="lg:col-span-8">
           <SubtaskViewEnhanced missionId={missionId} />
         </div>
 
-        {/* RIGHT: RECIPES + NAV (30%) */}
-        <div className="lg:col-span-1 space-y-4">
+        {/* RIGHT: INTELLIGENCE & RECIPES (30%) */}
+        <div className="lg:col-span-4 space-y-8 flex flex-col">
+          {/* SKILL HEATMAP PREVIEW */}
+          <Card className="p-8 rounded-[2.5rem] bg-gradient-to-br from-och-midnight to-och-defender/5 border border-och-steel/10 flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[10px] font-black text-och-steel uppercase tracking-widest flex items-center gap-2">
+                <Target className="w-3 h-3 text-och-defender" /> Skill Alignment
+              </h4>
+              <Badge variant="defender" className="text-[8px] font-black">+12% VELOCITY</Badge>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="relative w-16 h-16">
+                 <div className="absolute inset-0 rounded-full border-4 border-och-steel/10" />
+                 <div className="absolute inset-0 rounded-full border-4 border-och-defender border-t-transparent animate-spin-slow" />
+                 <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-black text-white">82%</span>
+                 </div>
+              </div>
+              <div className="flex-1">
+                <p className="text-[11px] text-white font-black uppercase tracking-tight mb-1">Threat Hunting Proficiency</p>
+                <div className="w-full h-1.5 bg-och-steel/10 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: '82%' }}
+                    className="h-full bg-och-defender shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-[10px] text-och-steel font-medium italic leading-relaxed">
+              "This mission targets your Behavioral Analysis gap. Completion will synchronize your Readiness Score to 750+."
+            </p>
+          </Card>
+
+          {/* RECIPE ENGINE (MICRO-BOOSTERS) */}
           <RecipeSidebarEnhanced
-            recipeIds={missionData.recipe_recommendations || []}
+            recipeIds={missionData.recipe_recommendations || ['rec-01', 'rec-02']}
+            className="flex-1"
           />
         </div>
-      </nav>
+      </div>
 
-      {/* Offline Indicator */}
-      {isOffline && (
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="fixed bottom-4 left-4 bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50"
-          role="status"
-          aria-live="polite"
-        >
-          <span>⚠️</span>
-          <span>Offline - Progress saved locally</span>
-          {lastSaved && (
-            <span className="text-xs opacity-75">
-              Last saved: {new Date(lastSaved).toLocaleTimeString()}
-            </span>
-          )}
-        </motion.div>
-      )}
+      {/* OFFLINE / AUTO-SAVE INDICATORS */}
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-3 bg-och-orange/90 backdrop-blur-md text-black rounded-full shadow-2xl flex items-center gap-3 z-50 border border-white/20"
+          >
+            <Shield className="w-4 h-4" />
+            <span className="text-[10px] font-black uppercase tracking-widest">OFFLINE MODE • LOCAL SYNC ACTIVE</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Auto-save Indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: lastSaved ? 0.6 : 0 }}
-        className="fixed bottom-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-lg text-xs shadow-lg z-50"
-        role="status"
-        aria-live="polite"
+        className="fixed bottom-8 right-8 flex items-center gap-2 text-[8px] font-black text-och-steel uppercase tracking-widest z-50 bg-och-midnight/80 px-3 py-1.5 rounded-full border border-och-steel/10 backdrop-blur-md"
       >
-        💾 Auto-saved
+        <div className="w-1.5 h-1.5 rounded-full bg-och-mint animate-pulse" />
+        MISSION TELEMETRY ENCRYPTED & SAVED
       </motion.div>
     </div>
   )
 }
-

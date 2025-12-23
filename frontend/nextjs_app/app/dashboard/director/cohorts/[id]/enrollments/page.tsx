@@ -952,20 +952,20 @@ export default function CohortEnrollmentsPage() {
                                 </Button>
                               )}
                               <div className="relative">
-                                <select
-                                  value={enrollment.status}
+                              <select
+                                value={enrollment.status}
                                   onChange={(e) => {
                                     handleUpdateStatus(enrollment.id, e.target.value)
                                   }}
                                   className="bg-och-midnight border border-och-steel/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-och-defender focus:ring-1 focus:ring-och-defender transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-8 min-w-[140px]"
                                   disabled={isProcessing || updatingEnrollments.has(enrollment.id)}
-                                >
+                              >
                                   <option value="active" className="bg-och-midnight">Active</option>
                                   <option value="pending_payment" className="bg-och-midnight">Pending Payment</option>
                                   <option value="suspended" className="bg-och-midnight">Suspended</option>
                                   <option value="withdrawn" className="bg-och-midnight">Withdrawn</option>
                                   <option value="completed" className="bg-och-midnight">Completed</option>
-                                </select>
+                              </select>
                                 <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
                                   {updatingEnrollments.has(enrollment.id) ? (
                                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-och-defender"></div>

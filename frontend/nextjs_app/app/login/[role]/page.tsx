@@ -172,22 +172,22 @@ function LoginForm() {
         
         // If logging in through director login, verify role
         if (role === 'director') {
-          const isAdmin = userRoles.some((ur: any) => {
+        const isAdmin = userRoles.some((ur: any) => {
             const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-            return roleName?.toLowerCase().trim() === 'admin'
-          })
-          const isProgramDirector = userRoles.some((ur: any) => {
+          return roleName?.toLowerCase().trim() === 'admin'
+        })
+        const isProgramDirector = userRoles.some((ur: any) => {
             const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-            const normalized = roleName?.toLowerCase().trim()
-            return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
-          })
-          
-          if (!isAdmin && !isProgramDirector) {
-            setError('You do not have permission to access the Program Director dashboard. Your account must have program_director or admin role.');
-            setIsLoggingIn(false);
-            return;
-          }
+          const normalized = roleName?.toLowerCase().trim()
+          return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
+        })
+        
+        if (!isAdmin && !isProgramDirector) {
+          setError('You do not have permission to access the Program Director dashboard. Your account must have program_director or admin role.');
+          setIsLoggingIn(false);
+          return;
         }
+      }
 
         // If logging in through finance login, verify role
         if (role === 'finance') {
@@ -208,25 +208,25 @@ function LoginForm() {
           }
         }
 
-        // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
-        if (redirectTo && redirectTo.startsWith('/dashboard')) {
-          route = redirectTo;
-          console.log('📍 Using redirect parameter:', route);
+      // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
+      if (redirectTo && redirectTo.startsWith('/dashboard')) {
+        route = redirectTo;
+        console.log('📍 Using redirect parameter:', route);
         } else {
-          // CRITICAL: Check for admin role first
-          const isAdmin = userRoles.some((ur: any) => {
+        // CRITICAL: Check for admin role first
+        const isAdmin = userRoles.some((ur: any) => {
             const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-            return roleName?.toLowerCase().trim() === 'admin'
-          })
-          
-          if (isAdmin) {
-            console.log('✅ Admin user detected - redirecting to /dashboard/admin')
-            route = '/dashboard/admin'
-          } else {
-            // Use centralized redirect utility for other roles
+          return roleName?.toLowerCase().trim() === 'admin'
+        })
+        
+        if (isAdmin) {
+          console.log('✅ Admin user detected - redirecting to /dashboard/admin')
+          route = '/dashboard/admin'
+        } else {
+          // Use centralized redirect utility for other roles
             route = getRedirectRoute(updatedUser);
-            console.log('✅ Login redirect route determined (non-admin):', route);
-            console.log('User roles used for redirect:', userRoles);
+          console.log('✅ Login redirect route determined (non-admin):', route);
+          console.log('User roles used for redirect:', userRoles);
             
             // Special handling for program_director - ensure it goes to director dashboard
             const isProgramDirector = userRoles.some((ur: any) => {
@@ -273,7 +273,7 @@ function LoginForm() {
       // Mark as redirecting and prevent useEffect from interfering
       setIsRedirecting(true);
       hasRedirectedRef.current = true;
-      
+
       // Additional delay to ensure auth state is fully updated and cookies are set
       // This gives time for the HttpOnly cookies to be set by the API route
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -416,17 +416,17 @@ function LoginForm() {
                 Password
               </label>
 
-              <input
-                id="password"
+                <input
+                  id="password"
                 type="password"
-                required
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
+                  required
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                 className="input-field px-4 py-3 text-base rounded-md bg-och-midnight border border-steel-grey focus:border-cyber-mint focus:ring-cyber-mint/30 transition-all"
-                placeholder="••••••••"
-              />
+                  placeholder="••••••••"
+                />
             </div>
 
             {/* CTA */}

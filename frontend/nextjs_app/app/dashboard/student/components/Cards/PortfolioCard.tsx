@@ -41,7 +41,7 @@ export function PortfolioCard() {
     >
       <Card 
         className="glass-card p-3 md:p-4 hover:glass-hover transition-all cursor-pointer"
-        onClick={() => router.push('/portfolio')}
+        onClick={() => router.push('/dashboard/student/portfolio')}
       >
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-och-steel">Portfolio</h3>

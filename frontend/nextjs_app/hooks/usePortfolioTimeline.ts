@@ -28,10 +28,10 @@ export function usePortfolioTimeline({ items = [], isLoading = false }: UsePortf
   const timelineData = useMemo(() => {
     if (!items || items.length === 0) return [];
 
-    const events: TimelineEvent[] = [];
+      const events: TimelineEvent[] = [];
 
     items.forEach((item) => {
-      // Item created event
+        // Item created event
       if (item.created_at) {
         events.push({
           id: `${item.id}-created`,
@@ -43,37 +43,37 @@ export function usePortfolioTimeline({ items = [], isLoading = false }: UsePortf
         });
       }
 
-      // Item approved event
+        // Item approved event
       if (item.status === 'approved' && item.updated_at) {
-        events.push({
-          id: `${item.id}-approved`,
-          type: 'item_approved',
-          title: 'Item approved',
+          events.push({
+            id: `${item.id}-approved`,
+            type: 'item_approved',
+            title: 'Item approved',
           description: item.title || 'Untitled item',
-          portfolioItemId: item.id,
+            portfolioItemId: item.id,
           createdAt: item.updated_at,
-        });
-      }
+          });
+        }
 
       // Marketplace view events (if marketplace_views property exists)
       const views = (item as any).marketplace_views || 0;
       if (views > 0 && views % 10 === 0) {
-        events.push({
+          events.push({
           id: `${item.id}-view-${views}`,
-          type: 'marketplace_view',
-          title: 'Marketplace milestone',
+            type: 'marketplace_view',
+            title: 'Marketplace milestone',
           description: `${item.title || 'Item'} reached ${views} views`,
-          portfolioItemId: item.id,
+            portfolioItemId: item.id,
           createdAt: item.updated_at || item.created_at || new Date().toISOString(),
           metadata: { views },
-        });
-      }
-    });
+          });
+        }
+      });
 
-    // Sort by date (most recent first)
-    return events.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+      // Sort by date (most recent first)
+      return events.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
   }, [items]);
 
   return {

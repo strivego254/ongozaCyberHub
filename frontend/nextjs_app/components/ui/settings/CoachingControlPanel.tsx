@@ -12,7 +12,18 @@ import { Brain, Target, BookOpen, Zap, Clock, MessageSquare, TrendingUp, Chevron
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import type { UserSettings, SettingsUpdate } from '@/lib/settings/types';
+
+// Local types to replace missing @/lib/settings imports
+export interface UserSettings {
+  aiCoachStyle?: 'motivational' | 'direct' | 'analytical';
+  habitFrequency?: 'daily' | 'weekly';
+  reflectionPromptStyle?: 'guided' | 'freeform' | 'structured';
+  [key: string]: any;
+}
+
+export interface SettingsUpdate {
+  [key: string]: any;
+}
 
 interface CoachingControlPanelProps {
   settings: UserSettings | null;

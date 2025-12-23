@@ -52,7 +52,7 @@ export function EmployerPreviewFAB() {
 
         {/* New Item Button */}
         <button
-          onClick={() => router.push('/portfolio?new=true')}
+          onClick={() => router.push('/dashboard/student/portfolio?new=true')}
           className="w-14 h-14 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-2xl hover:shadow-amber-500/50 flex items-center justify-center text-white transition-all duration-200 hover:scale-110 group"
           aria-label="Create new portfolio item"
           title="New Portfolio Item"

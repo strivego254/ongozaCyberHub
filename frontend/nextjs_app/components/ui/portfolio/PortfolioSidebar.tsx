@@ -43,14 +43,14 @@ export function PortfolioSidebar({ onNavigate }: PortfolioSidebarProps) {
 
   const navItems = [
     { icon: Home, label: 'Dashboard', href: '/dashboard/student', badge: 0 },
-    { icon: Briefcase, label: 'Portfolio', href: '/portfolio', badge: 0, active: true },
+    { icon: Briefcase, label: 'Portfolio', href: '/dashboard/student/portfolio', badge: 0, active: true },
     { icon: Target, label: 'Missions', href: '/dashboard/student/missions', badge: 0 },
-    { icon: BarChart3, label: 'Coaching', href: '/coaching', badge: 0 },
+    { icon: BarChart3, label: 'Coaching', href: '/dashboard/student/coaching', badge: 0 },
     { icon: Settings, label: 'Settings', href: '/dashboard/student/settings', badge: 0 },
   ];
 
   const quickActions = [
-    { icon: Plus, label: 'New Item', action: () => router.push('/portfolio?new=true') },
+    { icon: Plus, label: 'New Item', action: () => router.push('/dashboard/student/portfolio?new=true') },
     { icon: Filter, label: 'Filters', action: () => onNavigate?.('filters') },
     { icon: Eye, label: 'Preview', action: () => onNavigate?.('preview') },
     { icon: TrendingUp, label: 'Analytics', action: () => onNavigate?.('analytics') },
