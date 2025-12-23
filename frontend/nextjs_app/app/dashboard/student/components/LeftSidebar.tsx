@@ -32,12 +32,19 @@ import {
 import clsx from 'clsx';
 
 export function LeftSidebar() {
+  const store = useDashboardStore();
   const { 
     quickStats, 
     trackOverview, 
-    isSidebarCollapsed: isCollapsed, 
-    setSidebarCollapsed: setIsCollapsed 
-  } = useDashboardStore();
+    isSidebarCollapsed: isCollapsed = false, 
+    setSidebarCollapsed
+  } = store;
+  
+  // Safeguard: ensure setIsCollapsed is always a function
+  const setIsCollapsed = typeof setSidebarCollapsed === 'function' 
+    ? setSidebarCollapsed 
+    : () => {};
+  
   const router = useRouter();
   const pathname = usePathname();
 

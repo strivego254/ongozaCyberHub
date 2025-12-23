@@ -66,5 +66,11 @@ urlpatterns = [
     
     # TalentScope Analytics
     path('talentscope/', include('talentscope.urls')),
+    
+    # Community Module
+    path('community/', include('community.urls')),
+    
+    # Curriculum Engine
+    path('curriculum/', include('curriculum.urls')),
 ]
 

@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'sponsor_dashboard',
     'director_dashboard',
     'talentscope',
+    'community',
     'api',
     'shared_schemas',
 ]
