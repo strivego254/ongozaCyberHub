@@ -1,0 +1,107 @@
+interactive rebase in progress; onto 547b5d2
+Last command done (1 command done):
+   pick 5c0d657 # milestone 3 module finalization
+Next command to do (1 remaining command):
+   pick 22a866a # m3 updated
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing branch 'main' on '547b5d2'.
+  (all conflicts fixed: run "git rebase --continue")
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   backend/django_app/curriculum/migrations/__init__.py
+	modified:   backend/django_app/missions/management/commands/seed_missions.py
+	modified:   backend/django_app/missions/migrations/0004_fix_legacy_submission_tables.py
+	modified:   backend/django_app/missions/migrations/0006_add_estimated_time_minutes_column.py
+	modified:   backend/django_app/missions/migrations/0007_fix_story_column_constraint.py
+	modified:   backend/django_app/missions/migrations/0008_fix_objectives_column_constraint.py
+	modified:   backend/django_app/missions/migrations/0009_fix_all_legacy_columns_constraints.py
+	modified:   backend/django_app/profiler/models.py
+	new file:   backend/django_app/scripts/seed_missions.py
+	new file:   backend/django_app/scripts/test_missions_api.py
+	modified:   backend/django_app/student_dashboard/migrations/0002_create_missing_tables_if_faked.py
+	modified:   backend/django_app/subscriptions/migrations/0004_create_missing_tables_if_faked.py
+	modified:   backend/django_app/tests/__init__.py
+	modified:   backend/django_app/tests/test_coaching_endpoints.py
+	modified:   backend/django_app/tests/test_health_endpoints.py
+	modified:   backend/django_app/tests/test_mentorship_endpoints.py
+	modified:   backend/django_app/tests/test_missions_endpoints.py
+	modified:   backend/django_app/tests/test_organizations_endpoints.py
+	modified:   backend/django_app/tests/test_profiler_endpoints.py
+	modified:   backend/django_app/tests/test_progress_endpoints.py
+	modified:   backend/django_app/tests/test_student_dashboard_endpoints.py
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/gateways/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/plans/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/rules/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/subscription-overview-client.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/transactions/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/coaching/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/components/LeftSidebar.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/curriculum/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/mentorship/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/missions/components/MissionCardEnhanced.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/missions/components/MissionViewEnhanced.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/missions/components/ReadOnlyMissionsView.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/missions/components/RecipeSidebarEnhanced.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/missions/components/SubtaskViewEnhanced.tsx
+	new file:   frontend/nextjs_app/app/dashboard/student/missions/hall/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/missions/types.ts
+	modified:   frontend/nextjs_app/app/dashboard/student/portfolio/page.tsx
+	modified:   frontend/nextjs_app/components/ui/DatePicker.tsx
+	modified:   frontend/nextjs_app/components/ui/coaching/AICoachChat.tsx
+	modified:   frontend/nextjs_app/components/ui/coaching/CoachingSidebar.tsx
+	modified:   frontend/nextjs_app/components/ui/missions/MissionsHub.tsx
+	modified:   frontend/nextjs_app/hooks/useMentorAssignedTracks.ts
+	modified:   frontend/nextjs_app/hooks/useTrackMissions.ts
+	modified:   mission_hall/acm-m02.yaml
+	new file:   mission_hall/acm-m03.yaml
+	new file:   mission_hall/acm-m04.yaml
+	new file:   mission_hall/acm-m05.yaml
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   backend/django_app/core/settings/base.py
+	modified:   backend/django_app/curriculum/migrations/__init__.py
+	modified:   backend/django_app/missions/migrations/0004_fix_legacy_submission_tables.py
+	modified:   backend/django_app/missions/migrations/0006_add_estimated_time_minutes_column.py
+	modified:   backend/django_app/missions/migrations/0007_fix_story_column_constraint.py
+	modified:   backend/django_app/missions/migrations/0008_fix_objectives_column_constraint.py
+	modified:   backend/django_app/missions/migrations/0009_fix_all_legacy_columns_constraints.py
+	modified:   backend/django_app/student_dashboard/migrations/0002_create_missing_tables_if_faked.py
+	modified:   backend/django_app/subscriptions/migrations/0004_create_missing_tables_if_faked.py
+	modified:   backend/django_app/tests/__init__.py
+	modified:   backend/django_app/tests/test_coaching_endpoints.py
+	modified:   backend/django_app/tests/test_health_endpoints.py
+	modified:   backend/django_app/tests/test_mentorship_endpoints.py
+	modified:   backend/django_app/tests/test_missions_endpoints.py
+	modified:   backend/django_app/tests/test_organizations_endpoints.py
+	modified:   backend/django_app/tests/test_profiler_endpoints.py
+	modified:   backend/django_app/tests/test_progress_endpoints.py
+	modified:   backend/django_app/tests/test_student_dashboard_endpoints.py
+	modified:   backend/django_app/users/views/auth_views.py
+	modified:   backend/fastapi_app/main.py
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/gateways/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/plans/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/rules/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/subscription-overview-client.tsx
+	modified:   frontend/nextjs_app/app/dashboard/admin/subscriptions/transactions/page.tsx
+	modified:   frontend/nextjs_app/app/dashboard/student/missions/components/ReadOnlyMissionsView.tsx
+	modified:   frontend/nextjs_app/components/ui/DatePicker.tsx
+	modified:   frontend/nextjs_app/hooks/useMentorAssignedTracks.ts
+	modified:   frontend/nextjs_app/hooks/useTrackMissions.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	backend/fastapi_app/routers/v1/profiling.py
+	backend/fastapi_app/schemas/profiling.py
+	backend/fastapi_app/schemas/profiling_questions.py
+	backend/fastapi_app/services/profiling_service.py
+	frontend/nextjs_app/app/onboarding/ai-profiler/
+	git_status_output.txt
+	git_status_output_2.txt
+	rebase_output.txt
+	test_settings.py
+

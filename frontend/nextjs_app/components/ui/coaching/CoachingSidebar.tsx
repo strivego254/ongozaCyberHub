@@ -36,13 +36,13 @@ export function CoachingSidebar({ onNavigate, activeSection = 'overview' }: Coac
     { id: 'goals', label: 'Tactical Goals', icon: Target, status: 'todo' },
     { id: 'reflect', label: 'Insight Lab', icon: BookOpen, status: 'todo' },
   ] as const
-
+  
   return (
-    <motion.aside
+      <motion.aside
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       className="hidden lg:flex flex-col w-72 h-[calc(100vh-8rem)] sticky top-24 gap-8 pr-6"
-    >
+      >
       {/* 1. Journey Progress Header */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-2">
@@ -56,15 +56,15 @@ export function CoachingSidebar({ onNavigate, activeSection = 'overview' }: Coac
           <p className="text-2xl font-black text-white mb-1">{metrics?.alignmentScore || 0}%</p>
           <p className="text-[10px] text-och-steel uppercase tracking-widest font-bold">Identity Alignment</p>
           <div className="mt-4 w-full bg-och-steel/10 h-1 rounded-full overflow-hidden">
-            <motion.div 
+            <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${metrics?.alignmentScore || 0}%` }}
               className="h-full bg-och-mint"
             />
           </div>
         </div>
-      </div>
-
+        </div>
+        
       {/* 2. Roadmap Navigation */}
       <nav className="flex-1 space-y-1">
         <div className="flex items-center gap-2 mb-4 px-2">
@@ -97,7 +97,7 @@ export function CoachingSidebar({ onNavigate, activeSection = 'overview' }: Coac
                   isActive ? "bg-och-defender text-white shadow-lg shadow-och-defender/20" : "bg-och-steel/10 text-och-steel group-hover:bg-och-steel/20"
                 )}>
                   <Icon className="w-4 h-4" />
-                </div>
+              </div>
               </div>
               <div className="flex-1 text-left">
                 <p className={clsx(
@@ -126,7 +126,7 @@ export function CoachingSidebar({ onNavigate, activeSection = 'overview' }: Coac
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 rounded-full bg-och-orange/20 flex items-center justify-center">
             <Flame className="w-4 h-4 text-och-orange" />
-          </div>
+            </div>
           <div>
             <p className="text-[10px] text-och-steel uppercase tracking-widest font-black">Daily Heat</p>
             <p className="text-sm font-black text-white">{metrics?.habits_streak || 0} Day Streak</p>

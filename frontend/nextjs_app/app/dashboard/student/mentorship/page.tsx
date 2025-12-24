@@ -19,7 +19,7 @@ export default function MentorshipPage() {
             <div className="px-2 py-0.5 rounded bg-och-gold/10 border border-och-gold/20">
                <span className="text-[10px] font-black text-och-gold uppercase tracking-widest">MMM v4.2</span>
             </div>
-          </div>
+                </div>
           <p className="text-och-steel text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-och-mint" />
             From Competence to Professional Mastery

@@ -59,7 +59,6 @@ INSTALLED_APPS = [
     'sponsor_dashboard',
     'director_dashboard',
     'talentscope',
-    'community',
     'api',
     'shared_schemas',
 ]
@@ -199,6 +198,9 @@ except ImportError:
 
 # Monitoring & Metrics
 ENABLE_METRICS = os.environ.get('ENABLE_METRICS', 'False').lower() == 'true'
+
+# Frontend URL for email links and redirects
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 # drf-spectacular (Swagger/OpenAPI) Settings
 SPECTACULAR_SETTINGS = {

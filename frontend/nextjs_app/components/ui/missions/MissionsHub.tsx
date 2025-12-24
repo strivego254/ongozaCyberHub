@@ -6,6 +6,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Zap, 
@@ -42,6 +43,7 @@ import clsx from 'clsx'
 
 export function MissionsHub() {
   const { funnel, missions } = useMissions()
+  const router = useRouter()
   const [selectedTier, setSelectedTier] = useState<MXPTier>('beginner')
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -64,8 +66,9 @@ export function MissionsHub() {
       const matchesTier = tierMap[selectedTier]?.includes(difficulty) || 
                           (selectedTier === 'beginner' && !m.difficulty)
       
-      const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             m.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            m.competency_tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
                             m.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
       
       return matchesTier && matchesSearch
@@ -242,6 +245,18 @@ export function MissionsHub() {
 
         {/* 3. MISSION TERMINAL */}
         <main className="lg:col-span-9 space-y-8">
+          {/* MISSION HALL ACCESS */}
+          <div className="flex justify-end mb-6">
+            <Button
+              variant="outline"
+              onClick={() => router.push('/dashboard/student/missions/hall')}
+              className="border-och-gold/30 text-och-gold hover:bg-och-gold hover:text-black transition-all duration-300 shadow-lg shadow-och-gold/10"
+            >
+              <Hexagon className="w-4 h-4 mr-2" />
+              Mission Hall - All Director Missions
+            </Button>
+          </div>
+
           {/* TERMINAL BAR (Filters & Search) */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-och-midnight/50 p-4 rounded-3xl border border-och-steel/10 backdrop-blur-md shadow-2xl">
             <div className="relative flex-1 w-full">

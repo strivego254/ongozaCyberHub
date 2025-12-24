@@ -132,14 +132,14 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-och-steel/10 text-och-steel">
                   <Clock className="w-4 h-4" />
-                </div>
+              </div>
                 <div>
                   <p className="text-[9px] text-och-steel font-black uppercase tracking-widest leading-none mb-1">Time Elapsed</p>
-                  <TimerDisplay
-                    timeLeft={timeRemaining}
-                    isPaused={isPaused}
-                    onPause={() => setIsPaused(true)}
-                    onResume={() => setIsPaused(false)}
+          <TimerDisplay
+            timeLeft={timeRemaining}
+            isPaused={isPaused}
+            onPause={() => setIsPaused(true)}
+            onResume={() => setIsPaused(false)}
                     className="!p-0 !bg-transparent !border-0 font-black text-white text-base tracking-widest"
                   />
                 </div>
@@ -155,8 +155,8 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
                     {missionData.objectives?.length || 0} Objectives
                   </p>
                 </div>
-              </div>
-              
+        </div>
+
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-och-gold/10 text-och-gold">
                   <Sparkles className="w-4 h-4" />
@@ -217,7 +217,7 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
                    <span className="text-[11px] font-bold text-slate-300 group-hover:text-white transition-colors">{obj}</span>
                 </div>
               ))}
-            </div>
+                  </div>
           </div>
         </div>
       </motion.div>
@@ -275,17 +275,17 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
 
       {/* OFFLINE / AUTO-SAVE INDICATORS */}
       <AnimatePresence>
-        {isOffline && (
-          <motion.div
+      {isOffline && (
+        <motion.div
             initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
+          animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
             className="fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-3 bg-och-orange/90 backdrop-blur-md text-black rounded-full shadow-2xl flex items-center gap-3 z-50 border border-white/20"
-          >
+        >
             <Shield className="w-4 h-4" />
             <span className="text-[10px] font-black uppercase tracking-widest">OFFLINE MODE • LOCAL SYNC ACTIVE</span>
-          </motion.div>
-        )}
+        </motion.div>
+      )}
       </AnimatePresence>
 
       <motion.div

@@ -34,6 +34,7 @@ export interface Mission {
   track_name?: string
   module_name?: string
   competency_tags?: string[]
+  tags?: string[] // Alias for competency_tags for backward compatibility
   mission_type?: 'scenario-based' | 'practical-lab' | 'research' | 'capstone'
   attachments?: MissionAttachment[]
   external_links?: ExternalLink[]

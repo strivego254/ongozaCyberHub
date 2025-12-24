@@ -79,15 +79,15 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
   }, [])
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const files = Array.from(e.dataTransfer.files)
-    await handleFileUpload(files)
+      e.preventDefault()
+      setIsDragging(false)
+      const files = Array.from(e.dataTransfer.files)
+      await handleFileUpload(files)
   }, [uploadedFiles, currentSubtask])
 
   const handleFileInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    await handleFileUpload(files)
+      const files = Array.from(e.target.files || [])
+      await handleFileUpload(files)
   }, [uploadedFiles, currentSubtask])
 
   const handleFileUpload = async (files: File[]) => {
@@ -201,54 +201,54 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
         {/* Evidence Submission Terminal */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 flex-1 relative z-10">
           <div className="space-y-6">
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
               className={clsx(
                 "border-2 border-dashed rounded-[2rem] p-10 text-center transition-all duration-500 h-full flex flex-col items-center justify-center relative group",
-                isDragging
+            isDragging
                   ? "border-och-mint bg-och-mint/10 scale-[1.02]"
                   : "border-och-steel/20 bg-och-midnight/40 hover:border-och-mint/50 hover:bg-och-mint/5"
               )}
-            >
+        >
               <div className="absolute top-4 right-4 opacity-20">
                 <Monitor className="w-8 h-8" />
               </div>
 
-              <motion.div
+          <motion.div
                 animate={isDragging ? { y: [0, -10, 0] } : {}}
                 transition={{ repeat: Infinity, duration: 1 }}
                 className={clsx("p-6 rounded-3xl bg-och-midnight/80 border border-och-steel/10 mb-6 shadow-2xl transition-all group-hover:border-och-mint/30", isDragging ? "shadow-och-mint/20" : "")}
-              >
+          >
                 <Upload className={clsx("w-12 h-12", isDragging ? "text-och-mint" : "text-och-steel")} />
-              </motion.div>
+          </motion.div>
               
               <h4 className="text-lg font-black text-white uppercase tracking-tighter mb-2">Evidence Terminal</h4>
               <p className="text-xs text-och-steel font-bold mb-8 max-w-[240px] uppercase tracking-widest leading-relaxed">
                 {evidenceTypes.join(' • ')} <br/>
                 <span className="text-[10px] opacity-60">Max 50MB per artifact</span>
-              </p>
+          </p>
 
-              <input
-                type="file"
-                multiple
-                onChange={handleFileInput}
-                className="hidden"
-                id="file-upload"
-                accept={evidenceTypes.map((t: string) => {
+          <input
+            type="file"
+            multiple
+            onChange={handleFileInput}
+            className="hidden"
+            id="file-upload"
+            accept={evidenceTypes.map((t: string) => {
                   const tag = t.toLowerCase()
                   if (tag === 'screenshot') return 'image/*'
                   if (tag === 'video') return 'video/*'
                   if (tag === 'pdf') return '.pdf'
-                  return '*/*'
-                }).join(',')}
-              />
-              <label htmlFor="file-upload">
+              return '*/*'
+            }).join(',')}
+          />
+          <label htmlFor="file-upload">
                 <Button variant="defender" className="cursor-pointer h-12 px-8 rounded-xl font-black uppercase tracking-widest bg-och-mint text-black hover:bg-white transition-all shadow-lg shadow-och-mint/20">
                   Select Artifacts
-                </Button>
-              </label>
+            </Button>
+          </label>
             </div>
           </div>
 
@@ -282,13 +282,13 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
               <AnimatePresence initial={false}>
                 {uploadedFiles.length > 0 ? (
                   uploadedFiles.map((file) => (
-                    <motion.div
-                      key={file.id}
+                  <motion.div
+                    key={file.id}
                       initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
+                    animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       className="flex items-center justify-between p-4 bg-white/5 border border-och-steel/10 rounded-2xl group hover:border-och-mint/30 transition-all"
-                    >
+                  >
                       <div className="flex items-center gap-4 min-w-0">
                         <div className="p-2 rounded-lg bg-och-midnight/80 border border-och-steel/10">
                           <FileText className="w-4 h-4 text-och-mint" />
@@ -297,14 +297,14 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
                           <p className="text-xs font-black text-white truncate uppercase tracking-tight">{file.name}</p>
                           <p className="text-[9px] text-och-steel font-bold uppercase tracking-widest">{(file.size / 1024).toFixed(1)} KB • {file.type.split('/')[1] || 'DOC'}</p>
                         </div>
-                      </div>
+                    </div>
                       <button
-                        onClick={() => removeFile(file.id)}
+                      onClick={() => removeFile(file.id)}
                         className="p-2 rounded-lg hover:bg-och-defender/20 text-och-steel hover:text-och-defender transition-all"
-                      >
-                        <X className="w-4 h-4" />
+                    >
+                      <X className="w-4 h-4" />
                       </button>
-                    </motion.div>
+                  </motion.div>
                   ))
                 ) : (
                   <div className="h-32 flex flex-col items-center justify-center border border-och-steel/5 rounded-2xl bg-white/5 italic">
@@ -312,20 +312,20 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
                   </div>
                 )}
               </AnimatePresence>
-            </div>
+        </div>
 
             {/* Tactical Notes */}
             <div className="space-y-3">
               <p className="text-[10px] font-black text-och-steel uppercase tracking-widest mb-2 flex items-center gap-2">
                 <Zap className="w-3 h-3" /> Tactical Notes
               </p>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={4}
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={4}
                 className="w-full px-6 py-4 bg-och-midnight/80 border border-och-steel/20 rounded-2xl text-white text-xs font-bold placeholder:text-och-steel/30 focus:border-och-defender/50 outline-none transition-all shadow-inner resize-none uppercase tracking-wider leading-relaxed"
                 placeholder="DESCRIBE YOUR METHODOLOGY AND DISCOVERIES..."
-              />
+          />
             </div>
           </div>
         </div>
@@ -333,7 +333,7 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
         {/* Footer Actions */}
         <div className="mt-12 pt-8 border-t border-och-steel/10 flex flex-wrap items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-6">
-            {!allDependenciesMet && (
+        {!allDependenciesMet && (
               <div className="flex items-center gap-3 text-och-defender bg-och-defender/10 px-4 py-2 rounded-xl border border-och-defender/20 animate-pulse">
                 <Lock className="w-4 h-4" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Dependencies Locked</span>
@@ -343,38 +343,38 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
               <div className="flex items-center gap-3 text-och-mint bg-och-mint/10 px-4 py-2 rounded-xl border border-och-mint/20">
                 <CheckCircle2 className="w-4 h-4" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Subtask Verified</span>
-              </div>
-            )}
+            </div>
+        )}
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
+          <Button
               variant="outline"
               className="h-12 px-6 rounded-xl border-och-steel/20 text-och-steel text-[10px] font-black uppercase tracking-widest hover:border-white transition-all"
-              onClick={() => {
-                updateSubtaskProgress(currentSubtask, {
-                  completed: progress.completed,
-                  evidence: uploadedFiles.map((f) => f.url || f.name),
-                  notes,
-                })
-              }}
-            >
+            onClick={() => {
+              updateSubtaskProgress(currentSubtask, {
+                completed: progress.completed,
+                evidence: uploadedFiles.map((f) => f.url || f.name),
+                notes,
+              })
+            }}
+          >
               <Save className="w-4 h-4 mr-2" />
               Save Intel
-            </Button>
-            <Button
+          </Button>
+          <Button
               className={clsx(
                 "h-12 px-10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all",
                 progress.completed 
                   ? "bg-och-mint/20 border border-och-mint/30 text-och-mint" 
                   : "bg-och-defender text-white hover:scale-105 active:scale-95 shadow-och-defender/20"
               )}
-              onClick={handleComplete}
-              disabled={!allDependenciesMet || progress.completed}
-            >
+            onClick={handleComplete}
+            disabled={!allDependenciesMet || progress.completed}
+          >
               {progress.completed ? 'Subtask Complete' : 'Commit Subtask'}
               {!progress.completed && <ArrowRight className="w-4 h-4 ml-2" />}
-            </Button>
+          </Button>
           </div>
         </div>
       </Card>

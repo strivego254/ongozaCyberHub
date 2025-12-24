@@ -85,6 +85,6 @@ export default function CoachingPage() {
             setActiveSection={handleNavigate} 
           />
         </div>
-      </div>
+    </div>
   )
 }

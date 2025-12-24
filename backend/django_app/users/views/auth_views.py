@@ -1,6 +1,7 @@
 """
 Authentication views for signup, login, MFA, SSO, etc.
 """
+import os
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -146,7 +147,8 @@ class SignupView(APIView):
             code, mfa_code = create_mfa_code(user, method='magic_link', expires_minutes=10)
             from users.utils.email_utils import send_magic_link_email
             from django.conf import settings
-            magic_link_url = f"{settings.FRONTEND_URL}/auth/verify?code={code}&email={user.email}"
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+            magic_link_url = f"{frontend_url}/auth/verify?code={code}&email={user.email}"
             send_magic_link_email(user, code, magic_link_url)
             
             _log_audit_event(user, 'create', 'user', 'success', {'method': 'passwordless'})
@@ -184,19 +186,34 @@ class SignupView(APIView):
             if data.get('cohort_id') or data.get('track_key'):
                 user.activate()
             else:
-                # Send verification email with OTP
-                code, mfa_code = create_mfa_code(user, method='email', expires_minutes=60)
-                from users.utils.email_utils import send_verification_email
-                from django.conf import settings
-                verification_url = f"{settings.FRONTEND_URL}/auth/verify-email?code={code}&email={user.email}"
-                send_verification_email(user, verification_url)
+                # Send verification email with OTP (non-blocking)
+                try:
+                    code, mfa_code = create_mfa_code(user, method='email', expires_minutes=60)
+                    from users.utils.email_utils import send_verification_email
+                    from django.conf import settings
+                    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+                    verification_url = f"{frontend_url}/auth/verify-email?code={code}&email={user.email}"
+                    send_verification_email(user, verification_url)
+                except Exception as e:
+                    # Log email failure but don't block signup
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Failed to send verification email to {user.email}: {str(e)}")
             
             _log_audit_event(user, 'create', 'user', 'success', {'method': 'email_password'})
             
+            # Get frontend URL with fallback
+            frontend_url = getattr(settings, 'FRONTEND_URL', None)
+            if not frontend_url:
+                # Hardcoded fallback if settings.FRONTEND_URL is not available
+                frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
             return Response(
                 {
-                    'detail': 'Account created. Please verify your email.',
+                    'detail': 'Account created successfully! Please complete your AI profiling to get matched with the right OCH track.',
                     'user_id': user.id,
+                    'redirect_url': f"{frontend_url}/onboarding/ai-profiler",
+                    'requires_profiling': True,
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -332,10 +349,21 @@ class LoginView(APIView):
         user.last_login_ip = ip_address
         user.save()
         
+        # Check if profiling is required (mandatory Tier 0 gateway for students/mentees)
+        profiling_required = False
+        user_roles = UserRole.objects.filter(user=user, is_active=True)
+        user_role_names = [ur.role.name for ur in user_roles]
+        
+        # Profiling is mandatory for students and mentees
+        if 'student' in user_role_names or 'mentee' in user_role_names:
+            if not user.profiling_complete:
+                profiling_required = True
+        
         _log_audit_event(user, 'login', 'user', 'success', {
             'method': 'passwordless' if code else 'password',
             'risk_score': risk_score,
             'mfa_required': mfa_required,
+            'profiling_required': profiling_required,
         })
         
         response = Response({
@@ -343,6 +371,7 @@ class LoginView(APIView):
             'refresh_token': refresh_token,
             'user': UserSerializer(user).data,
             'consent_scopes': consent_scopes,
+            'profiling_required': profiling_required,
         }, status=status.HTTP_200_OK)
         
         # Set refresh token as httpOnly cookie
@@ -387,7 +416,8 @@ class MagicLinkView(APIView):
         # Send email with magic link
         from users.utils.email_utils import send_magic_link_email
         from django.conf import settings
-        magic_link_url = f"{settings.FRONTEND_URL}/auth/verify?code={code}&email={email}"
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        magic_link_url = f"{frontend_url}/auth/verify?code={code}&email={email}"
         send_magic_link_email(user, code, magic_link_url)
         
         _log_audit_event(user, 'mfa_challenge', 'user', 'success', {'method': 'magic_link'})

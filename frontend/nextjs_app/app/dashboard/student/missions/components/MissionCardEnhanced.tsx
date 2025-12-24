@@ -54,8 +54,8 @@ export function MissionCardEnhanced({
     if (onClick) {
       onClick()
     } else {
-      setCurrentMission(mission)
-      router.push(`/dashboard/student/missions/${mission.id}`)
+    setCurrentMission(mission)
+    router.push(`/dashboard/student/missions/${mission.id}`)
     }
   }
   
@@ -114,15 +114,15 @@ export function MissionCardEnhanced({
             
             {!isLocked && (
               <div className="relative">
-                <RadialProgress
-                  percentage={mission.progress_percent || 0}
+            <RadialProgress
+              percentage={mission.progress_percent || 0}
                   size={44}
-                  strokeWidth={4}
+              strokeWidth={4}
                   color={isCompleted ? '#10B981' : isInProgress ? '#ef4444' : '#64748b'}
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-[10px] font-black text-white">{mission.progress_percent || 0}%</span>
-                </div>
+              </div>
               </div>
             )}
           </div>
@@ -165,9 +165,9 @@ export function MissionCardEnhanced({
 
           <div className="mt-auto space-y-4">
             {/* TAGS/SKILLS */}
-            {mission.tags && mission.tags.length > 0 && (
+            {(mission.competency_tags || mission.tags) && (mission.competency_tags || mission.tags).length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {mission.tags.slice(0, 3).map((tag, i) => (
+                {(mission.competency_tags || mission.tags).slice(0, 3).map((tag, i) => (
                   <span key={i} className="text-[8px] font-black text-och-mint uppercase tracking-widest px-2 py-0.5 bg-och-mint/10 rounded-full border border-och-mint/20">
                     {tag}
                   </span>
@@ -176,10 +176,10 @@ export function MissionCardEnhanced({
             )}
 
             {/* ACTION BUTTON */}
-            <Button
+          <Button
               className={clsx(
                 "w-full h-12 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all relative overflow-hidden group/btn",
-                isLocked 
+              isLocked
                   ? "bg-och-steel/10 border-och-steel/20 text-och-steel cursor-not-allowed" 
                   : isCompleted
                     ? "bg-och-mint/10 border-och-mint/30 text-och-mint hover:bg-och-mint hover:text-black"
@@ -205,7 +205,7 @@ export function MissionCardEnhanced({
                   </>
                 )}
               </div>
-            </Button>
+          </Button>
           </div>
         </div>
 

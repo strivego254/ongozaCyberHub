@@ -129,7 +129,7 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
             >
               <div className="w-16 h-16 rounded-full bg-och-mint/10 border border-och-mint/20 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="w-8 h-8 text-och-mint" />
-              </div>
+            </div>
               <p className="text-sm font-black text-white uppercase tracking-tighter">Boosters Consumed</p>
               <p className="text-[10px] text-och-steel font-medium italic mt-1">"Intel alignment complete."</p>
             </motion.div>
@@ -154,13 +154,13 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
           className="bg-och-midnight/90 backdrop-blur-xl rounded-[2rem] border border-och-gold/20 shadow-2xl overflow-hidden"
         >
           <button 
-            onClick={() => setIsOpen(!isOpen)}
+              onClick={() => setIsOpen(!isOpen)}
             className="w-full p-5 flex items-center justify-between border-b border-och-steel/10"
-          >
+            >
             <div className="flex items-center gap-3">
               <Flame className="w-5 h-5 text-och-gold" />
               <span className="text-xs font-black text-white uppercase tracking-widest">Recipe Engine ({remainingRecipes.length})</span>
-            </div>
+          </div>
             <ChevronDown className={clsx("w-4 h-4 text-och-steel transition-transform", isOpen ? "rotate-180" : "")} />
           </button>
 
@@ -173,14 +173,14 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
                 className="overflow-hidden"
               >
                 <div className="p-4 space-y-3 max-h-[50vh] overflow-y-auto">
-                  {remainingRecipes.map((recipe) => (
-                    <RecipeCard
-                      key={recipe.id}
-                      recipe={recipe}
-                      onComplete={() => handleMarkComplete(recipe.id)}
-                    />
-                  ))}
-                </div>
+            {remainingRecipes.map((recipe) => (
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                onComplete={() => handleMarkComplete(recipe.id)}
+              />
+            ))}
+          </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -205,7 +205,7 @@ function RecipeCard({
         <h5 className="font-black text-white text-xs uppercase tracking-tight flex-1 group-hover:text-och-gold transition-colors">{recipe.title}</h5>
         <Badge variant="steel" className="ml-2 text-[8px] px-1 py-0 font-black tracking-widest">
           {recipe.duration} MIN
-        </Badge>
+          </Badge>
       </div>
       
       <p className="text-[11px] text-och-steel font-medium mb-4 line-clamp-2 leading-relaxed italic">

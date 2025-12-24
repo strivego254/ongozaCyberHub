@@ -34,22 +34,14 @@ import {
 import clsx from 'clsx';
 
 export function LeftSidebar() {
-  const store = useDashboardStore();
-  const {
-    quickStats,
-    trackOverview,
-    isSidebarCollapsed: isCollapsed = false,
-    setSidebarCollapsed
-  } = store;
-
-  // Safeguard: ensure setIsCollapsed is always a function
-  const setIsCollapsed = typeof setSidebarCollapsed === 'function'
-    ? setSidebarCollapsed
-    : () => {};
-
+  const { 
+    trackOverview, 
+    isSidebarCollapsed: isCollapsed, 
+    setSidebarCollapsed: setIsCollapsed 
+  } = useDashboardStore();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const { logout } = useAuth();
 
   const navLinks = [
     { label: 'Control Center', icon: LayoutDashboard, href: '/dashboard/student' },
@@ -89,7 +81,7 @@ export function LeftSidebar() {
               <div className="absolute top-2 right-3 w-2 h-2 bg-och-defender rounded-full border-2 border-och-midnight" />
            </button>
            <button 
-            onClick={() => setIsCollapsed(true)}
+            onClick={() => setIsCollapsed?.(true)}
             className="p-3 rounded-2xl bg-white/5 border border-white/5 text-och-steel hover:text-white transition-all"
            >
              <ChevronLeft className="w-4 h-4" />
@@ -104,7 +96,7 @@ export function LeftSidebar() {
               <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-och-defender rounded-full" />
            </button>
            <button 
-            onClick={() => setIsCollapsed(false)}
+            onClick={() => setIsCollapsed?.(false)}
             className="p-3 rounded-2xl bg-white/5 border border-white/5 text-och-steel hover:text-white transition-all"
            >
              <ChevronRight className="w-4 h-4" />
@@ -173,37 +165,50 @@ export function LeftSidebar() {
       </AnimatePresence>
 
       {/* 4. USER PROFILE PREVIEW */}
-      <div className="p-4 mt-auto space-y-3">
-         <button
-          onClick={() => router.push('/dashboard/student/settings?tab=profile')}
-          className="w-full p-3 rounded-[2rem] bg-black/40 border border-och-steel/10 flex items-center gap-3 hover:border-och-gold/30 transition-all group"
-         >
-            <div className="w-10 h-10 rounded-full bg-och-gold/20 flex items-center justify-center border border-och-gold/30 shrink-0">
-               <span className="text-sm font-black text-och-gold uppercase">SB</span>
-            </div>
-            {!isCollapsed && (
-              <div className="min-w-0 text-left">
-                 <p className="text-[10px] font-black text-white truncate uppercase tracking-tighter">Student Builder</p>
-                 <p className="text-[8px] text-och-steel truncate">Professional Tier</p>
-              </div>
+      <div className="p-4 mt-auto space-y-2">
+         <div className="flex items-center gap-2">
+           <button 
+            onClick={() => router.push('/dashboard/student/settings?tab=profile')}
+            className={clsx(
+              "flex-1 p-3 rounded-[2rem] bg-black/40 border border-och-steel/10 flex items-center gap-3 hover:border-och-gold/30 transition-all group overflow-hidden",
+              isCollapsed && "justify-center px-0"
             )}
-         </button>
+           >
+              <div className="w-10 h-10 rounded-full bg-och-gold/20 flex items-center justify-center border border-och-gold/30 shrink-0">
+                 <span className="text-sm font-black text-och-gold uppercase">
+                   {user?.first_name?.[0] || 'S'}{user?.last_name?.[0] || 'B'}
+                 </span>
+              </div>
+              {!isCollapsed && (
+                <div className="min-w-0 text-left">
+                   <p className="text-[10px] font-black text-white truncate uppercase tracking-tighter">
+                     {user?.first_name} {user?.last_name}
+                   </p>
+                   <p className="text-[8px] text-och-steel truncate">Professional Tier</p>
+                </div>
+              )}
+           </button>
 
-         {/* Logout Button */}
-         <button
-          onClick={logout}
-          className="w-full p-3 rounded-[2rem] bg-och-defender/10 border border-och-defender/20 flex items-center gap-3 hover:border-och-defender/40 hover:bg-och-defender/20 transition-all group"
-         >
-            <div className="w-10 h-10 rounded-full bg-och-defender/20 flex items-center justify-center border border-och-defender/30 shrink-0">
-               <LogOut className="w-4 h-4 text-och-defender" />
-            </div>
-            {!isCollapsed && (
-              <div className="min-w-0 text-left">
-                 <p className="text-[10px] font-black text-white truncate uppercase tracking-tighter">Logout</p>
-                 <p className="text-[8px] text-och-steel truncate">Sign out of your account</p>
-              </div>
-            )}
-         </button>
+           {!isCollapsed && (
+             <button 
+               onClick={() => logout()}
+               className="p-3 rounded-2xl bg-och-defender/5 border border-och-defender/20 text-och-defender hover:bg-och-defender hover:text-black transition-all group"
+               title="Sign Out"
+             >
+               <LogOut className="w-4 h-4" />
+             </button>
+           )}
+         </div>
+
+         {isCollapsed && (
+           <button 
+             onClick={() => logout()}
+             className="w-full p-3 rounded-2xl bg-och-defender/5 border border-och-defender/20 text-och-defender hover:bg-och-defender hover:text-black transition-all flex justify-center"
+             title="Sign Out"
+           >
+             <LogOut className="w-4 h-4" />
+           </button>
+         )}
       </div>
     </div>
   );

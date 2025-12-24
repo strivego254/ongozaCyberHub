@@ -11,9 +11,9 @@ import { PortfolioDashboard } from '@/components/ui/portfolio/PortfolioDashboard
 
 export default function PortfolioPage() {
   return (
-    <div className="min-h-screen">
-      <PortfolioDashboard />
-    </div>
+      <div className="min-h-screen">
+        <PortfolioDashboard />
+      </div>
   )
 }
 
