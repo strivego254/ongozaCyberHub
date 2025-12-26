@@ -23,7 +23,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   // Coordinated data fetching for sidebar and other components
   const { isLoading } = useDashboardCoordination();
-  const { isSidebarCollapsed } = useDashboardStore();
+  const { isSidebarCollapsed = false } = useDashboardStore();
 
   return (
     <div className="min-h-screen bg-och-midnight flex flex-col lg:flex-row overflow-hidden text-slate-200">
