@@ -47,7 +47,7 @@ export function getCompletenessBreakdown(settings: UserSettings, hasPortfolioIte
     { field: 'linkedinLinked', label: 'LinkedIn Sync', completed: !!settings.linkedinLinked, weight: 15 },
     { field: 'bioCompleted', label: 'Operative Dossier', completed: !!settings.bioCompleted, weight: 15 },
     { field: 'timezoneSet', label: 'Chronos Sync', completed: !!settings.timezoneSet, weight: 5 },
-    { field: 'portfolioVisibility', label: 'Market Visibility', completed: !!settings.portfolioVisibility, weight: 10 },
+    { field: 'portfolioVisibility', label: 'Portfolio Visibility', completed: !!settings.portfolioVisibility, weight: 10 },
     { field: 'hasPortfolioItems', label: 'Evidence Uploads', completed: hasPortfolioItems, weight: 10 },
   ];
 }
@@ -76,7 +76,7 @@ export function MissingFieldsNudges({ settings, hasPortfolioItems, onUpdate }: M
             </div>
             <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2 italic">Node Fully Synchronized</h3>
             <p className="text-och-steel text-[10px] font-black uppercase tracking-widest leading-relaxed">
-              Your profile integrity is optimized for marketplace engagement
+              Your profile integrity is optimized for mission engagement
             </p>
           </div>
         </Card>
@@ -114,7 +114,7 @@ export function MissingFieldsNudges({ settings, hasPortfolioItems, onUpdate }: M
                 Integrity Alerts
               </h3>
               <p className="text-[10px] text-och-steel font-black uppercase tracking-widest mt-1">
-                Complete synchronization to unlock marketplace engagement
+                Complete synchronization to unlock full system capabilities
               </p>
             </div>
           </div>

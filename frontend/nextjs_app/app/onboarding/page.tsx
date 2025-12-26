@@ -38,19 +38,19 @@ export default function OnboardingPage() {
           {step === 1 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold mb-4 text-white">Profiler Onboarding</h2>
+                <h2 className="text-2xl font-bold mb-4 text-white">Getting Started</h2>
                 <p className="text-och-steel mb-6">
-                  Let's get to know you better. This will help us personalize your learning experience
-                  and match you with the right mentors.
+                  Let's set up your profile. This will help us personalize your learning experience
+                  and match you with the right opportunities.
                 </p>
               </div>
               <div className="space-y-4">
                 <div className="p-4 bg-och-midnight/50 rounded-lg">
                   <h3 className="font-semibold text-white mb-2">What we'll ask:</h3>
                   <ul className="list-disc list-inside space-y-1 text-och-steel text-sm">
-                    <li>Your learning preferences and style</li>
-                    <li>Career goals and aspirations</li>
-                    <li>Your current cyber exposure level</li>
+                    <li>Your learning goals</li>
+                    <li>Career aspirations</li>
+                    <li>Current experience level</li>
                     <li>Basic profile information</li>
                   </ul>
                 </div>

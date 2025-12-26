@@ -82,7 +82,7 @@ const TIER_FEATURES: TierFeature[] = [
     premium: 'Full mentorship (group sessions, recordings, mission reviews, pass/fail grades)'
   },
   {
-    feature: 'Marketplace',
+    feature: 'Talent Discovery',
     free: 'No access',
     starterEnhanced: 'Access prevented',
     starterNormal: 'No employer contact',
@@ -304,7 +304,7 @@ export default function PlansManagementClient() {
                   </ul>
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold mb-2">Analytics & Marketplace</h3>
+                  <h3 className="text-white font-semibold mb-2">Analytics & Talent</h3>
                   <ul className="space-y-1 text-sm text-och-steel">
                     <li>• Full TalentScope analytics</li>
                     <li>• Readiness breakdown</li>
@@ -313,8 +313,8 @@ export default function PlansManagementClient() {
                     <li>• Career Readiness Report</li>
                     <li>• Job fit score</li>
                     <li>• Hiring timeline prediction</li>
-                    <li>• Marketplace contact enabled</li>
-                    <li>• Full visibility in Marketplace</li>
+                    <li>• Talent contact enabled</li>
+                    <li>• Full visibility in Talent Search</li>
                   </ul>
                 </div>
               </div>
@@ -431,7 +431,7 @@ export default function PlansManagementClient() {
                       <span className="text-white ml-2 capitalize">{plan.talentscope_access}</span>
                     </div>
                     <div>
-                      <span className="text-och-steel">Marketplace:</span>
+                      <span className="text-och-steel">Talent Search:</span>
                       <span className="text-white ml-2">{plan.marketplace_contact ? 'Enabled' : 'Disabled'}</span>
                     </div>
                     {plan.ai_coach_daily_limit !== null && (
@@ -596,7 +596,7 @@ function PlanDetailModal({
                   <span className="text-white capitalize">{plan.talentscope_access}</span>
                 </div>
                 <div className="flex justify-between p-2 bg-och-midnight/50 rounded">
-                  <span className="text-och-steel">Marketplace Contact:</span>
+                  <span className="text-och-steel">Talent Contact:</span>
                   <Badge variant={plan.marketplace_contact ? 'mint' : 'steel'}>
                     {plan.marketplace_contact ? 'Enabled' : 'Disabled'}
                   </Badge>
@@ -834,7 +834,7 @@ function PlanEditModal({
                   onChange={(e) => setFormData({ ...formData, marketplace_contact: e.target.checked })}
                   className="w-4 h-4 text-och-defender bg-och-midnight border-och-steel/30 rounded"
                 />
-                <span className="text-white">Marketplace Contact</span>
+                <span className="text-white">Talent Contact</span>
               </label>
             </div>
 

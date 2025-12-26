@@ -78,7 +78,7 @@ const SYSTEM_ROLES: SystemRole[] = [
     name: 'mentee',
     displayName: 'Mentee (Student)',
     keyPermissions: [
-      'Complete profiler',
+      'Complete onboarding',
       'Access Coaching OS',
       'Work on missions',
       'Build portfolio',
@@ -93,12 +93,12 @@ const SYSTEM_ROLES: SystemRole[] = [
     name: 'employer',
     displayName: 'Employer',
     keyPermissions: [
-      'Browse talent marketplace',
+      'Browse talent',
       'Filter by skill/readiness',
       'Contact Professional-tier mentees',
       'Post assignments'
     ],
-    accessScope: 'Limited access via Marketplace entitlements and subscription visibility rules',
+    accessScope: 'Limited access via talent entitlements and subscription visibility rules',
     mfaRequired: false,
     sessionHours: 24
   },

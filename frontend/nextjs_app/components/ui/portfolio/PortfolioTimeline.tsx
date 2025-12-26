@@ -51,16 +51,12 @@ const eventIcons = {
   item_created: Rocket,
   item_approved: ShieldCheck,
   review_received: Zap,
-  marketplace_view: Eye,
-  contact_received: MessageSquare,
 };
 
 const eventColors = {
   item_created: 'text-och-defender bg-och-defender/10 border-och-defender/20',
   item_approved: 'text-och-mint bg-och-mint/10 border-och-mint/20',
   review_received: 'text-och-gold bg-och-gold/10 border-och-gold/20',
-  marketplace_view: 'text-och-mint bg-och-mint/10 border-och-mint/20',
-  contact_received: 'text-och-gold bg-och-gold/10 border-och-gold/20',
 };
 
 export function PortfolioTimeline({ data, maxItems = 10 }: PortfolioTimelineProps) {

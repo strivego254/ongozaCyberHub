@@ -44,7 +44,6 @@ import { PortfolioItemForm } from './PortfolioItemForm';
 import { PortfolioHealthCard } from './PortfolioHealthCard';
 import { PortfolioSkillsRadar } from './PortfolioSkillsRadar';
 import { PortfolioTimeline } from './PortfolioTimeline';
-import { EmployerPreviewFAB } from './EmployerPreviewFAB';
 import { PortfolioDashboardSkeleton } from './PortfolioSkeleton';
 import { ErrorDisplay } from './ErrorDisplay';
 import { usePortfolioTimeline } from '@/hooks/usePortfolioTimeline';
@@ -71,8 +70,6 @@ export function PortfolioDashboard() {
     isLoading,
     error,
     refetch,
-    toggleVisibility,
-    isTogglingVisibility,
   } = usePortfolio(userId);
 
   const { settings, entitlements } = useSettingsMaster(userId);
@@ -92,7 +89,6 @@ export function PortfolioDashboard() {
   const [typeFilter, setTypeFilter] = useState<PortfolioItemType | 'all'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isPublic, setIsPublic] = useState(settings?.is_public ?? true);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   // Check for 'new=true' in URL
@@ -104,13 +100,6 @@ export function PortfolioDashboard() {
       window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
     }
   }, [searchParams]);
-
-  // Toggle visibility
-  const handleToggleVisibility = () => {
-    const nextValue = !isPublic;
-    setIsPublic(nextValue);
-    toggleVisibility(nextValue);
-  };
 
   // Filter items
   const filteredItems = items.filter((item) => {
@@ -198,7 +187,7 @@ export function PortfolioDashboard() {
                   <Badge variant="gold" className="text-[8px] px-2 py-0.5 font-black tracking-widest uppercase">Public Identity</Badge>
                   <div className="flex-1 h-px bg-och-gold/20" />
                 </div>
-                <h4 className="text-sm font-black text-white mb-2 uppercase tracking-tight">Marketplace Profile</h4>
+                <h4 className="text-sm font-black text-white mb-2 uppercase tracking-tight">Public Profile</h4>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-och-midnight/80 border border-och-steel/10 mb-4">
                   <div className="w-8 h-8 rounded-full bg-och-gold/20 flex items-center justify-center">
                     <User className="w-4 h-4 text-och-gold" />
@@ -292,7 +281,7 @@ export function PortfolioDashboard() {
                   </button>
                 </div>
 
-                {/* PEER PORTFOLIOS & VISIBILITY */}
+                {/* PEER PORTFOLIOS */}
                 <div className="flex gap-2">
                   <Button 
                     variant="outline" 
@@ -302,21 +291,6 @@ export function PortfolioDashboard() {
                     <Users className="w-4 h-4 mr-2" />
                     Peer Portfolios
                   </Button>
-
-                  <button
-                    onClick={handleToggleVisibility}
-                    className={clsx(
-                      "h-[46px] px-6 rounded-2xl border transition-all flex items-center gap-2 group",
-                      isPublic 
-                        ? "bg-och-mint/10 border-och-mint/30 text-och-mint hover:bg-och-mint hover:text-black" 
-                        : "bg-och-steel/5 border-och-steel/20 text-och-steel hover:border-white"
-                    )}
-                  >
-                    {isPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    <span className="text-[10px] font-black uppercase tracking-widest">
-                      {isPublic ? 'Visible to Marketplace' : 'Anonymous Mode'}
-                    </span>
-                  </button>
                 </div>
 
                 <Button 
@@ -395,7 +369,7 @@ export function PortfolioDashboard() {
               <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-och-gold/20 to-och-defender/10 border border-och-gold/30 flex flex-col md:flex-row items-center justify-between gap-6">
                  <div>
                    <h4 className="text-lg font-black text-white uppercase tracking-tight mb-2">Expansion Required</h4>
-                   <p className="text-xs text-slate-300 font-medium italic">"Starter tier handles 5 items. Professional tier unlocks unlimited repository depth for full marketplace visibility."</p>
+                   <p className="text-xs text-slate-300 font-medium italic">"Starter tier handles 5 items. Professional tier unlocks unlimited repository depth."</p>
                  </div>
                  <Button 
                    variant="defender" 
@@ -411,7 +385,6 @@ export function PortfolioDashboard() {
       </div>
 
       {/* 4. IMMERSIVE OVERLAYS */}
-      <EmployerPreviewFAB />
 
       <AnimatePresence>
         {isFormOpen && (

@@ -48,12 +48,6 @@ export function NotificationControlPanel({ settings, onUpdate }: NotificationCon
       label: 'Mentor',
       description: 'Feedback, session requests, and messages',
     },
-    {
-      key: 'marketplace' as const,
-      icon: Briefcase,
-      label: 'Marketplace',
-      description: 'Profile views, opportunities, and messages',
-    },
   ];
 
   return (
@@ -64,7 +58,7 @@ export function NotificationControlPanel({ settings, onUpdate }: NotificationCon
           <div>
             <h2 className="text-2xl font-bold text-slate-100">Notifications</h2>
             <p className="text-xs text-slate-500 mt-1">
-              Stay updated on missions, coaching, and marketplace opportunities
+              Stay updated on missions, coaching, and system updates
             </p>
           </div>
         </div>
@@ -145,7 +139,6 @@ export function NotificationControlPanel({ settings, onUpdate }: NotificationCon
                   {category.key === 'missions' && 'Affects mission deadline reminders and unlock notifications'}
                   {category.key === 'coaching' && 'Affects habit streak warnings and reflection prompts'}
                   {category.key === 'mentor' && 'Affects mentor feedback and session requests'}
-                  {category.key === 'marketplace' && 'Affects profile views and employer contact notifications'}
                 </div>
               </div>
                   </div>

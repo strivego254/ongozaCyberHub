@@ -10,7 +10,7 @@ import type { PortfolioItem } from './usePortfolio';
 // Timeline event type definition
 export interface TimelineEvent {
   id: string;
-  type: 'item_created' | 'item_approved' | 'marketplace_view' | 'review_received';
+  type: 'item_created' | 'item_approved' | 'review_received';
   title: string;
   description: string;
   portfolioItemId: string;
@@ -52,20 +52,6 @@ export function usePortfolioTimeline({ items = [], isLoading = false }: UsePortf
           description: item.title || 'Untitled item',
             portfolioItemId: item.id,
           createdAt: item.updated_at,
-          });
-        }
-
-      // Marketplace view events (if marketplace_views property exists)
-      const views = (item as any).marketplace_views || 0;
-      if (views > 0 && views % 10 === 0) {
-          events.push({
-          id: `${item.id}-view-${views}`,
-            type: 'marketplace_view',
-            title: 'Marketplace milestone',
-          description: `${item.title || 'Item'} reached ${views} views`,
-            portfolioItemId: item.id,
-          createdAt: item.updated_at || item.created_at || new Date().toISOString(),
-          metadata: { views },
           });
         }
       });

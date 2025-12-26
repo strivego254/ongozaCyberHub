@@ -84,7 +84,7 @@ export function IntegrationHub({ settings, updateSettings, userId }: Integration
       id: 'linkedin',
       name: 'LinkedIn',
       icon: Link2,
-      description: 'Connect profile for completeness',
+      description: 'Connect profile for synchronization',
       status: settings.integrations?.linkedin || 'disconnected',
       connectUrl: '/api/auth/linkedin',
       color: 'blue',

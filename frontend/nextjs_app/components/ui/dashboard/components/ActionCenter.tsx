@@ -33,10 +33,10 @@ export function ActionCenter({ nudge }: { nudge: any }) {
 
         <div>
           <h2 className="text-3xl font-black text-white uppercase tracking-tight leading-tight mb-2 max-w-xl">
-            {nudge?.title || "Establish Your 'Future-You' Persona"}
+            {nudge?.title || "Complete Your Onboarding"}
           </h2>
           <p className="text-sm text-slate-300 font-medium italic max-w-lg leading-relaxed">
-            "{nudge?.content || "Before diving into technical operations, you must complete the Tier 0 Profiler to define your identity archetype and personalized learning blueprint."}"
+            "{nudge?.content || "Before diving into technical operations, you must complete your profile to define your personalized learning blueprint."}"
           </p>
         </div>
 

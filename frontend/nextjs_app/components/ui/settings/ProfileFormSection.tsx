@@ -185,7 +185,7 @@ export function ProfileFormSection({ settings, updateSettings }: ProfileFormSect
           <div className="space-y-3">
             <label className="text-[10px] font-black text-och-steel uppercase tracking-widest flex items-center gap-2">
               <Linkedin className="w-3 h-3 text-och-gold" />
-              Marketplace Verification (LinkedIn)
+              Professional Verification (LinkedIn)
             </label>
             <div className="flex items-center gap-4">
               <input
@@ -209,7 +209,7 @@ export function ProfileFormSection({ settings, updateSettings }: ProfileFormSect
             <div>
               <h4 className="text-xs font-black text-white uppercase tracking-tight mb-1">Synchronization Impact</h4>
               <p className="text-[10px] text-och-steel leading-relaxed italic">
-                "Complete identity parameters boost marketplace visibility ranking by 24% and improve AI Coach personalization fidelity."
+                "Complete identity parameters boost profile integrity and improve AI Coach personalization fidelity."
               </p>
             </div>
           </div>

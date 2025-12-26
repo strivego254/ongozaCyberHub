@@ -230,17 +230,6 @@ export function usePortfolio(userId?: string) {
     },
   });
 
-  // Toggle Marketplace Visibility
-  const toggleVisibilityMutation = useMutation({
-    mutationFn: async (isPublic: boolean) => {
-      // TODO: Replace with real API endpoint
-      return await apiGateway.patch(`/student/dashboard/portfolio/settings/visibility`, { is_public: isPublic });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portfolio-settings', userId] });
-    },
-  });
-
   // Sync state with query data
   useEffect(() => {
     if (portfolioItems) {
@@ -298,8 +287,6 @@ export function usePortfolio(userId?: string) {
     updateItem: (itemId: string, input: UpdatePortfolioItemInput) =>
       updateMutation.mutate({ itemId, input }),
     deleteItem: deleteMutation.mutate,
-    toggleVisibility: toggleVisibilityMutation.mutate,
-    isTogglingVisibility: toggleVisibilityMutation.isPending,
     refetch: () => {
       refetchItems();
       refetchMetrics();

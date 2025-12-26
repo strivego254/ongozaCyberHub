@@ -253,7 +253,7 @@ export function UserManagementModal({ user, onClose, onUpdate }: UserManagementM
               Close
             </Button>
             <Button variant="orange" className="flex-1">
-              Reset Profiler
+              Reset Onboarding
             </Button>
             <Button variant="orange" className="flex-1">
               Hard Delete

@@ -62,14 +62,13 @@ export function PortfolioItemForm({ itemId, onClose, initialData }: PortfolioIte
     { value: 'github', label: 'GitHub', icon: '💻' },
     { value: 'thm', label: 'TryHackMe', icon: '🔐' },
     { value: 'external', label: 'External', icon: '🌐' },
-    { value: 'marketplace', label: 'Marketplace', icon: '🏪' },
+    { value: 'other', label: 'Other', icon: '📁' },
   ];
 
   // Visibility options (coordinated with Settings)
   const visibilityOptions: { value: PortfolioVisibility; label: string; description: string }[] = [
     { value: 'private', label: 'Private', description: 'Only visible to you' },
     { value: 'unlisted', label: 'Unlisted', description: 'Accessible via direct link' },
-    { value: 'marketplace_preview', label: 'Marketplace Preview', description: 'Visible in employer preview' },
     { value: 'public', label: 'Public', description: 'Visible to everyone' },
   ];
 

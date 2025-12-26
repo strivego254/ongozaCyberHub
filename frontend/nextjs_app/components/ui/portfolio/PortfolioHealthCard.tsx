@@ -26,10 +26,10 @@ interface PortfolioHealthCardProps {
   totalItems: number;
   approvedItems: number;
   pendingItems: number;
-  marketplaceRank: number;
+  globalRank: number;
   totalRank: number;
   topSkills: Array<{ skill: string; score: number; count: number }>;
-  marketplaceViews: number;
+  profileViews: number;
 }
 
 export function PortfolioHealthCard({ 
@@ -37,10 +37,10 @@ export function PortfolioHealthCard({
   totalItems, 
   approvedItems,
   pendingItems,
-  marketplaceRank,
+  globalRank,
   totalRank,
   topSkills,
-  marketplaceViews,
+  profileViews,
 }: PortfolioHealthCardProps) {
   const displaySkills = topSkills.slice(0, 3);
 
@@ -85,7 +85,7 @@ export function PortfolioHealthCard({
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-och-defender" />
-                MARKETPLACE RANK: #{marketplaceRank}/{totalRank}
+                GLOBAL RANK: #{globalRank}/{totalRank}
               </div>
             </div>
           </div>
@@ -97,8 +97,8 @@ export function PortfolioHealthCard({
              </div>
              <div className="h-10 w-px bg-white/10" />
              <div className="text-center">
-                <p className="text-[9px] text-och-steel font-black uppercase tracking-widest mb-1">Global Views</p>
-                <p className="text-3xl font-black text-white leading-none">{marketplaceViews}</p>
+                <p className="text-[9px] text-och-steel font-black uppercase tracking-widest mb-1">Profile Views</p>
+                <p className="text-3xl font-black text-white leading-none">{profileViews}</p>
              </div>
           </div>
         </div>

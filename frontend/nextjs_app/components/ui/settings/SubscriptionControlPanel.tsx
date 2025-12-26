@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/Badge';
 export interface UserEntitlements {
   tier: 'free' | 'starter' | 'professional';
   subscriptionStatus: 'active' | 'inactive' | 'trial';
-  marketplaceFullAccess?: boolean;
   aiCoachFullAccess?: boolean;
   mentorAccess?: boolean;
   portfolioExportEnabled?: boolean;
@@ -41,12 +40,6 @@ export function checkFeatureAccess(
   feature: string
 ): { enabled: boolean; reason: string } {
   const tier = entitlements.tier;
-
-  if (feature === 'marketplace_full') {
-    return tier === 'professional' 
-      ? { enabled: true, reason: 'Included in Professional' }
-      : { enabled: false, reason: 'Requires Professional' };
-  }
 
   if (feature === 'ai_coach_full') {
     return tier === 'professional'
@@ -78,7 +71,7 @@ export function getUpgradeRecommendations(entitlements: UserEntitlements, settin
   const recs: string[] = [];
   if (entitlements.tier === 'free') {
     recs.push('Upgrade to Starter to unlock Mentor Reviews');
-    recs.push('Upgrade to Professional for full Marketplace visibility');
+    recs.push('Upgrade to Professional for Unlimited AI Coaching');
   } else if (entitlements.tier === 'starter') {
     recs.push('Upgrade to Professional for Unlimited AI Coaching');
   }
@@ -117,7 +110,6 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
   const [showUsageAnalytics, setShowUsageAnalytics] = useState(false);
 
   const recommendations = getUpgradeRecommendations(entitlements, settings);
-  const marketplaceAccess = checkFeatureAccess(entitlements, settings, 'marketplace_full');
   const aiCoachAccess = checkFeatureAccess(entitlements, settings, 'ai_coach_full');
   const mentorAccess = checkFeatureAccess(entitlements, settings, 'mentor_access');
   const portfolioExport = checkFeatureAccess(entitlements, settings, 'portfolio_export');
@@ -139,7 +131,6 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
     aiCoachMessages: { used: 245, limit: entitlements.tier === 'professional' ? -1 : entitlements.tier === 'starter' ? 600 : 150 },
     mentorSessions: { used: 3, limit: entitlements.mentorAccess ? -1 : 0 },
     portfolioExports: { used: 2, limit: entitlements.portfolioExportEnabled ? -1 : 0 },
-    marketplaceViews: { used: 47, limit: entitlements.marketplaceFullAccess ? -1 : 0 },
   };
 
   const tiers = [
@@ -153,7 +144,6 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
         { name: 'Community access', included: true },
         { name: 'Mentor reviews', included: false },
         { name: 'Portfolio export', included: false },
-        { name: 'Marketplace contact', included: false },
         { name: 'Unlimited AI Coach', included: false },
         { name: 'Priority support', included: false },
       ],
@@ -168,7 +158,6 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
         { name: 'Mentor access', included: true },
         { name: 'Portfolio export', included: true },
         { name: 'Enhanced AI Coach (20 messages/day)', included: true },
-        { name: 'Marketplace contact', included: false },
         { name: 'Unlimited AI Coach', included: false },
         { name: 'Priority support', included: false },
       ],
@@ -180,7 +169,6 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
       priceLabel: 'per month',
       features: [
         { name: 'Everything in Starter', included: true },
-        { name: 'Full marketplace access', included: true },
         { name: 'Unlimited AI Coach', included: true },
         { name: 'Priority support', included: true },
         { name: 'Advanced analytics', included: true },
@@ -239,20 +227,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
           {/* Feature Access Grid */}
           <div className="mb-6">
             <h3 className="text-sm font-semibold text-slate-300 mb-3">Unlocked Features</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className={`flex items-center justify-between p-3 rounded-lg border ${
-                marketplaceAccess.enabled ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-800/50 border-slate-700'
-              }`}>
-                <div>
-                  <div className="text-sm font-medium text-slate-200">Marketplace Full Access</div>
-                  <div className="text-xs text-slate-500">{marketplaceAccess.reason}</div>
-                </div>
-                {marketplaceAccess.enabled ? (
-                  <Check className="w-5 h-5 text-emerald-400" />
-                ) : (
-                  <X className="w-5 h-5 text-slate-600" />
-                )}
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className={`flex items-center justify-between p-3 rounded-lg border ${
                 aiCoachAccess.enabled ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-800/50 border-slate-700'
               }`}>
@@ -331,7 +306,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
             >
               <h3 className="text-lg font-bold text-slate-100 mb-2">Upgrade to Professional</h3>
               <p className="text-sm text-slate-400 mb-4">
-                Unlock full marketplace access, unlimited AI Coach, and priority support
+                Unlock unlimited AI Coach and priority support
               </p>
               <div className="flex gap-3">
                 <Button
@@ -725,24 +700,6 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
                         />
                       </div>
                     )}
-                  </div>
-                )}
-
-                {/* Marketplace Views */}
-                {entitlements.marketplaceFullAccess && (
-                  <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium text-slate-200">Marketplace Profile Views</div>
-                      <div className="text-xs text-slate-400">
-                        {usageStats.marketplaceViews.limit === -1
-                          ? 'Unlimited'
-                          : `${usageStats.marketplaceViews.used} / ${usageStats.marketplaceViews.limit}`}
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
-                      <TrendingUp className="w-3 h-3" />
-                      <span>+12% from last month</span>
-                    </div>
                   </div>
                 )}
 

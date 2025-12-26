@@ -19,7 +19,7 @@ export interface UserSettings {
   linkedinLinked?: boolean;
   bioCompleted?: boolean;
   timezoneSet?: string;
-  portfolioVisibility?: string;
+  portfolioVisibility?: 'private' | 'unlisted' | 'public';
   [key: string]: any;
 }
 
@@ -90,7 +90,7 @@ export function ProfileControlPanel({
           <div>
             <h2 className="text-2xl font-bold text-slate-100">Profile Completeness</h2>
             <p className="text-xs text-slate-500 mt-1">
-              Complete your profile to unlock marketplace access and showcase your skills to employers
+              Complete your profile to optimize your experience and showcase your skills
             </p>
           </div>
         </div>
@@ -112,7 +112,7 @@ export function ProfileControlPanel({
           />
           {settings.profileCompleteness < 80 && (
             <p className="text-xs text-amber-400 mt-2">
-              {80 - settings.profileCompleteness}% more needed for marketplace access
+              {80 - settings.profileCompleteness}% more needed for profile optimization
             </p>
           )}
         </div>
@@ -158,7 +158,7 @@ export function ProfileControlPanel({
                       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                       onUpdate({ timezoneSet: timezone });
                     } else if (item.field === 'portfolioVisibility') {
-                      onUpdate({ portfolioVisibility: 'marketplace_preview' });
+                      onUpdate({ portfolioVisibility: 'public' });
                     }
                   }}
                 >
@@ -176,7 +176,6 @@ export function ProfileControlPanel({
             How this affects your platform experience
           </h3>
           <ul className="text-xs text-slate-400 space-y-1.5">
-            <li>• <strong className="text-slate-300">Marketplace:</strong> {settings.profileCompleteness >= 80 ? 'Your profile is visible to employers' : 'Complete 80% to unlock marketplace visibility'}</li>
             <li>• <strong className="text-slate-300">AI Coach:</strong> More complete profiles receive better personalized recommendations</li>
             <li>• <strong className="text-slate-300">TalentScope:</strong> Profile data syncs to improve readiness scoring</li>
           </ul>

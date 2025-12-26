@@ -13,10 +13,10 @@ const mockKPIs = [
 ]
 
 const mockActions = [
-  { label: 'Browse Marketplace', href: '/dashboard/marketplace', icon: '🔍' },
-  { label: 'Filter Talent', href: '/dashboard/marketplace/talent', icon: '👥' },
-  { label: 'Post Role', href: '/dashboard/marketplace/roles', icon: '📝' },
-  { label: 'My Contacts', href: '/dashboard/marketplace/contacts', icon: '💼' },
+  { label: 'Browse Talent', href: '/dashboard/employer/talent', icon: '🔍' },
+  { label: 'Filter Talent', href: '/dashboard/employer/talent/filter', icon: '👥' },
+  { label: 'Post Role', href: '/dashboard/employer/roles', icon: '📝' },
+  { label: 'My Contacts', href: '/dashboard/employer/contacts', icon: '💼' },
 ]
 
 const mockTalent = [
@@ -87,7 +87,7 @@ export default function EmployerClient() {
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-och-steel">Readiness: {talent.readiness}</span>
                     {talent.tier === 'Professional' && (
-                      <Link href={`/dashboard/marketplace/talent/${talent.name.toLowerCase().replace(' ', '-')}`}>
+                      <Link href={`/dashboard/employer/talent/${talent.name.toLowerCase().replace(' ', '-')}`}>
                         <Button variant="outline" className="text-xs h-6 px-2">
                           Contact
                         </Button>
@@ -98,7 +98,7 @@ export default function EmployerClient() {
               ))}
             </div>
             <div className="mt-4 pt-4 border-t border-och-defender/20">
-              <Link href="/dashboard/marketplace/talent">
+              <Link href="/dashboard/employer/talent">
                 <Button variant="outline" className="w-full text-sm">
                   Browse All Talent →
                 </Button>
@@ -119,7 +119,7 @@ export default function EmployerClient() {
               ))}
             </div>
             <div className="mt-4 pt-4 border-t border-och-defender/20">
-              <Link href="/dashboard/marketplace/roles">
+              <Link href="/dashboard/employer/roles">
                 <Button variant="outline" className="w-full text-sm">
                   Manage Postings →
                 </Button>
@@ -165,8 +165,8 @@ export default function EmployerClient() {
         </div>
 
         <div className="mt-8 flex justify-end">
-          <Link href="/dashboard/marketplace">
-            <Button variant="gold">Explore Marketplace</Button>
+          <Link href="/dashboard/employer/talent">
+            <Button variant="gold">Explore Talent</Button>
           </Link>
         </div>
       </div>

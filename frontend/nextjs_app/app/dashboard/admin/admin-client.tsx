@@ -615,7 +615,7 @@ export default function AdminClient() {
                             <td className="p-3">
                               <div className="flex gap-2">
                                 <Button variant="outline" size="sm">
-                                  Reset Profiler
+                                  Reset Onboarding
                                 </Button>
                                 <Button variant="outline" size="sm">
                                   View Profile

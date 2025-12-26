@@ -39,19 +39,22 @@ export function SystemStatusRail() {
 
   useEffect(() => {
     if (settings && entitlements) {
-      // Check for marketplace eligibility changes
-      if (settings.profileCompleteness >= 80 && !entitlements.marketplaceFullAccess) {
+      // Check for profile optimization changes
+      if (settings.profileCompleteness >= 80) {
         const msg: StatusMessage = {
           id: Date.now().toString(),
           type: 'success',
-          message: 'Marketplace unlocked!',
-          impact: 'Profile 80%+ enables employer contact',
+          message: 'Profile Optimized!',
+          impact: 'Node integrity reaching peak performance',
           timestamp: new Date(),
         };
-        setMessages(prev => [msg, ...prev.slice(0, 2)]);
+        setMessages(prev => {
+          if (prev.some(m => m.message === 'Profile Optimized!')) return prev;
+          return [msg, ...prev.slice(0, 2)];
+        });
       }
     }
-  }, [settings?.profileCompleteness, entitlements?.marketplaceFullAccess]);
+  }, [settings?.profileCompleteness]);
 
   if (messages.length === 0) return null;
 

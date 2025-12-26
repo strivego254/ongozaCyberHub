@@ -9,9 +9,8 @@ import { useAuth } from './useAuth';
 
 // Type definitions
 export interface UserSettings {
-  portfolioVisibility?: 'private' | 'marketplace_preview' | 'public';
+  portfolioVisibility?: 'private' | 'public';
   profileCompleteness?: number;
-  marketplaceContactEnabled?: boolean;
   [key: string]: any;
 }
 
@@ -23,8 +22,7 @@ export interface UserEntitlements {
 }
 
 export interface SettingsUpdate {
-  portfolioVisibility?: 'private' | 'marketplace_preview' | 'public';
-  marketplaceContactEnabled?: boolean;
+  portfolioVisibility?: 'private' | 'public';
   [key: string]: any;
 }
 
@@ -80,9 +78,8 @@ const calculateProfileCompleteness = (
 ): number => {
   // Simple completeness calculation
   let completeness = 0;
-  if (settings.portfolioVisibility) completeness += 30;
-  if (hasPortfolioItems) completeness += 40;
-  if (settings.marketplaceContactEnabled) completeness += 30;
+  if (settings.portfolioVisibility) completeness += 50;
+  if (hasPortfolioItems) completeness += 50;
   return Math.min(100, completeness);
 };
 

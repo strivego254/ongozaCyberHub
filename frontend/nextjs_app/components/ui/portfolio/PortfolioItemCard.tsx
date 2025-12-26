@@ -55,7 +55,6 @@ function formatDistanceToNow(date: Date): string {
 interface PortfolioItemCardProps {
   item: PortfolioItem;
   showMentorControls?: boolean;
-  marketplaceView?: boolean;
   onEdit?: (item: PortfolioItem) => void;
   onDelete?: (itemId: string) => void;
   canRequestReview?: boolean;
@@ -64,7 +63,6 @@ interface PortfolioItemCardProps {
 export function PortfolioItemCard({
   item,
   showMentorControls = false,
-  marketplaceView = false,
   onEdit,
   onDelete,
   canRequestReview = false,
@@ -135,13 +133,6 @@ export function PortfolioItemCard({
                 {item.type.replace('_', ' ')}
               </Badge>
             </div>
-            
-            {item.marketplaceViews > 0 && (
-              <div className="flex items-center gap-1.5 text-och-mint font-black text-[9px] tracking-widest px-2 py-0.5 bg-och-mint/5 rounded-lg border border-och-mint/10">
-                <Eye className="w-3 h-3" />
-                {item.marketplaceViews} VIEWS
-              </div>
-            )}
           </div>
 
           {/* TITLE & SUMMARY */}

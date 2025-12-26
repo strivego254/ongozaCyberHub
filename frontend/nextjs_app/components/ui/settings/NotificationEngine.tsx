@@ -62,14 +62,6 @@ export function NotificationEngine({ settings, updateSettings }: NotificationEng
       impact: 'Affects mentor feedback and session requests',
       recommended: false,
     },
-    {
-      key: 'marketplace' as const,
-      icon: Briefcase,
-      label: 'Marketplace',
-      description: 'Profile views, opportunities, and messages',
-      impact: 'Affects profile views and employer contact notifications',
-      recommended: false,
-    },
   ];
 
   return (
@@ -85,7 +77,7 @@ export function NotificationEngine({ settings, updateSettings }: NotificationEng
             <div>
               <h2 className="text-2xl font-bold text-slate-100">Notifications</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Control alerts for missions, coaching, and marketplace opportunities
+                Control alerts for missions, coaching, and system updates
               </p>
             </div>
           </div>
@@ -347,7 +339,7 @@ export function NotificationEngine({ settings, updateSettings }: NotificationEng
                   </div>
                   <div className="p-3 bg-slate-800/50 rounded-lg">
                     <p className="text-xs text-slate-400">
-                      <strong className="text-slate-300">Digest includes:</strong> Mission updates, coaching insights, mentor feedback, marketplace activity, and system announcements.
+                      <strong className="text-slate-300">Digest includes:</strong> Mission updates, coaching insights, mentor feedback, and system announcements.
                     </p>
                   </div>
                 </motion.div>

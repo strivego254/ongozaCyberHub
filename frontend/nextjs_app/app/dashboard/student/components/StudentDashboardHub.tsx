@@ -170,7 +170,7 @@ export function StudentDashboardHub() {
                 </div>
              </div>
              <p className="text-[10px] text-slate-400 leading-relaxed italic">
-               "Your portfolio is currently in Anonymous Mode. Reach Readiness 750 to unlock Marketplace Visibility."
+               "Your portfolio is currently in Anonymous Mode. Reach Readiness 750 to unlock Talent Visibility."
              </p>
           </div>
         </aside>

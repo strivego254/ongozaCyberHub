@@ -33,15 +33,15 @@ export function useProfileCompleteness(userId?: string) {
     return getNextSteps(settings, hasPortfolioItems);
   }, [settings, hasPortfolioItems]);
 
-  const isMarketplaceReady = completeness >= 80;
-  const progressToMarketplace = Math.max(0, 80 - completeness);
+  const isTalentReady = completeness >= 80;
+  const progressToTalent = Math.max(0, 80 - completeness);
 
   return {
     completeness,
     breakdown,
     nextSteps,
-    isMarketplaceReady,
-    progressToMarketplace,
+    isTalentReady,
+    progressToTalent,
     completedCount: breakdown.filter((item) => item.completed).length,
     totalCount: breakdown.length,
   };

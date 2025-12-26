@@ -131,7 +131,7 @@ export function ProfileCompleteness({ settings, updateSettings, userId }: Profil
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-och-orange/5 border border-och-orange/20">
                   <AlertTriangle className="w-3 h-3 text-och-orange" />
                   <p className="text-[9px] text-och-orange font-bold uppercase tracking-wide italic">
-                    {80 - settings.profileCompleteness}% more needed for marketplace synchronization
+                    {80 - settings.profileCompleteness}% more needed for profile optimization
                   </p>
                 </div>
               )}

@@ -7,7 +7,6 @@
 
 import { useState } from 'react';
 import { RouteGuard } from '@/components/auth/RouteGuard';
-import { ProfilerSummary } from './components/ProfilerSummary';
 import { CurriculumHierarchy } from './components/CurriculumHierarchy';
 import { AICoachWidget } from './components/AICoachWidget';
 import { TalentScopePreview } from './components/TalentScopePreview';
@@ -84,14 +83,8 @@ export default function CurriculumPage() {
               <LayoutGrid className="w-4 h-4" />
               <span className="text-sm font-bold">Catalog</span>
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-och-defender text-white font-bold hover:bg-och-defender/80 transition-all shadow-lg shadow-och-defender/20">
-              <Sparkles className="w-4 h-4" />
-              <span className="text-sm">Persona Strategy</span>
-            </button>
           </div>
         </div>
-
-        <ProfilerSummary persona={MOCK_PERSONA} isComplete={true} />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-8 space-y-8">

@@ -21,15 +21,13 @@ export interface UserSettings {
   location?: string;
   track?: string;
   integrations?: Record<string, any>;
-  portfolioVisibility: 'private' | 'marketplace_preview' | 'public';
-  marketplaceContactEnabled: boolean;
+  portfolioVisibility: 'private' | 'public';
   dataSharingConsent: Record<string, boolean>;
   profileCompleteness: number;
   [key: string]: any;
 }
 
 export interface UserEntitlements {
-  marketplaceFullAccess?: boolean;
   [key: string]: any;
 }
 
@@ -78,7 +76,7 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
 
   const visibleItemsCount = items.filter(
     item => item.status === 'approved' && 
-    (settings.portfolioVisibility === 'marketplace_preview' || settings.portfolioVisibility === 'public')
+    (settings.portfolioVisibility === 'public')
   ).length;
 
   const visibilityOptions = [
@@ -90,14 +88,6 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
       color: 'slate',
     },
     {
-      value: 'marketplace_preview' as const,
-      icon: Eye,
-      label: 'Marketplace',
-      description: 'Employers • Profile 80%+',
-      color: 'indigo',
-      disabled: settings.profileCompleteness < 80,
-    },
-    {
       value: 'public' as const,
       icon: Globe,
       label: 'Public',
@@ -105,8 +95,6 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
       color: 'emerald',
     },
   ];
-
-  const canEnableContact = entitlements.marketplaceFullAccess && settings.profileCompleteness >= 80;
 
   const handleDataExport = async (format: 'json' | 'csv' | 'pdf') => {
     setIsExporting(true);
@@ -123,7 +111,6 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
         portfolio: items,
         settings: {
           visibility: settings.portfolioVisibility,
-          contactEnabled: settings.marketplaceContactEnabled,
           dataSharing: settings.dataSharingConsent,
         },
         exportedAt: new Date().toISOString(),
@@ -146,7 +133,6 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
           ['Location', settings.location || ''],
           ['Track', settings.track || ''],
           ['Portfolio Visibility', settings.portfolioVisibility],
-          ['Contact Enabled', settings.marketplaceContactEnabled ? 'Yes' : 'No'],
         ];
         const csv = csvRows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv' });
@@ -179,10 +165,10 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
           <div className="flex items-center gap-3 mb-6">
             <Shield className="w-9 h-9 text-indigo-400" />
             <div>
-              <h2 className="text-3xl font-bold text-slate-100">Privacy & Visibility</h2>
-              <p className="text-slate-400 text-lg mt-1">
-                Control what employers see in Marketplace and which portfolio items are shared
-              </p>
+            <h2 className="text-3xl font-bold text-slate-100">Privacy & Visibility</h2>
+            <p className="text-slate-400 text-lg mt-1">
+              Control which portfolio items are shared
+            </p>
             </div>
           </div>
 
@@ -197,42 +183,36 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
                   Impacts {visibleItemsCount} items
                 </Badge>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {visibilityOptions.map((option) => {
                   const Icon = option.icon;
                   const isSelected = settings.portfolioVisibility === option.value;
-                  const isDisabled = option.disabled || false;
+                  const isDisabled = false;
 
                   return (
                     <motion.button
                       key={option.value}
-                      whileHover={{ scale: isDisabled ? 1 : 1.02 }}
-                      whileTap={{ scale: isDisabled ? 1 : 0.98 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={async () => {
-                        if (!isDisabled) {
-                          // Update settings
-                          updateSettings({ portfolioVisibility: option.value });
-                          
-                          // Sync portfolio items visibility in realtime
-                          if (userId) {
-                            // TODO: Implement Django-based portfolio visibility sync
-                            console.log('Syncing portfolio visibility to:', option.value);
-                          }
+                        // Update settings
+                        updateSettings({ portfolioVisibility: option.value });
+                        
+                        // Sync portfolio items visibility in realtime
+                        if (userId) {
+                          // TODO: Implement Django-based portfolio visibility sync
+                          console.log('Syncing portfolio visibility to:', option.value);
                         }
                       }}
-                      disabled={isDisabled}
                       className={`h-20 p-4 rounded-lg border-2 text-left transition-all ${
                         isSelected
                           ? `border-${option.color}-500 bg-${option.color}-500/10`
                           : 'border-slate-700 hover:border-slate-600'
-                      } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      } cursor-pointer`}
                     >
                       <Icon className={`w-6 h-6 mb-2 ${isSelected ? `text-${option.color}-400` : 'text-slate-400'}`} />
                       <div className="font-medium text-slate-100">{option.label}</div>
                       <p className="text-xs text-slate-500 mt-1">{option.description}</p>
-                      {isDisabled && (
-                        <p className="text-xs text-amber-400 mt-1">Requires 80% profile</p>
-                      )}
                     </motion.button>
                   );
                 })}
@@ -240,53 +220,6 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
               <p className="text-xs text-slate-500 mt-3">
                 Changing visibility instantly syncs {visibleItemsCount} approved portfolio items to match this setting
               </p>
-            </div>
-
-            {/* MARKETPLACE CONTACT → EMPLOYER REACH */}
-            <div className="p-6 bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 border border-emerald-500/30 rounded-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-7 h-7 text-emerald-400" />
-                  <div>
-                    <h4 className="font-bold text-xl text-slate-100">Marketplace Contact</h4>
-                    <p className="text-emerald-300 text-sm">Allow employers to message you directly</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    if (canEnableContact) {
-                      updateSettings({ marketplaceContactEnabled: !settings.marketplaceContactEnabled });
-                    }
-                  }}
-                  disabled={!canEnableContact}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    settings.marketplaceContactEnabled && canEnableContact
-                      ? 'bg-emerald-500'
-                      : 'bg-slate-700'
-                  } ${!canEnableContact ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      settings.marketplaceContactEnabled && canEnableContact ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-              {!canEnableContact && (
-                <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-amber-300">
-                      Requires Professional tier + 80% profile completeness
-                    </p>
-                  </div>
-                </div>
-              )}
-              {canEnableContact && (
-                <p className="text-xs text-slate-400 mt-3">
-                  When enabled, employers viewing your marketplace profile can send you messages about opportunities
-                </p>
-              )}
             </div>
 
             {/* Data Sharing Consent - GDPR Compliant */}
@@ -347,14 +280,14 @@ export function PrivacyMasterSwitch({ settings, entitlements, updateSettings, us
                       </button>
                     </div>
 
-                    {/* Marketplace Data Sharing */}
+                    {/* Talent Data Sharing */}
                     <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                       <div className="flex items-center gap-3 flex-1">
                         <Briefcase className="w-5 h-5 text-indigo-400" />
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-slate-200">Marketplace Analytics</div>
+                          <div className="text-sm font-medium text-slate-200">Talent Analytics</div>
                           <div className="text-xs text-slate-500">
-                            Share profile view and engagement data to improve marketplace matching
+                            Share profile view and engagement data to improve discovery matching
                           </div>
                         </div>
                       </div>

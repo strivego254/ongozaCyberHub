@@ -138,7 +138,7 @@ export function ReviewWorkflow({ item }: ReviewWorkflowProps) {
               variant="mint"
               onClick={() => updateItem(item.id, { status: 'published' })}
             >
-              Publish to Marketplace
+              Publish to Profile
             </Button>
           )}
         </div>

@@ -162,7 +162,7 @@ export function MissionControlDashboard() {
                        <Badge variant="gold" className="text-[8px] font-black tracking-widest px-2 py-0.5 uppercase">Portfolio Health</Badge>
                        <ExternalLink className="w-4 h-4 text-och-gold opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <h4 className="text-sm font-black text-white mb-2 uppercase tracking-tight leading-none">Marketplace Identity</h4>
+                    <h4 className="text-sm font-black text-white mb-2 uppercase tracking-tight leading-none">Public Identity</h4>
                     <p className="text-[10px] text-och-steel font-medium italic mb-6">"Your profile is 84% ready for employer scouting."</p>
                     <div className="flex items-center gap-4">
                        <div className="flex -space-x-2">
