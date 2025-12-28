@@ -23,11 +23,13 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { CreateGoalDialog } from './CreateGoalDialog';
 import type { SmartGoal } from '@/hooks/useMentorship';
 import clsx from 'clsx';
 
-export function GoalsTracker({ goals }: { goals: SmartGoal[] }) {
+export function GoalsTracker({ goals, onGoalCreated }: { goals: SmartGoal[]; onGoalCreated?: () => void }) {
   const [filter, setFilter] = useState<'all' | 'technical' | 'behavioral' | 'career'>('all');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const filteredGoals = goals.filter(g => filter === 'all' || g.category === filter);
 
@@ -54,7 +56,12 @@ export function GoalsTracker({ goals }: { goals: SmartGoal[] }) {
                </button>
              ))}
            </div>
-           <Button variant="defender" size="sm" className="h-10 px-6 rounded-xl bg-och-gold text-black hover:bg-white font-black uppercase tracking-widest text-[9px]">
+           <Button 
+             variant="defender" 
+             size="sm" 
+             className="h-10 px-6 rounded-xl bg-och-gold text-black hover:bg-white font-black uppercase tracking-widest text-[9px]"
+             onClick={() => setShowCreateDialog(true)}
+           >
              <Plus className="w-4 h-4 mr-2" />
              New Goal
            </Button>
@@ -154,6 +161,15 @@ export function GoalsTracker({ goals }: { goals: SmartGoal[] }) {
             </div>
          </div>
       </Card>
+
+      {/* Create Goal Dialog */}
+      <CreateGoalDialog 
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSuccess={() => {
+          onGoalCreated?.();
+        }}
+      />
     </div>
   );
 }

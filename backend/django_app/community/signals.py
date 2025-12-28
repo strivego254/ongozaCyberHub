@@ -150,17 +150,28 @@ def auto_map_user_on_create(sender, instance, created, **kwargs):
     if not instance.email:
         return
     
-    # Check if user already has a primary university
-    has_primary = UniversityMembership.objects.filter(
-        user=instance,
-        is_primary=True
-    ).exists()
-    
-    if has_primary:
+    try:
+        # Check if user already has a primary university
+        has_primary = UniversityMembership.objects.filter(
+            user=instance,
+            is_primary=True
+        ).exists()
+        
+        if has_primary:
+            return
+        
+        # Try to auto-map
+        auto_map_user_to_university(instance)
+    except Exception as e:
+        # Handle case where community_university_memberships table doesn't exist yet
+        # This can happen if migrations haven't been run
+        # Import ProgrammingError to catch database errors specifically
+        from django.db.utils import ProgrammingError, OperationalError
+        if isinstance(e, (ProgrammingError, OperationalError)):
+            logger.debug(f"UniversityMembership table not available yet (migrations pending): {e}")
+        else:
+            logger.warning(f"Could not auto-map user to university: {e}")
         return
-    
-    # Try to auto-map
-    auto_map_user_to_university(instance)
 
 
 # ============================================================

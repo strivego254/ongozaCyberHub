@@ -50,18 +50,16 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
   const { data: recipesData } = useQuery<Recipe[]>({
     queryKey: ['recipes', recipeIds],
     queryFn: async () => {
-      // Mock data for recipe boosters
-      return recipeIds.map((id) => ({
-        id,
-        title: id.includes('log') ? 'Log Analysis Fundamentals' : 
-               id.includes('tri') ? 'Ransomware Triage Protocols' :
-               id.includes('win') ? 'Windows Event ID Mapping' : 
-               `Micro-Skill Booster: ${id}`,
-        description: 'Contextual tactical guide to help you overcome technical hurdles in this mission.',
-        duration: 12,
-        difficulty: 'beginner',
-        skill_gain: '+15 Threat Intel'
-      }))
+      // Fetch real recipes from API
+      try {
+        const response = await apiGateway.get('/missions/recipes', {
+          params: { recipe_ids: recipeIds.join(',') }
+        })
+        return Array.isArray(response) ? response : (response?.results || [])
+      } catch (error) {
+        console.debug('Recipes API not available:', error)
+        return []
+      }
     },
     enabled: recipeIds.length > 0,
   })

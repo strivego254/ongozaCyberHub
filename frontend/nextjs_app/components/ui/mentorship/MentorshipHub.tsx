@@ -164,7 +164,12 @@ export function MentorshipHub() {
               )}
               
               {activeTab === 'goals' && (
-                <GoalsTracker goals={goals} />
+                <GoalsTracker 
+                  goals={goals} 
+                  onGoalCreated={() => {
+                    refetchAll();
+                  }}
+                />
               )}
               
               {activeTab === 'chat' && (

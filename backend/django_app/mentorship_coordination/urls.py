@@ -9,6 +9,7 @@ from .views import (
     mentor_workqueue,
     mentee_cockpit,
     create_session,
+    request_session,
     review_mission,
     create_flag,
     mentor_flags,
@@ -39,6 +40,7 @@ urlpatterns = [
     path('mentor/workqueue', mentor_workqueue, name='workqueue'),
     path('mentor/mentees/<int:mentee_id>/cockpit', mentee_cockpit, name='mentee-cockpit'),
     path('mentor/sessions', create_session, name='create-session'),
+    path('mentorship/sessions/request', request_session, name='request-session'),
     path('mentors/sessions/<uuid:session_id>', update_group_session, name='update-group-session'),
     path('mentor/missions/<uuid:submission_id>/review', review_mission, name='review-mission'),
     # Keep old endpoint for backward compatibility

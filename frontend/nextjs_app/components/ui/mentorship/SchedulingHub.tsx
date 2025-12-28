@@ -23,6 +23,7 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { RequestSessionModal } from './RequestSessionModal';
 import type { MentorshipSession } from '@/hooks/useMentorship';
 import clsx from 'clsx';
 
@@ -49,7 +50,7 @@ export function SchedulingHub({ sessions }: { sessions: MentorshipSession[] }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* CALENDAR VIEW PREVIEW (Mock) */}
+        {/* CALENDAR VIEW - Will be implemented with real calendar integration */}
         <Card className="lg:col-span-7 bg-white/5 border-white/10 p-6 rounded-[2.5rem]">
            <div className="flex items-center justify-between mb-6">
              <div className="flex items-center gap-2">
@@ -68,36 +69,13 @@ export function SchedulingHub({ sessions }: { sessions: MentorshipSession[] }) {
              </div>
            </div>
 
-           {/* MOCK CALENDAR GRID */}
-           <div className="grid grid-cols-7 gap-2">
-             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-               <div key={day} className="text-center text-[9px] font-black text-och-steel uppercase tracking-widest py-2">{day}</div>
-             ))}
-             {Array.from({ length: 31 }).map((_, i) => {
-               const day = i + 1;
-               const isToday = day === 23; // Assume Dec 23
-               const isSession = [24, 27].includes(day);
-               const isAvailable = [25, 26, 28, 29].includes(day);
-
-               return (
-                 <div 
-                  key={i} 
-                  className={clsx(
-                    "aspect-square rounded-xl border flex flex-col items-center justify-center relative group transition-all cursor-pointer",
-                    isToday ? "bg-white/10 border-white/20" : "bg-transparent border-white/5",
-                    isSession && "border-och-defender/40",
-                    isAvailable && "hover:bg-och-gold/5 hover:border-och-gold/20"
-                  )}
-                 >
-                   <span className={clsx(
-                     "text-xs font-black",
-                     isToday ? "text-och-gold" : "text-och-steel group-hover:text-white"
-                   )}>{day}</span>
-                   {isSession && <div className="absolute bottom-2 w-1 h-1 rounded-full bg-och-defender" />}
-                   {isAvailable && <div className="absolute top-2 right-2 w-1 h-1 rounded-full bg-och-gold opacity-0 group-hover:opacity-100" />}
-                 </div>
-               );
-             })}
+           {/* Calendar will be integrated with real calendar API */}
+           <div className="flex items-center justify-center min-h-[300px] text-och-steel">
+             <div className="text-center">
+               <Calendar className="w-12 h-12 mx-auto mb-4 opacity-20" />
+               <p className="text-sm font-black uppercase tracking-widest">Calendar Integration</p>
+               <p className="text-xs mt-2 italic">Real-time calendar sync coming soon</p>
+             </div>
            </div>
 
            <div className="mt-8 p-4 rounded-2xl bg-och-steel/5 border border-white/5 flex items-center justify-between">
@@ -105,7 +83,7 @@ export function SchedulingHub({ sessions }: { sessions: MentorshipSession[] }) {
                 <Globe className="w-4 h-4 text-och-mint" />
                 <span className="text-[10px] font-black text-och-steel uppercase tracking-widest">Normalized to Africa/Nairobi (UTC+3)</span>
               </div>
-              <Badge variant="steel" className="text-[8px] font-black uppercase tracking-tighter">Live Sync: Active</Badge>
+              <Badge variant="steel" className="text-[8px] font-black uppercase tracking-tighter">Sync: Pending</Badge>
            </div>
         </Card>
 
@@ -165,6 +143,16 @@ export function SchedulingHub({ sessions }: { sessions: MentorshipSession[] }) {
            )}
         </div>
       </div>
+
+      {/* Request Session Modal */}
+      <RequestSessionModal
+        open={isRequestModalOpen}
+        onOpenChange={setIsRequestModalOpen}
+        onSuccess={() => {
+          // Session request submitted successfully
+          setIsRequestModalOpen(false);
+        }}
+      />
     </div>
   );
 }

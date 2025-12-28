@@ -12,14 +12,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name='habitlog',
-            name='habitlogs_user_id_77d382_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='habitlog',
-            name='habitlogs_habit_i_634629_idx',
-        ),
+        # Skip removing indices that may not exist - they were likely removed in previous migrations
+        # migrations.RemoveIndex(
+        #     model_name='habitlog',
+        #     name='habitlogs_user_id_77d382_idx',
+        # ),
+        # migrations.RemoveIndex(
+        #     model_name='habitlog',
+        #     name='habitlogs_habit_i_634629_idx',
+        # ),
         # Note: completed_at, target_date, and last_completed_at removals are handled conditionally in migration 0006
         # We skip removing them here to avoid conflicts
         migrations.RemoveField(
@@ -42,26 +43,28 @@ class Migration(migrations.Migration):
         #     field=models.CharField(choices=[('daily', 'Daily'), ('weekly', 'Weekly'), ('monthly', 'Monthly')], default=1, max_length=20),
         #     preserve_default=False,
         # ),
-        migrations.AddField(
-            model_name='habit',
-            name='frequency',
-            field=models.CharField(choices=[('daily', 'Daily'), ('weekly', 'Weekly')], default='daily', help_text='Daily or weekly frequency', max_length=20),
-        ),
-        migrations.AddField(
-            model_name='habit',
-            name='is_core',
-            field=models.BooleanField(default=False, help_text='Learn/Practice/Reflect = True'),
-        ),
-        migrations.AddField(
-            model_name='reflection',
-            name='ai_sentiment',
-            field=models.CharField(blank=True, choices=[('positive', 'Positive'), ('neutral', 'Neutral'), ('negative', 'Negative')], help_text='AI computed sentiment', max_length=20, null=True),
-        ),
-        migrations.AddField(
-            model_name='reflection',
-            name='ai_tags',
-            field=models.JSONField(blank=True, default=list, help_text='["overwhelmed", "confident"]'),
-        ),
+        # Skip adding fields that may already exist
+        # migrations.AddField(
+        #     model_name='habit',
+        #     name='frequency',
+        #     field=models.CharField(choices=[('daily', 'Daily'), ('weekly', 'Weekly')], default='daily', help_text='Daily or weekly frequency', max_length=20),
+        # ),
+        # migrations.AddField(
+        #     model_name='habit',
+        #     name='is_core',
+        #     field=models.BooleanField(default=False, help_text='Learn/Practice/Reflect = True'),
+        # ),
+        # Skip adding reflection fields that may already exist
+        # migrations.AddField(
+        #     model_name='reflection',
+        #     name='ai_sentiment',
+        #     field=models.CharField(blank=True, choices=[('positive', 'Positive'), ('neutral', 'Neutral'), ('negative', 'Negative')], help_text='AI computed sentiment', max_length=20, null=True),
+        # ),
+        # migrations.AddField(
+        #     model_name='reflection',
+        #     name='ai_tags',
+        #     field=models.JSONField(blank=True, default=list, help_text='["overwhelmed", "confident"]'),
+        # ),
         migrations.AlterField(
             model_name='goal',
             name='status',

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import SSOButtons from '@/components/SSOButtons';
 import { getRedirectRoute } from '@/utils/redirect';
+import { Eye, EyeOff } from 'lucide-react';
 import type { LoginRequest } from '@/services/types';
 
 const PERSONAS = {
@@ -52,6 +53,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
@@ -416,17 +418,31 @@ function LoginForm() {
                 Password
               </label>
 
+              <div className="relative">
                 <input
                   id="password"
-                type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                className="input-field px-4 py-3 text-base rounded-md bg-och-midnight border border-steel-grey focus:border-cyber-mint focus:ring-cyber-mint/30 transition-all"
+                  className="input-field px-4 py-3 pr-12 text-base rounded-md bg-och-midnight border border-steel-grey focus:border-cyber-mint focus:ring-cyber-mint/30 transition-all w-full"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-steel-grey hover:text-cyber-mint transition-colors focus:outline-none focus:ring-2 focus:ring-cyber-mint/30 rounded p-1"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* CTA */}

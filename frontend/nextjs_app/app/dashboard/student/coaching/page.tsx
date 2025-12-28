@@ -36,7 +36,7 @@ export default function CoachingPage() {
             goals_completed: 0,
             reflections_count: 0,
             weekly_completion_rate: 0,
-            alignmentScore: 78, // Fallback mock
+            alignmentScore: 0, // Will be fetched from real API
           })),
           habitsAPI.getAll().then(async (habs) => {
             const logs = await Promise.all(

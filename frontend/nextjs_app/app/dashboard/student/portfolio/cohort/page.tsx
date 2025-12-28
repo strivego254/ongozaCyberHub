@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, 
@@ -30,31 +30,43 @@ import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/hooks/useAuth';
 import clsx from 'clsx';
 
-// Mock Peer Data
-const MOCK_PEERS = [
-  { id: '1', name: 'Zahra Hassan', handle: 'zahrah', readiness: 88, health: 9.2, track: 'Defender', items: 14, status: 'job_ready', avatar: null },
-  { id: '2', name: 'Kwame Mensah', handle: 'kwamem', readiness: 76, health: 8.5, track: 'Offensive', items: 9, status: 'emerging', avatar: null },
-  { id: '3', name: 'Amara Okafor', handle: 'amarao', readiness: 92, health: 9.8, track: 'GRC', items: 22, status: 'job_ready', avatar: null },
-  { id: '4', name: 'Jabari King', handle: 'jabarik', readiness: 65, health: 7.2, track: 'Defender', items: 6, status: 'learner', avatar: null },
-  { id: '5', name: 'Elena Vance', handle: 'elenav', readiness: 81, health: 8.9, track: 'Offensive', items: 12, status: 'job_ready', avatar: null },
-  { id: '6', name: 'Sami Al-Farsi', handle: 'samif', readiness: 72, health: 8.1, track: 'GRC', items: 10, status: 'emerging', avatar: null },
-];
-
 export default function CohortPortfoliosPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [trackFilter, setTrackFilter] = useState('all');
+  const [peers, setPeers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real peer data from backend
+  useEffect(() => {
+    const fetchPeers = async () => {
+      try {
+        setIsLoading(true);
+        // TODO: Replace with actual API endpoint when available
+        // const response = await apiGateway.get('/community/cohort/peers');
+        // setPeers(response || []);
+        setPeers([]); // Empty for now until API is ready
+      } catch (error) {
+        console.error('Failed to fetch peers:', error);
+        setPeers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchPeers();
+  }, []);
 
   const filteredPeers = useMemo(() => {
-    return MOCK_PEERS.filter(peer => {
-      const matchesSearch = peer.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            peer.handle.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesTrack = trackFilter === 'all' || peer.track.toLowerCase() === trackFilter.toLowerCase();
+    return peers.filter(peer => {
+      const matchesSearch = peer.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            peer.handle?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesTrack = trackFilter === 'all' || peer.track?.toLowerCase() === trackFilter.toLowerCase();
       return matchesSearch && matchesTrack;
     });
-  }, [searchQuery, trackFilter]);
+  }, [peers, searchQuery, trackFilter]);
 
   return (
     <div className="min-h-screen bg-och-midnight text-slate-200">

@@ -37,53 +37,20 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   const loadNotifications = async () => {
     try {
       setIsLoading(true)
-      // TODO: Replace with actual API endpoint when available
-      // For now, using mock data
-      const mockNotifications: NotificationItem[] = [
-        {
-          id: '1',
-          type: 'alert',
-          title: 'Cohort Capacity Warning',
-          message: 'Cohort "Cybersecurity Fundamentals" is 90% full',
-          priority: 'critical',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          read: false,
-          category: 'cohort',
-        },
-        {
-          id: '2',
-          type: 'reminder',
-          title: 'Payment Due Soon',
-          message: '3 payments are due in the next 7 days',
-          priority: 'high',
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
-          read: false,
-          category: 'payment',
-        },
-        {
-          id: '3',
-          type: 'notification',
-          title: 'New Enrollment Request',
-          message: '5 new enrollment requests pending review',
-          priority: 'medium',
-          timestamp: new Date(Date.now() - 10800000).toISOString(),
-          read: false,
-          category: 'enrollment',
-        },
-        {
-          id: '4',
-          type: 'reminder',
-          title: 'Mentor Session Scheduled',
-          message: 'Mentor session scheduled for tomorrow at 2 PM',
-          priority: 'low',
-          timestamp: new Date(Date.now() - 14400000).toISOString(),
-          read: true,
-          category: 'mentorship',
-        },
-      ]
-
-      setNotifications(mockNotifications)
-      setUnreadCount(mockNotifications.filter((n) => !n.read).length)
+      // Fetch real notifications from API
+      try {
+        const response = await apiGateway.get('/notifications', {
+          params: { user_id: userId }
+        })
+        const fetchedNotifications = Array.isArray(response) ? response : (response?.results || [])
+        setNotifications(fetchedNotifications)
+        setUnreadCount(fetchedNotifications.filter((n) => !n.read).length)
+      } catch (error) {
+        // If API endpoint doesn't exist yet, return empty array
+        console.debug('Notifications API not available:', error)
+        setNotifications([])
+        setUnreadCount(0)
+      }
     } catch (error) {
       console.error('Failed to load notifications:', error)
     } finally {
@@ -123,11 +90,18 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
   const markAsRead = async (id: string) => {
     try {
-      // TODO: Replace with actual API call
+      // Update locally first for immediate feedback
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       )
       setUnreadCount((prev) => Math.max(0, prev - 1))
+      
+      // Call API to mark as read
+      try {
+        await apiGateway.patch(`/notifications/${id}/read`)
+      } catch (error) {
+        console.debug('Mark as read API not available:', error)
+      }
     } catch (error) {
       console.error('Failed to mark notification as read:', error)
     }

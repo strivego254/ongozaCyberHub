@@ -255,3 +255,12 @@ class CreateFlagSerializer(serializers.Serializer):
             raise serializers.ValidationError("Either 'reason' or 'description' must be provided.")
         return attrs
 
+
+class RequestSessionSerializer(serializers.Serializer):
+    """Serializer for students to request a mentorship session."""
+    title = serializers.CharField(max_length=200)
+    description = serializers.CharField(required=False, allow_blank=True, default='')
+    preferred_date = serializers.DateTimeField()
+    duration_minutes = serializers.IntegerField(default=45, min_value=15, max_value=120)
+    type = serializers.ChoiceField(choices=MentorSession.TYPE_CHOICES, default='one_on_one', required=False)
+

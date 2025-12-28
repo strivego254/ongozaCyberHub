@@ -1332,6 +1332,92 @@ def create_session(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def request_session(request):
+    """
+    POST /api/v1/mentorship/sessions/request
+    Student/mentee endpoint to request a new mentorship session.
+    """
+    from .serializers import RequestSessionSerializer
+    
+    user = request.user
+    serializer = RequestSessionSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    
+    # Find the mentee's assigned mentor
+    assignment = MenteeMentorAssignment.objects.filter(
+        mentee=user,
+        status='active'
+    ).first()
+    
+    if not assignment:
+        return Response(
+            {'error': 'No active mentor assignment found. Please contact your program director.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    mentor = assignment.mentor
+    
+    # Check if max sessions reached
+    if assignment.sessions_used >= assignment.max_sessions:
+        return Response(
+            {'error': 'Maximum sessions reached for this assignment. Please contact your mentor or program director.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Parse preferred date and calculate end time
+    preferred_date = serializer.validated_data['preferred_date']
+    duration = serializer.validated_data['duration_minutes']
+    end_time = preferred_date + timedelta(minutes=duration)
+    
+    # Create session with 'pending' status (mentor will confirm)
+    session = MentorSession.objects.create(
+        assignment=assignment,
+        mentee=user,
+        mentor=mentor,
+        title=serializer.validated_data['title'],
+        type=serializer.validated_data.get('type', 'one_on_one'),
+        start_time=preferred_date,
+        end_time=end_time,
+        notes=serializer.validated_data.get('description', '') or '',
+        # Status will be 'pending' by default - mentor needs to confirm
+    )
+    
+    # Create work queue entry for mentor to review and confirm
+    MentorWorkQueue.objects.create(
+        mentor=mentor,
+        mentee=user,
+        type='session_notes',
+        priority='high',
+        title=f"Session request: {session.title}",
+        description=f"Mentee {user.get_full_name() or user.email} requested a session on {preferred_date.strftime('%Y-%m-%d %H:%M')}",
+        reference_id=session.id,
+        sla_hours=24,
+        due_at=timezone.now() + timedelta(hours=24)
+    )
+    
+    # Trigger dashboard refresh
+    try:
+        from dashboard.services import DashboardAggregationService
+        DashboardAggregationService.queue_update(
+            user,
+            'session_requested',
+            'normal'
+        )
+    except Exception:
+        pass  # Dashboard service may not be available
+    
+    return Response({
+        'id': str(session.id),
+        'title': session.title,
+        'start_time': session.start_time.isoformat(),
+        'end_time': session.end_time.isoformat(),
+        'status': 'pending',
+        'message': 'Session request submitted successfully. Your mentor will review and confirm.'
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def review_mission(request, submission_id):
     """
     POST /api/v1/mentor/missions/{submission_id}/review

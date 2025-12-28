@@ -211,7 +211,7 @@ def goals_list(request):
     # POST - Create goal
     serializer = GoalSerializer(data=request.data)
     if serializer.is_valid():
-        user_tier = get_user_tier(user)
+        user_tier = get_user_tier(user.id)
         goal = serializer.save(
             user=user,
             subscription_tier=user_tier

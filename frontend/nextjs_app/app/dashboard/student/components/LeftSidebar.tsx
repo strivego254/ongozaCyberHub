@@ -13,40 +13,43 @@ import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { useRouter, usePathname } from 'next/navigation';
-import { 
-  Compass, 
-  Target, 
-  MessageSquare, 
-  Briefcase, 
-  Users, 
-  Settings, 
-  ChevronLeft, 
+import { useAuth } from '@/hooks/useAuth';
+import {
+  Compass,
+  Target,
+  MessageSquare,
+  Briefcase,
+  Users,
+  Settings,
+  ChevronLeft,
   ChevronRight,
   Flame,
   Zap,
   Star,
   Shield,
   LayoutDashboard,
-  Bell
+  Bell,
+  LogOut
 } from 'lucide-react';
 import clsx from 'clsx';
 
 export function LeftSidebar() {
   const store = useDashboardStore();
-  const { 
-    quickStats, 
-    trackOverview, 
-    isSidebarCollapsed: isCollapsed = false, 
+  const {
+    quickStats,
+    trackOverview,
+    isSidebarCollapsed: isCollapsed = false,
     setSidebarCollapsed
   } = store;
-  
+
   // Safeguard: ensure setIsCollapsed is always a function
-  const setIsCollapsed = typeof setSidebarCollapsed === 'function' 
-    ? setSidebarCollapsed 
+  const setIsCollapsed = typeof setSidebarCollapsed === 'function'
+    ? setSidebarCollapsed
     : () => {};
-  
+
   const router = useRouter();
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   const navLinks = [
     { label: 'Control Center', icon: LayoutDashboard, href: '/dashboard/student' },
@@ -170,8 +173,8 @@ export function LeftSidebar() {
       </AnimatePresence>
 
       {/* 4. USER PROFILE PREVIEW */}
-      <div className="p-4 mt-auto">
-         <button 
+      <div className="p-4 mt-auto space-y-3">
+         <button
           onClick={() => router.push('/dashboard/student/settings?tab=profile')}
           className="w-full p-3 rounded-[2rem] bg-black/40 border border-och-steel/10 flex items-center gap-3 hover:border-och-gold/30 transition-all group"
          >
@@ -182,6 +185,22 @@ export function LeftSidebar() {
               <div className="min-w-0 text-left">
                  <p className="text-[10px] font-black text-white truncate uppercase tracking-tighter">Student Builder</p>
                  <p className="text-[8px] text-och-steel truncate">Professional Tier</p>
+              </div>
+            )}
+         </button>
+
+         {/* Logout Button */}
+         <button
+          onClick={logout}
+          className="w-full p-3 rounded-[2rem] bg-och-defender/10 border border-och-defender/20 flex items-center gap-3 hover:border-och-defender/40 hover:bg-och-defender/20 transition-all group"
+         >
+            <div className="w-10 h-10 rounded-full bg-och-defender/20 flex items-center justify-center border border-och-defender/30 shrink-0">
+               <LogOut className="w-4 h-4 text-och-defender" />
+            </div>
+            {!isCollapsed && (
+              <div className="min-w-0 text-left">
+                 <p className="text-[10px] font-black text-white truncate uppercase tracking-tighter">Logout</p>
+                 <p className="text-[8px] text-och-steel truncate">Sign out of your account</p>
               </div>
             )}
          </button>

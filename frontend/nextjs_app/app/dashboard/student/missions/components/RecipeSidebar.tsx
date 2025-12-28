@@ -4,7 +4,7 @@
  */
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -15,13 +15,28 @@ interface RecipeSidebarProps {
 
 export function RecipeSidebar({ recipeIds }: RecipeSidebarProps) {
   const [completedRecipes, setCompletedRecipes] = useState<Set<string>>(new Set())
+  const [recipes, setRecipes] = useState<any[]>([])
 
-  // TODO: Fetch recipe details from API
-  const recipes = recipeIds.map((id) => ({
-    id,
-    title: `Recipe ${id}`, // Placeholder
-    description: 'Micro-skill recommendation',
-  }))
+  // Fetch recipe details from API
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      if (recipeIds.length === 0) {
+        setRecipes([])
+        return
+      }
+      try {
+        const { apiGateway } = await import('@/services/apiGateway')
+        const response = await apiGateway.get('/missions/recipes', {
+          params: { recipe_ids: recipeIds.join(',') }
+        })
+        setRecipes(Array.isArray(response) ? response : (response?.results || []))
+      } catch (error) {
+        console.debug('Recipes API not available:', error)
+        setRecipes([])
+      }
+    }
+    fetchRecipes()
+  }, [recipeIds])
 
   const handleMarkComplete = (recipeId: string) => {
     setCompletedRecipes(new Set([...Array.from(completedRecipes), recipeId]))

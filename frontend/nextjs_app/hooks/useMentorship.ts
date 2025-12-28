@@ -53,89 +53,130 @@ export interface MentorshipFeedback {
 export function useMentorship(userId?: string) {
   const queryClient = useQueryClient();
 
-  // 1. Mentor Matching & Assignment
+  // 1. Mentor Matching & Assignment - Fetch from backend
   const mentorQuery = useQuery({
     queryKey: ['mentorship', 'mentor', userId],
     queryFn: async () => {
-      // Mocked for now, will call backend MMM
-      return {
-        id: 'mentor-1',
-        name: 'Alex Rivera',
-        avatar: '/avatars/mentor-1.jpg',
-        expertise: ['Threat Hunting', 'Cloud Security', 'Leadership'],
-        track: 'Defender',
-        bio: 'Senior Security Architect with 12+ years experience. Expert in incident response and SOC automation.',
-        timezone: 'Africa/Nairobi',
-        readiness_impact: 84
-      } as Mentor;
+      try {
+        // Try to fetch assigned mentor from backend
+        // This endpoint may not exist yet, so we'll return null if it fails
+        const response = await apiGateway.get(`/mentorship/mentees/${userId}/mentor`);
+        if (response) {
+          return {
+            id: response.id || response.mentor_id,
+            name: response.name || `${response.first_name || ''} ${response.last_name || ''}`.trim(),
+            avatar: response.avatar || response.avatar_url,
+            expertise: response.expertise || response.skills || [],
+            track: response.track || response.track_key || 'Defender',
+            bio: response.bio || response.biography || '',
+            timezone: response.timezone || 'Africa/Nairobi',
+            readiness_impact: response.readiness_impact || 0
+          } as Mentor;
+        }
+      } catch (error) {
+        // Mentor endpoint may not exist yet, return null
+        console.debug('Mentor endpoint not available:', error);
+      }
+      return null;
     },
     enabled: !!userId,
   });
 
-  // 2. Scheduling & Session Management
+  // 2. Scheduling & Session Management - Fetch from backend
   const sessionsQuery = useQuery({
     queryKey: ['mentorship', 'sessions', userId],
     queryFn: async () => {
-      // Mocked session data
-      return [
-        {
-          id: 'sess-1',
-          mentor_id: 'mentor-1',
-          mentee_id: userId || 'me',
-          start_time: new Date(Date.now() + 86400000).toISOString(),
-          end_time: new Date(Date.now() + 86400000 + 3600000).toISOString(),
-          status: 'confirmed',
-          topic: 'Module 3 Review: Network Defense Strategies',
-          meeting_link: 'https://meet.google.com/abc-defg-hij'
-        },
-        {
-          id: 'sess-2',
-          mentor_id: 'mentor-1',
-          mentee_id: userId || 'me',
-          start_time: new Date(Date.now() - 172800000).toISOString(),
-          end_time: new Date(Date.now() - 172800000 + 3600000).toISOString(),
-          status: 'completed',
-          topic: 'Future-You Profiling Alignment',
-          notes: 'Strong aptitude in behavioral analysis. Focused next steps on SIEM fundamentals.'
-        }
-      ] as MentorshipSession[];
+      try {
+        // Fetch sessions from backend
+        const response = await apiGateway.get(`/mentorship/sessions?mentee_id=${userId}`);
+        const backendSessions = Array.isArray(response) ? response : (response?.results || []);
+        
+        return backendSessions.map((session: any) => ({
+          id: session.id,
+          mentor_id: session.mentor_id || session.mentor?.id,
+          mentee_id: session.mentee_id || session.mentee?.id || userId,
+          start_time: session.start_time || session.scheduled_at,
+          end_time: session.end_time || session.ends_at,
+          status: (session.status || 'pending') as SessionStatus,
+          topic: session.topic || session.title || '',
+          notes: session.notes || session.summary,
+          meeting_link: session.meeting_link || session.meeting_url,
+        })) as MentorshipSession[];
+      } catch (error) {
+        console.error('Failed to fetch sessions:', error);
+        return [] as MentorshipSession[];
+      }
     },
     enabled: !!userId,
   });
 
-  // 3. Goals & Milestones
+  // 3. Goals & Milestones - Fetch from backend
   const goalsQuery = useQuery({
     queryKey: ['mentorship', 'goals', userId],
     queryFn: async () => {
-      return [
-        {
-          id: 'goal-1',
-          title: 'Master MITRE ATT&CK Mapping',
-          description: 'Apply mapping to 5 different malware samples in the lab.',
-          status: 'in_progress',
-          deadline: new Date(Date.now() + 604800000).toISOString(),
-          category: 'technical',
-          alignment: 'mission'
-        },
-        {
-          id: 'goal-2',
-          title: 'Communication Protocol for SOC',
-          description: 'Draft incident reporting templates for tier-1 alerts.',
-          status: 'verified',
-          deadline: new Date(Date.now() - 86400000).toISOString(),
-          category: 'behavioral',
-          alignment: 'future-you'
-        }
-      ] as SmartGoal[];
+      try {
+        const response = await apiGateway.get('/coaching/goals');
+        const backendGoals = response || [];
+        
+        // Map backend Goal model to frontend SmartGoal interface
+        return backendGoals.map((goal: any) => {
+          // Map status: backend uses 'active'/'completed'/'abandoned', frontend uses 'draft'/'in_progress'/'verified'
+          let status: GoalStatus = 'draft';
+          if (goal.status === 'active') {
+            status = goal.progress > 0 ? 'in_progress' : 'draft';
+          } else if (goal.status === 'completed') {
+            status = 'verified';
+          }
+          
+          // Determine category from title/description (fallback to technical)
+          let category: 'technical' | 'behavioral' | 'career' = 'technical';
+          const titleLower = (goal.title || '').toLowerCase();
+          const descLower = (goal.description || '').toLowerCase();
+          if (titleLower.includes('communication') || titleLower.includes('leadership') || 
+              descLower.includes('communication') || descLower.includes('leadership')) {
+            category = 'behavioral';
+          } else if (titleLower.includes('career') || descLower.includes('career')) {
+            category = 'career';
+          }
+          
+          // Determine alignment (default to mission)
+          let alignment: 'future-you' | 'cohort' | 'mission' = 'mission';
+          
+          return {
+            id: goal.id,
+            title: goal.title,
+            description: goal.description || '',
+            status,
+            deadline: goal.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            category,
+            alignment,
+          } as SmartGoal;
+        });
+      } catch (error) {
+        console.error('Failed to fetch goals:', error);
+        return [] as SmartGoal[];
+      }
     },
     enabled: !!userId,
   });
 
   // Mutations
   const scheduleSession = useMutation({
-    mutationFn: async (input: { date: string; topic: string; duration: number }) => {
-      // API call to MMM /api/v1/mentorship/sessions/request/
-      return { success: true, ...input };
+    mutationFn: async (input: { 
+      title: string;
+      description?: string;
+      preferred_date: string;
+      duration_minutes: number;
+      type?: string;
+    }) => {
+      const response = await apiGateway.post('/mentorship/sessions/request', {
+        title: input.title,
+        description: input.description || '',
+        preferred_date: input.preferred_date,
+        duration_minutes: input.duration_minutes,
+        type: input.type || 'one_on_one',
+      });
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mentorship', 'sessions', userId] });

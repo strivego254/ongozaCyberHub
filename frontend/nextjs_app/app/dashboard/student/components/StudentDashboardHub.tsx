@@ -51,10 +51,10 @@ export function StudentDashboardHub() {
   
   const [activeFeed, setActiveFeed] = useState<'local' | 'global'>('local');
 
-  // TalentScope Mock Data (to be replaced with actual API data)
-  const readinessScore = readiness?.score || 742;
-  const healthScore = 88;
-  const persona = "The Sentinel Architect"; // Mock persona
+  // Real data from API
+  const readinessScore = readiness?.score || 0;
+  const healthScore = readiness?.health_score || 0;
+  const persona = readiness?.persona || user?.persona || "Not Set";
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">

@@ -20,53 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import type { CurriculumTrack, UserTrackProgress } from '@/services/types/curriculum';
 
-// Mock Data for existing components
-const MOCK_PERSONA = {
-  name: "Cyber Guardian",
-  archetype: "Defender",
-  track: "Security Operations",
-  level: "Tier 2",
-};
-
-const MOCK_MODULES = [
-  {
-    id: 'm1',
-    title: 'OCH Ecosystem Alignment',
-    description: 'Orientation and mindset alignment for cybersecurity professionals.',
-    tier: 1,
-    progress: 100,
-    isLocked: false,
-    hasMission: true,
-    lessons: [
-      { id: 'l1', title: 'The OCH Philosophy', duration: '5:20', isCompleted: true, isLocked: false, type: 'video' },
-      { id: 'l2', title: 'Your Future-You Blueprint', duration: '12:45', isCompleted: true, isLocked: false, type: 'video' },
-    ]
-  },
-  {
-    id: 'm2',
-    title: 'Foundational Defense workflow',
-    description: 'Core concepts and early-stage "soft" missions.',
-    tier: 2,
-    progress: 45,
-    isLocked: false,
-    hasMission: true,
-    lessons: [
-      { id: 'l3', title: 'Introduction to SIEM', duration: '15:00', isCompleted: true, isLocked: false, type: 'video' },
-      { id: 'l4', title: 'Log Analysis Basics', duration: '22:10', isCompleted: false, isLocked: false, type: 'video' },
-      { id: 'l5', title: 'Network Traffic Analysis', duration: '18:30', isCompleted: false, isLocked: true, type: 'video' },
-    ]
-  },
-  {
-    id: 'm3',
-    title: 'Applied Threat Hunting',
-    description: 'Applied capabilities and complex workflow.',
-    tier: 3,
-    progress: 0,
-    isLocked: true,
-    hasMission: true,
-    lessons: []
-  }
-];
+// Mock data removed - using real API data
 
 // Track icons
 const trackIcons: Record<string, React.ReactNode> = {
@@ -299,7 +253,7 @@ export default function CurriculumPage() {
 
                 <CurriculumHierarchy 
                   currentTier={2} 
-                  modules={MOCK_MODULES} 
+                  modules={[]} 
                   onSelectLesson={(id) => setActiveLessonId(id)}
                 />
 

@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import clsx from 'clsx';
+import { apiGateway } from '@/services/apiGateway';
 
 interface Message {
   id: string;
@@ -64,31 +65,37 @@ export function AICoachWidget({ currentActivity, alignmentScore }: AICoachWidget
     setInput('');
     setIsTyping(true);
 
-    // Mock AI Response
-    setTimeout(() => {
-      const responses = [
-        "To stay aligned with your Defender track, you should focus on the SIEM Masterclass module.",
-        "Your readiness score is improving! Completing the current mission will boost your 'Analytical Thinking' signal by 15%.",
-        "If this feels difficult, I've loaded a few 'Recipes' in the Recipe Engine to bridge your technical gap.",
-        "Great question. Your Future-You archetype 'Cyber Guardian' would typically prioritize network security over GRC at this stage."
-      ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    // Call real AI Coach API
+    try {
+      const response = await apiGateway.post('/coaching/ai-coach/message', {
+        message: inputValue,
+        context: {
+          alignment_score: alignmentScore,
+          current_module: 'current_module_here', // TODO: Get from context
+        }
+      });
       
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: randomResponse,
+        content: response.content || response.message || 'I received your message. Processing...',
         type: 'suggestion'
       }]);
+    } catch (error) {
+      console.error('Failed to get AI coach response:', error);
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'I apologize, but I\'m having trouble processing your request right now. Please try again later.',
+        type: 'error'
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
-  const habits = [
-    { name: 'Learn', completed: true },
-    { name: 'Practice', completed: false },
-    { name: 'Reflect', completed: false },
-  ];
+  // Habits will be fetched from real API when needed
+  const habits: Array<{ name: string; completed: boolean }> = [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -170,28 +177,30 @@ export function AICoachWidget({ currentActivity, alignmentScore }: AICoachWidget
           )}
         </div>
 
-        {/* Daily Habits Tracker (Integrated) */}
-        <div className="px-4 py-3 border-t border-och-steel/10 bg-och-midnight/20">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-black text-och-steel uppercase tracking-widest">Daily Habits</span>
-            <span className="text-[9px] font-bold text-och-mint uppercase">12 Day Streak</span>
-          </div>
-          <div className="flex gap-2">
-            {habits.map((habit, i) => {
-              return (
-                <div key={i} className="flex-1 flex items-center gap-2 p-1.5 rounded-lg bg-white/5 border border-white/5">
-                  <div className={clsx(
-                    "w-3 h-3 rounded-full border flex items-center justify-center",
-                    habit.completed ? "bg-och-mint border-och-mint" : "border-och-steel/30"
-                  )}>
-                    {habit.completed && <div className="w-1 h-1 bg-black rounded-full" />}
+        {/* Daily Habits Tracker (Integrated) - Will show when habits are fetched from API */}
+        {habits.length > 0 && (
+          <div className="px-4 py-3 border-t border-och-steel/10 bg-och-midnight/20">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[9px] font-black text-och-steel uppercase tracking-widest">Daily Habits</span>
+              {/* Streak will be fetched from API */}
+            </div>
+            <div className="flex gap-2">
+              {habits.map((habit, i) => {
+                return (
+                  <div key={i} className="flex-1 flex items-center gap-2 p-1.5 rounded-lg bg-white/5 border border-white/5">
+                    <div className={clsx(
+                      "w-3 h-3 rounded-full border flex items-center justify-center",
+                      habit.completed ? "bg-och-mint border-och-mint" : "border-och-steel/30"
+                    )}>
+                      {habit.completed && <div className="w-1 h-1 bg-black rounded-full" />}
+                    </div>
+                    <span className="text-[8px] font-black text-white uppercase tracking-tighter">{habit.name}</span>
                   </div>
-                  <span className="text-[8px] font-black text-white uppercase tracking-tighter">{habit.name}</span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Input Area */}
         <div className="p-4 bg-och-midnight/60">

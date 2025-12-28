@@ -160,6 +160,7 @@ class Goal(models.Model):
     mentor_feedback = models.TextField(
         blank=True,
         null=True,
+        default='',
         help_text='Mentor feedback (7-tier only)'
     )
     subscription_tier = models.CharField(
