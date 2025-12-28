@@ -46,10 +46,10 @@ class Migration(migrations.Migration):
             model_name='goal',
             name='due_date',
         ),
-        migrations.RemoveField(
-            model_name='habit',
-            name='is_core',
-        ),
+        # migrations.RemoveField(
+        #     model_name='habit',
+        #     name='is_core',
+        # ),
         migrations.AlterUniqueTogether(
             name='habitlog',
             unique_together={('habit', 'date')},

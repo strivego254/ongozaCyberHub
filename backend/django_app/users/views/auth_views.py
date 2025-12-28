@@ -56,27 +56,27 @@ def _get_client_ip(request):
     return ip
 
 
-def _assign_default_mentee_role(user):
+def _assign_default_student_role(user):
     """
-    Assign default 'Mentee' role to new user during onboarding.
+    Assign default 'Student' role to new user during onboarding.
     """
     from users.models import Role, UserRole
     
     try:
-        mentee_role = Role.objects.get(name='mentee')
+        student_role = Role.objects.get(name='student')
     except Role.DoesNotExist:
-        # Create mentee role if it doesn't exist
-        mentee_role = Role.objects.create(
-            name='mentee',
-            display_name='Mentee',
-            description='Primary user role for mentees in the OCH ecosystem',
+        # Create student role if it doesn't exist
+        student_role = Role.objects.create(
+            name='student',
+            display_name='Student',
+            description='Primary user role for students in the OCH ecosystem',
             is_system_role=True
         )
     
     # Assign role with global scope
     UserRole.objects.get_or_create(
         user=user,
-        role=mentee_role,
+        role=student_role,
         scope='global',
         defaults={'is_active': True}
     )
@@ -131,7 +131,7 @@ class SignupView(APIView):
                 cohort_id=data.get('cohort_id'),
                 track_key=data.get('track_key'),
                 password=None,  # No password for passwordless
-                # Mentee onboarding fields
+                # Student onboarding fields
                 preferred_learning_style=data.get('preferred_learning_style'),
                 career_goals=data.get('career_goals'),
                 cyber_exposure_level=data.get('cyber_exposure_level'),
@@ -140,8 +140,8 @@ class SignupView(APIView):
             user.account_status = 'pending_verification'
             user.save()
             
-            # Assign default "Mentee" role
-            _assign_default_mentee_role(user)
+            # Assign default "Student" role
+            _assign_default_student_role(user)
             
             # Send magic link
             code, mfa_code = create_mfa_code(user, method='magic_link', expires_minutes=10)
@@ -173,14 +173,14 @@ class SignupView(APIView):
                 language=data.get('language', 'en'),
                 cohort_id=data.get('cohort_id'),
                 track_key=data.get('track_key'),
-                # Mentee onboarding fields
+                # Student onboarding fields
                 preferred_learning_style=data.get('preferred_learning_style'),
                 career_goals=data.get('career_goals'),
                 cyber_exposure_level=data.get('cyber_exposure_level'),
             )
             
-            # Assign default "Mentee" role
-            _assign_default_mentee_role(user)
+            # Assign default "Student" role
+            _assign_default_student_role(user)
             
             # If invited (has cohort_id/track_key), activate immediately
             if data.get('cohort_id') or data.get('track_key'):

@@ -1,6 +1,6 @@
 """
 Django management command to create bulk test users for development.
-Creates 100 users: 80 students, 10 mentors, 5 directors, 4 admins
+Creates 100 users: 80 students, 10 mentors, 5 directors, 5 admins
 Usage: python manage.py create_bulk_test_users
 """
 
@@ -16,7 +16,7 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Create 100 bulk test users (80 students, 10 mentors, 5 directors, 4 admins) for development'
+    help = 'Create 100 bulk test users (80 students, 10 mentors, 5 directors, 5 admins) for development'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -45,7 +45,7 @@ class Command(BaseCommand):
 
             # User creation configuration - 100 total users
             user_configs = [
-                {'count': 4, 'role': 'admin', 'role_name': 'Admin', 'prefix': 'admin'},
+                {'count': 5, 'role': 'admin', 'role_name': 'Admin', 'prefix': 'admin'},
                 {'count': 5, 'role': 'program_director', 'role_name': 'Director', 'prefix': 'director'},
                 {'count': 10, 'role': 'mentor', 'role_name': 'Mentor', 'prefix': 'mentor'},
                 {'count': 80, 'role': 'student', 'role_name': 'Student', 'prefix': 'student'},
@@ -74,7 +74,6 @@ class Command(BaseCommand):
                         'mentor': ['James', 'Jennifer', 'William', 'Jessica', 'Christopher'],
                         'student': ['Emma', 'Noah', 'Olivia', 'Liam', 'Ava', 'Ethan', 'Sophia', 'Mason', 
                                    'Isabella', 'James', 'Mia', 'Benjamin', 'Charlotte', 'Lucas', 'Amelia',
-                                   'Henry', 'Harper', 'Alexander', 'Evelyn', 'Michael', 'Abigail', 'Daniel',
                                    'Emily', 'Matthew', 'Elizabeth', 'Aiden', 'Sofia', 'Joseph', 'Avery',
                                    'Samuel', 'Ella', 'David', 'Madison', 'Jackson', 'Scarlett', 'Sebastian',
                                    'Victoria', 'Carter', 'Aria', 'Wyatt']
@@ -167,7 +166,7 @@ class Command(BaseCommand):
             self.stdout.write(f'Created: {created_count} users')
             self.stdout.write(f'Updated: {updated_count} users')
             self.stdout.write(f'\nUser Breakdown:')
-            self.stdout.write(f'  - Admins: 4 (admin1@test.com - admin4@test.com)')
+            self.stdout.write(f'  - Admins: 5 (admin1@test.com - admin4@test.com)')
             self.stdout.write(f'  - Directors: 5 (director1@test.com - director5@test.com)')
             self.stdout.write(f'  - Mentors: 10 (mentor1@test.com - mentor10@test.com)')
             self.stdout.write(f'  - Students: 80 (student1@test.com - student80@test.com)')

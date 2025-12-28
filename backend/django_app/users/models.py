@@ -85,7 +85,7 @@ class User(AbstractUser):
         )]
     )
     
-    # Mentee onboarding fields (for TalentScope baseline)
+    # Student onboarding fields (for TalentScope baseline)
     LEARNING_STYLE_CHOICES = [
         ('visual', 'Visual'),
         ('auditory', 'Auditory'),

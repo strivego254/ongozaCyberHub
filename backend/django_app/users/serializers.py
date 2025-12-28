@@ -47,7 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
             'roles',
             'consent_scopes',
             'entitlements',
-            # Mentee onboarding fields
+            # Student onboarding fields
             'preferred_learning_style',
             'career_goals',
             'cyber_exposure_level',
@@ -141,7 +141,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class SignupSerializer(serializers.Serializer):
     """
     Signup serializer for email/password or passwordless.
-    Supports Mentee onboarding with profile fields.
+    Supports Student onboarding with profile fields.
     """
     email = serializers.EmailField()
     password = serializers.CharField(required=False, validators=[validate_password])
@@ -155,7 +155,7 @@ class SignupSerializer(serializers.Serializer):
     cohort_id = serializers.CharField(required=False)
     track_key = serializers.CharField(required=False)
     
-    # Mentee onboarding profile fields (optional during signup, can be completed later)
+    # Student onboarding profile fields (optional during signup, can be completed later)
     preferred_learning_style = serializers.ChoiceField(
         choices=User.LEARNING_STYLE_CHOICES,
         required=False,

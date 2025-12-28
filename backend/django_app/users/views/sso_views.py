@@ -13,7 +13,7 @@ from django.conf import settings
 from users.models import Role, UserRole
 from users.auth_models import SSOProvider, SSOConnection
 from users.views.auth_views import (
-    _assign_default_mentee_role,
+    _assign_default_student_role,
     _log_audit_event,
     _get_client_ip,
 )
@@ -117,9 +117,9 @@ class SSOLoginView(APIView):
                     user.account_status = 'active'
                 user.save()
 
-            # Assign default Mentee role if new user (per spec)
+            # Assign default Student role if new user (per spec)
             if created:
-                _assign_default_mentee_role(user)
+                _assign_default_student_role(user)
                 # Map IdP groups/claims to roles (per spec - placeholder for now)
                 # self._map_idp_roles_to_user(user, user_info, sso_provider)
 
