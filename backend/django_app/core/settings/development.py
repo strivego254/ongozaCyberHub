@@ -7,6 +7,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
+# Frontend URL for development
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
 # Development-specific settings
 INSTALLED_APPS = INSTALLED_APPS + [
     'django_extensions',  # Optional: for enhanced shell, etc.

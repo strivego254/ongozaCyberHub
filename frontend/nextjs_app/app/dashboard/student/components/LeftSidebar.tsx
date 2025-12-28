@@ -50,6 +50,7 @@ export function LeftSidebar() {
     { label: 'Coaching OS', icon: MessageSquare, href: '/dashboard/student/coaching' },
     { label: 'Repository', icon: Briefcase, href: '/dashboard/student/portfolio' },
     { label: 'Mentorship', icon: Users, href: '/dashboard/student/mentorship' },
+    { label: 'Profiling Results', icon: Star, href: '/dashboard/student/profiling' },
     { label: 'Settings', icon: Settings, href: '/dashboard/student/settings' },
   ];
 

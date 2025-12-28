@@ -43,7 +43,8 @@ class PasswordResetRequestView(APIView):
         # Send password reset email
         from users.utils.email_utils import send_password_reset_email
         from django.conf import settings
-        reset_url = f"{settings.FRONTEND_URL}/auth/reset-password?token={code}&email={email}"
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        reset_url = f"{frontend_url}/auth/reset-password?token={code}&email={email}"
         send_password_reset_email(user, reset_url)
         
         AuditLog.objects.create(

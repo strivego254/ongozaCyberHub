@@ -1,0 +1,84 @@
+[detached HEAD 5c3891c] milestone 3 module finalization
+ 65 files changed, 4139 insertions(+), 252 deletions(-)
+ create mode 100644 backend/django_app/scripts/seed_missions.py
+ create mode 100644 backend/django_app/scripts/test_missions_api.py
+ create mode 100644 backend/fastapi_app/routers/v1/profiling.py
+ create mode 100644 backend/fastapi_app/schemas/profiling.py
+ create mode 100644 backend/fastapi_app/schemas/profiling_questions.py
+ create mode 100644 backend/fastapi_app/services/profiling_service.py
+ create mode 100644 frontend/nextjs_app/app/dashboard/student/missions/hall/page.tsx
+ create mode 100644 frontend/nextjs_app/app/onboarding/ai-profiler/components/AIProfilerAssessment.tsx
+ create mode 100644 frontend/nextjs_app/app/onboarding/ai-profiler/components/AIProfilerInstructions.tsx
+ create mode 100644 frontend/nextjs_app/app/onboarding/ai-profiler/components/AIProfilerResults.tsx
+ create mode 100644 frontend/nextjs_app/app/onboarding/ai-profiler/components/AIProfilerWelcome.tsx
+ create mode 100644 frontend/nextjs_app/app/onboarding/ai-profiler/page.tsx
+ create mode 100644 git_status_output.txt
+ create mode 100644 git_status_output_2.txt
+ create mode 100644 mission_hall/acm-m03.yaml
+ create mode 100644 mission_hall/acm-m04.yaml
+ create mode 100644 mission_hall/acm-m05.yaml
+ create mode 100644 rebase_output.txt
+ create mode 100644 test_settings.py
+Rebasing (2/2)Auto-merging backend/django_app/curriculum/migrations/__init__.py
+CONFLICT (content): Merge conflict in backend/django_app/curriculum/migrations/__init__.py
+Auto-merging backend/django_app/missions/migrations/0004_fix_legacy_submission_tables.py
+CONFLICT (content): Merge conflict in backend/django_app/missions/migrations/0004_fix_legacy_submission_tables.py
+Auto-merging backend/django_app/missions/migrations/0006_add_estimated_time_minutes_column.py
+CONFLICT (content): Merge conflict in backend/django_app/missions/migrations/0006_add_estimated_time_minutes_column.py
+Auto-merging backend/django_app/missions/migrations/0007_fix_story_column_constraint.py
+CONFLICT (content): Merge conflict in backend/django_app/missions/migrations/0007_fix_story_column_constraint.py
+Auto-merging backend/django_app/missions/migrations/0008_fix_objectives_column_constraint.py
+CONFLICT (content): Merge conflict in backend/django_app/missions/migrations/0008_fix_objectives_column_constraint.py
+Auto-merging backend/django_app/missions/migrations/0009_fix_all_legacy_columns_constraints.py
+CONFLICT (content): Merge conflict in backend/django_app/missions/migrations/0009_fix_all_legacy_columns_constraints.py
+Auto-merging backend/django_app/student_dashboard/migrations/0002_create_missing_tables_if_faked.py
+CONFLICT (content): Merge conflict in backend/django_app/student_dashboard/migrations/0002_create_missing_tables_if_faked.py
+Auto-merging backend/django_app/subscriptions/migrations/0004_create_missing_tables_if_faked.py
+CONFLICT (content): Merge conflict in backend/django_app/subscriptions/migrations/0004_create_missing_tables_if_faked.py
+Auto-merging backend/django_app/tests/__init__.py
+CONFLICT (content): Merge conflict in backend/django_app/tests/__init__.py
+Auto-merging backend/django_app/tests/test_coaching_endpoints.py
+CONFLICT (content): Merge conflict in backend/django_app/tests/test_coaching_endpoints.py
+Auto-merging backend/django_app/tests/test_health_endpoints.py
+CONFLICT (content): Merge conflict in backend/django_app/tests/test_health_endpoints.py
+Auto-merging backend/django_app/tests/test_mentorship_endpoints.py
+CONFLICT (content): Merge conflict in backend/django_app/tests/test_mentorship_endpoints.py
+Auto-merging backend/django_app/tests/test_missions_endpoints.py
+CONFLICT (content): Merge conflict in backend/django_app/tests/test_missions_endpoints.py
+Auto-merging backend/django_app/tests/test_organizations_endpoints.py
+CONFLICT (content): Merge conflict in backend/django_app/tests/test_organizations_endpoints.py
+Auto-merging backend/django_app/tests/test_profiler_endpoints.py
+CONFLICT (content): Merge conflict in backend/django_app/tests/test_profiler_endpoints.py
+Auto-merging backend/django_app/tests/test_progress_endpoints.py
+CONFLICT (content): Merge conflict in backend/django_app/tests/test_progress_endpoints.py
+Auto-merging backend/django_app/tests/test_student_dashboard_endpoints.py
+CONFLICT (content): Merge conflict in backend/django_app/tests/test_student_dashboard_endpoints.py
+Auto-merging frontend/nextjs_app/app/dashboard/admin/subscriptions/gateways/page.tsx
+CONFLICT (content): Merge conflict in frontend/nextjs_app/app/dashboard/admin/subscriptions/gateways/page.tsx
+Auto-merging frontend/nextjs_app/app/dashboard/admin/subscriptions/page.tsx
+CONFLICT (content): Merge conflict in frontend/nextjs_app/app/dashboard/admin/subscriptions/page.tsx
+Auto-merging frontend/nextjs_app/app/dashboard/admin/subscriptions/plans/page.tsx
+CONFLICT (content): Merge conflict in frontend/nextjs_app/app/dashboard/admin/subscriptions/plans/page.tsx
+Auto-merging frontend/nextjs_app/app/dashboard/admin/subscriptions/rules/page.tsx
+CONFLICT (content): Merge conflict in frontend/nextjs_app/app/dashboard/admin/subscriptions/rules/page.tsx
+Auto-merging frontend/nextjs_app/app/dashboard/admin/subscriptions/subscription-overview-client.tsx
+CONFLICT (content): Merge conflict in frontend/nextjs_app/app/dashboard/admin/subscriptions/subscription-overview-client.tsx
+Auto-merging frontend/nextjs_app/app/dashboard/admin/subscriptions/transactions/page.tsx
+CONFLICT (content): Merge conflict in frontend/nextjs_app/app/dashboard/admin/subscriptions/transactions/page.tsx
+Auto-merging frontend/nextjs_app/app/dashboard/student/components/LeftSidebar.tsx
+Auto-merging frontend/nextjs_app/app/dashboard/student/missions/components/ReadOnlyMissionsView.tsx
+CONFLICT (content): Merge conflict in frontend/nextjs_app/app/dashboard/student/missions/components/ReadOnlyMissionsView.tsx
+Auto-merging frontend/nextjs_app/app/login/[role]/page.tsx
+Auto-merging frontend/nextjs_app/components/ui/DatePicker.tsx
+CONFLICT (content): Merge conflict in frontend/nextjs_app/components/ui/DatePicker.tsx
+Auto-merging frontend/nextjs_app/hooks/useMentorAssignedTracks.ts
+CONFLICT (content): Merge conflict in frontend/nextjs_app/hooks/useMentorAssignedTracks.ts
+Auto-merging frontend/nextjs_app/hooks/useTrackMissions.ts
+CONFLICT (content): Merge conflict in frontend/nextjs_app/hooks/useTrackMissions.ts
+error: could not apply 22a866a... m3 updated
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 22a866a... # m3 updated

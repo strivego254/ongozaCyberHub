@@ -396,6 +396,166 @@ export const djangoClient = {
       return apiGateway.get('/audit-logs/stats');
     },
   },
+
+  /**
+   * Profiling endpoints
+   */
+  profiler: {
+    /**
+     * Check if profiling is required
+     */
+    async checkRequired(): Promise<{
+      required: boolean;
+      completed: boolean;
+      has_active_session?: boolean;
+      session_id?: string;
+      session_token?: string;
+      current_section?: string;
+      completed_at?: string;
+    }> {
+      return apiGateway.get('/profiler/check-required');
+    },
+
+    /**
+     * Start profiling session
+     */
+    async start(): Promise<{
+      session_id: string;
+      session_token: string;
+      status: string;
+      current_section: string;
+      current_question_index?: number;
+      total_questions: number;
+      aptitude_questions: Array<{
+        id: string;
+        question_text: string;
+        answer_type: string;
+        options: string[];
+        category: string;
+      }>;
+      behavioral_questions: Array<{
+        id: string;
+        question_text: string;
+        answer_type: string;
+        options: string[];
+        category: string;
+      }>;
+    }> {
+      return apiGateway.post('/profiler/start', {});
+    },
+
+    /**
+     * Autosave a response
+     */
+    async autosave(sessionToken: string, questionId: string, answer: any): Promise<{
+      status: string;
+      question_id: string;
+    }> {
+      return apiGateway.post('/profiler/autosave', {
+        session_token: sessionToken,
+        question_id: questionId,
+        answer,
+      });
+    },
+
+    /**
+     * Update section progress
+     */
+    async updateProgress(
+      sessionToken: string,
+      currentSection: string,
+      currentQuestionIndex: number
+    ): Promise<{
+      status: string;
+      current_section: string;
+      current_question_index: number;
+    }> {
+      return apiGateway.post('/profiler/update-progress', {
+        session_token: sessionToken,
+        current_section: currentSection,
+        current_question_index: currentQuestionIndex,
+      });
+    },
+
+    /**
+     * Complete a section
+     */
+    async completeSection(
+      sessionToken: string,
+      section: 'aptitude' | 'behavioral',
+      responses: Record<string, any>
+    ): Promise<{
+      status: string;
+      session_id: string;
+    }> {
+      return apiGateway.post('/profiler/complete-section', {
+        session_token: sessionToken,
+        section,
+        responses,
+      });
+    },
+
+    /**
+     * Complete profiling
+     */
+    async complete(sessionToken: string): Promise<{
+      status: string;
+      session_id: string;
+      result: {
+        overall_score: number;
+        aptitude_score: number;
+        behavioral_score: number;
+        strengths: string[];
+        areas_for_growth: string[];
+        aptitude_breakdown: Record<string, any>;
+        behavioral_traits: Record<string, number>;
+        och_mapping: Record<string, any>;
+      };
+    }> {
+      return apiGateway.post('/profiler/complete', {
+        session_token: sessionToken,
+      });
+    },
+
+    /**
+     * Get profiling results
+     */
+    async getResults(): Promise<{
+      completed: boolean;
+      session_id?: string;
+      completed_at?: string;
+      result?: {
+        overall_score: number;
+        aptitude_score: number;
+        behavioral_score: number;
+        strengths: string[];
+        areas_for_growth: string[];
+        aptitude_breakdown: Record<string, any>;
+        behavioral_traits: Record<string, number>;
+        recommended_tracks: any[];
+        learning_path_suggestions: any[];
+        och_mapping: Record<string, any>;
+      };
+    }> {
+      return apiGateway.get('/profiler/results');
+    },
+
+    /**
+     * Get profiling status
+     */
+    async getStatus(): Promise<{
+      status: string;
+      completed: boolean;
+      session_id?: string;
+      session_token?: string;
+      current_section?: string;
+      current_question_index?: number;
+      total_questions?: number;
+      profiling_required?: boolean;
+    }> {
+      return apiGateway.get('/profiler/status');
+    },
+  },
 };
 
 export default djangoClient;

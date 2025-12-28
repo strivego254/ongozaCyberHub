@@ -214,7 +214,9 @@ class ProfilerAnswer(models.Model):
         ProfilerQuestion,
         on_delete=models.CASCADE,
         related_name='answers',
-        db_index=True
+        db_index=True,
+        null=True,  # Temporarily nullable for migration, will be made required later
+        blank=True
     )
     question_key = models.CharField(
         max_length=255,

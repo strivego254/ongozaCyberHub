@@ -110,6 +110,11 @@ class User(AbstractUser):
     profile_complete = models.BooleanField(default=False)
     onboarding_complete = models.BooleanField(default=False)
     
+    # Profiling completion tracking (mandatory Tier 0 gateway)
+    profiling_complete = models.BooleanField(default=False, db_index=True)
+    profiling_completed_at = models.DateTimeField(null=True, blank=True)
+    profiling_session_id = models.UUIDField(null=True, blank=True, help_text='Completed profiling session ID')
+    
     # Mentor fields
     is_mentor = models.BooleanField(default=False, db_index=True)
     mentor_capacity_weekly = models.IntegerField(default=10)
@@ -151,6 +156,32 @@ class User(AbstractUser):
     
     def __str__(self):
         return self.email
+    
+    def get_profiling_session_id_safe(self):
+        """Safely get profiling_session_id, handling invalid UUID values."""
+        try:
+            # Try to access the field directly
+            value = self.profiling_session_id
+            # If it's None, return None
+            if value is None:
+                return None
+            # If it's already a UUID object, return it
+            import uuid
+            if isinstance(value, uuid.UUID):
+                return value
+            # If it's a string, try to convert it
+            if isinstance(value, str):
+                try:
+                    return uuid.UUID(value)
+                except (ValueError, TypeError):
+                    return None
+            return value
+        except (TypeError, ValueError, AttributeError) as e:
+            # If there's an error accessing the field (invalid UUID in DB), return None
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to get profiling_session_id for user {self.id}: {e}")
+            return None
     
     def activate(self):
         """Activate user account."""

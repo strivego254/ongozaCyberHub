@@ -124,6 +124,15 @@ function LoginForm() {
       // Cookie is already set by the API route (/api/auth/login)
       // No need to set it manually - the browser handles it automatically
 
+      // Check if profiling is required (mandatory Tier 0 gateway)
+      if (result.profiling_required) {
+        console.log('✅ Profiling required - redirecting to profiling page');
+        setIsRedirecting(true);
+        hasRedirectedRef.current = true;
+        window.location.href = '/profiling';
+        return;
+      }
+
       // Determine redirect route
       const redirectTo = searchParams.get('redirect');
 

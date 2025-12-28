@@ -12,7 +12,51 @@ eggs/
 .eggs/
 lib/
 lib64/
-parts/
+parts/Curriculum & Missions
+▼
+📐
+Define Structure
+🚀
+Manage Missions
+📊
+Scoring Rules
+📝
+Assessment Windows
+📈
+Analytics & Reports
+📆
+Calendar & Milestones
+⚙️Curriculum & Missions
+▼
+📐
+Define Structure
+🚀
+Manage Missions
+📊
+Scoring Rules
+📝
+Assessment Windows
+📈
+Analytics & Reports
+📆
+Calendar & Milestones
+⚙️
+Settings & Rules
+￼
+d
+director1@test.com
+
+Program Director
+
+
+Settings & Rules
+￼
+d
+director1@test.com
+
+Program Director
+
+
 sdist/
 var/
 wheels/
@@ -112,3 +156,7 @@ shared/openapi/merged_openapi.json
 tmp/
 temp/
 *.tmp
+
+
+# Personal Documentation
+docs1/
