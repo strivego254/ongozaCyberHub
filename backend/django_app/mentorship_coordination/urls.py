@@ -17,7 +17,10 @@ from .views import (
     mentor_mission_submissions,
     mentor_cohort_missions,
     update_group_session,
-    mentor_influence_index
+    mentor_influence_index,
+    submit_session_feedback,
+    get_session_feedback,
+    mentor_feedback_summary
 )
 from .sse_views import mentor_dashboard_stream
 
@@ -42,6 +45,9 @@ urlpatterns = [
     path('mentor/sessions', create_session, name='create-session'),
     path('mentorship/sessions/request', request_session, name='request-session'),
     path('mentors/sessions/<uuid:session_id>', update_group_session, name='update-group-session'),
+    path('sessions/<uuid:session_id>/feedback', get_session_feedback, name='get-session-feedback'),  # GET
+    path('sessions/<uuid:session_id>/feedback', submit_session_feedback, name='submit-session-feedback'),  # POST (same URL, different method)
+    path('mentors/<int:mentor_id>/feedback-summary', mentor_feedback_summary, name='mentor-feedback-summary'),
     path('mentor/missions/<uuid:submission_id>/review', review_mission, name='review-mission'),
     # Keep old endpoint for backward compatibility
     path('mentor/flags', create_flag, name='create-flag-legacy'),

@@ -12,7 +12,7 @@ from datetime import timedelta
 import json
 import uuid
 
-from .models import MenteeMentorAssignment, MentorSession, MentorWorkQueue, MentorFlag, SessionAttendance
+from .models import MenteeMentorAssignment, MentorSession, MentorWorkQueue, MentorFlag, SessionAttendance, SessionFeedback
 from .serializers import (
     MenteeMentorAssignmentSerializer,
     MentorSessionSerializer,
@@ -53,6 +53,178 @@ def get_current_mentor(user):
         pass
 
     raise Exception("User is not a mentor")
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_session_feedback(request, session_id):
+    """
+    POST /api/v1/sessions/{session_id}/feedback
+    Submit mentee feedback on a mentorship session (Two-Way Feedback System).
+    """
+    try:
+        session = MentorSession.objects.get(id=session_id, type='group')
+    except MentorSession.DoesNotExist:
+        return Response(
+            {'error': 'Session not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Verify the mentee was part of this session
+    mentee_id = str(request.user.id)
+    attendance = SessionAttendance.objects.filter(
+        session=session,
+        mentee_id=mentee_id
+    ).first()
+    
+    if not attendance:
+        return Response(
+            {'error': 'You can only provide feedback for sessions you attended'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    data = request.data or {}
+    
+    # Validate required fields
+    required_fields = ['overall_rating', 'mentor_engagement', 'mentor_preparation', 'session_value']
+    for field in required_fields:
+        if field not in data:
+            return Response(
+                {'error': f'Missing required field: {field}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not isinstance(data[field], int) or data[field] < 1 or data[field] > 5:
+            return Response(
+                {'error': f'{field} must be an integer between 1 and 5'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    # Create or update feedback (one feedback per mentee per session)
+    feedback, created = SessionFeedback.objects.update_or_create(
+        session=session,
+        mentee_id=mentee_id,
+        defaults={
+            'mentor': session.mentor,
+            'overall_rating': data['overall_rating'],
+            'mentor_engagement': data['mentor_engagement'],
+            'mentor_preparation': data['mentor_preparation'],
+            'session_value': data['session_value'],
+            'strengths': data.get('strengths', ''),
+            'areas_for_improvement': data.get('areas_for_improvement', ''),
+            'additional_comments': data.get('additional_comments', ''),
+        }
+    )
+    
+    logger.info(f"{'Created' if created else 'Updated'} feedback for session {session_id} from mentee {mentee_id}")
+    
+    return Response({
+        'id': str(feedback.id),
+        'session_id': str(session.id),
+        'mentee_id': str(feedback.mentee.id),
+        'mentee_name': feedback.mentee.get_full_name() or feedback.mentee.email,
+        'overall_rating': feedback.overall_rating,
+        'mentor_engagement': feedback.mentor_engagement,
+        'mentor_preparation': feedback.mentor_preparation,
+        'session_value': feedback.session_value,
+        'strengths': feedback.strengths,
+        'areas_for_improvement': feedback.areas_for_improvement,
+        'additional_comments': feedback.additional_comments,
+        'submitted_at': feedback.submitted_at.isoformat(),
+        'updated_at': feedback.updated_at.isoformat(),
+    }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_session_feedback(request, session_id):
+    """
+    GET /api/v1/sessions/{session_id}/feedback
+    Get feedback for a session (mentors can see all feedback, mentees can see their own).
+    """
+    try:
+        session = MentorSession.objects.get(id=session_id, type='group')
+    except MentorSession.DoesNotExist:
+        return Response(
+            {'error': 'Session not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    user_id = str(request.user.id)
+    
+    # Mentors can see all feedback, mentees can only see their own
+    if str(session.mentor.id) == user_id:
+        # Mentor viewing - get all feedback
+        feedback_list = SessionFeedback.objects.filter(session=session).select_related('mentee')
+    else:
+        # Mentee viewing - get only their feedback
+        feedback_list = SessionFeedback.objects.filter(session=session, mentee_id=user_id).select_related('mentee')
+    
+    feedback_data = []
+    for feedback in feedback_list:
+        feedback_data.append({
+            'id': str(feedback.id),
+            'session_id': str(session.id),
+            'mentee_id': str(feedback.mentee.id),
+            'mentee_name': feedback.mentee.get_full_name() or feedback.mentee.email,
+            'overall_rating': feedback.overall_rating,
+            'mentor_engagement': feedback.mentor_engagement,
+            'mentor_preparation': feedback.mentor_preparation,
+            'session_value': feedback.session_value,
+            'strengths': feedback.strengths,
+            'areas_for_improvement': feedback.areas_for_improvement,
+            'additional_comments': feedback.additional_comments,
+            'submitted_at': feedback.submitted_at.isoformat(),
+            'updated_at': feedback.updated_at.isoformat(),
+        })
+    
+    return Response({
+        'session_id': str(session.id),
+        'feedback': feedback_data,
+        'count': len(feedback_data),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_feedback_summary(request, mentor_id):
+    """
+    GET /api/v1/mentors/{mentor_id}/feedback-summary
+    Get feedback summary for a mentor (average ratings, total feedback count).
+    """
+    # Verify the mentor_id matches the authenticated user
+    if str(request.user.id) != str(mentor_id):
+        return Response(
+            {'error': 'You can only view your own feedback summary'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        mentor = get_current_mentor(request.user)
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Get all feedback for this mentor's sessions
+    feedback_stats = SessionFeedback.objects.filter(
+        mentor=mentor
+    ).aggregate(
+        total_feedback=Count('id'),
+        avg_overall_rating=Avg('overall_rating'),
+        avg_engagement=Avg('mentor_engagement'),
+        avg_preparation=Avg('mentor_preparation'),
+        avg_value=Avg('session_value'),
+    )
+    
+    return Response({
+        'mentor_id': str(mentor.id),
+        'total_feedback_count': feedback_stats['total_feedback'] or 0,
+        'average_overall_rating': round(float(feedback_stats['avg_overall_rating'] or 0), 2),
+        'average_engagement': round(float(feedback_stats['avg_engagement'] or 0), 2),
+        'average_preparation': round(float(feedback_stats['avg_preparation'] or 0), 2),
+        'average_value': round(float(feedback_stats['avg_value'] or 0), 2),
+    })
 
 
 @api_view(['GET'])
@@ -492,7 +664,17 @@ def update_group_session(request, session_id):
             if duration_minutes is None:
                 duration_minutes = int((session.end_time - session.start_time).total_seconds() / 60)
         except Exception as e:
-            return Response({'error': f'Invalid scheduled_at: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+            logger.error(f"Error validating scheduled_at for session {session_id}: {e}")
+            logger.error(f"Received scheduled_at value: {scheduled_at}, type: {type(scheduled_at)}")
+            error_msg = str(e)
+            if hasattr(e, 'detail'):
+                error_msg = str(e.detail)
+            elif hasattr(e, 'messages'):
+                error_msg = ', '.join(e.messages)
+            return Response({
+                'error': f'Invalid scheduled_at: {error_msg}',
+                'received_value': scheduled_at
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     if duration_minutes is not None:
         try:
@@ -512,15 +694,82 @@ def update_group_session(request, session_id):
     if 'transcript_url' in data:
         session.transcript_url = data.get('transcript_url') or ''
 
-    # Notes
+    # Notes - CRITICAL FIX: Ensure structured_notes are saved correctly
     if 'structured_notes' in data:
-        session.structured_notes = data.get('structured_notes') or {}
+        structured_notes_data = data.get('structured_notes')
+        logger.info(f"Received structured_notes for session {session_id}: {structured_notes_data} (type: {type(structured_notes_data)})")
+        
+        # Always save the structured_notes data as-is (even if empty dict to clear notes)
+        if structured_notes_data is not None:
+            # Ensure it's a dict (in case it comes as a string)
+            if isinstance(structured_notes_data, str):
+                try:
+                    structured_notes_data = json.loads(structured_notes_data)
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse structured_notes JSON string: {structured_notes_data}")
+                    structured_notes_data = {}
+            
+            # CRITICAL: Explicitly set the value and ensure it's a proper dict
+            # Django JSONField needs a dict, not None
+            if not isinstance(structured_notes_data, dict):
+                logger.error(f"structured_notes_data is not a dict: {type(structured_notes_data)}")
+                structured_notes_data = {}
+            
+            # Set the value
+            session.structured_notes = structured_notes_data
+            logger.info(f"Setting structured_notes for session {session_id} to: {session.structured_notes}")
+            logger.info(f"structured_notes keys after setting: {list(session.structured_notes.keys()) if session.structured_notes else 'None'}")
+            
+            # Auto-complete session if notes are added and session end time has passed
+            # Check if notes have meaningful content
+            has_notes_content = (
+                structured_notes_data.get('key_takeaways') and len(structured_notes_data.get('key_takeaways', [])) > 0
+            ) or (
+                structured_notes_data.get('action_items') and len(structured_notes_data.get('action_items', [])) > 0
+            ) or (
+                structured_notes_data.get('discussion_points') and structured_notes_data.get('discussion_points', '').strip()
+            ) or (
+                structured_notes_data.get('mentor_reflections') and structured_notes_data.get('mentor_reflections', '').strip()
+            ) or (
+                structured_notes_data.get('next_steps') and structured_notes_data.get('next_steps', '').strip()
+            )
+            
+            # If session has ended and notes have content, mark as attended (completed)
+            if has_notes_content and timezone.now() >= session.end_time and not session.attended and not session.cancelled:
+                session.attended = True
+                logger.info(f"Auto-marking session {session_id} as completed (attended=True) because notes were added after session end time")
+            
+            # CRITICAL: Save this field immediately to ensure it's persisted
+            # Use update_fields to force save this specific field
+            fields_to_update = ['structured_notes']
+            if session.attended:
+                fields_to_update.append('attended')
+            session.save(update_fields=fields_to_update)
+            logger.info(f"Saved structured_notes field immediately. After save: {session.structured_notes}")
+            logger.info(f"After immediate save - keys: {list(session.structured_notes.keys()) if session.structured_notes else 'None'}")
     if 'notes' in data:
         session.notes = data.get('notes') or ''
 
+    # Cancel session
+    if 'cancelled' in data:
+        session.cancelled = bool(data.get('cancelled'))
+        if session.cancelled and 'cancellation_reason' in data:
+            session.cancellation_reason = data.get('cancellation_reason', '')
+        elif not session.cancelled:
+            session.cancellation_reason = ''
+    
+    # Mark session as attended (completed) - can be set explicitly
+    if 'attended' in data:
+        session.attended = bool(data.get('attended'))
+        logger.info(f"Session {session_id} attended flag set to: {session.attended}")
+    
     # Close session
     if 'is_closed' in data:
         session.is_closed = bool(data.get('is_closed'))
+        # If closing session, also mark as attended (completed) if not already cancelled
+        if session.is_closed and not session.cancelled and not session.attended:
+            session.attended = True
+            logger.info(f"Auto-marking session {session_id} as attended (completed) when closing")
 
     # Attendance records (optional)
     attendance = data.get('attendance')
@@ -545,12 +794,31 @@ def update_group_session(request, session_id):
             rec.save()
 
     session.save()
+    
+    # Refresh from database to ensure we have the latest data
+    session.refresh_from_db()
+    
+    # Log the saved structured_notes to verify they were saved
+    logger.info(f"Session {session_id} saved. structured_notes type: {type(session.structured_notes)}, value: {session.structured_notes}")
 
     # Return in the same shape as mentor_sessions list
     now = timezone.now()
     start_time = _ensure_tz_aware(session.start_time)
     end_time = _ensure_tz_aware(session.end_time)
-    session_status = 'completed' if session.attended else ('in_progress' if start_time <= now <= end_time else 'scheduled')
+    
+    # Determine session status based on business logic:
+    # 1. Cancelled takes precedence - if cancelled, status is always 'cancelled'
+    # 2. Completed - if attended flag is True
+    # 3. In Progress - if current time is between start_time and end_time
+    # 4. Scheduled - if start_time is in the future
+    if session.cancelled:
+        session_status = 'cancelled'
+    elif session.attended:
+        session_status = 'completed'
+    elif start_time <= now <= end_time:
+        session_status = 'in_progress'
+    else:
+        session_status = 'scheduled'
 
     attendance_out = []
     for rec in session.attendance_records.select_related('mentee').all():
@@ -576,7 +844,9 @@ def update_group_session(request, session_id):
         'transcript_url': session.transcript_url or None,
         'status': session_status,
         'attendance': attendance_out,
-        'structured_notes': session.structured_notes or None,
+        'structured_notes': session.structured_notes if session.structured_notes else {},
+        'cancelled': session.cancelled,
+        'cancellation_reason': session.cancellation_reason if session.cancelled else None,
         'is_closed': session.is_closed,
         'created_at': session.created_at.isoformat(),
         'updated_at': session.updated_at.isoformat(),
@@ -1001,9 +1271,11 @@ def mentor_sessions(request, mentor_id):
         if status_filter != 'all':
             # Map frontend status to database fields
             if status_filter == 'scheduled':
-                queryset = queryset.filter(start_time__gt=timezone.now(), attended=False)
+                queryset = queryset.filter(start_time__gt=timezone.now(), attended=False, cancelled=False)
             elif status_filter == 'completed':
-                queryset = queryset.filter(attended=True)
+                queryset = queryset.filter(attended=True, cancelled=False)
+            elif status_filter == 'cancelled':
+                queryset = queryset.filter(cancelled=True)
         
         if start_date:
             queryset = queryset.filter(start_time__gte=start_date)
@@ -1017,7 +1289,12 @@ def mentor_sessions(request, mentor_id):
         sessions_data = []
         for session in sessions:
             outcomes = session.outcomes or {}
-            structured_notes = session.structured_notes or {}
+            # Get structured_notes - use the actual value from DB
+            # Check if it's None vs empty dict - if None, use empty dict, otherwise use the actual value
+            structured_notes = session.structured_notes if session.structured_notes is not None else {}
+            # Debug logging
+            if session.id == request.GET.get('debug_session_id'):
+                logger.info(f"DEBUG: Session {session.id} structured_notes: {session.structured_notes}, type: {type(session.structured_notes)}")
             sessions_data.append({
                 'id': str(session.id),
                 'mentor_id': str(mentor.id),
@@ -1030,9 +1307,11 @@ def mentor_sessions(request, mentor_id):
                 'track_assignment': outcomes.get('track_assignment', ''),
                 'recording_url': session.recording_url or None,
                 'transcript_url': session.transcript_url or None,
-                'status': 'completed' if session.attended else ('in_progress' if session.start_time <= timezone.now() <= session.end_time else 'scheduled'),
+                'status': 'cancelled' if session.cancelled else ('completed' if session.attended else ('in_progress' if session.start_time <= timezone.now() <= session.end_time else 'scheduled')),
                 'attendance': [],  # Would need to be populated from a separate model
                 'structured_notes': structured_notes,
+                'cancelled': session.cancelled,
+                'cancellation_reason': session.cancellation_reason if session.cancelled else None,
                 'is_closed': session.is_closed,
                 'created_at': session.created_at.isoformat(),
                 'updated_at': session.updated_at.isoformat(),
@@ -1870,74 +2149,4 @@ def mentor_influence_index(request, mentor_id):
     })
 
 
-@api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
-def update_group_session(request, session_id):
-    """
-    PATCH /api/v1/mentors/sessions/{session_id}
-    Update a group mentorship session (post-session management).
-    """
-    try:
-        session = MentorSession.objects.get(id=session_id, type='group')
-    except MentorSession.DoesNotExist:
-        return Response(
-            {'error': 'Session not found'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    # Verify the mentor owns this session
-    if str(session.mentor.id) != str(request.user.id):
-        return Response(
-            {'error': 'You can only update your own sessions'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
-    # Update session fields
-    if 'recording_url' in request.data:
-        if not session.outcomes:
-            session.outcomes = {}
-        session.outcomes['recording_url'] = request.data['recording_url']
-    
-    if 'transcript_url' in request.data:
-        if not session.outcomes:
-            session.outcomes = {}
-        session.outcomes['transcript_url'] = request.data['transcript_url']
-    
-    if 'structured_notes' in request.data:
-        if not session.outcomes:
-            session.outcomes = {}
-        session.outcomes['structured_notes'] = request.data['structured_notes']
-    
-    if 'scheduled_at' in request.data:
-        from datetime import datetime
-        scheduled_at = datetime.fromisoformat(request.data['scheduled_at'].replace('Z', '+00:00'))
-        session.start_time = scheduled_at
-    
-    if 'duration_minutes' in request.data:
-        duration = int(request.data['duration_minutes'])
-        session.end_time = session.start_time + timedelta(minutes=duration)
-    
-    if 'is_closed' in request.data:
-        session.attended = request.data['is_closed']
-    
-    session.save()
-    
-    # Return updated session data
-    return Response({
-        'id': str(session.id),
-        'mentor_id': str(session.mentor.id),
-        'title': session.title,
-        'description': session.outcomes.get('description', '') if session.outcomes else '',
-        'scheduled_at': session.start_time.isoformat(),
-        'duration_minutes': int((session.end_time - session.start_time).total_seconds() / 60),
-        'meeting_link': session.zoom_url or '',
-        'meeting_type': session.outcomes.get('meeting_type', 'zoom') if session.outcomes else 'zoom',
-        'recording_url': session.outcomes.get('recording_url') if session.outcomes else None,
-        'transcript_url': session.outcomes.get('transcript_url') if session.outcomes else None,
-        'structured_notes': session.outcomes.get('structured_notes') if session.outcomes else None,
-        'status': 'completed' if session.attended else ('in_progress' if session.start_time <= timezone.now() <= session.end_time else 'scheduled'),
-        'is_closed': session.attended,
-        'attendance': [],
-        'created_at': session.created_at.isoformat(),
-        'updated_at': session.updated_at.isoformat(),
-    })
+# DUPLICATE FUNCTION DELETED - Using the first update_group_session function at line 467 instead

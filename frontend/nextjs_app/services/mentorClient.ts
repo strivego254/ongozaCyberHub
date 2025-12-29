@@ -219,7 +219,9 @@ export const mentorClient = {
     meeting_type: 'zoom' | 'google_meet' | 'in_person'
     meeting_link?: string
     track_assignment?: string
+    cohort_id?: string
   }): Promise<GroupMentorshipSession> {
+    console.log('[mentorClient] Creating group session with data:', data)
     return apiGateway.post(`/mentors/${mentorId}/sessions`, data)
   },
 
@@ -239,12 +241,19 @@ export const mentorClient = {
       key_takeaways?: string[]
       action_items?: Array<{ item: string; assignee?: string }>
       discussion_points?: string
+      challenges?: string
+      wins?: string
       next_steps?: string
       mentor_reflections?: string
+      linked_goals?: string[]
+      attached_files?: Array<{ name: string; url: string }>
     }
     scheduled_at?: string
     duration_minutes?: number
     is_closed?: boolean
+    attended?: boolean
+    cancelled?: boolean
+    cancellation_reason?: string
   }): Promise<GroupMentorshipSession> {
     return apiGateway.patch(`/mentors/sessions/${sessionId}`, data)
   },
