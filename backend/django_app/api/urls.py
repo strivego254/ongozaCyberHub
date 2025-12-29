@@ -72,5 +72,8 @@ urlpatterns = [
     
     # Curriculum Engine
     path('curriculum/', include('curriculum.urls')),
+    
+    # Recipe Engine
+    path('', include('recipes.urls')),
 ]
 

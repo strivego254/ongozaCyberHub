@@ -3,6 +3,48 @@
 from django.db import migrations, models
 
 
+def remove_indexes_conditionally(apps, schema_editor):
+    """Conditionally remove indexes only if tables exist."""
+    db_alias = schema_editor.connection.alias
+    with schema_editor.connection.cursor() as cursor:
+        # Remove index from ai_coach_messages if table exists
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = 'ai_coach_messages'
+            )
+        """)
+        if cursor.fetchone()[0]:
+            cursor.execute("""
+                SELECT indexname FROM pg_indexes 
+                WHERE tablename = 'ai_coach_messages' 
+                AND indexname = 'coaching_ai_session_created_idx'
+            """)
+            if cursor.fetchone():
+                cursor.execute("DROP INDEX IF EXISTS coaching_ai_session_created_idx")
+        
+        # Remove index from ai_coach_sessions if table exists
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = 'ai_coach_sessions'
+            )
+        """)
+        if cursor.fetchone()[0]:
+            cursor.execute("""
+                SELECT indexname FROM pg_indexes 
+                WHERE tablename = 'ai_coach_sessions' 
+                AND indexname = 'coaching_ai_user_session_type_idx'
+            """)
+            if cursor.fetchone():
+                cursor.execute("DROP INDEX IF EXISTS coaching_ai_user_session_type_idx")
+
+
+def reverse_remove_indexes(apps, schema_editor):
+    """Reverse: no-op."""
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,13 +52,23 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name='aicoachmessage',
-            name='coaching_ai_session_created_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='aicoachsession',
-            name='coaching_ai_user_session_type_idx',
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    remove_indexes_conditionally,
+                    reverse_remove_indexes
+                ),
+            ],
+            state_operations=[
+                migrations.RemoveIndex(
+                    model_name='aicoachmessage',
+                    name='coaching_ai_session_created_idx',
+                ),
+                migrations.RemoveIndex(
+                    model_name='aicoachsession',
+                    name='coaching_ai_user_session_type_idx',
+                ),
+            ]
         ),
         migrations.RemoveIndex(
             model_name='habit',

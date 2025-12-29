@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'profiler',
     'coaching',
     'curriculum',
+    'recipes',
     'missions',
     'dashboard',
     'subscriptions',

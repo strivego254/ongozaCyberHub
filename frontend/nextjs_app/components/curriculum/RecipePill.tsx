@@ -31,7 +31,7 @@ export function RecipePill({ recipe, className = '' }: RecipePillProps) {
       whileTap={{ scale: 0.98 }}
       className={className}
     >
-      <Link href={`/recipes/${recipe.recipe_id}`}>
+      <Link href={`/recipes/${recipe.recipe_id}`} target="_blank">
         <div className={`
           h-auto py-3 lg:py-4 px-4 lg:px-5 flex-shrink-0 
           border-2 ${colors.border} bg-gradient-to-r from-cyan-500/10 to-blue-500/10 

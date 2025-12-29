@@ -20,4 +20,5 @@ export * from './missions';
 export * from './portfolio';
 export * from './talentscope';
 export * from './mentor';
+export * from './recipes';
 
