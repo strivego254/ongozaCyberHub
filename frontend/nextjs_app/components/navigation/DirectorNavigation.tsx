@@ -6,7 +6,26 @@ import { usePathname, useRouter } from 'next/navigation'
 import clsx from 'clsx'
 import { useAuth } from '@/hooks/useAuth'
 import { useNavigation } from '@/hooks/useNavigation'
-import { getUserRoleDisplay } from '@/utils/formatRole'
+import { getPrimaryRole } from '@/utils/rbac'
+
+// Helper function to get role display name
+function getRoleDisplayName(role: string | null): string {
+  if (!role) return 'Director'
+  
+  const roleMap: Record<string, string> = {
+    'student': 'Student',
+    'mentee': 'Student',
+    'mentor': 'Mentor',
+    'admin': 'Admin',
+    'program_director': 'Program Director',
+    'sponsor_admin': 'Sponsor',
+    'employer': 'Employer',
+    'analyst': 'Analyst',
+    'finance': 'Finance Director',
+  }
+  
+  return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, ' ')
+}
 
 interface NavItem {
   label: string
@@ -88,6 +107,10 @@ export function DirectorNavigation() {
     searchQuery,
     setSearchQuery,
   } = useNavigation({ storageKey: 'director-nav-expanded', autoExpandActive: true })
+
+  // Get primary role dynamically
+  const primaryRole = useMemo(() => getPrimaryRole(user), [user])
+  const roleDisplayName = useMemo(() => getRoleDisplayName(primaryRole), [primaryRole])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -589,7 +612,7 @@ export function DirectorNavigation() {
                   : 'Director')}
               </p>
               <p className="text-xs text-och-mint truncate mt-0.5">
-                {getUserRoleDisplay(user)}
+                {roleDisplayName}
               </p>
             </div>
             <svg

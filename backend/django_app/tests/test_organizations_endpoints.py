@@ -33,6 +33,7 @@ class TestOrganizationsListEndpoint:
 
     def test_list_organizations_unauthenticated(self, api_client):
         """Test listing organizations without authentication."""
+        # Use simple client for unauthenticated request
         response = api_client.get('/api/v1/organizations/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -208,61 +209,3 @@ class TestOrganizationMembersEndpoint:
             format='json'
         )
         assert response.status_code in [status.HTTP_201_CREATED, status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

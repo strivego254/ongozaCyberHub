@@ -130,4 +130,3 @@ class MissionStatusSerializer(serializers.Serializer):
     in_review = serializers.IntegerField()
     completed_total = serializers.IntegerField()
     next_recommended = serializers.DictField(required=False, allow_null=True)
-

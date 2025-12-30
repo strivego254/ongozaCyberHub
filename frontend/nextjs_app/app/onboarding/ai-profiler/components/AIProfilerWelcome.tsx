@@ -115,3 +115,9 @@ export default function AIProfilerWelcome({ onStart }: AIProfilerWelcomeProps) {
 
 
 
+
+
+
+
+
+

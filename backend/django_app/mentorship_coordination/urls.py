@@ -20,7 +20,8 @@ from .views import (
     mentor_influence_index,
     submit_session_feedback,
     get_session_feedback,
-    mentor_feedback_summary
+    mentor_feedback_summary,
+    get_student_mentor
 )
 from .sse_views import mentor_dashboard_stream
 
@@ -51,5 +52,7 @@ urlpatterns = [
     path('mentor/missions/<uuid:submission_id>/review', review_mission, name='review-mission'),
     # Keep old endpoint for backward compatibility
     path('mentor/flags', create_flag, name='create-flag-legacy'),
+    # Student mentor endpoint
+    path('mentorship/mentees/<int:mentee_id>/mentor', get_student_mentor, name='get-student-mentor'),
 ]
 

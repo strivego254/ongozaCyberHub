@@ -55,6 +55,19 @@ function LoginForm() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const hasRedirectedRef = useRef(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Load saved email from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEmail = localStorage.getItem('remembered_email');
+      const savedRememberMe = localStorage.getItem('remember_me') === 'true';
+      if (savedEmail && savedRememberMe) {
+        setFormData(prev => ({ ...prev, email: savedEmail }));
+        setRememberMe(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (role && !VALID_ROLES.includes(role)) {
@@ -63,6 +76,7 @@ function LoginForm() {
   }, [role, router]);
 
   // Redirect if already authenticated (but only if not currently logging in)
+  // IMPORTANT: Only redirect authenticated users to their dashboard, never to another login page
   useEffect(() => {
     // Prevent multiple redirects
     if (hasRedirectedRef.current) return;
@@ -75,25 +89,22 @@ function LoginForm() {
     
     // Only redirect if we're already authenticated and have a user
     // This prevents redirect loops when user is not authenticated
+    // Allow users to stay on any login page they choose, even if authenticated
+    // They can manually log out or switch accounts if needed
     if (isAuthenticated && user) {
-      hasRedirectedRef.current = true;
-      
+      // Only auto-redirect if there's a redirect parameter pointing to a dashboard
+      // Otherwise, let users stay on the login page they chose
       const redirectTo = searchParams.get('redirect');
-      let targetRoute: string;
       
       if (redirectTo && redirectTo.startsWith('/dashboard')) {
-        targetRoute = redirectTo;
-      } else {
-        targetRoute = getRedirectRoute(user);
+        hasRedirectedRef.current = true;
+        console.log('🔄 Redirecting authenticated user to requested dashboard:', redirectTo);
+        router.push(redirectTo);
       }
-      
-      // Use router.push for client-side navigation (preserves cookies)
-      if (targetRoute && targetRoute.startsWith('/dashboard')) {
-        console.log('🔄 Redirecting authenticated user to:', targetRoute);
-        router.push(targetRoute);
-      }
+      // If no redirect parameter, don't auto-redirect - let user stay on chosen login page
+      // This allows users to switch accounts or log out if needed
     }
-  }, [isAuthenticated, user, isLoading, isLoggingIn, isRedirecting, router]);
+  }, [isAuthenticated, user, isLoading, isLoggingIn, isRedirecting, router, searchParams]);
 
   const currentPersona = PERSONAS[role as keyof typeof PERSONAS] || PERSONAS.student;
 
@@ -104,6 +115,16 @@ function LoginForm() {
     setIsRedirecting(false);
 
     try {
+      // Save email to localStorage if "Remember Me" is checked
+      if (rememberMe && typeof window !== 'undefined') {
+        localStorage.setItem('remembered_email', formData.email);
+        localStorage.setItem('remember_me', 'true');
+      } else if (typeof window !== 'undefined') {
+        // Clear saved email if "Remember Me" is unchecked
+        localStorage.removeItem('remembered_email');
+        localStorage.removeItem('remember_me');
+      }
+
       // Perform login - this will update auth state and return user with roles
       const result = await login(formData);
       
@@ -111,7 +132,6 @@ function LoginForm() {
         throw new Error('Login failed: No user data received');
       }
 
-      const currentUser = result.user;
       const token = result.access_token || localStorage.getItem('access_token');
       
       if (!token) {
@@ -135,6 +155,7 @@ function LoginForm() {
 
       // Determine redirect route
       const redirectTo = searchParams.get('redirect');
+      let route: string = '/dashboard/student'; // Default fallback route
 
       // Wait for auth state to fully update and roles to be loaded
       // The login function already fetches full user profile from /auth/me
@@ -142,14 +163,14 @@ function LoginForm() {
       
       // Reload user to ensure we have the latest data with roles
       // The login function should have already updated the auth state, but we'll verify
-      let updatedUser = result?.user || currentUser;
+      let updatedUser = result?.user || user;
       
       // Try to get the latest user from auth state (which should have roles from /auth/me)
       // Wait a bit more if user is not yet available
       let retries = 0;
       while ((!updatedUser || !updatedUser.roles || updatedUser.roles.length === 0) && retries < 5) {
         await new Promise(resolve => setTimeout(resolve, 200));
-        updatedUser = user || result?.user || currentUser;
+        updatedUser = user || result?.user;
         retries++;
       }
       
@@ -167,77 +188,98 @@ function LoginForm() {
         }
       }
       
-      let route: string;
-      
-      if (!updatedUser || !updatedUser.roles || updatedUser.roles.length === 0) {
-        console.warn('⚠️ No user roles available, using cookie fallback');
-        if (dashboardFromCookie) {
-          route = dashboardFromCookie;
-          console.log('✅ Using dashboard route from cookie:', route);
-        } else {
-          console.error('❌ No user available and no cookie fallback, defaulting to student dashboard');
-          route = '/dashboard/student';
-        }
+      // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
+      if (redirectTo && redirectTo.startsWith('/dashboard')) {
+        route = redirectTo;
+        console.log('📍 Using redirect parameter:', route);
       } else {
-        const userRoles = updatedUser.roles || [];
-        
-        // If logging in through director login, verify role
-        if (role === 'director') {
-        const isAdmin = userRoles.some((ur: any) => {
-            const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-          return roleName?.toLowerCase().trim() === 'admin'
-        })
-        const isProgramDirector = userRoles.some((ur: any) => {
-            const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-          const normalized = roleName?.toLowerCase().trim()
-          return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
-        })
-        
-        if (!isAdmin && !isProgramDirector) {
-          setError('You do not have permission to access the Program Director dashboard. Your account must have program_director or admin role.');
-          setIsLoggingIn(false);
-          return;
-        }
-      }
+        if (!updatedUser || !updatedUser.roles || updatedUser.roles.length === 0) {
+          console.warn('⚠️ No user roles available, using cookie fallback');
+          if (dashboardFromCookie) {
+            route = dashboardFromCookie;
+            console.log('✅ Using dashboard route from cookie:', route);
+          } else {
+            console.error('❌ No user available and no cookie fallback, defaulting to student dashboard');
+            route = '/dashboard/student';
+          }
+        } else {
+          const userRoles = updatedUser.roles || [];
+          
+          // If logging in through director login, verify role
+          if (role === 'director') {
+            const isAdmin = userRoles.some((ur: any) => {
+              const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+              return roleName?.toLowerCase().trim() === 'admin'
+            })
+            const isProgramDirector = userRoles.some((ur: any) => {
+              const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+              const normalized = roleName?.toLowerCase().trim()
+              return normalized === 'program_director' || normalized === 'program director' || normalized === 'director'
+            })
+            
+            if (!isAdmin && !isProgramDirector) {
+              setError('You do not have permission to access the Program Director dashboard. Your account must have program_director or admin role.');
+              setIsLoggingIn(false);
+              return;
+            }
+          } else if (role === 'mentor') {
+            const isMentor = userRoles.some((ur: any) => {
+              const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+              return roleName?.toLowerCase().trim() === 'mentor'
+            })
+            const isAdmin = userRoles.some((ur: any) => {
+              const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+              return roleName?.toLowerCase().trim() === 'admin'
+            })
+            
+            if (!isMentor && !isAdmin) {
+              setError('You do not have permission to access the Mentor dashboard. Your account must have mentor or admin role.');
+              setIsLoggingIn(false);
+              return;
+            }
+          } else if (role === 'admin') {
+            const isAdmin = userRoles.some((ur: any) => {
+              const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+              return roleName?.toLowerCase().trim() === 'admin'
+            })
+            
+            if (!isAdmin) {
+              setError('You do not have permission to access the Admin dashboard. Your account must have admin role.');
+              setIsLoggingIn(false);
+              return;
+            }
+          } else if (role === 'finance') {
+            const isFinance = userRoles.some((ur: any) => {
+              const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+              const normalized = roleName?.toLowerCase().trim()
+              return normalized === 'finance' || normalized === 'finance_admin'
+            })
+            const isAdmin = userRoles.some((ur: any) => {
+              const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
+              return roleName?.toLowerCase().trim() === 'admin'
+            })
+            
+            if (!isFinance && !isAdmin) {
+              setError('You do not have permission to access the Finance dashboard. Your account must have finance or finance_admin role.');
+              setIsLoggingIn(false);
+              return;
+            }
+          }
 
-        // If logging in through finance login, verify role
-        if (role === 'finance') {
-          const isFinance = userRoles.some((ur: any) => {
-            const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-            const normalized = roleName?.toLowerCase().trim()
-            return normalized === 'finance' || normalized === 'finance_admin'
-          })
+          // CRITICAL: Check for admin role first
           const isAdmin = userRoles.some((ur: any) => {
             const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
             return roleName?.toLowerCase().trim() === 'admin'
           })
           
-          if (!isFinance && !isAdmin) {
-            setError('You do not have permission to access the Finance dashboard. Your account must have finance or finance_admin role.');
-            setIsLoggingIn(false);
-            return;
-          }
-        }
-
-      // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
-      if (redirectTo && redirectTo.startsWith('/dashboard')) {
-        route = redirectTo;
-        console.log('📍 Using redirect parameter:', route);
-        } else {
-        // CRITICAL: Check for admin role first
-        const isAdmin = userRoles.some((ur: any) => {
-            const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
-          return roleName?.toLowerCase().trim() === 'admin'
-        })
-        
-        if (isAdmin) {
-          console.log('✅ Admin user detected - redirecting to /dashboard/admin')
-          route = '/dashboard/admin'
-        } else {
-          // Use centralized redirect utility for other roles
+          if (isAdmin) {
+            console.log('✅ Admin user detected - redirecting to /dashboard/admin')
+            route = '/dashboard/admin'
+          } else {
+            // Use centralized redirect utility for other roles
             route = getRedirectRoute(updatedUser);
-          console.log('✅ Login redirect route determined (non-admin):', route);
-          console.log('User roles used for redirect:', userRoles);
+            console.log('✅ Login redirect route determined (non-admin):', route);
+            console.log('User roles used for redirect:', userRoles);
             
             // Special handling for program_director - ensure it goes to director dashboard
             const isProgramDirector = userRoles.some((ur: any) => {
@@ -254,7 +296,7 @@ function LoginForm() {
                 console.log('✅ Program Director detected - already redirecting to /dashboard/director')
               }
             }
-
+            
             // Special handling for finance - ensure it goes to finance dashboard
             const isFinance = userRoles.some((ur: any) => {
               const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
@@ -430,7 +472,7 @@ function LoginForm() {
               <div className="relative">
                 <input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={formData.password}
                   onChange={(e) =>
@@ -443,7 +485,7 @@ function LoginForm() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-steel-grey hover:text-cyber-mint transition-colors focus:outline-none focus:ring-2 focus:ring-cyber-mint/30 rounded p-1"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
                     <EyeOff className="w-5 h-5" />
@@ -452,6 +494,23 @@ function LoginForm() {
                   )}
                 </button>
               </div>
+            </div>
+
+            {/* Remember Me */}
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-steel-grey bg-och-midnight text-cyber-mint focus:ring-cyber-mint focus:ring-offset-0 focus:ring-2 cursor-pointer"
+              />
+              <label
+                htmlFor="remember-me"
+                className="ml-2 text-sm text-steel-grey cursor-pointer"
+              >
+                Remember me
+              </label>
             </div>
 
             {/* CTA */}

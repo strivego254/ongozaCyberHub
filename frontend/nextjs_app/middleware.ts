@@ -10,6 +10,7 @@ const protectedRoutes = ['/dashboard'];
 const authRoutes = ['/login', '/signup'];
 
 function getLoginRouteForPath(pathname: string) {
+  // Map dashboard routes to their corresponding login routes
   if (pathname.startsWith('/dashboard/director')) return '/login/director'
   if (pathname.startsWith('/dashboard/admin')) return '/login/admin'
   if (pathname.startsWith('/dashboard/mentor')) return '/login/mentor'
@@ -18,6 +19,25 @@ function getLoginRouteForPath(pathname: string) {
   if (pathname.startsWith('/dashboard/employer') || pathname.startsWith('/dashboard/marketplace')) return '/login/employer'
   if (pathname.startsWith('/dashboard/finance')) return '/login/finance'
   return '/login/student'
+}
+
+function getLoginRouteForRole(role: string | null): string {
+  // Map user roles to their corresponding login routes
+  switch (role) {
+    case 'admin': return '/login/admin'
+    case 'program_director': return '/login/director'
+    case 'mentor': return '/login/mentor'
+    case 'analyst': return '/login/analyst'
+    case 'sponsor_admin': return '/login/sponsor'
+    case 'employer': return '/login/employer'
+    case 'finance':
+    case 'finance_admin':
+      return '/login/finance'
+    case 'mentee':
+    case 'student':
+    default:
+      return '/login/student'
+  }
 }
 
 function parseRolesCookie(raw: string | undefined): string[] {
@@ -51,7 +71,9 @@ function dashboardForRole(role: string | null): string {
     case 'analyst': return '/dashboard/analyst'
     case 'sponsor_admin': return '/dashboard/sponsor'
     case 'employer': return '/dashboard/employer'
-    case 'finance': return '/dashboard/finance'
+    case 'finance':
+    case 'finance_admin':
+      return '/dashboard/finance'
     case 'mentee':
     case 'student':
     default:
@@ -91,13 +113,8 @@ export function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
   const loginPath = getLoginRouteForPath(pathname);
 
-  // CRITICAL: Don't redirect if user is on login page and already has a token
-  // This prevents redirect loops after successful login
-  if (isAuthRoute && hasToken) {
-    // Allow login page to handle the redirect client-side
-    // This prevents middleware from interfering with post-login flow
-    return NextResponse.next();
-  }
+  // Check if this is a specific login route (e.g., /login/mentor, /login/director, /login/finance)
+  const isSpecificLoginRoute = pathname.match(/^\/login\/(mentor|director|admin|student|sponsor|analyst|employer|finance)$/);
 
   // Redirect to login if accessing protected route without token
   if (isProtectedRoute && !hasToken) {
@@ -106,9 +123,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // If authenticated user hits auth pages, redirect them to their dashboard
-  if (isAuthRoute && hasToken && home) {
-    return NextResponse.redirect(new URL(home, request.url));
+  // For auth routes (login pages):
+  // - Allow ALL specific login routes to be accessed regardless of authentication status
+  // - Users should be able to visit any login page (e.g., /login/mentor, /login/director)
+  // - Client-side will handle role validation and redirect to appropriate dashboard after login
+  // - If user is authenticated and visits generic /login, redirect to their dashboard
+  if (isAuthRoute) {
+    // Always allow specific login routes - never redirect them
+    // This ensures users can access the login page they want, regardless of their current auth state
+    if (isSpecificLoginRoute) {
+      return NextResponse.next();
+    }
+    
+    // For generic /login route with token, redirect to user's dashboard
+    if (hasToken && home && (pathname === '/login' || pathname === '/login/')) {
+      return NextResponse.redirect(new URL(home, request.url));
+    }
+    
+    // Allow all auth routes to be accessed (no token required for login pages)
+    return NextResponse.next();
   }
 
   // Server-side RBAC for dashboard routes (best effort; falls back to client guard if roles cookie missing)

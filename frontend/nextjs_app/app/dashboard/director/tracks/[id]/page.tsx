@@ -956,7 +956,11 @@ export default function TrackDetailPage() {
                       onClick={handleOpenAssignCohorts}
                     >
                       👥 Assign Cohort
+<<<<<<< Updated upstream
                       </Button>
+=======
+                    </Button>
+>>>>>>> Stashed changes
                     {track.milestones && track.milestones.length > 0 && (
                       <Button variant="outline" className="w-full justify-start" size="sm" disabled>
                         📚 Manage Milestones

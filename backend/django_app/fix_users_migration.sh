@@ -57,26 +57,3 @@ else
     echo "3. Check for circular dependencies"
     exit 1
 fi
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 2dec75ef9a2e0cb3f6d23cb1cb96026bd538f407
