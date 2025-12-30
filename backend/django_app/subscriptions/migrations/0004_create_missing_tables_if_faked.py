@@ -37,32 +37,3 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(create_missing_tables, migrations.RunPython.noop),
     ]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -18,6 +18,11 @@ export interface Mentor {
   bio: string;
   timezone: string;
   readiness_impact: number;
+  cohort_id?: string;
+  cohort_name?: string;
+  assigned_at?: string;
+  mentor_role?: string;
+  assignment_type?: string;
 }
 
 export interface MentorshipSession {
@@ -58,24 +63,32 @@ export function useMentorship(userId?: string) {
     queryKey: ['mentorship', 'mentor', userId],
     queryFn: async () => {
       try {
-        // Try to fetch assigned mentor from backend
-        // This endpoint may not exist yet, so we'll return null if it fails
+        console.log('Fetching mentor for userId:', userId);
+        // Fetch assigned mentor from backend
         const response = await apiGateway.get(`/mentorship/mentees/${userId}/mentor`);
-        if (response) {
-          return {
-            id: response.id || response.mentor_id,
-            name: response.name || `${response.first_name || ''} ${response.last_name || ''}`.trim(),
-            avatar: response.avatar || response.avatar_url,
-            expertise: response.expertise || response.skills || [],
-            track: response.track || response.track_key || 'Defender',
-            bio: response.bio || response.biography || '',
+        console.log('Mentor API response:', response);
+        if (response && response.id) {
+          const mentor: Mentor = {
+            id: response.id,
+            name: response.name || 'Mentor',
+            avatar: response.avatar || undefined,
+            expertise: Array.isArray(response.expertise) ? response.expertise : [],
+            track: response.track || 'Mentor',
+            bio: response.bio || '',
             timezone: response.timezone || 'Africa/Nairobi',
-            readiness_impact: response.readiness_impact || 0
-          } as Mentor;
+            readiness_impact: typeof response.readiness_impact === 'number' ? response.readiness_impact : 85.0,
+            cohort_id: response.cohort_id || undefined,
+            cohort_name: response.cohort_name || undefined,
+            assigned_at: response.assigned_at || undefined,
+            mentor_role: response.mentor_role || undefined,
+            assignment_type: response.assignment_type || undefined
+          };
+          console.log('Processed mentor data:', mentor);
+          return mentor;
         }
       } catch (error) {
-        // Mentor endpoint may not exist yet, return null
-        console.debug('Mentor endpoint not available:', error);
+        // If mentor endpoint fails, log and return null
+        console.error('Failed to fetch mentor:', error);
       }
       return null;
     },

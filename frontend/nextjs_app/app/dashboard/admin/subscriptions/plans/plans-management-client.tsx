@@ -106,6 +106,10 @@ export default function PlansManagementClient() {
   const loadPlans = async () => {
     try {
       setIsLoading(true)
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
       const response = await apiGateway.get<any>('/admin/plans/')
       console.log('📡 Plans API Response:', response)
       

@@ -46,7 +46,7 @@ const navItems: NavItem[] = [
       { label: 'Program Directors', href: '/dashboard/admin/users/directors', icon: '👔' },
       { label: 'Mentors', href: '/dashboard/admin/users/mentors', icon: '🎯' },
       { label: 'Finance Directors', href: '/dashboard/admin/users/finance', icon: '💰' },
-      { label: 'Mentees & Students', href: '/dashboard/admin/users/mentees', icon: '🎓' },
+      { label: 'Students', href: '/dashboard/admin/users/mentees', icon: '🎓' },
     ]
   },
   {

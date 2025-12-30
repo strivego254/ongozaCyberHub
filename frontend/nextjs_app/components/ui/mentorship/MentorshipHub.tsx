@@ -70,12 +70,12 @@ export function MentorshipHub() {
       {/* 1. MENTORSHIP TELEMETRY BAR */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          {[
-           { 
-             label: 'Mentor Match', 
-             value: mentor?.name || 'Pairing...', 
-             sub: mentor?.track || 'Awaiting Director', 
-             icon: Users, 
-             color: 'text-och-gold' 
+           {
+             label: 'Mentor Match',
+             value: mentor?.name || 'Pairing...',
+             sub: mentor?.cohort_name ? `${mentor.cohort_name}${mentor.mentor_role ? ` (${mentor.mentor_role})` : ''}` : (mentor?.track || 'Awaiting Director'),
+             icon: Users,
+             color: 'text-och-gold'
            },
            { 
              label: 'Next Session', 

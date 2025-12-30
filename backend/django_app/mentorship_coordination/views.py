@@ -2149,4 +2149,103 @@ def mentor_influence_index(request, mentor_id):
     })
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_student_mentor(request, mentee_id):
+    """
+    GET /api/v1/mentorship/mentees/{mentee_id}/mentor
+    Get the mentor assigned to a student's cohort.
+    """
+    try:
+        # Verify the mentee_id matches the authenticated user (students can only see their own mentor)
+        mentee_id_int = int(mentee_id)
+        user_id_int = int(request.user.id)
+
+        if user_id_int != mentee_id_int:
+            return Response(
+                {'error': 'You can only view your own mentor assignment'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # First, get the student's active cohort enrollment
+        try:
+            from programs.models import Enrollment, MentorAssignment, Cohort
+            enrollment = Enrollment.objects.filter(
+                user_id=mentee_id_int,
+                status__in=['active', 'completed']  # Include completed students who might still have mentor access
+            ).select_related('cohort__track').first()
+
+            if not enrollment:
+                return Response(
+                    {'error': 'No active cohort enrollment found. Please contact your program director.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            cohort = enrollment.cohort
+
+            # Get the mentor assigned to this cohort (prefer primary mentors, fallback to any active mentor)
+            mentor_assignment = MentorAssignment.objects.filter(
+                cohort=cohort,
+                active=True
+            ).select_related('mentor').order_by('-role').first()  # Primary mentors first
+
+            if not mentor_assignment:
+                return Response(
+                    {'error': 'No mentor assigned to your cohort. Please contact your program director.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            mentor = mentor_assignment.mentor
+
+        except Exception as cohort_error:
+            # Fallback to individual mentor assignment if cohort approach fails
+            logger.warning(f"Cohort-based mentor lookup failed for mentee {mentee_id_int}: {cohort_error}. Falling back to individual assignment.")
+
+            assignment = MenteeMentorAssignment.objects.filter(
+                mentee_id=mentee_id_int,
+                status='active'
+            ).select_related('mentor').first()
+
+            if not assignment:
+                return Response(
+                    {'error': 'No active mentor assignment found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            mentor = assignment.mentor
+            cohort = None
+            mentor_assignment = None
+
+        # Get mentor's profile information and expertise
+        mentor_profile = {
+            'id': str(mentor.id),
+            'name': mentor.get_full_name() or mentor.email,
+            'avatar': getattr(mentor, 'avatar_url', None) or getattr(mentor, 'profile_picture', None),
+            'expertise': [],  # Would come from mentor profile/skills
+            'track': getattr(mentor, 'track_key', None) or 'Mentor',  # Use mentor's track if available
+            'bio': getattr(mentor, 'bio', None) or getattr(mentor, 'biography', None) or '',
+            'timezone': getattr(mentor, 'timezone', None) or 'Africa/Nairobi',
+            'readiness_impact': 85.0,  # Would be calculated based on mentee outcomes
+            'cohort_id': str(cohort.id) if cohort else None,
+            'cohort_name': cohort.name if cohort else None,
+            'assigned_at': mentor_assignment.assigned_at.isoformat() if mentor_assignment else None,
+            'mentor_role': mentor_assignment.role if mentor_assignment else 'assigned',
+            'assignment_type': 'cohort_based' if cohort else 'individual',
+        }
+
+        return Response(mentor_profile, status=status.HTTP_200_OK)
+
+    except (ValueError, AttributeError) as e:
+        return Response(
+            {'error': 'Invalid request parameters'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as e:
+        logger.error(f"Error fetching mentor for mentee {mentee_id}: {str(e)}", exc_info=True)
+        return Response(
+            {'error': 'Internal server error'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 # DUPLICATE FUNCTION DELETED - Using the first update_group_session function at line 467 instead

@@ -41,6 +41,7 @@ export default function PlansPage() {
 
 
 
+<<<<<<< Updated upstream
 
 
 
@@ -52,6 +53,14 @@ export default function PlansPage() {
 
 
 
+
+
+
+
+
+
+=======
+>>>>>>> Stashed changes
 
 
 

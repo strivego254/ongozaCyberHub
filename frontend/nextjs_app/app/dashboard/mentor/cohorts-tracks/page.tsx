@@ -1137,27 +1137,27 @@ export default function MentorCohortsTracksPage() {
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Other Cohort Info */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <div className="text-och-steel">Seat Capacity</div>
-                          <div className="text-white font-medium">{cohort.seat_cap}</div>
-                        </div>
-                        <div>
-                          <div className="text-och-steel">Mentor Ratio</div>
-                          <div className="text-white font-medium">1:{cohort.mentor_ratio}</div>
-                        </div>
-                        <div>
-                          <div className="text-och-steel">Utilization</div>
-                          <div className="text-white font-medium">
-                            {cohort.seat_utilization?.toFixed(1) || 0}%
+                          <div>
+                            <div className="text-och-steel">Seat Capacity</div>
+                            <div className="text-white font-medium">{cohort.seat_cap}</div>
                           </div>
-                        </div>
-                        <div>
-                          <div className="text-och-steel">Assigned At</div>
-                          <div className="text-white font-medium">
-                            {new Date(mentorAssignment.assigned_at).toLocaleDateString()}
+                          <div>
+                            <div className="text-och-steel">Mentor Ratio</div>
+                            <div className="text-white font-medium">1:{cohort.mentor_ratio}</div>
+                          </div>
+                          <div>
+                            <div className="text-och-steel">Utilization</div>
+                            <div className="text-white font-medium">
+                              {cohort.seat_utilization?.toFixed(1) || 0}%
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-och-steel">Assigned At</div>
+                            <div className="text-white font-medium">
+                              {new Date(mentorAssignment.assigned_at).toLocaleDateString()}
                             </div>
                           </div>
                         </div>
