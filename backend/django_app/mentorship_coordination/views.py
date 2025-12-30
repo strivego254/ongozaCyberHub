@@ -762,7 +762,7 @@ def update_group_session(request, session_id):
     if 'attended' in data:
         session.attended = bool(data.get('attended'))
         logger.info(f"Session {session_id} attended flag set to: {session.attended}")
-    
+
     # Close session
     if 'is_closed' in data:
         session.is_closed = bool(data.get('is_closed'))

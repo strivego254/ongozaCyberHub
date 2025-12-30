@@ -83,7 +83,7 @@ export function useMentorAssignedTracks(mentorId: string | undefined) {
           return null
         }
       })
-      
+
       const assignedCohorts = (await Promise.all(cohortPromises)).filter(Boolean) as Cohort[]
       console.log('[useMentorAssignedTracks] Final assigned cohorts:', assignedCohorts.map(c => ({ id: c.id, name: c.name })))
 

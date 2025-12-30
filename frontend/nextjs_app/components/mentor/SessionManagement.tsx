@@ -876,8 +876,8 @@ export function SessionManagement() {
                                 <li key={i}>{takeaway}</li>
                               ))}
                             </ul>
-                          </div>
-                        )}
+                        </div>
+                      )}
 
                         {session.structured_notes.action_items && session.structured_notes.action_items.length > 0 && (
                           <div>
@@ -892,7 +892,7 @@ export function SessionManagement() {
                                 </li>
                               ))}
                             </ul>
-                          </div>
+                    </div>
                         )}
 
                         {session.structured_notes.discussion_points && (
@@ -951,23 +951,23 @@ export function SessionManagement() {
                           </h4>
                         </div>
                         <SessionFeedbackView sessionId={session.id} isMentor={true} />
-                      </div>
+                </div>
                     )}
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 flex-wrap">
                       {session.status === 'scheduled' && (
                         <>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => {
-                              setReschedulingSession(reschedulingSession === session.id ? null : session.id)
-                              setExpandedSession(session.id)
-                            }}
-                            className="text-xs"
-                          >
-                            {reschedulingSession === session.id ? 'Cancel' : 'Reschedule'}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                          onClick={() => {
+                            setReschedulingSession(reschedulingSession === session.id ? null : session.id)
+                            setExpandedSession(session.id)
+                          }}
+                          className="text-xs"
+                        >
+                          {reschedulingSession === session.id ? 'Cancel' : 'Reschedule'}
                           </Button>
                           <Button 
                             variant="outline" 
@@ -1024,9 +1024,9 @@ export function SessionManagement() {
                               setExpandedSession(session.id)
                             }}
                             className="text-xs"
-                          >
+                      >
                             {editingNotes === session.id ? 'Cancel' : 'Edit Notes'}
-                          </Button>
+                      </Button>
                           <Button 
                             variant="defender" 
                             size="sm" 
@@ -1036,7 +1036,7 @@ export function SessionManagement() {
                             Close Session
                           </Button>
                         </>
-                      )}
+                    )}
                       {session.is_closed && (
                         <div className="text-xs text-och-steel italic">
                           Session closed - Notes are locked
@@ -1094,8 +1094,8 @@ export function SessionManagement() {
                           onCancel={() => setEditingNotes(null)}
                           isLocked={session.is_closed || false}
                         />
-                      </div>
-                    )}
+                        </div>
+                      )}
 
                         </div>
                       )}

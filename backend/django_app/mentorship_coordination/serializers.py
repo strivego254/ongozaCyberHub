@@ -173,7 +173,7 @@ class CreateGroupSessionSerializer(serializers.Serializer):
         formats_to_try = []
         
         # With microseconds: 2026-02-02T06:00:00.000
-        if '.' in clean_value:
+            if '.' in clean_value:
             formats_to_try.append(('%Y-%m-%dT%H:%M:%S.%f', clean_value))
         
         # With seconds: 2026-02-02T06:00:00 (2 colons in time part)
@@ -185,22 +185,22 @@ class CreateGroupSessionSerializer(serializers.Serializer):
         if colon_count == 1:
             formats_to_try.append(('%Y-%m-%dT%H:%M', clean_value))
             formats_to_try.append(('%Y-%m-%d %H:%M', clean_value.replace('T', ' ')))
-        
-        for fmt, val in formats_to_try:
-            try:
-                dt = datetime.strptime(val, fmt)
+            
+            for fmt, val in formats_to_try:
+                try:
+                    dt = datetime.strptime(val, fmt)
                 # Make timezone-aware (assume UTC if no timezone info)
-                if django_timezone.is_naive(dt):
-                    dt = django_timezone.make_aware(dt, dt_timezone.utc)
-                return dt
-            except ValueError:
-                continue
-        
-        # If all parsing attempts failed
-        raise serializers.ValidationError(
-            f"Invalid datetime format: '{original_value}'. "
+                    if django_timezone.is_naive(dt):
+                        dt = django_timezone.make_aware(dt, dt_timezone.utc)
+                    return dt
+                except ValueError:
+                    continue
+            
+            # If all parsing attempts failed
+            raise serializers.ValidationError(
+                f"Invalid datetime format: '{original_value}'. "
             f"Expected ISO 8601 format (e.g., '2026-02-02T06:00:00Z', '2026-02-02T06:00:00.000Z', or '2026-02-02T06:00')."
-        )
+            )
 
 
 class MissionReviewSerializer(serializers.Serializer):
