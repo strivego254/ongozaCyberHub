@@ -30,6 +30,7 @@ export const recipesClient = {
     if (filters?.track) params.append('track', filters.track);
     if (filters?.difficulty) params.append('difficulty', filters.difficulty);
     if (filters?.max_time) params.append('max_time', filters.max_time.toString());
+    if (filters?.context) params.append('context', filters.context);
     if (filters?.sort) params.append('sort', filters.sort);
     
     const queryString = params.toString();

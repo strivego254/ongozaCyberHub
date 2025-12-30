@@ -27,6 +27,11 @@ function getBaseUrl(path: string): string {
     '/personality',
     '/ai/',
   ];
+  
+  // Check if path already includes /api/v1
+  if (path.startsWith('/api/v1/')) {
+    return DJANGO_API_URL;
+  }
 
   const isFastApi = fastApiPaths.some(prefix => path.startsWith(prefix));
 

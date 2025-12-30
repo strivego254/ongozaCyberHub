@@ -68,6 +68,15 @@ class RecipeViewSet(viewsets.ModelViewSet):
             except ValueError:
                 pass
         
+        # Context filter (mission, module, project)
+        context_type = self.request.query_params.get('context', None)
+        if context_type:
+            # Filter recipes that have context links of this type
+            context_ids = RecipeContextLink.objects.filter(
+                context_type=context_type
+            ).values_list('recipe_id', flat=True)
+            queryset = queryset.filter(id__in=context_ids)
+        
         # Sort
         sort = self.request.query_params.get('sort', 'relevance')
         if sort == 'popular':
@@ -79,7 +88,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         else:  # relevance default
             queryset = queryset.order_by('-usage_count', '-avg_rating')
         
-        return queryset.select_related('created_by')
+        return queryset.select_related('created_by').prefetch_related('context_links')
     
     @action(detail=True, methods=['get'])
     def related(self, request, slug=None):

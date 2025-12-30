@@ -20,6 +20,7 @@ export function RecipeLibraryShell() {
     track: '',
     difficulty: '',
     max_time: undefined,
+    context: undefined,
     sort: 'relevance',
   });
   const [search, setSearch] = useState('');

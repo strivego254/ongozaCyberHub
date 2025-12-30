@@ -19,6 +19,12 @@ interface RecipeCardProps {
   isBookmarked?: boolean;
 }
 
+function formatRating(rating: string | number | null | undefined): string {
+  if (!rating) return 'New';
+  const numRating = typeof rating === 'string' ? parseFloat(rating) : rating;
+  return isNaN(numRating) ? 'New' : numRating.toFixed(1);
+}
+
 function getDifficultyColor(difficulty: string) {
   switch (difficulty) {
     case 'beginner':
@@ -89,11 +95,26 @@ export function RecipeCard({ recipe, isBookmarked }: RecipeCardProps) {
                 </div>
               )}
 
+              {/* CONTEXT LABELS */}
+              {recipe.context_labels && recipe.context_labels.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {recipe.context_labels.map((label: string, idx: number) => (
+                    <Badge
+                      key={idx}
+                      variant="outline"
+                      className="text-xs bg-purple-500/20 border-purple-500/30 text-purple-300"
+                    >
+                      {label}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
               {/* STATS */}
               <div className="flex items-center gap-4 text-xs text-slate-500 pt-2 border-t border-slate-800/50">
                 <div className="flex items-center gap-1">
                   <Star className="w-3 h-3 fill-current text-amber-400" />
-                  <span>{recipe.avg_rating?.toFixed(1) || 'New'}</span>
+                  <span>{formatRating(recipe.avg_rating)}</span>
                   <span className="text-slate-600">({recipe.usage_count})</span>
                 </div>
                 {isBookmarked && (

@@ -15,7 +15,7 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
-export function SearchBar({ value, onChange, placeholder = 'Search skills, tools, missions...' }: SearchBarProps) {
+export function SearchBar({ value, onChange, placeholder = 'Search by skill, tool, or mission' }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value);
 
   useEffect(() => {

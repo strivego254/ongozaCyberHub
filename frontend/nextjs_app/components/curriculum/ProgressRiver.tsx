@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { CircularProgress } from './CircularProgress';
 import { RecipePill } from './RecipePill';
+import { RecipeRecommendationsStrip } from '@/components/recipes/RecipeRecommendationsStrip';
 import type {
   CurriculumModuleList,
   SubscriptionTier,
@@ -180,6 +181,13 @@ export function ProgressRiver({
                     <p className="text-slate-400 text-sm lg:text-base leading-relaxed mb-4 lg:mb-6 line-clamp-2">
                       {module.description}
                     </p>
+                  )}
+
+                  {/* RECIPE RECOMMENDATIONS */}
+                  {!module.isLocked && (
+                    <div className="mb-4">
+                      <RecipeRecommendationsStrip moduleId={module.id} maxRecipes={3} />
+                    </div>
                   )}
 
                   {/* ACTION BUTTON (for active/incomplete modules) */}
