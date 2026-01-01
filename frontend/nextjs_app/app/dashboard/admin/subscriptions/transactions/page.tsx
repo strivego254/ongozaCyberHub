@@ -52,7 +52,6 @@ export default function TransactionsPage() {
 
 
 
-<<<<<<< Updated upstream
 
 
 
@@ -70,8 +69,6 @@ export default function TransactionsPage() {
 
 
 
-=======
->>>>>>> Stashed changes
 
 
 

@@ -41,29 +41,3 @@ export default function SubscriptionsPage() {
 
 
 
-<<<<<<< Updated upstream
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-=======
->>>>>>> Stashed changes
-
-
-
-
-
-

@@ -61,6 +61,11 @@ const navItems: NavItem[] = [
       { label: 'Rules & Settings', href: '/dashboard/admin/subscriptions/rules', icon: '⚙️' },
     ]
   },
+  {
+    label: 'AI Recipe Engine',
+    href: '/dashboard/admin/recipes',
+    icon: '🤖'
+  },
   { label: 'Roles & Permissions', href: '/dashboard/admin/roles', icon: '🔐' },
   { label: 'Audit Logs', href: '/dashboard/admin/audit', icon: '📋' },
   { label: 'Platform Settings', href: '/dashboard/admin/settings', icon: '⚙️' },
