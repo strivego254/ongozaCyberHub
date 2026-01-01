@@ -61,12 +61,26 @@ export function MentorProfileCard({ mentor }: { mentor: Mentor }) {
             <MapPin className="w-3.5 h-3.5 text-och-steel" />
             <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">{mentor.timezone}</span>
           </div>
+          {mentor.cohort_name && (
+            <div className="flex items-center gap-3">
+              <Shield className="w-3.5 h-3.5 text-och-defender" />
+              <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">
+                Cohort: {mentor.cohort_name}
+                {mentor.mentor_role && ` (${mentor.mentor_role})`}
+              </span>
+            </div>
+          )}
           <div className="flex flex-wrap gap-1.5">
             {mentor.expertise.map((skill, i) => (
               <span key={i} className="text-[9px] font-black text-och-gold/80 bg-och-gold/5 px-2 py-0.5 rounded-md border border-och-gold/10">
                 {skill}
               </span>
             ))}
+            {mentor.assignment_type && (
+              <span className="text-[9px] font-black text-och-mint/80 bg-och-mint/5 px-2 py-0.5 rounded-md border border-och-mint/10">
+                {mentor.assignment_type === 'cohort_based' ? 'Cohort Assigned' : 'Direct Assignment'}
+              </span>
+            )}
           </div>
         </div>
 

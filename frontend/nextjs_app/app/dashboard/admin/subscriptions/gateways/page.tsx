@@ -52,6 +52,7 @@ export default function PaymentGatewaysPage() {
 
 
 
+<<<<<<< Updated upstream
 
 
 
@@ -63,6 +64,14 @@ export default function PaymentGatewaysPage() {
 
 
 
+
+
+
+
+
+
+=======
+>>>>>>> Stashed changes
 
 
 

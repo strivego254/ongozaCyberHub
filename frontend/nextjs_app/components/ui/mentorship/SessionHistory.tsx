@@ -24,12 +24,15 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { SessionFeedbackForm } from '@/components/student/SessionFeedbackForm';
+import { SessionFeedbackView } from '@/components/mentor/SessionFeedbackView';
 import type { MentorshipSession } from '@/hooks/useMentorship';
 import clsx from 'clsx';
 
 export function SessionHistory({ sessions }: { sessions: MentorshipSession[] }) {
   const completed = sessions.filter(s => s.status === 'completed');
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [submittingFeedback, setSubmittingFeedback] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
@@ -152,6 +155,38 @@ export function SessionHistory({ sessions }: { sessions: MentorshipSession[] }) 
                           <Button variant="outline" className="w-full h-10 rounded-xl border-och-defender/30 text-och-defender hover:bg-och-defender hover:text-black font-black uppercase tracking-widest text-[9px]">
                             Download Session PDF
                           </Button>
+                       </div>
+
+                       {/* Session Feedback Section */}
+                       <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                             <Star className="w-4 h-4 text-och-gold" />
+                             <span className="text-[10px] font-black text-white uppercase tracking-widest">Session Feedback</span>
+                          </div>
+                          
+                          {submittingFeedback === session.id ? (
+                            <SessionFeedbackForm
+                              sessionId={session.id}
+                              sessionTitle={session.topic || 'Session'}
+                              onSubmitted={() => {
+                                setSubmittingFeedback(null)
+                                // Optionally refresh session data
+                              }}
+                              onCancel={() => setSubmittingFeedback(null)}
+                            />
+                          ) : (
+                            <div className="space-y-3">
+                              <SessionFeedbackView sessionId={session.id} isMentor={false} />
+                              <Button
+                                variant="defender"
+                                size="sm"
+                                onClick={() => setSubmittingFeedback(session.id)}
+                                className="w-full"
+                              >
+                                {submittingFeedback === session.id ? 'Cancel' : 'Provide Feedback'}
+                              </Button>
+                            </div>
+                          )}
                        </div>
                     </div>
                   </div>

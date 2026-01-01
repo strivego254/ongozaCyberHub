@@ -130,6 +130,8 @@ export interface GroupMentorshipSession {
   recording_url?: string
   transcript_url?: string
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  cancelled?: boolean
+  cancellation_reason?: string
   attendance: Array<{
     mentee_id: string
     mentee_name: string
@@ -141,11 +143,32 @@ export interface GroupMentorshipSession {
     key_takeaways?: string[]
     action_items?: Array<{ item: string; assignee?: string }>
     discussion_points?: string
+    challenges?: string
+    wins?: string
     next_steps?: string
     mentor_reflections?: string
+    linked_goals?: string[]
+    attached_files?: Array<{ name: string; url: string }>
   }
+  mentee_feedback?: SessionFeedback
   is_closed?: boolean
   created_at: string
+  updated_at: string
+}
+
+export interface SessionFeedback {
+  id: string
+  session_id: string
+  mentee_id: string
+  mentee_name: string
+  overall_rating: number  // 1-5
+  mentor_engagement: number  // 1-5
+  mentor_preparation: number  // 1-5
+  session_value: number  // 1-5
+  strengths?: string
+  areas_for_improvement?: string
+  additional_comments?: string
+  submitted_at: string
   updated_at: string
 }
 

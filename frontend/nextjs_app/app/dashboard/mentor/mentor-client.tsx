@@ -433,6 +433,12 @@ export default function MentorClient() {
                     <div className="text-xs text-och-steel mt-1">TalentScope view</div>
                   </div>
                 </Link>
+                <Link href="/dashboard/mentor/cohorts-tracks">
+                  <div className="p-3 rounded-lg bg-och-midnight/50 border border-och-steel/20 hover:bg-och-midnight/70 transition-colors">
+                    <div className="text-sm text-white font-medium">Cohorts & Tracks</div>
+                    <div className="text-xs text-och-steel mt-1">View & manage assigned tracks</div>
+                  </div>
+                </Link>
               </div>
             </div>
           </Card>

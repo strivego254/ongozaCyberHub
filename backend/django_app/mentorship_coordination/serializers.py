@@ -163,34 +163,33 @@ class CreateGroupSessionSerializer(serializers.Serializer):
         # Remove Z suffix and parse manually for better control
         clean_value = value.replace('Z', '')
         
-        # Try parsing with microseconds first
+        # Try parsing with different formats (in order of specificity)
         dt = None
-        try:
+        
+        # Count colons in time part to determine format
+        time_part = clean_value.split('T')[1] if 'T' in clean_value else clean_value.split(' ')[1] if ' ' in clean_value else ''
+        colon_count = time_part.count(':') if time_part else 0
+        
+        formats_to_try = []
+        
+        # With microseconds: 2026-02-02T06:00:00.000
             if '.' in clean_value:
-                # Has microseconds: 2026-02-02T06:00:00.000
-                dt = datetime.strptime(clean_value, '%Y-%m-%dT%H:%M:%S.%f')
-            else:
-                # No microseconds: 2026-02-02T06:00:00
-                dt = datetime.strptime(clean_value, '%Y-%m-%dT%H:%M:%S')
-            
-            # Make timezone-aware (UTC since original had Z)
-            if django_timezone.is_naive(dt):
-                dt = django_timezone.make_aware(dt, dt_timezone.utc)
-            
-            return dt
-        except ValueError as e:
-            # Try alternative formats
-            formats_to_try = [
-                ('%Y-%m-%dT%H:%M:%S.%f', clean_value if '.' in clean_value else None),
-                ('%Y-%m-%dT%H:%M:%S', clean_value),
-                ('%Y-%m-%d %H:%M:%S', clean_value.replace('T', ' ')),
-            ]
+            formats_to_try.append(('%Y-%m-%dT%H:%M:%S.%f', clean_value))
+        
+        # With seconds: 2026-02-02T06:00:00 (2 colons in time part)
+        if colon_count == 2:
+            formats_to_try.append(('%Y-%m-%dT%H:%M:%S', clean_value))
+            formats_to_try.append(('%Y-%m-%d %H:%M:%S', clean_value.replace('T', ' ')))
+        
+        # Without seconds: 2026-02-02T06:00 (1 colon in time part - DateTimePicker format)
+        if colon_count == 1:
+            formats_to_try.append(('%Y-%m-%dT%H:%M', clean_value))
+            formats_to_try.append(('%Y-%m-%d %H:%M', clean_value.replace('T', ' ')))
             
             for fmt, val in formats_to_try:
-                if val is None:
-                    continue
                 try:
                     dt = datetime.strptime(val, fmt)
+                # Make timezone-aware (assume UTC if no timezone info)
                     if django_timezone.is_naive(dt):
                         dt = django_timezone.make_aware(dt, dt_timezone.utc)
                     return dt
@@ -200,8 +199,7 @@ class CreateGroupSessionSerializer(serializers.Serializer):
             # If all parsing attempts failed
             raise serializers.ValidationError(
                 f"Invalid datetime format: '{original_value}'. "
-                f"Expected ISO 8601 format (e.g., '2026-02-02T06:00:00Z' or '2026-02-02T06:00:00.000Z'). "
-                f"Error: {str(e)}"
+            f"Expected ISO 8601 format (e.g., '2026-02-02T06:00:00Z', '2026-02-02T06:00:00.000Z', or '2026-02-02T06:00')."
             )
 
 

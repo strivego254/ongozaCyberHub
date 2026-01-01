@@ -3,13 +3,36 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { getUserRoleDisplay } from '@/utils/formatRole'
+import { getPrimaryRole } from '@/utils/rbac'
 import { getProfilePath, getSettingsPath } from '@/utils/navigation'
+
+// Helper function to get role display name
+function getRoleDisplayName(role: string | null): string {
+  if (!role) return 'User'
+
+  const roleMap: Record<string, string> = {
+    'student': 'Student',
+    'mentee': 'Student',
+    'mentor': 'Mentor',
+    'admin': 'Admin',
+    'program_director': 'Program Director',
+    'sponsor_admin': 'Sponsor',
+    'employer': 'Employer',
+    'analyst': 'Analyst',
+    'finance': 'Finance Director',
+  }
+
+  return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, ' ')
+}
 
 export function UserProfileDropdown() {
   const { user, logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Get primary role dynamically
+  const primaryRole = useMemo(() => getPrimaryRole(user), [user])
+  const roleDisplayName = useMemo(() => getRoleDisplayName(primaryRole), [primaryRole])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -40,7 +63,6 @@ export function UserProfileDropdown() {
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'User'
 
-  const userRole = getUserRoleDisplay(user)
   const profilePath = getProfilePath(user)
   const settingsPath = getSettingsPath(user)
 
@@ -56,7 +78,7 @@ export function UserProfileDropdown() {
         </div>
         <div className="hidden md:block text-left">
           <div className="text-sm font-medium text-white">{userName}</div>
-          <div className="text-xs text-och-steel">{userRole}</div>
+          <div className="text-xs text-och-steel">{roleDisplayName}</div>
         </div>
         <svg
           className={`w-4 h-4 text-och-steel transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -72,7 +94,7 @@ export function UserProfileDropdown() {
         <div className="absolute right-0 mt-2 w-56 bg-och-midnight border border-och-steel/20 rounded-lg shadow-lg z-50">
           <div className="p-4 border-b border-och-steel/20">
             <div className="text-sm font-medium text-white">{user?.email || userName}</div>
-            <div className="text-xs text-och-steel mt-1">{userRole}</div>
+            <div className="text-xs text-och-steel mt-1">{roleDisplayName}</div>
           </div>
           <div className="py-2">
             <Link

@@ -93,6 +93,8 @@ class MentorSession(models.Model):
     structured_notes = models.JSONField(default=dict, blank=True, help_text='Structured notes with takeaways, action items, etc.')
     outcomes = models.JSONField(default=dict, blank=True)  # {"action_items": [], "new_goals": []}
     attended = models.BooleanField(default=False)
+    cancelled = models.BooleanField(default=False, help_text='Session was cancelled')
+    cancellation_reason = models.TextField(blank=True, help_text='Reason for cancellation')
     no_show_reason = models.TextField(blank=True)
     is_closed = models.BooleanField(default=False, help_text='Session closed - notes locked')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -208,6 +210,66 @@ class MentorFlag(models.Model):
     
     def __str__(self):
         return f"{self.mentee.email} - {self.reason[:50]} ({self.severity})"
+
+
+class SessionFeedback(models.Model):
+    """Mentee feedback on mentorship sessions (Two-Way Feedback System)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.ForeignKey(
+        MentorSession,
+        on_delete=models.CASCADE,
+        related_name='feedback_records',
+        db_index=True
+    )
+    mentee = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='session_feedback_given',
+        db_index=True
+    )
+    mentor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='session_feedback_received',
+        db_index=True
+    )
+    # Overall rating (1-5 stars)
+    overall_rating = models.IntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        help_text='Overall session rating (1-5)'
+    )
+    # Detailed ratings
+    mentor_engagement = models.IntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        help_text='Mentor engagement level (1-5)'
+    )
+    mentor_preparation = models.IntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        help_text='Mentor preparation level (1-5)'
+    )
+    session_value = models.IntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        help_text='Session value/helpfulness (1-5)'
+    )
+    # Text feedback
+    strengths = models.TextField(blank=True, help_text='What went well')
+    areas_for_improvement = models.TextField(blank=True, help_text='Areas for improvement')
+    additional_comments = models.TextField(blank=True, help_text='Additional comments')
+    # Metadata
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'sessionfeedback'
+        indexes = [
+            models.Index(fields=['session', 'mentee']),
+            models.Index(fields=['mentor']),
+            models.Index(fields=['submitted_at']),
+        ]
+        unique_together = [['session', 'mentee']]  # One feedback per mentee per session
+    
+    def __str__(self):
+        return f"Feedback from {self.mentee.email} on {self.session.title} ({self.overall_rating}/5)"
 
 
 class SessionAttendance(models.Model):

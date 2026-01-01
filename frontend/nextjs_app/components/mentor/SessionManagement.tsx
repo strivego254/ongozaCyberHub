@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -8,6 +8,9 @@ import { DateTimePicker } from '@/components/ui/DateTimePicker'
 import { useMentorSessions } from '@/hooks/useMentorSessions'
 import { useAuth } from '@/hooks/useAuth'
 import { useMentorAssignedTracks } from '@/hooks/useMentorAssignedTracks'
+import { mentorClient } from '@/services/mentorClient'
+import { SessionNotesEditor } from './SessionNotesEditor'
+import { SessionFeedbackView } from './SessionFeedbackView'
 import type { GroupMentorshipSession } from '@/services/types/mentor'
 
 export function SessionManagement() {
@@ -28,7 +31,6 @@ export function SessionManagement() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState<'all' | 'scheduled' | 'completed' | 'cancelled'>('all')
-
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -41,21 +43,38 @@ export function SessionManagement() {
   })
 
   const handleCreate = async (e?: React.FormEvent) => {
+    console.log('[SessionManagement] handleCreate called', { e, formData, mentorId })
+    
     if (e) {
       e.preventDefault()
     }
     
     if (!mentorId) {
-      console.error('Mentor ID is missing')
+      console.error('[SessionManagement] Mentor ID is missing')
       alert('Mentor ID is missing. Please refresh the page.')
       return
     }
     
-    if (!formData.title || !formData.scheduled_at) {
-      console.error('Required fields missing:', { title: formData.title, scheduled_at: formData.scheduled_at })
-      alert('Please fill in all required fields (Title and Scheduled Date & Time)')
+    console.log('[SessionManagement] Validating form data:', {
+      title: formData.title,
+      scheduled_at: formData.scheduled_at,
+      cohort_id: formData.cohort_id,
+      hasTitle: !!formData.title,
+      hasScheduledAt: !!formData.scheduled_at,
+      hasCohortId: !!formData.cohort_id
+    })
+    
+    if (!formData.title || !formData.scheduled_at || !formData.cohort_id) {
+      console.error('[SessionManagement] Required fields missing:', { 
+        title: formData.title, 
+        scheduled_at: formData.scheduled_at,
+        cohort_id: formData.cohort_id 
+      })
+      alert('Please fill in all required fields (Title, Scheduled Date & Time, and Cohort)')
       return
     }
+    
+    console.log('[SessionManagement] All validations passed, proceeding with session creation...')
 
     try {
       // DateTimePicker returns format: YYYY-MM-DDTHH:mm
@@ -132,7 +151,33 @@ export function SessionManagement() {
       }, 500)
     } catch (err: any) {
       console.error('Error creating session:', err)
-      const errorMessage = err?.response?.data?.error || err?.message || 'Failed to create session'
+      console.error('Error details:', {
+        message: err?.message,
+        data: err?.data,
+        response: err?.response,
+        status: err?.status
+      })
+      
+      // Extract error message from various possible locations
+      let errorMessage = 'Failed to create session'
+      if (err?.data?.error) {
+        errorMessage = err.data.error
+      } else if (err?.data?.details) {
+        // Handle validation errors
+        if (typeof err.data.details === 'object') {
+          const details = Object.entries(err.data.details)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('; ')
+          errorMessage = `Validation error: ${details}`
+        } else {
+          errorMessage = err.data.details
+        }
+      } else if (err?.response?.data?.error) {
+        errorMessage = err.response.data.error
+      } else if (err?.message) {
+        errorMessage = err.message
+      }
+      
       alert(`Error creating session: ${errorMessage}`)
       // Error handled by hook, but also show alert
     }
@@ -147,31 +192,108 @@ export function SessionManagement() {
     }
   }
 
+
+
   const handleUpdateNotes = async (sessionId: string, notes: GroupMentorshipSession['structured_notes']) => {
     try {
-      await updateSession(sessionId, { structured_notes: notes })
+      console.log('[SessionManagement] Saving notes for session:', sessionId, notes)
+      
+      // Check if session has ended - if so, mark as attended (completed) when notes are added
+      const session = sessions.find(s => s.id === sessionId)
+      const sessionEndTime = session ? new Date(session.scheduled_at).getTime() + (session.duration_minutes * 60 * 1000) : null
+      const now = Date.now()
+      const hasEnded = sessionEndTime && now >= sessionEndTime
+      
+      // Check if notes have meaningful content
+      const hasNotesContent = (
+        (notes?.key_takeaways && notes.key_takeaways.length > 0) ||
+        (notes?.action_items && notes.action_items.length > 0) ||
+        (notes?.discussion_points && notes.discussion_points.trim().length > 0) ||
+        (notes?.mentor_reflections && notes.mentor_reflections.trim().length > 0) ||
+        (notes?.next_steps && notes.next_steps.trim().length > 0)
+      )
+      
+      // If session has ended and notes have content, mark as completed
+      const updateData: any = { structured_notes: notes }
+      if (hasEnded && hasNotesContent && session && session.status !== 'completed' && !session.cancelled) {
+        updateData.attended = true
+        console.log('[SessionManagement] Auto-marking session as completed because notes were added after session end time')
+      }
+      
+      await updateSession(sessionId, updateData)
+      console.log('[SessionManagement] Notes saved successfully')
       setEditingNotes(null)
+      // Keep session expanded to show saved notes
+      setExpandedSession(sessionId)
     } catch (err) {
-      // Error handled by hook
+      console.error('[SessionManagement] Failed to update notes:', err)
+      alert('Failed to save notes. Please try again.')
+      throw err
     }
   }
 
   const handleReschedule = async (sessionId: string, scheduledAt: string, durationMinutes: number) => {
     try {
-      await updateSession(sessionId, { scheduled_at: scheduledAt, duration_minutes: durationMinutes })
+      // DateTimePicker returns YYYY-MM-DDTHH:mm format (no seconds, no timezone)
+      // Backend serializer expects YYYY-MM-DDTHH:MM:SS format
+      // Convert to proper ISO format with seconds and timezone
+      let formattedDate = scheduledAt
+      
+      // If format is YYYY-MM-DDTHH:mm (no seconds), add :00 for seconds
+      if (scheduledAt && scheduledAt.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+        formattedDate = scheduledAt + ':00'
+      }
+      
+      // Convert to ISO string with timezone (UTC)
+      const date = new Date(formattedDate)
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date format')
+      }
+      
+      const isoString = date.toISOString()
+      
+      console.log('[SessionManagement] Rescheduling session:', { 
+        sessionId, 
+        original: scheduledAt, 
+        formatted: formattedDate,
+        isoString,
+        durationMinutes 
+      })
+      
+      await updateSession(sessionId, { scheduled_at: isoString, duration_minutes: durationMinutes })
       setReschedulingSession(null)
+    } catch (err: any) {
+      console.error('[SessionManagement] Failed to reschedule session:', err)
+      const errorMessage = err?.data?.error || err?.message || 'Failed to reschedule session. Please try again.'
+      alert(errorMessage)
+    }
+  }
+
+  const handleMarkAsCompleted = async (sessionId: string) => {
+    try {
+      await updateSession(sessionId, { attended: true })
+      console.log('[SessionManagement] Session marked as completed')
     } catch (err) {
-      // Error handled by hook
+      console.error('Failed to mark session as completed:', err)
+      alert('Failed to mark session as completed. Please try again.')
     }
   }
 
   const handleCloseSession = async (sessionId: string) => {
     try {
-      await updateSession(sessionId, { is_closed: true })
+      // Mark session as attended (completed) and closed
+      await updateSession(sessionId, { 
+        attended: true,  // Mark as completed
+        is_closed: true  // Lock notes
+      })
+      // The load() function in updateSession will refresh the sessions data
+      setExpandedSession(null) // Close the expanded view
     } catch (err) {
-      // Error handled by hook
+      console.error('Failed to close session:', err)
+      alert('Failed to close session. Please try again.')
     }
   }
+
 
   const handleUpdateRecording = async (sessionId: string, recordingUrl: string, transcriptUrl?: string) => {
     try {
@@ -260,6 +382,7 @@ export function SessionManagement() {
         <form 
               className="space-y-4"
           onSubmit={(e) => {
+            console.log('[SessionManagement] Form onSubmit triggered', { formData, mentorId })
             e.preventDefault()
             handleCreate(e)
           }}
@@ -404,8 +527,33 @@ export function SessionManagement() {
               type="submit"
                   disabled={!formData.title || !formData.scheduled_at || !formData.cohort_id || !mentorId}
                   className="flex-1"
+                  onClick={(e) => {
+                    const isDisabled = !formData.title || !formData.scheduled_at || !formData.cohort_id || !mentorId
+                    console.log('[SessionManagement] Create Session button clicked', {
+                      formData,
+                      mentorId,
+                      isDisabled,
+                      title: formData.title,
+                      scheduled_at: formData.scheduled_at,
+                      cohort_id: formData.cohort_id,
+                      hasTitle: !!formData.title,
+                      hasScheduledAt: !!formData.scheduled_at,
+                      hasCohortId: !!formData.cohort_id,
+                      hasMentorId: !!mentorId
+                    })
+                    
+                    if (isDisabled) {
+                      console.warn('[SessionManagement] Button is disabled, preventing submission')
+                      e.preventDefault()
+                      alert(`Please fill in all required fields:\n- Title: ${formData.title ? '✓' : '✗'}\n- Scheduled Date & Time: ${formData.scheduled_at ? '✓' : '✗'}\n- Cohort: ${formData.cohort_id ? '✓' : '✗'}`)
+                      return
+                    }
+                    // Let the form onSubmit handle it
+                  }}
             >
-              Create Session
+              {(!formData.title || !formData.scheduled_at || !formData.cohort_id || !mentorId) 
+                ? 'Fill Required Fields' 
+                : 'Create Session'}
             </Button>
             <Button 
               variant="outline" 
@@ -525,6 +673,7 @@ export function SessionManagement() {
                       <Badge 
                         variant={
                           session.status === 'completed' ? 'mint' : 
+                          session.status === 'cancelled' ? 'orange' :
                           session.status === 'scheduled' ? 'defender' : 
                           'gold'
                         } 
@@ -688,25 +837,127 @@ export function SessionManagement() {
                             </div>
                           )}
 
-                    {/* Structured Notes Preview */}
-                    {session.structured_notes && (session.structured_notes.key_takeaways?.length > 0 || session.structured_notes.action_items?.length > 0) && (
-                      <div className="text-xs text-och-steel">
-                        {session.structured_notes.key_takeaways?.length > 0 && (
-                          <div className="mb-1">
-                            <strong className="text-white">Takeaways:</strong> {session.structured_notes.key_takeaways.length}
+
+                    {/* Session Notes Display */}
+                    {session.structured_notes && 
+                     !editingNotes &&
+                     (session.structured_notes.key_takeaways?.length > 0 ||
+                      session.structured_notes.action_items?.length > 0 ||
+                      session.structured_notes.discussion_points ||
+                      session.structured_notes.next_steps ||
+                      session.structured_notes.mentor_reflections ||
+                      session.structured_notes.challenges ||
+                      session.structured_notes.wins) && (
+                      <div className="mt-4 p-4 bg-och-midnight/30 rounded-lg border border-och-steel/20 space-y-3">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                            📝 Session Notes
+                          </h4>
+                          {!session.is_closed && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingNotes(session.id)
+                                setExpandedSession(session.id)
+                              }}
+                              className="text-xs"
+                            >
+                              Edit Notes
+                            </Button>
+                          )}
+                        </div>
+                        
+                        {session.structured_notes.key_takeaways && session.structured_notes.key_takeaways.length > 0 && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-white mb-1">Key Takeaways</h5>
+                            <ul className="list-disc list-inside space-y-1 text-xs text-white">
+                              {session.structured_notes.key_takeaways.map((takeaway, i) => (
+                                <li key={i}>{takeaway}</li>
+                              ))}
+                            </ul>
                         </div>
                       )}
-                        {session.structured_notes.action_items?.length > 0 && (
+
+                        {session.structured_notes.action_items && session.structured_notes.action_items.length > 0 && (
                           <div>
-                            <strong className="text-white">Action Items:</strong> {session.structured_notes.action_items.length}
+                            <h5 className="text-xs font-semibold text-white mb-1">Action Items</h5>
+                            <ul className="list-disc list-inside space-y-1 text-xs text-white">
+                              {session.structured_notes.action_items.map((item, i) => (
+                                <li key={i}>
+                                  {typeof item === 'string' ? item : item.item}
+                                  {typeof item === 'object' && item.assignee && (
+                                    <span className="text-och-gold ml-2">→ {item.assignee}</span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
                     </div>
                         )}
+
+                        {session.structured_notes.discussion_points && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-white mb-1">Discussion Points</h5>
+                            <p className="text-xs text-white whitespace-pre-wrap">
+                              {session.structured_notes.discussion_points}
+                            </p>
+                          </div>
+                        )}
+
+                        {session.structured_notes.challenges && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-white mb-1">Challenges</h5>
+                            <p className="text-xs text-white whitespace-pre-wrap">
+                              {session.structured_notes.challenges}
+                            </p>
+                          </div>
+                        )}
+
+                        {session.structured_notes.wins && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-white mb-1">Wins & Achievements</h5>
+                            <p className="text-xs text-white whitespace-pre-wrap">
+                              {session.structured_notes.wins}
+                            </p>
+                          </div>
+                        )}
+
+                        {session.structured_notes.next_steps && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-white mb-1">Next Steps</h5>
+                            <p className="text-xs text-white whitespace-pre-wrap">
+                              {session.structured_notes.next_steps}
+                            </p>
+                          </div>
+                        )}
+
+                        {session.structured_notes.mentor_reflections && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-white mb-1">Mentor Reflections</h5>
+                            <p className="text-xs text-white whitespace-pre-wrap">
+                              {session.structured_notes.mentor_reflections}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Session Feedback Display (Mentor View) */}
+                    {session.status === 'completed' && (
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                            💬 Mentee Feedback
+                          </h4>
+                        </div>
+                        <SessionFeedbackView sessionId={session.id} isMentor={true} />
                 </div>
                     )}
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 flex-wrap">
                       {session.status === 'scheduled' && (
+                        <>
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -717,6 +968,50 @@ export function SessionManagement() {
                           className="text-xs"
                         >
                           {reschedulingSession === session.id ? 'Cancel' : 'Reschedule'}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              setEditingNotes(editingNotes === session.id ? null : session.id)
+                              setExpandedSession(session.id)
+                            }}
+                            className="text-xs"
+                          >
+                            {editingNotes === session.id ? 'Cancel' : 'Add Notes'}
+                          </Button>
+                        </>
+                      )}
+                      {session.status === 'scheduled' && !session.cancelled && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={async () => {
+                            if (confirm('Are you sure you want to cancel this session?')) {
+                              try {
+                                await updateSession(session.id, { 
+                                  cancelled: true,
+                                  cancellation_reason: prompt('Reason for cancellation (optional):') || ''
+                                })
+                              } catch (err) {
+                                alert('Failed to cancel session. Please try again.')
+                              }
+                            }
+                          }}
+                          className="text-xs text-och-orange border-och-orange/30 hover:bg-och-orange/10"
+                        >
+                          Cancel Session
+                        </Button>
+                      )}
+                      {/* Mark as Completed button - shown for scheduled/in_progress sessions */}
+                      {session.status !== 'completed' && session.status !== 'cancelled' && !session.is_closed && (
+                        <Button 
+                          variant="mint" 
+                          size="sm" 
+                          onClick={() => handleMarkAsCompleted(session.id)}
+                          className="text-xs"
+                        >
+                          Mark as Completed
                         </Button>
                       )}
                       {session.status === 'completed' && !session.is_closed && (
@@ -730,7 +1025,7 @@ export function SessionManagement() {
                             }}
                             className="text-xs"
                       >
-                        {editingNotes === session.id ? 'Save' : 'Edit Notes'}
+                            {editingNotes === session.id ? 'Cancel' : 'Edit Notes'}
                       </Button>
                           <Button 
                             variant="defender" 
@@ -742,6 +1037,16 @@ export function SessionManagement() {
                           </Button>
                         </>
                     )}
+                      {session.is_closed && (
+                        <div className="text-xs text-och-steel italic">
+                          Session closed - Notes are locked
+                        </div>
+                      )}
+                      {session.cancelled && (
+                        <div className="text-xs text-och-orange italic">
+                          Session cancelled{session.cancellation_reason ? `: ${session.cancellation_reason}` : ''}
+                        </div>
+                      )}
                   </div>
                   
                     {/* Reschedule Form */}
@@ -751,6 +1056,7 @@ export function SessionManagement() {
                           value={new Date(session.scheduled_at).toISOString().slice(0, 16)}
                           onChange={(value) => {
                             if (value) {
+                              // DateTimePicker returns YYYY-MM-DDTHH:mm format
                               handleReschedule(session.id, value, session.duration_minutes)
                               setReschedulingSession(null)
                             }
@@ -764,7 +1070,12 @@ export function SessionManagement() {
                           className="w-full px-2 py-1 rounded bg-och-midnight border border-och-steel/20 text-white text-xs"
                           onBlur={(e) => {
                             if (e.target.value) {
-                              handleReschedule(session.id, session.scheduled_at, parseInt(e.target.value))
+                              const duration = parseInt(e.target.value)
+                              if (!isNaN(duration) && duration > 0) {
+                                // Use current scheduled_at, convert to ISO
+                                const currentDate = new Date(session.scheduled_at)
+                                handleReschedule(session.id, currentDate.toISOString(), duration)
+                              }
                             }
                           }}
                           onClick={(e) => e.stopPropagation()}
@@ -772,45 +1083,20 @@ export function SessionManagement() {
                       </div>
                     )}
 
-                    {/* Full Notes Editor */}
-                    {editingNotes === session.id && !session.is_closed && (
-                      <div className="p-2 bg-och-midnight rounded border border-och-steel/20 space-y-2 text-xs">
-                      <div>
-                          <label className="text-och-steel text-[10px] mb-1 block">Key Takeaways</label>
-                        <textarea
-                          value={(session.structured_notes?.key_takeaways || []).join('\n')}
-                          onChange={(e) => {
-                            const takeaways = e.target.value.split('\n').filter(t => t.trim())
-                            handleUpdateNotes(session.id, {
-                              ...session.structured_notes,
-                              key_takeaways: takeaways
-                            })
+                    {/* Notes Editor */}
+                    {editingNotes === session.id && (
+                      <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+                        <SessionNotesEditor
+                          session={session}
+                          onSave={async (notes) => {
+                            await handleUpdateNotes(session.id, notes)
                           }}
-                          placeholder="One per line"
-                            rows={2}
-                            className="w-full px-2 py-1 rounded bg-och-midnight border border-och-steel/20 text-white text-[10px]"
-                            onClick={(e) => e.stopPropagation()}
+                          onCancel={() => setEditingNotes(null)}
+                          isLocked={session.is_closed || false}
                         />
-                      </div>
-                      <div>
-                          <label className="text-och-steel text-[10px] mb-1 block">Action Items</label>
-                        <textarea
-                          value={(session.structured_notes?.action_items || []).map((ai: any) => typeof ai === 'string' ? ai : ai.item).join('\n')}
-                          onChange={(e) => {
-                            const items = e.target.value.split('\n').filter(i => i.trim()).map(item => ({ item: item.trim() }))
-                            handleUpdateNotes(session.id, {
-                              ...session.structured_notes,
-                              action_items: items
-                            })
-                          }}
-                          placeholder="One per line"
-                          rows={2}
-                            className="w-full px-2 py-1 rounded bg-och-midnight border border-och-steel/20 text-white text-[10px]"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
                         </div>
                       )}
+
                         </div>
                       )}
                         </div>
