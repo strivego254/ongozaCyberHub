@@ -55,6 +55,12 @@ echo -e "${GREEN}Step 3: Installing dependencies...${NC}"
 cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
 pwd
 
+npm install
+
+# Step 3.5: Create missing files AFTER git reset
+echo -e "${GREEN}Step 3.5: Creating missing files...${NC}"
+cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
+
 # Create missing lib files if they don't exist
 mkdir -p app/dashboard/student/lib/store app/dashboard/student/lib/hooks
 if [ ! -f app/dashboard/student/lib/store/dashboardStore.ts ]; then
@@ -128,8 +134,6 @@ export const useMissionStore = create<MissionStore>((set) => ({
 }))
 MISSIONEOF
 fi
-
-npm install
 
 # Step 4: Check for .env file
 echo -e "${GREEN}Step 4: Checking environment variables...${NC}"
