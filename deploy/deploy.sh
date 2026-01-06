@@ -39,13 +39,16 @@ if [ -d "$PROJECT_DIR" ]; then
     echo "Repository exists, updating..."
     cd "$PROJECT_DIR"
     git fetch origin
-    git reset --hard origin/main || git reset --hard origin/master
-    git clean -fd
+    git reset --hard origin/main || git reset --hard origin/master || true
+    git clean -fd || true
 else
     echo "Cloning repository..."
     git clone "$REPO_URL" "$PROJECT_DIR"
     cd "$PROJECT_DIR"
 fi
+
+# Ensure we're in the project directory
+cd "$PROJECT_DIR" || exit 1
 
 # Step 3: Install dependencies
 echo -e "${GREEN}Step 3: Installing dependencies...${NC}"
