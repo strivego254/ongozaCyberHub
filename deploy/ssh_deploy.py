@@ -7,10 +7,9 @@ host = "159.65.76.180"
 user = "root"
 password = "Ongoza@#1CyberHub"
 commands = [
-    "cd ~ && (rm -rf ongozacyberhub || true) && git clone https://github.com/strivego254/ongozacyberhub.git",
-    "cd ongozacyberhub",
-    "chmod +x deploy/deploy.sh",
-    "./deploy/deploy.sh"
+    "cd ~ && rm -rf ongozacyberhub && git clone https://github.com/strivego254/ongozacyberhub.git",
+    "cd ongozacyberhub && chmod +x deploy/deploy.sh",
+    "cd ongozacyberhub && ./deploy/deploy.sh"
 ]
 
 try:
