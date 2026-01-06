@@ -72,7 +72,7 @@ NEXT_PUBLIC_FRONTEND_URL=https://ongozacyberhub.com
 # SUPABASE_URL=your_supabase_url
 # SUPABASE_SERVICE_KEY=your_supabase_service_key
 EOF
-    echo -e "${YELLOW}.env.production file created. Edit it if needed.${NC}"
+    echo -e "${YELLOW}.env.production file created.${NC}"
 fi
 
 # Step 5: Build Next.js application
