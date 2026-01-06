@@ -55,7 +55,8 @@ echo -e "${GREEN}Step 3: Installing dependencies...${NC}"
 cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
 pwd
 
-npm install
+npm install || true
+set -e  # Re-enable exit on error
 
 # Step 3.5: Create missing files AFTER git reset
 echo -e "${GREEN}Step 3.5: Creating missing files...${NC}"
