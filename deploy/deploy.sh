@@ -38,7 +38,9 @@ PROJECT_DIR="$HOME/ongozacyberhub"
 if [ -d "$PROJECT_DIR" ]; then
     echo "Repository exists, updating..."
     cd "$PROJECT_DIR"
-    git pull origin main || git pull origin master
+    git fetch origin
+    git reset --hard origin/main || git reset --hard origin/master
+    git clean -fd
 else
     echo "Cloning repository..."
     git clone "$REPO_URL" "$PROJECT_DIR"
