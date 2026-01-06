@@ -69,5 +69,42 @@ export const mentorshipClient = {
   }> {
     return apiGateway.post(`/mentorships/${menteeId}/calendar/sync`, { provider })
   },
+
+  /**
+   * Get mentor performance analytics
+   */
+  async getMentorPerformanceAnalytics(): Promise<{
+    analytics: Array<{
+      mentor_id: string
+      mentor_name: string
+      mentor_email: string
+      active_mentees: number
+      total_sessions: number
+      completed_sessions: number
+      cancelled_sessions: number
+      session_completion_rate: number
+      attendance_rate: number
+      feedback_count: number
+      avg_overall_rating: number
+      avg_mentor_engagement: number
+      avg_mentor_preparation: number
+      avg_session_value: number
+      mentee_satisfaction: number
+      goal_achievement_ratio: number
+      impact_score: number
+      meets_sla: boolean
+      performance_tier: 'high' | 'medium' | 'low'
+      ranking: number
+    }>
+    summary: {
+      total_mentors: number
+      avg_impact_score: number
+      mentors_meeting_sla: number
+      high_performers: number
+      needs_improvement: number
+    }
+  }> {
+    return apiGateway.get('/mentorship/mentor-performance-analytics')
+  },
 }
 

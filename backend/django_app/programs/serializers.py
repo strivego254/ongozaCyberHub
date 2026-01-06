@@ -5,7 +5,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import (
     Program, Track, Milestone, Module, Specialization, Cohort, Enrollment,
-    CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
+    CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist, MentorshipCycle
 )
 
 User = get_user_model()
@@ -505,4 +505,43 @@ class CohortDashboardSerializer(serializers.Serializer):
     completion_percentage = serializers.FloatField()
     payments_complete = serializers.IntegerField()
     payments_pending = serializers.IntegerField()
+
+
+class MentorshipCycleSerializer(serializers.ModelSerializer):
+    cohort_name = serializers.CharField(source='cohort.name', read_only=True)
+    track_name = serializers.CharField(source='cohort.track.name', read_only=True)
+    program_name = serializers.CharField(source='cohort.track.program.name', read_only=True)
+
+    class Meta:
+        model = MentorshipCycle
+        fields = [
+            'id', 'cohort', 'cohort_name', 'track_name', 'program_name',
+            'duration_weeks', 'frequency', 'milestones', 'goals', 'program_type',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_cohort(self, value):
+        """Ensure cohort doesn't already have a mentorship cycle (except for updates to the same cycle)."""
+        if self.instance:
+            # For updates, allow updating the existing cycle
+            return value
+        else:
+            # For creates, check if cohort already has a cycle
+            if MentorshipCycle.objects.filter(cohort=value).exists():
+                raise serializers.ValidationError("This cohort already has a mentorship cycle.")
+        return value
+
+    def validate(self, data):
+        """Additional validation."""
+        milestones = data.get('milestones', [])
+        goals = data.get('goals', [])
+
+        if not isinstance(milestones, list):
+            raise serializers.ValidationError({"milestones": "Must be a list of milestone descriptions."})
+
+        if not isinstance(goals, list):
+            raise serializers.ValidationError({"goals": "Must be a list of goal descriptions."})
+
+        return data
 

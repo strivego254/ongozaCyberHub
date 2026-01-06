@@ -92,7 +92,7 @@ export async function fetcher<T>(
         response.status,
         response.statusText,
         errorData,
-        errorData?.detail || errorData?.message || `HTTP ${response.status}`
+        errorData?.error || errorData?.detail || errorData?.message || `HTTP ${response.status}`
       );
     }
 

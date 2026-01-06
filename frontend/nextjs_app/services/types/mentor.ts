@@ -293,6 +293,66 @@ export interface MentorInfluenceIndex {
   }>
 }
 
+export interface MentorshipMessage {
+  id: string
+  message_id: string
+  assignment: string
+  sender: {
+    id: string
+    name: string
+    email: string
+  }
+  recipient: {
+    id: string
+    name: string
+    email: string
+  }
+  sender_name?: string
+  sender_email?: string
+  recipient_name?: string
+  recipient_email?: string
+  subject?: string
+  body: string
+  is_read: boolean
+  read_at?: string
+  archived: boolean
+  archived_at?: string
+  attachments?: MessageAttachment[]
+  created_at: string
+  updated_at: string
+}
+
+export interface MessageAttachment {
+  id: string
+  filename: string
+  file_size: number
+  content_type: string
+  file: string
+  created_at: string
+}
+
+export interface NotificationLog {
+  id: string
+  notification_id: string
+  assignment_id?: string
+  session_id?: string
+  recipient: {
+    id: string
+    name: string
+    email: string
+  }
+  notification_type: 'session_reminder' | 'feedback_reminder' | 'milestone_achieved' | 'session_cancelled' | 'session_rescheduled' | 'assignment_started' | 'assignment_completed' | 'custom'
+  channel: 'email' | 'sms' | 'in_app' | 'push'
+  subject?: string
+  message: string
+  status: 'pending' | 'sent' | 'failed' | 'delivered'
+  sent_at?: string
+  delivered_at?: string
+  error_message?: string
+  metadata?: Record<string, any>
+  created_at: string
+}
+
 export interface MentorAlert {
   id: string
   type: 'flag' | 'overdue' | 'session_reminder' | 'mission_pending'

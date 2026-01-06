@@ -6,7 +6,6 @@ import { DirectorLayout } from '@/components/director/DirectorLayout'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { programsClient } from '@/services/programsClient'
 import { djangoClient } from '@/services/djangoClient'
 import { useCohorts, usePrograms, useTracks } from '@/hooks/usePrograms'
 import { useUsers } from '@/hooks/useUsers'
@@ -99,41 +98,29 @@ export default function MentorReviewsPage() {
   const loadReviews = async () => {
     setIsLoading(true)
     try {
-      // Fetch reviews from all mentors
-      // For now, we'll aggregate reviews from mentor analytics
-      const allReviews: MentorReview[] = []
-      
-      if (mentors.length > 0) {
-        const reviewPromises = mentors.map(async (mentor) => {
-          try {
-            const analytics = await programsClient.getMentorAnalytics(String(mentor.id))
-            if (analytics?.reviews && Array.isArray(analytics.reviews)) {
-              return analytics.reviews.map((review: any) => ({
-                id: review.id || `${mentor.id}-${review.reviewed_at}`,
-                mentor_id: String(mentor.id),
-                 mentor_name: `${mentor.first_name || ''} ${mentor.last_name || ''}`.trim() || mentor.email,
-                mentor_email: mentor.email,
-                cohort_id: review.cohort_id,
-                cohort_name: review.cohort_name,
-                rating: review.rating || 0,
-                feedback: review.feedback || '',
-                reviewed_at: review.reviewed_at || new Date().toISOString(),
-                director_comments: review.director_comments || [],
-                status: review.status || 'pending',
-              }))
-            }
-            return []
-          } catch (err) {
-            console.error(`Failed to load reviews for mentor ${mentor.id}:`, err)
-            return []
-          }
-        })
-        
-        const reviewsArrays = await Promise.all(reviewPromises)
-        allReviews.push(...reviewsArrays.flat())
-      }
-      
-      setReviews(allReviews)
+      // Fetch all mentor reviews (aggregated from student session feedback)
+      const response = await djangoClient.mentorship.getMentorReviews()
+      const apiReviews = response.reviews || []
+
+      // Map API response directly into MentorReview shape
+      const mapped: MentorReview[] = apiReviews.map((review: any) => ({
+        id: review.id,
+        mentor_id: review.mentor_id,
+        mentor_name: review.mentor_name,
+        mentor_email: review.mentor_email,
+        student_id: review.student_id,
+        student_name: review.student_name,
+        student_email: review.student_email,
+        cohort_id: review.cohort_id,
+        cohort_name: review.cohort_name,
+        rating: review.rating,
+        feedback: review.feedback,
+        reviewed_at: review.reviewed_at,
+        director_comments: review.director_comments || [],
+        status: review.status || 'approved',
+      }))
+
+      setReviews(mapped)
     } catch (error) {
       console.error('Failed to load reviews:', error)
       setReviews([])

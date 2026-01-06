@@ -33,7 +33,7 @@ import { MentorProfileCard } from './MentorProfileCard';
 import { SchedulingHub } from './SchedulingHub';
 import { GoalsTracker } from './GoalsTracker';
 import { SessionHistory } from './SessionHistory';
-import { MentorshipMessaging } from './MentorshipMessaging';
+import { MentorshipMessaging } from './MentorshipMessaging'
 import { useAuth } from '@/hooks/useAuth';
 import { useMentorship } from '@/hooks/useMentorship';
 import clsx from 'clsx';
@@ -56,7 +56,7 @@ export function MentorshipHub() {
       <div className="flex items-center justify-center min-h-[600px]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-och-gold border-t-transparent rounded-full animate-spin" />
-          <p className="text-och-steel animate-pulse font-black uppercase tracking-widest text-[10px]">Syncing MMM Telemetry...</p>
+          <p className="text-och-steel animate-pulse font-black tracking-widest text-[10px]">Syncing MMM Telemetry...</p>
         </div>
       </div>
     );
@@ -97,7 +97,7 @@ export function MentorshipHub() {
                 <stat.icon className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] text-och-steel font-black uppercase tracking-widest leading-none mb-1.5">{stat.label}</p>
+                <p className="text-[10px] text-och-steel font-black tracking-widest leading-none mb-1.5">{stat.label}</p>
                 <h4 className="text-lg font-black text-white leading-none">{stat.value}</h4>
                 <p className="text-[10px] text-slate-400 mt-1 italic">{stat.sub}</p>
               </div>
@@ -105,11 +105,9 @@ export function MentorshipHub() {
          ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        
-        {/* 2. NAVIGATION SIDEBAR (MMM STACK) */}
-        <aside className="xl:col-span-3 space-y-4">
-          <div className="flex flex-col gap-2">
+      {/* SIDEBAR NAVIGATION */}
+      <div className="mb-8">
+        <div className="flex flex-col gap-2 max-w-md">
             {[
               { id: 'overview', label: 'Mentorship Overview', icon: History },
               { id: 'sessions', label: 'Scheduling & Calendar', icon: CalendarDays },
@@ -120,7 +118,7 @@ export function MentorshipHub() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
                 className={clsx(
-                  "flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black uppercase tracking-widest text-[10px] border",
+                "flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black tracking-widest text-[10px] border text-left",
                   activeTab === item.id 
                     ? "bg-och-gold text-black border-och-gold shadow-lg shadow-och-gold/20 scale-[1.02]" 
                     : "bg-white/5 text-och-steel border-white/5 hover:bg-white/10 hover:text-white"
@@ -130,14 +128,15 @@ export function MentorshipHub() {
                 {item.label}
               </button>
             ))}
+        </div>
           </div>
 
           {/* MENTOR PROFILE PREVIEW (If matched) */}
           {mentor && <MentorProfileCard mentor={mentor} />}
-        </aside>
 
-        {/* 3. MAIN MMM CONSOLE */}
-        <main className="xl:col-span-9">
+      {/* MAIN CONTENT - Full width for sessions tab */}
+      {activeTab === 'sessions' ? (
+        <div className="w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -145,22 +144,34 @@ export function MentorshipHub() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
+            >
+              <SchedulingHub sessions={sessions} />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+          {/* MAIN MMM CONSOLE */}
+          <main className="xl:col-span-12">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
               className="min-h-[500px]"
             >
               {activeTab === 'overview' && (
                 <div className="space-y-8">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Engagement History</h2>
-                    <Button variant="outline" size="sm" className="text-[10px] font-black uppercase tracking-widest border-och-steel/20">
+                      <h2 className="text-2xl font-black text-white tracking-tighter">Engagement History</h2>
+                      <Button variant="outline" size="sm" className="text-[10px] font-black tracking-widest border-och-steel/20">
                       Export Transcript
                     </Button>
                   </div>
                   <SessionHistory sessions={sessions} />
                 </div>
-              )}
-              
-              {activeTab === 'sessions' && (
-                <SchedulingHub sessions={sessions} />
               )}
               
               {activeTab === 'goals' && (
@@ -179,6 +190,7 @@ export function MentorshipHub() {
           </AnimatePresence>
         </main>
       </div>
+      )}
     </div>
   );
 }

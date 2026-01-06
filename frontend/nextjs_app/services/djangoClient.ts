@@ -301,6 +301,35 @@ export const djangoClient = {
   },
 
   /**
+   * Mentorship-specific endpoints (student ↔ mentor feedback, reviews, analytics)
+   */
+  mentorship: {
+    /**
+     * Get all mentor reviews submitted by students (for director Mentor Reviews dashboard)
+     */
+    async getMentorReviews(params?: { mentor_id?: string; min_rating?: number }): Promise<{
+      reviews: Array<{
+        id: string
+        mentor_id: string
+        mentor_name?: string
+        mentor_email?: string
+        student_id?: string
+        student_name?: string
+        student_email?: string
+        cohort_id?: string | null
+        cohort_name?: string | null
+        rating: number
+        feedback: string
+        reviewed_at: string
+        director_comments: any[]
+        status: 'pending' | 'approved' | 'flagged'
+      }>
+    }> {
+      return apiGateway.get('/mentorship/mentor-reviews', { params });
+    },
+  },
+
+  /**
    * Progress endpoints
    */
   progress: {

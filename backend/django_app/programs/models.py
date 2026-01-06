@@ -444,3 +444,35 @@ class Certificate(models.Model):
     def __str__(self):
         return f"Certificate - {self.enrollment.user.email} - {self.enrollment.cohort.name}"
 
+
+class MentorshipCycle(models.Model):
+    """Mentorship cycle configuration for cohorts."""
+    FREQUENCY_CHOICES = [
+        ('weekly', 'Weekly'),
+        ('bi-weekly', 'Bi-Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+
+    PROGRAM_TYPE_CHOICES = [
+        ('builders', 'Builders'),
+        ('leaders', 'Leaders'),
+        ('custom', 'Custom'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    cohort = models.OneToOneField(Cohort, on_delete=models.CASCADE, related_name='mentorship_cycle')
+    duration_weeks = models.PositiveIntegerField(default=12, help_text='Total duration of the mentorship cycle in weeks')
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='weekly')
+    milestones = models.JSONField(default=list, blank=True, help_text='List of milestone descriptions')
+    goals = models.JSONField(default=list, blank=True, help_text='List of learning goals')
+    program_type = models.CharField(max_length=20, choices=PROGRAM_TYPE_CHOICES, default='builders')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'mentorship_cycles'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Mentorship Cycle - {self.cohort.name} ({self.program_type})"
+

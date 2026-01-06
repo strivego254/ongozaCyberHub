@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
   { label: 'Missions', href: '/dashboard/mentor/missions' },
   { label: 'Cohorts & Tracks', href: '/dashboard/mentor/cohorts-tracks' },
   { label: 'Sessions', href: '/dashboard/mentor/sessions' },
+  { label: 'Messages', href: '/dashboard/mentor/messages' },
   { label: 'Analytics', href: '/dashboard/mentor/analytics' },
   { label: 'Profile', href: '/dashboard/mentor/profile' },
 ]

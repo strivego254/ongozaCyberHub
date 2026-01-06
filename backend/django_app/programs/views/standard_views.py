@@ -12,13 +12,13 @@ from datetime import timedelta
 import uuid
 from programs.models import (
     Program, Track, Milestone, Module, Specialization, Cohort, Enrollment,
-    CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist
+    CalendarEvent, MentorAssignment, ProgramRule, Certificate, Waitlist, MentorshipCycle
 )
 from programs.serializers import (
     ProgramSerializer, ProgramDetailSerializer, TrackSerializer, MilestoneSerializer, ModuleSerializer,
     SpecializationSerializer, CohortSerializer, EnrollmentSerializer, CalendarEventSerializer,
     MentorAssignmentSerializer, ProgramRuleSerializer, CertificateSerializer,
-    CohortDashboardSerializer, WaitlistSerializer
+    CohortDashboardSerializer, WaitlistSerializer, MentorshipCycleSerializer
 )
 # Import from core_services module
 from programs.core_services import auto_graduate_cohort, EnrollmentService, ProgramManagementService
@@ -829,6 +829,46 @@ class CohortViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_200_OK
                 )
 
+    @action(detail=True, methods=['get', 'post'], url_path='mentorship-cycle')
+    def mentorship_cycle(self, request, pk=None):
+        """Get or create mentorship cycle for this cohort."""
+        cohort = self.get_object()
+
+        if request.method == 'GET':
+            # Get existing mentorship cycle
+            try:
+                cycle = MentorshipCycle.objects.get(cohort=cohort)
+                serializer = MentorshipCycleSerializer(cycle)
+                return Response(serializer.data)
+            except MentorshipCycle.DoesNotExist:
+                return Response(
+                    {'error': 'No mentorship cycle found for this cohort'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        elif request.method == 'POST':
+            # Create or update mentorship cycle
+            data = request.data.copy()
+            data['cohort'] = cohort.id
+
+            # Check if cycle already exists for this cohort
+            existing_cycle = MentorshipCycle.objects.filter(cohort=cohort).first()
+
+            if existing_cycle:
+                # Update existing cycle
+                serializer = MentorshipCycleSerializer(existing_cycle, data=data)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Create new cycle
+                serializer = MentorshipCycleSerializer(data=data)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ProgramRuleViewSet(viewsets.ModelViewSet):
     """ViewSet for ProgramRule model."""
@@ -863,3 +903,58 @@ class CertificateViewSet(viewsets.ReadOnlyModelViewSet):
             {'error': 'Certificate file not available'},
             status=status.HTTP_404_NOT_FOUND
         )
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary='List Mentorship Cycles',
+        description='Get all mentorship cycles with cohort, track, and program information.',
+        tags=['Mentorship Cycles']
+    ),
+    retrieve=extend_schema(
+        summary='Get Mentorship Cycle',
+        description='Get detailed information about a specific mentorship cycle.',
+        tags=['Mentorship Cycles']
+    ),
+    create=extend_schema(
+        summary='Create Mentorship Cycle',
+        description='Create a new mentorship cycle for a cohort.',
+        tags=['Mentorship Cycles']
+    ),
+    update=extend_schema(
+        summary='Update Mentorship Cycle',
+        description='Update an existing mentorship cycle.',
+        tags=['Mentorship Cycles']
+    ),
+    partial_update=extend_schema(
+        summary='Partial Update Mentorship Cycle',
+        description='Partially update an existing mentorship cycle.',
+        tags=['Mentorship Cycles']
+    ),
+    destroy=extend_schema(
+        summary='Delete Mentorship Cycle',
+        description='Delete a mentorship cycle.',
+        tags=['Mentorship Cycles']
+    ),
+)
+class MentorshipCycleViewSet(viewsets.ModelViewSet):
+    """ViewSet for Mentorship Cycle model."""
+    queryset = MentorshipCycle.objects.select_related(
+        'cohort__track__program'
+    ).all()
+    serializer_class = MentorshipCycleSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter queryset based on user permissions."""
+        queryset = super().get_queryset()
+        user = self.request.user
+
+        # If user is staff, return all cycles
+        if user.is_staff:
+            return queryset
+
+        # Otherwise, filter by programs where user is director
+        return queryset.filter(
+            cohort__track__program__tracks__director=user
+        ).distinct()

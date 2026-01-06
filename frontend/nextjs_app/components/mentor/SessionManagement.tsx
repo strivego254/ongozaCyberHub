@@ -954,6 +954,7 @@ export function SessionManagement() {
                 </div>
                     )}
 
+
                     {/* Action Buttons */}
                     <div className="flex gap-2 flex-wrap">
                       {session.status === 'scheduled' && (

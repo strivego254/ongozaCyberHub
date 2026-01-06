@@ -18,6 +18,8 @@ import type {
   MenteePerformance,
   TalentScopeMentorView,
   MentorInfluenceIndex,
+  MentorshipMessage,
+  NotificationLog,
 } from './types/mentor'
 
 export const mentorClient = {
@@ -376,6 +378,121 @@ export const mentorClient = {
       created_at: flag.raised_at,
       resolved: flag.status === 'resolved',
     }))
+  },
+
+  /**
+   * 4.8 Communication & Notifications
+   */
+
+  /**
+   * Get mentorship assignment
+   */
+  async getMentorshipAssignment(params?: {
+    menteeId?: string
+    mentorId?: string
+  }): Promise<{
+    id: string
+    mentee_id: string
+    mentee_name: string
+    mentor_id: string
+    mentor_name: string
+    status: string
+    assigned_at: string
+  }> {
+    // Convert camelCase to snake_case for backend API
+    const backendParams: Record<string, string> = {}
+    if (params?.menteeId) {
+      backendParams.mentee_id = params.menteeId
+    }
+    if (params?.mentorId) {
+      backendParams.mentor_id = params.mentorId
+    }
+    return apiGateway.get('/mentorship/assignment', { params: backendParams })
+  },
+
+  /**
+   * Get all assignments for a mentor (includes assignments created when students send first message)
+   */
+  async getMentorAssignments(mentorId: string): Promise<Array<{
+    id: string
+    mentee_id: string
+    mentee_name: string
+    mentee_email: string
+    cohort_id: string | null
+    assigned_at: string | null
+    last_message_time: string | null
+    unread_count: number
+  }>> {
+    return apiGateway.get(`/mentorship/mentors/${mentorId}/assignments`)
+  },
+
+  /**
+   * Get messages for a mentor-mentee assignment
+   */
+  async getMessages(assignmentId: string): Promise<MentorshipMessage[]> {
+    return apiGateway.get(`/mentorship/assignments/${assignmentId}/messages`)
+  },
+
+  /**
+   * Send a message with optional file attachments
+   */
+  async sendMessage(assignmentId: string, data: {
+    body: string
+    attachments?: File[]
+  }): Promise<MentorshipMessage> {
+    const formData = new FormData()
+    formData.append('body', data.body)
+    
+    if (data.attachments) {
+      data.attachments.forEach(file => {
+        formData.append('attachments', file)
+      })
+    }
+    
+    return apiGateway.post(`/mentorship/assignments/${assignmentId}/messages`, formData)
+  },
+
+  /**
+   * Mark a message as read
+   */
+  async markMessageRead(messageId: string): Promise<MentorshipMessage> {
+    return apiGateway.patch(`/mentorship/messages/${messageId}/read`)
+  },
+
+  /**
+   * Send a notification
+   */
+  async sendNotification(data: {
+    assignmentId?: string
+    sessionId?: string
+    recipientId: string
+    notificationType: NotificationLog['notification_type']
+    channel?: NotificationLog['channel']
+    subject?: string
+    message: string
+    metadata?: Record<string, any>
+  }): Promise<NotificationLog> {
+    return apiGateway.post('/mentorship/notifications', {
+      assignment_id: data.assignmentId,
+      session_id: data.sessionId,
+      recipient_id: data.recipientId,
+      notification_type: data.notificationType,
+      channel: data.channel || 'email',
+      subject: data.subject,
+      message: data.message,
+      metadata: data.metadata || {},
+    })
+  },
+
+  /**
+   * Get notifications for a user
+   */
+  async getNotifications(userId: string, params?: {
+    type?: NotificationLog['notification_type']
+    channel?: NotificationLog['channel']
+    status?: NotificationLog['status']
+  }): Promise<NotificationLog[]> {
+    return apiGateway.get(`/mentorship/users/${userId}/notifications`, { params })
   },
 }
 

@@ -141,11 +141,24 @@ export default function MentorshipCyclesPage() {
     setSelectedCohort(cohortId)
     const cohort = cohorts.find(c => String(c.id) === cohortId)
     if (cohort) {
+      // Check if this cohort already has a mentorship cycle
+      const existingCycle = cycles.find(c => c.cohort_id === cohortId)
+      if (existingCycle) {
+        // Load existing cycle for editing
+        setEditingCycle(existingCycle)
+        setFormData(existingCycle)
+      } else {
+        // Reset form for new cycle
+        setEditingCycle(null)
       const track = tracks.find(t => String(t.id) === String(cohort.track))
       const program = programs.find(p => track && String(p.id) === String(track.program))
       
       setFormData({
-        ...formData,
+          duration_weeks: 12,
+          frequency: 'weekly',
+          milestones: [''],
+          goals: [''],
+          program_type: 'builders',
         cohort_id: cohortId,
         cohort_name: cohort.name,
         program_id: track ? String(track.program) : undefined,
@@ -153,6 +166,7 @@ export default function MentorshipCyclesPage() {
         track_id: track ? String(track.id) : undefined,
         track_name: track?.name,
       })
+      }
     }
   }
 
@@ -237,6 +251,13 @@ export default function MentorshipCyclesPage() {
             : c
         ))
       } else {
+        // Check if cohort already has a cycle (double-check)
+        const existingCycle = cycles.find(c => c.cohort_id === selectedCohort)
+        if (existingCycle) {
+          alert('This cohort already has a mentorship cycle. Please edit the existing cycle instead.')
+          return
+        }
+
         // Create new cycle
         await programsClient.saveMentorshipCycle(selectedCohort, cycleData)
         const cohort = cohorts.find(c => String(c.id) === selectedCohort)

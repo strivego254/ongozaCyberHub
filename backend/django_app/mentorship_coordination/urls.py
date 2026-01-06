@@ -6,6 +6,7 @@ from .views import (
     mentor_dashboard,
     mentor_mentees,
     mentor_sessions,
+    mentee_sessions,
     mentor_workqueue,
     mentee_cockpit,
     create_session,
@@ -21,7 +22,13 @@ from .views import (
     submit_session_feedback,
     get_session_feedback,
     mentor_feedback_summary,
-    get_student_mentor
+    get_student_mentor,
+    get_mentorship_assignment,
+    get_mentor_assignments,
+    messages_endpoint,
+    mark_message_read,
+    send_notification,
+    get_notifications
 )
 from .sse_views import mentor_dashboard_stream
 
@@ -45,6 +52,7 @@ urlpatterns = [
     path('mentor/mentees/<int:mentee_id>/cockpit', mentee_cockpit, name='mentee-cockpit'),
     path('mentor/sessions', create_session, name='create-session'),
     path('mentorship/sessions/request', request_session, name='request-session'),
+    path('mentorship/sessions', mentee_sessions, name='mentee-sessions'),
     path('mentors/sessions/<uuid:session_id>', update_group_session, name='update-group-session'),
     path('sessions/<uuid:session_id>/feedback', get_session_feedback, name='get-session-feedback'),  # GET
     path('sessions/<uuid:session_id>/feedback', submit_session_feedback, name='submit-session-feedback'),  # POST (same URL, different method)
@@ -54,5 +62,15 @@ urlpatterns = [
     path('mentor/flags', create_flag, name='create-flag-legacy'),
     # Student mentor endpoint
     path('mentorship/mentees/<int:mentee_id>/mentor', get_student_mentor, name='get-student-mentor'),
+    # Get mentorship assignment
+    path('mentorship/assignment', get_mentorship_assignment, name='get-mentorship-assignment'),
+    # Get all assignments for a mentor
+    path('mentorship/mentors/<int:mentor_id>/assignments', get_mentor_assignments, name='get-mentor-assignments'),
+    # Messaging endpoints
+    path('mentorship/assignments/<uuid:assignment_id>/messages', messages_endpoint, name='messages-endpoint'),
+    path('mentorship/messages/<uuid:message_id>/read', mark_message_read, name='mark-message-read'),
+    # Notifications endpoints
+    path('mentorship/notifications', send_notification, name='send-notification'),
+    path('mentorship/users/<int:user_id>/notifications', get_notifications, name='get-notifications'),
 ]
 

@@ -3,7 +3,7 @@ Serializers for Mentorship Coordination Engine.
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import MenteeMentorAssignment, MentorSession, MentorWorkQueue, MentorFlag
+from .models import MenteeMentorAssignment, MentorSession, MentorWorkQueue, MentorFlag, MentorshipMessage, MessageAttachment, NotificationLog
 
 User = get_user_model()
 
@@ -173,7 +173,7 @@ class CreateGroupSessionSerializer(serializers.Serializer):
         formats_to_try = []
         
         # With microseconds: 2026-02-02T06:00:00.000
-            if '.' in clean_value:
+        if '.' in clean_value:
             formats_to_try.append(('%Y-%m-%dT%H:%M:%S.%f', clean_value))
         
         # With seconds: 2026-02-02T06:00:00 (2 colons in time part)
@@ -185,22 +185,23 @@ class CreateGroupSessionSerializer(serializers.Serializer):
         if colon_count == 1:
             formats_to_try.append(('%Y-%m-%dT%H:%M', clean_value))
             formats_to_try.append(('%Y-%m-%d %H:%M', clean_value.replace('T', ' ')))
-            
-            for fmt, val in formats_to_try:
-                try:
-                    dt = datetime.strptime(val, fmt)
+        
+        # Try all formats
+        for fmt, val in formats_to_try:
+            try:
+                dt = datetime.strptime(val, fmt)
                 # Make timezone-aware (assume UTC if no timezone info)
-                    if django_timezone.is_naive(dt):
-                        dt = django_timezone.make_aware(dt, dt_timezone.utc)
-                    return dt
-                except ValueError:
-                    continue
-            
-            # If all parsing attempts failed
-            raise serializers.ValidationError(
-                f"Invalid datetime format: '{original_value}'. "
+                if django_timezone.is_naive(dt):
+                    dt = django_timezone.make_aware(dt, dt_timezone.utc)
+                return dt
+            except ValueError:
+                continue
+        
+        # If all parsing attempts failed
+        raise serializers.ValidationError(
+            f"Invalid datetime format: '{original_value}'. "
             f"Expected ISO 8601 format (e.g., '2026-02-02T06:00:00Z', '2026-02-02T06:00:00.000Z', or '2026-02-02T06:00')."
-            )
+        )
 
 
 class MissionReviewSerializer(serializers.Serializer):
@@ -261,4 +262,144 @@ class RequestSessionSerializer(serializers.Serializer):
     preferred_date = serializers.DateTimeField()
     duration_minutes = serializers.IntegerField(default=45, min_value=15, max_value=120)
     type = serializers.ChoiceField(choices=MentorSession.TYPE_CHOICES, default='one_on_one', required=False)
+
+
+class MessageAttachmentSerializer(serializers.ModelSerializer):
+    """Serializer for message attachments."""
+    file = serializers.SerializerMethodField()
+    
+    def get_file(self, obj):
+        """Return full URL for the file."""
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            # Fallback to relative URL if no request context
+            return obj.file.url
+        return None
+    
+    class Meta:
+        model = MessageAttachment
+        fields = ['id', 'filename', 'file_size', 'content_type', 'file', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class MentorshipMessageSerializer(serializers.ModelSerializer):
+    """Serializer for mentorship messages."""
+    sender_name = serializers.SerializerMethodField()
+    sender_email = serializers.SerializerMethodField()
+    recipient_name = serializers.SerializerMethodField()
+    recipient_email = serializers.SerializerMethodField()
+    attachments = MessageAttachmentSerializer(many=True, read_only=True)
+    
+    def get_sender_name(self, obj):
+        if not obj.sender:
+            return ''
+        try:
+            # Try get_full_name() if it exists, otherwise use first_name + last_name or email
+            if hasattr(obj.sender, 'get_full_name'):
+                name = obj.sender.get_full_name()
+                if name:
+                    return name
+            # Fallback to first_name + last_name
+            if hasattr(obj.sender, 'first_name') and hasattr(obj.sender, 'last_name'):
+                full_name = f"{obj.sender.first_name} {obj.sender.last_name}".strip()
+                if full_name:
+                    return full_name
+            # Final fallback to email
+            return obj.sender.email or ''
+        except Exception:
+            return obj.sender.email or ''
+    
+    def get_sender_email(self, obj):
+        return obj.sender.email if obj.sender else ''
+    
+    def get_recipient_name(self, obj):
+        if not obj.recipient:
+            return ''
+        try:
+            # Try get_full_name() if it exists, otherwise use first_name + last_name or email
+            if hasattr(obj.recipient, 'get_full_name'):
+                name = obj.recipient.get_full_name()
+                if name:
+                    return name
+            # Fallback to first_name + last_name
+            if hasattr(obj.recipient, 'first_name') and hasattr(obj.recipient, 'last_name'):
+                full_name = f"{obj.recipient.first_name} {obj.recipient.last_name}".strip()
+                if full_name:
+                    return full_name
+            # Final fallback to email
+            return obj.recipient.email or ''
+        except Exception:
+            return obj.recipient.email or ''
+    
+    def get_recipient_email(self, obj):
+        return obj.recipient.email if obj.recipient else ''
+    
+    sender = serializers.SerializerMethodField()
+    recipient = serializers.SerializerMethodField()
+    
+    def get_sender(self, obj):
+        if not obj.sender:
+            return None
+        return {
+            'id': str(obj.sender.id),
+            'name': self.get_sender_name(obj),
+            'email': self.get_sender_email(obj)
+        }
+    
+    def get_recipient(self, obj):
+        if not obj.recipient:
+            return None
+        return {
+            'id': str(obj.recipient.id),
+            'name': self.get_recipient_name(obj),
+            'email': self.get_recipient_email(obj)
+        }
+    
+    class Meta:
+        model = MentorshipMessage
+        fields = [
+            'id', 'message_id', 'assignment', 'sender', 'sender_name', 'sender_email',
+            'recipient', 'recipient_name', 'recipient_email', 'subject', 'body',
+            'is_read', 'read_at', 'archived', 'archived_at', 'attachments',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'message_id', 'assignment', 'sender', 'recipient', 'created_at', 'updated_at', 'read_at', 'archived_at']
+
+
+class SendMessageSerializer(serializers.Serializer):
+    """Serializer for sending a message."""
+    assignment_id = serializers.UUIDField(help_text='Mentor-mentee assignment ID')
+    recipient_id = serializers.IntegerField(help_text='Recipient user ID')
+    subject = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    body = serializers.CharField(help_text='Message content')
+
+
+class NotificationLogSerializer(serializers.ModelSerializer):
+    """Serializer for notification logs."""
+    recipient_name = serializers.CharField(source='recipient.get_full_name', read_only=True)
+    recipient_email = serializers.EmailField(source='recipient.email', read_only=True)
+    
+    class Meta:
+        model = NotificationLog
+        fields = [
+            'id', 'notification_id', 'assignment', 'session', 'recipient',
+            'recipient_name', 'recipient_email', 'notification_type', 'channel',
+            'subject', 'message', 'status', 'sent_at', 'delivered_at',
+            'error_message', 'metadata', 'created_at'
+        ]
+        read_only_fields = ['id', 'notification_id', 'created_at', 'sent_at', 'delivered_at']
+
+
+class CreateNotificationSerializer(serializers.Serializer):
+    """Serializer for creating a notification."""
+    assignment_id = serializers.UUIDField(required=False, allow_null=True)
+    session_id = serializers.UUIDField(required=False, allow_null=True)
+    recipient_id = serializers.IntegerField(help_text='Recipient user ID')
+    notification_type = serializers.ChoiceField(choices=NotificationLog.TYPE_CHOICES)
+    channel = serializers.ChoiceField(choices=NotificationLog.CHANNEL_CHOICES, default='email')
+    subject = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    message = serializers.CharField(help_text='Notification message content')
+    metadata = serializers.JSONField(required=False, default=dict)
 
