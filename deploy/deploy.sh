@@ -49,7 +49,8 @@ fi
 
 # Step 3: Install dependencies
 echo -e "${GREEN}Step 3: Installing dependencies...${NC}"
-cd "$PROJECT_DIR/frontend/nextjs_app"
+cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
+pwd
 npm install
 
 # Step 4: Check for .env file
@@ -77,6 +78,8 @@ fi
 
 # Step 5: Build Next.js application
 echo -e "${GREEN}Step 5: Building Next.js application...${NC}"
+cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
+pwd
 npm run build
 
 # Step 6: Install PM2 globally
