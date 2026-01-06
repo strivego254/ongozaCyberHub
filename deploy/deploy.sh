@@ -92,6 +92,25 @@ export function useKeyboardShortcuts() {
 KEYEOF
 fi
 
+# Create missing missionStore
+mkdir -p app/dashboard/student/missions/lib/store
+if [ ! -f app/dashboard/student/missions/lib/store/missionStore.ts ]; then
+    echo "Creating missing missionStore.ts..."
+    cat > app/dashboard/student/missions/lib/store/missionStore.ts << 'MISSIONEOF'
+import { create } from 'zustand'
+
+interface MissionStore {
+  missions: any[]
+  setMissions: (missions: any[]) => void
+}
+
+export const useMissionStore = create<MissionStore>((set) => ({
+  missions: [],
+  setMissions: (missions) => set({ missions }),
+}))
+MISSIONEOF
+fi
+
 npm install
 
 # Step 4: Check for .env file
