@@ -99,14 +99,32 @@ if [ ! -f app/dashboard/student/missions/lib/store/missionStore.ts ]; then
     cat > app/dashboard/student/missions/lib/store/missionStore.ts << 'MISSIONEOF'
 import { create } from 'zustand'
 
+interface Mission {
+  id: string
+  title: string
+  [key: string]: any
+}
+
 interface MissionStore {
-  missions: any[]
-  setMissions: (missions: any[]) => void
+  currentMission: Mission | null
+  availableMissions: Mission[]
+  inProgressMissions: Mission[]
+  completedMissions: Mission[]
+  setCurrentMission: (mission: Mission | null) => void
+  setAvailableMissions: (missions: Mission[]) => void
+  setInProgressMissions: (missions: Mission[]) => void
+  setCompletedMissions: (missions: Mission[]) => void
 }
 
 export const useMissionStore = create<MissionStore>((set) => ({
-  missions: [],
-  setMissions: (missions) => set({ missions }),
+  currentMission: null,
+  availableMissions: [],
+  inProgressMissions: [],
+  completedMissions: [],
+  setCurrentMission: (mission) => set({ currentMission: mission }),
+  setAvailableMissions: (missions) => set({ availableMissions: missions }),
+  setInProgressMissions: (missions) => set({ inProgressMissions: missions }),
+  setCompletedMissions: (missions) => set({ completedMissions: missions }),
 }))
 MISSIONEOF
 fi
