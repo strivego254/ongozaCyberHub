@@ -80,6 +80,11 @@ fi
 echo -e "${GREEN}Step 5: Building Next.js application...${NC}"
 cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
 pwd
+
+# Clean build cache
+rm -rf .next
+rm -rf node_modules/.cache
+
 npm run build
 
 # Step 6: Install PM2 globally
