@@ -5,7 +5,7 @@ import time
 
 host = "159.65.76.180"
 user = "root"
-password = "=Ongoza@#1CyberHub"
+password = "Ongoza@#1CyberHub"
 commands = [
     "git clone https://github.com/strivego254/ongozacyberhub.git || (cd ongozacyberhub && git pull)",
     "cd ongozacyberhub",

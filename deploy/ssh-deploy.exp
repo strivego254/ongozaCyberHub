@@ -1,7 +1,7 @@
 #!/usr/bin/expect -f
 
 set timeout 30
-set password "=Ongoza@#1CyberHub"
+set password "Ongoza@#1CyberHub"
 set host "159.65.76.180"
 set user "root"
 
