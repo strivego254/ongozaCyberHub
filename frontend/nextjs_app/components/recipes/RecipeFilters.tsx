@@ -38,6 +38,14 @@ const TIME_OPTIONS = [
   { value: '45', label: '⏱️ <45min' },
 ];
 
+const CONTEXT_OPTIONS = [
+  { value: '', label: 'All Contexts' },
+  { value: 'module', label: '📚 Curriculum' },
+  { value: 'mission', label: '🎯 Missions' },
+  { value: 'project', label: '🚀 Projects' },
+  { value: 'mentor_session', label: '👨‍🏫 Mentorship' },
+];
+
 const SORT_OPTIONS: { value: RecipeFilters['sort']; label: string; icon: any }[] = [
   { value: 'relevance', label: 'Relevance', icon: TrendingUp },
   { value: 'popular', label: 'Popular', icon: Star },
@@ -90,6 +98,19 @@ export function RecipeFilters({ filters, onFiltersChange, stats }: RecipeFilters
             variant={filters.max_time?.toString() === option.value ? 'defender' : 'ghost'}
             size="sm"
             onClick={() => handleFilterChange('max_time', option.value ? parseInt(option.value) : undefined)}
+            className="text-xs"
+          >
+            {option.label}
+          </Button>
+        ))}
+
+        {/* Context Filter */}
+        {CONTEXT_OPTIONS.map((option) => (
+          <Button
+            key={option.value}
+            variant={filters.context === option.value ? 'defender' : 'ghost'}
+            size="sm"
+            onClick={() => handleFilterChange('context', option.value || undefined)}
             className="text-xs"
           >
             {option.label}

@@ -5,6 +5,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -26,7 +27,7 @@ export function RecipeSidebar({ recipeIds }: RecipeSidebarProps) {
       }
       try {
         const { apiGateway } = await import('@/services/apiGateway')
-        const response = await apiGateway.get('/missions/recipes', {
+        const response: any = await apiGateway.get('/missions/recipes', {
           params: { recipe_ids: recipeIds.join(',') }
         })
         setRecipes(Array.isArray(response) ? response : (response?.results || []))
@@ -63,17 +64,15 @@ export function RecipeSidebar({ recipeIds }: RecipeSidebarProps) {
               <h4 className="text-sm font-semibold text-white mb-1">{recipe.title}</h4>
               <p className="text-xs text-och-steel mb-3">{recipe.description}</p>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="defender"
-                  size="sm"
-                  className="flex-1 text-xs"
-                  onClick={() => {
-                    // TODO: Navigate to recipe
-                    console.log('Open recipe:', recipe.id)
-                  }}
-                >
-                  Read
-                </Button>
+                <Link href={`/recipes/${recipe.id}`} className="flex-1">
+                  <Button
+                    variant="defender"
+                    size="sm"
+                    className="w-full text-xs"
+                  >
+                    Read
+                  </Button>
+                </Link>
                 <Button
                   variant="mint"
                   size="sm"

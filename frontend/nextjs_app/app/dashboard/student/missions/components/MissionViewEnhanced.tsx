@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/Badge'
 import { TimerDisplay } from './shared/TimerDisplay'
 import { SubtaskViewEnhanced } from './SubtaskViewEnhanced'
 import { RecipeSidebarEnhanced } from './RecipeSidebarEnhanced'
+import { MissionRecipeRecommendations } from '@/components/recipes/MissionRecipeRecommendations'
 import { useMissionProgress } from '../hooks/useMissionProgress'
 import { apiGateway } from '@/services/apiGateway'
 import { useMissionStore } from '../lib/store/missionStore'
@@ -189,6 +190,11 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
               SYNC PROGRESS
             </Button>
           </div>
+        </div>
+
+        {/* RECIPE RECOMMENDATIONS - Before mission description */}
+        <div className="mt-8 relative z-10">
+          <MissionRecipeRecommendations missionId={missionId} />
         </div>
 
         {/* MISSION BRIEF CONTENT */}

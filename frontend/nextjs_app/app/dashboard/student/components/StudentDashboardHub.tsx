@@ -40,6 +40,7 @@ import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStore } from '../lib/store/dashboardStore';
 import { useSettingsMaster } from '@/hooks/useSettingsMaster';
+import { CoachingNudge } from '@/components/coaching/CoachingNudge';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
 
@@ -379,6 +380,9 @@ export function StudentDashboardHub() {
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-och-defender rounded-full border-2 border-och-gold" />
          </div>
       </button>
+
+      {/* 6. AI COACHING NUDGE (Coaching OS Integration) */}
+      <CoachingNudge userId={user?.id?.toString()} autoLoad={true} />
 
     </div>
   );

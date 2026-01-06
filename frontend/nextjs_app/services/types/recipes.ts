@@ -57,6 +57,7 @@ export interface RecipeListResponse extends Recipe {
   is_bookmarked: boolean;
   user_status: RecipeStatus | null;
   user_rating: number | null;
+  context_labels?: string[]; // e.g., ["Used in Mission", "Used in Module"]
 }
 
 export interface UserRecipeProgress {
@@ -110,6 +111,7 @@ export interface RecipeFilters {
   track?: string;
   difficulty?: RecipeDifficulty;
   max_time?: number;
+  context?: 'mission' | 'module' | 'project' | 'mentor_session';
   sort?: 'relevance' | 'popular' | 'recent' | 'rating';
 }
 

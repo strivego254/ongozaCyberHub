@@ -30,6 +30,7 @@ export const recipesClient = {
     if (filters?.track) params.append('track', filters.track);
     if (filters?.difficulty) params.append('difficulty', filters.difficulty);
     if (filters?.max_time) params.append('max_time', filters.max_time.toString());
+    if (filters?.context) params.append('context', filters.context);
     if (filters?.sort) params.append('sort', filters.sort);
     
     const queryString = params.toString();
@@ -71,7 +72,21 @@ export const recipesClient = {
     slug: string,
     progress: RecipeProgressUpdate
   ): Promise<UserRecipeProgress> {
-    return apiGateway.post<UserRecipeProgress>(`/recipes/${slug}/progress/`, progress);
+    const result = await apiGateway.post<UserRecipeProgress>(`/recipes/${slug}/progress/`, progress);
+
+    // Also submit feedback if rating is provided (for self-improving loops)
+    if (progress.rating && progress.rating > 0) {
+      try {
+        await apiGateway.post(`/recipes/${slug}/feedback/`, {
+          rating: progress.rating,
+          helpful_for: progress.helpful_for
+        });
+      } catch (error) {
+        console.warn('Feedback submission failed, but progress was updated:', error);
+      }
+    }
+
+    return result;
   },
 
   /**

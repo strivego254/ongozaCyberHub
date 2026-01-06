@@ -276,9 +276,11 @@ export default function CurriculumPage() {
                         Bridge technical gaps with micro-skill boosters. Focused, step-by-step guides contextually available for your current track tasks.
                       </p>
                     </div>
-                    <button className="px-6 py-2.5 bg-amber-500 text-slate-900 font-black uppercase text-xs rounded-xl hover:bg-amber-400 transition-all">
-                      Browse Recipes
-                    </button>
+                    <Link href="/recipes">
+                      <button className="px-6 py-2.5 bg-amber-500 text-slate-900 font-black uppercase text-xs rounded-xl hover:bg-amber-400 transition-all">
+                        Browse Recipes
+                      </button>
+                    </Link>
                   </div>
                 </motion.div>
               </div>

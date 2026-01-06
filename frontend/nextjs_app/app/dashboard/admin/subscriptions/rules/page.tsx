@@ -52,7 +52,6 @@ export default function SubscriptionRulesPage() {
 
 
 
-<<<<<<< Updated upstream
 
 
 
@@ -70,8 +69,6 @@ export default function SubscriptionRulesPage() {
 
 
 
-=======
->>>>>>> Stashed changes
 
 
 

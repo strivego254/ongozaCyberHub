@@ -30,6 +30,7 @@ import clsx from 'clsx'
 
 interface Recipe {
   id: string
+  slug?: string
   title: string
   description: string
   duration?: number
@@ -220,14 +221,16 @@ function RecipeCard({
       )}
 
       <div className="flex items-center gap-2 pt-2 border-t border-och-steel/5">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1 h-9 rounded-xl border-och-steel/20 text-och-steel text-[9px] font-black uppercase tracking-widest hover:border-white transition-all"
-        >
-          <ExternalLink className="w-3 h-3 mr-2" />
-          Deploy
-        </Button>
+        <Link href={`/recipes/${recipe.slug || recipe.id}`} className="flex-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-9 rounded-xl border-och-steel/20 text-och-steel text-[9px] font-black uppercase tracking-widest hover:border-white transition-all"
+          >
+            <ExternalLink className="w-3 h-3 mr-2" />
+            Deploy
+          </Button>
+        </Link>
         <Button
           variant="outline"
           size="sm"

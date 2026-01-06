@@ -11,6 +11,7 @@ class RecipeListSerializer(serializers.ModelSerializer):
     is_bookmarked = serializers.SerializerMethodField()
     user_status = serializers.SerializerMethodField()
     user_rating = serializers.SerializerMethodField()
+    context_labels = serializers.SerializerMethodField()
     
     class Meta:
         model = Recipe
@@ -18,7 +19,7 @@ class RecipeListSerializer(serializers.ModelSerializer):
             'id', 'title', 'slug', 'summary', 'difficulty', 'estimated_minutes',
             'track_codes', 'skill_codes', 'tools_used', 'thumbnail_url',
             'usage_count', 'avg_rating', 'mentor_curated',
-            'is_bookmarked', 'user_status', 'user_rating'
+            'is_bookmarked', 'user_status', 'user_rating', 'context_labels'
         ]
         read_only_fields = ['id', 'slug', 'usage_count', 'avg_rating']
     
@@ -52,6 +53,26 @@ class RecipeListSerializer(serializers.ModelSerializer):
             if progress and progress.rating:
                 return progress.rating
         return None
+    
+    def get_context_labels(self, obj):
+        """Get context labels showing where this recipe is used."""
+        # Get a sample of context links (limit to 3 for performance)
+        context_links = RecipeContextLink.objects.filter(
+            recipe=obj
+        ).select_related('recipe')[:3]
+        
+        labels = []
+        for link in context_links:
+            if link.context_type == 'mission':
+                labels.append(f"Used in Mission")
+            elif link.context_type == 'module':
+                labels.append(f"Used in Module")
+            elif link.context_type == 'project':
+                labels.append(f"Used in Project")
+            elif link.context_type == 'mentor_session':
+                labels.append(f"Used in Mentorship")
+        
+        return labels[:2]  # Return max 2 labels
 
 
 class RecipeDetailSerializer(serializers.ModelSerializer):
