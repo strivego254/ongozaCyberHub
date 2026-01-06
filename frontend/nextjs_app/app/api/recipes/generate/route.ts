@@ -19,10 +19,11 @@ class GrokClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: options.model || 'grok-beta',
+        model: options.model || 'grok-4-latest',
         messages,
         temperature: options.temperature || 0.1,
         max_tokens: options.max_tokens || 4000,
+        stream: false,
         ...options
       })
     });
@@ -112,9 +113,10 @@ STRUCTURE:
       },
       { role: "user", content: grokPrompt }
     ], {
-      model: "grok-beta",
+      model: "grok-4-latest",
       temperature: 0.1,
-      max_tokens: 4000
+      max_tokens: 4000,
+      stream: false
     });
 
     let recipes = JSON.parse(grokResponse.choices[0].message.content);

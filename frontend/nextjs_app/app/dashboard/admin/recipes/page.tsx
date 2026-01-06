@@ -14,9 +14,20 @@ interface Mission {
   instructions?: string;
 }
 
+interface EnvStatus {
+  grok: boolean;
+  llama: boolean;
+  supabase: boolean;
+}
+
 export default function AdminRecipesPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [envStatus, setEnvStatus] = useState<EnvStatus>({
+    grok: false,
+    llama: false,
+    supabase: false
+  });
 
   useEffect(() => {
     const fetchMissions = async () => {
@@ -31,7 +42,18 @@ export default function AdminRecipesPage() {
       }
     };
 
+    const fetchEnvStatus = async () => {
+      try {
+        const response = await fetch('/api/recipes/env-status');
+        const data = await response.json();
+        setEnvStatus(data);
+      } catch (error) {
+        console.error('Failed to fetch environment status:', error);
+      }
+    };
+
     fetchMissions();
+    fetchEnvStatus();
   }, []);
 
   return (
@@ -57,20 +79,22 @@ export default function AdminRecipesPage() {
                 </div>
                 <div className="p-6 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Grok 3 API</span>
-                    <Badge variant={process.env.NEXT_PUBLIC_GROK_API_KEY ? "default" : "secondary"}>
-                      {process.env.NEXT_PUBLIC_GROK_API_KEY ? "✅ Configured" : "❌ Missing"}
+                    <span className="text-sm">Grok 4 API</span>
+                    <Badge variant={envStatus.grok ? "defender" : "outline"}>
+                      {envStatus.grok ? "✅ Configured" : "❌ Missing"}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Llama Fallback</span>
-                    <Badge variant={process.env.NEXT_PUBLIC_LLAMA_ENDPOINT ? "default" : "secondary"}>
-                      {process.env.NEXT_PUBLIC_LLAMA_ENDPOINT ? "✅ Configured" : "❌ Optional"}
+                    <Badge variant={envStatus.llama ? "defender" : "outline"}>
+                      {envStatus.llama ? "✅ Configured" : "❌ Optional"}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Supabase</span>
-                    <Badge variant="default">✅ Connected</Badge>
+                    <Badge variant={envStatus.supabase ? "defender" : "outline"}>
+                      {envStatus.supabase ? "✅ Connected" : "❌ Missing"}
+                    </Badge>
                   </div>
                 </div>
               </Card>

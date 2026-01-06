@@ -4,13 +4,17 @@
  */
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { CoachingHub } from '@/components/ui/coaching/CoachingHub'
 import { CoachingSidebar } from '@/components/ui/coaching/CoachingSidebar'
+import { CoachingNudge } from '@/components/coaching/CoachingNudge'
 import { useCoachingStore } from '@/lib/coaching/store'
 import { habitsAPI, goalsAPI, reflectionsAPI, metricsAPI } from '@/lib/coaching/api'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function CoachingPage() {
+  const { user } = useAuth()
+  const [activeSection, setActiveSection] = useState<'overview' | 'habits' | 'goals' | 'reflect'>('overview')
   const { 
     setHabits, 
     setGoals, 
@@ -32,11 +36,12 @@ export default function CoachingPage() {
           habitsAPI.getAll().catch(() => []),
           goalsAPI.getAll().catch(() => []),
           reflectionsAPI.getAll().catch(() => []),
-          metricsAPI.get().catch(() => ({
-            habits_streak: 0,
-            goals_completed: 0,
-            reflections_count: 0,
-            weekly_completion_rate: 0,
+          metricsAPI.getMetrics().catch(() => ({
+            alignmentScore: 0,
+            totalStreakDays: 0,
+            activeHabits: 0,
+            completedGoals: 0,
+            reflectionCount: 0,
           })),
           // Load logs for all habits
           Promise.all(
@@ -65,7 +70,8 @@ export default function CoachingPage() {
     loadCoachingData()
   }, [setHabits, setGoals, setReflections, setMetrics, setHabitLogs, setLoading, setError])
   
-  const handleNavigate = (section: 'habits' | 'goals' | 'reflect' | 'coach') => {
+  const handleNavigate = (section: 'overview' | 'habits' | 'goals' | 'reflect') => {
+    setActiveSection(section)
     // Scroll to section or open modal
     const element = document.getElementById(`coaching-${section}`)
     if (element) {
@@ -76,7 +82,8 @@ export default function CoachingPage() {
   return (
     <div className="relative min-h-screen">
       <CoachingSidebar onNavigate={handleNavigate} />
-      <CoachingHub />
+      <CoachingHub activeSection={activeSection} setActiveSection={setActiveSection} />
+      <CoachingNudge userId={user?.id?.toString()} autoLoad={true} />
     </div>
   )
 }

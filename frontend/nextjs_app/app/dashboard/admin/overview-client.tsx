@@ -132,8 +132,8 @@ export default function OverviewClient() {
     const students = users.filter((u) => 
       u.roles?.some((r: any) => r.role === 'student' || r.role === 'mentee')
     ).length
-    const admins = users.filter((u) => 
-      u.roles?.some((r: any) => r.role === 'admin') || u.is_staff
+    const admins = users.filter((u) =>
+      u.roles?.some((r: any) => r.role === 'admin')
     ).length
     const activeUsers = users.filter((u) => u.is_active && u.account_status === 'active').length
 

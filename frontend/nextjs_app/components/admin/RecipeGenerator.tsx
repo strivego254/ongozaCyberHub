@@ -32,17 +32,19 @@ export function RecipeGenerator({ missions }: RecipeGeneratorProps) {
 
     try {
       const mission = missions.find(m => m.id === selectedMission);
-      if (!mission) throw new Error('Mission not found');
+      if (!mission) return;
 
       const response = await fetch('/api/recipes/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           context_type: 'mission',
-          context_id: selectedMission,
+          context_id: mission.id,
           track_code: mission.track_code,
-          user_id: 'admin' // TODO: Get actual user ID
-        })
+          user_id: 'admin',
+        }),
       });
 
       if (!response.ok) {
@@ -88,71 +90,56 @@ export function RecipeGenerator({ missions }: RecipeGeneratorProps) {
                 ))}
               </select>
             </div>
-
-            <div className="flex items-end">
-              <Button
-                onClick={generateRecipes}
-                disabled={!selectedMission || isGenerating}
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="w-4 h-4 mr-2" />
-                    Generate Recipes
-                  </>
-                )}
-              </Button>
-            </div>
           </div>
 
+          <Button
+            onClick={generateRecipes}
+            disabled={!selectedMission || isGenerating}
+            className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating Recipes...
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-4 h-4 mr-2" />
+                Generate Recipes
+              </>
+            )}
+          </Button>
+
           {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-400 text-sm">{error}</span>
+            <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-lg flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <span className="text-red-400">{error}</span>
             </div>
           )}
         </div>
       </Card>
 
-      {/* Generated Recipes Preview */}
       {generatedRecipes.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-emerald-400" />
-              Generated Recipes ({generatedRecipes.length})
-            </CardTitle>
-            <p className="text-sm text-slate-400">
-              These recipes have been saved to the database and are ready to use
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <div className="p-6 border-b border-slate-800/50">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-green-400">
+              <CheckCircle className="w-5 h-5" />
+              Recipes Generated Successfully ({generatedRecipes.length})
+            </h3>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
               {generatedRecipes.map((recipe, index) => (
-                <div key={recipe.id || index} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-slate-200">{recipe.title}</h4>
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {recipe.difficulty}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {recipe.estimated_minutes}m
-                      </Badge>
-                    </div>
-                  </div>
+                <div key={index} className="p-4 bg-slate-800/50 rounded-lg">
+                  <h4 className="font-semibold text-slate-200 mb-2">{recipe.title}</h4>
                   <p className="text-sm text-slate-400 mb-2">{recipe.summary}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {recipe.track_codes?.map((track: string) => (
-                      <Badge key={track} variant="secondary" className="text-xs">
-                        {track}
-                      </Badge>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {recipe.difficulty}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {recipe.estimated_minutes}min
+                    </Badge>
                   </div>
                 </div>
               ))}
