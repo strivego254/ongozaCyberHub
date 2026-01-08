@@ -173,7 +173,7 @@ class CreateGroupSessionSerializer(serializers.Serializer):
         formats_to_try = []
         
         # With microseconds: 2026-02-02T06:00:00.000
-            if '.' in clean_value:
+        if '.' in clean_value:
             formats_to_try.append(('%Y-%m-%dT%H:%M:%S.%f', clean_value))
         
         # With seconds: 2026-02-02T06:00:00 (2 colons in time part)

@@ -2270,7 +2270,9 @@ def get_mentor_assignments(request, mentor_id):
     """
     GET /api/v1/mentorship/mentors/{mentor_id}/assignments
     Get all active assignments for a mentor.
-    This includes assignments created when students send their first message.
+    This includes:
+    1. Existing MenteeMentorAssignment records
+    2. Auto-created assignments from cohort MentorAssignment records
     """
     try:
         # Verify the mentor_id matches the authenticated user
@@ -2280,14 +2282,63 @@ def get_mentor_assignments(request, mentor_id):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Get all active assignments for this mentor
-        assignments = MenteeMentorAssignment.objects.filter(
+        from programs.models import MentorAssignment, Enrollment
+        
+        # Get all cohorts where this mentor is assigned
+        mentor_assignments = MentorAssignment.objects.filter(
+            mentor_id=mentor_id,
+            active=True
+        ).select_related('cohort')
+        
+        # Get existing MenteeMentorAssignment records
+        existing_assignments = MenteeMentorAssignment.objects.filter(
+            mentor_id=mentor_id,
+            status='active'
+        ).select_related('mentee')
+        
+        existing_mentee_ids = set(existing_assignments.values_list('mentee_id', flat=True))
+        
+        # For each cohort where mentor is assigned, create assignments for enrolled students
+        created_count = 0
+        for mentor_assignment in mentor_assignments:
+            cohort = mentor_assignment.cohort
+            
+            # Get all active enrollments in this cohort
+            enrollments = Enrollment.objects.filter(
+                cohort=cohort,
+                status__in=['active', 'completed']
+            ).select_related('user')
+            
+            for enrollment in enrollments:
+                mentee = enrollment.user
+                
+                # Skip if assignment already exists
+                if mentee.id in existing_mentee_ids:
+                    continue
+                
+                # Create MenteeMentorAssignment if it doesn't exist
+                assignment, created = MenteeMentorAssignment.objects.get_or_create(
+                    mentee=mentee,
+                    mentor_id=mentor_id,
+                    defaults={
+                        'status': 'active',
+                        'cohort_id': str(cohort.id),
+                    }
+                )
+                
+                if created:
+                    created_count += 1
+                    logger.info(f"Auto-created MenteeMentorAssignment {assignment.id} for mentor {mentor_id} and mentee {mentee.id} from cohort {cohort.id}")
+                    existing_mentee_ids.add(mentee.id)
+        
+        # Now get all assignments (including newly created ones)
+        all_assignments = MenteeMentorAssignment.objects.filter(
             mentor_id=mentor_id,
             status='active'
         ).select_related('mentee')
         
         assignments_data = []
-        for assignment in assignments:
+        for assignment in all_assignments:
             mentee = assignment.mentee
             
             # Get last message time and unread count
@@ -2322,6 +2373,9 @@ def get_mentor_assignments(request, mentor_id):
             ),
             reverse=True
         )
+        
+        if created_count > 0:
+            logger.info(f"Auto-created {created_count} MenteeMentorAssignment records for mentor {mentor_id}")
         
         return Response(assignments_data, status=status.HTTP_200_OK)
     except Exception as e:
@@ -2452,7 +2506,13 @@ def get_mentorship_assignment(request):
                                     }
                                 )
                                 if created:
-                                    logger.info(f"Auto-created MenteeMentorAssignment for mentee {user.id} and mentor {mentor_id_int}")
+                                    logger.info(f"Auto-created MenteeMentorAssignment {assignment.id} for mentee {user.id} and mentor {mentor_id_int}")
+                                else:
+                                    # Ensure assignment is active
+                                    if assignment.status != 'active':
+                                        assignment.status = 'active'
+                                        assignment.save(update_fields=['status'])
+                                        logger.info(f"Reactivated MenteeMentorAssignment {assignment.id} for mentee {user.id}")
                     except Exception as e:
                         logger.warning(f"Failed to auto-create assignment from cohort: {str(e)}")
             except (ValueError, TypeError):
@@ -2500,7 +2560,7 @@ def get_mentorship_assignment(request):
                                 }
                             )
                             if created:
-                                logger.info(f"Auto-created MenteeMentorAssignment for mentee {user.id} and mentor {mentor_assignment.mentor.id}")
+                                logger.info(f"Auto-created MenteeMentorAssignment {assignment.id} for mentee {user.id} and mentor {mentor_assignment.mentor.id}")
                         elif is_mentee and assignment.mentor != mentor_assignment.mentor:
                             # Update existing assignment with correct mentor
                             logger.info(f"Updating MenteeMentorAssignment {assignment.id}: changing mentor from {assignment.mentor.id} ({assignment.mentor.get_full_name() or assignment.mentor.email}) to {mentor_assignment.mentor.id} ({mentor_assignment.mentor.get_full_name() or mentor_assignment.mentor.email})")
@@ -2509,6 +2569,11 @@ def get_mentorship_assignment(request):
                             assignment.status = 'active'
                             assignment.save(update_fields=['mentor', 'cohort_id', 'status'])
                             logger.info(f"Updated MenteeMentorAssignment {assignment.id} with correct mentor")
+                        elif assignment and assignment.status != 'active':
+                            # Reactivate if assignment exists but is inactive
+                            assignment.status = 'active'
+                            assignment.save(update_fields=['status'])
+                            logger.info(f"Reactivated MenteeMentorAssignment {assignment.id} for mentee {user.id}")
             except Exception as e:
                 logger.warning(f"Failed to verify/update assignment from cohort: {str(e)}", exc_info=True)
         
@@ -2559,6 +2624,7 @@ def get_student_mentor(request, mentee_id):
         mentor = None
         cohort = None
         mentor_assignment = None
+        mentor_assignment_obj = None  # To store MentorAssignment or MenteeMentorAssignment for assigned_at, role, type
         assignment = None
 
         # FIRST: Check for existing MenteeMentorAssignment (created when messages are sent or direct assignment)
@@ -2571,6 +2637,9 @@ def get_student_mentor(request, mentee_id):
             # Found an active assignment - use it
             mentor = assignment.mentor
             logger.info(f"Found active MenteeMentorAssignment {assignment.id} for mentee {mentee_id_int} with mentor {mentor.id}")
+            
+            # Set mentor_assignment_obj for response
+            mentor_assignment_obj = assignment
             
             # Try to get cohort info for additional context
             try:
@@ -2605,6 +2674,28 @@ def get_student_mentor(request, mentee_id):
                     if mentor_assignment:
                         mentor = mentor_assignment.mentor
                         logger.info(f"Found cohort-level MentorAssignment for mentee {mentee_id_int} with mentor {mentor.id}")
+                        
+                        # Create MenteeMentorAssignment if it doesn't exist
+                        assignment, created = MenteeMentorAssignment.objects.get_or_create(
+                            mentee_id=mentee_id_int,
+                            mentor=mentor,
+                            defaults={
+                                'status': 'active',
+                                'cohort_id': str(cohort.id),
+                            }
+                        )
+                        
+                        if created:
+                            logger.info(f"Auto-created MenteeMentorAssignment {assignment.id} for mentee {mentee_id_int} and mentor {mentor.id} from cohort {cohort.id}")
+                        else:
+                            # Ensure assignment is active
+                            if assignment.status != 'active':
+                                assignment.status = 'active'
+                                assignment.save(update_fields=['status'])
+                                logger.info(f"Reactivated MenteeMentorAssignment {assignment.id} for mentee {mentee_id_int}")
+                        
+                        # Set mentor_assignment_obj for response
+                        mentor_assignment_obj = mentor_assignment
                     else:
                         logger.warning(f"No mentor assigned to cohort {cohort.id} for mentee {mentee_id_int}")
                 else:
@@ -2631,9 +2722,9 @@ def get_student_mentor(request, mentee_id):
             'readiness_impact': 85.0,  # Would be calculated based on mentee outcomes
             'cohort_id': str(cohort.id) if cohort else None,
             'cohort_name': cohort.name if cohort else None,
-            'assigned_at': mentor_assignment.assigned_at.isoformat() if mentor_assignment else (assignment.assigned_at.isoformat() if assignment else None),
-            'mentor_role': mentor_assignment.role if mentor_assignment else (assignment.assignment_type if assignment else 'assigned'),
-            'assignment_type': 'cohort_based' if mentor_assignment else 'individual',
+            'assigned_at': mentor_assignment_obj.assigned_at.isoformat() if mentor_assignment_obj and hasattr(mentor_assignment_obj, 'assigned_at') else (assignment.assigned_at.isoformat() if assignment else None),
+            'mentor_role': mentor_assignment_obj.role if mentor_assignment_obj and hasattr(mentor_assignment_obj, 'role') else 'assigned',
+            'assignment_type': 'cohort_based' if mentor_assignment_obj else 'individual',
         }
 
         return Response(mentor_profile, status=status.HTTP_200_OK)
@@ -2659,6 +2750,38 @@ def get_student_mentor(request, mentee_id):
 # 4.8 Communication & Notifications
 # ============================================================================
 
+def get_or_create_assignment(mentee, mentor, cohort_id=None):
+    """
+    Helper function to get or create a MenteeMentorAssignment.
+    Always returns the SAME assignment for a given mentee+mentor pair.
+    Reactivates inactive assignments instead of creating duplicates.
+    """
+    # First, try to find ANY assignment (including inactive ones)
+    assignment = MenteeMentorAssignment.objects.filter(
+        mentee=mentee,
+        mentor=mentor
+    ).first()
+    
+    if assignment:
+        # Found existing assignment - reactivate if needed
+        if assignment.status != 'active':
+            assignment.status = 'active'
+            if cohort_id:
+                assignment.cohort_id = str(cohort_id)
+            assignment.save(update_fields=['status', 'cohort_id'])
+            logger.info(f"♻️ Reactivated MenteeMentorAssignment {assignment.id} for mentee {mentee.id} and mentor {mentor.id}")
+        return assignment, False
+    else:
+        # No assignment exists - create new one
+        assignment = MenteeMentorAssignment.objects.create(
+            mentee=mentee,
+            mentor=mentor,
+            status='active',
+            cohort_id=str(cohort_id) if cohort_id else None
+        )
+        logger.info(f"🆕 Created new MenteeMentorAssignment {assignment.id} for mentee {mentee.id} and mentor {mentor.id}")
+        return assignment, True
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -2671,10 +2794,17 @@ def messages_endpoint(request, assignment_id):
     Send a message with optional file attachments.
     If assignment doesn't exist, auto-create it from cohort assignment.
     This works for both students sending first message AND mentors sending first message.
+    
+    IMPORTANT: If assignment_id doesn't exist, we find/create the correct assignment
+    based on mentee+mentor pair to ensure both parties use the same assignment.
     """
     try:
+        assignment = None
+        assignment_was_auto_created = False
+        
         try:
             assignment = MenteeMentorAssignment.objects.get(id=assignment_id)
+            logger.info(f"✅ Found existing assignment {assignment_id} for user {request.user.id}")
         except MenteeMentorAssignment.DoesNotExist:
             # Assignment doesn't exist - try to find or create it
             # This can happen when:
@@ -2700,19 +2830,15 @@ def messages_endpoint(request, assignment_id):
                 ).select_related('mentor').order_by('-role').first()
                 
                 if mentor_assignment:
-                    # Get or create the assignment
-                    assignment, created = MenteeMentorAssignment.objects.get_or_create(
+                    # CRITICAL: Use helper function to ensure we always get the SAME assignment
+                    assignment, created = get_or_create_assignment(
                         mentee=request.user,
                         mentor=mentor_assignment.mentor,
-                        defaults={
-                            'status': 'active',
-                            'cohort_id': str(enrollment.cohort.id),
-                        }
+                        cohort_id=enrollment.cohort.id
                     )
                     if created:
-                        logger.info(f"Auto-created MenteeMentorAssignment {assignment.id} for mentee {request.user.id} and mentor {mentor_assignment.mentor.id}")
-                    else:
-                        logger.info(f"Found existing MenteeMentorAssignment {assignment.id} for mentee {request.user.id} and mentor {mentor_assignment.mentor.id}")
+                        assignment_was_auto_created = True
+                    logger.info(f"✅ Using MenteeMentorAssignment {assignment.id} for mentee {request.user.id} and mentor {mentor_assignment.mentor.id}")
             
             # Case 2: User is a mentor - find mentee from their assigned cohorts
             if not assignment and request.user.user_roles.filter(role__name='mentor', is_active=True).exists():
@@ -2756,19 +2882,15 @@ def messages_endpoint(request, assignment_id):
                             ).first()
                             
                             if mentor_assignment:
-                                # Create the assignment
-                                assignment, created = MenteeMentorAssignment.objects.get_or_create(
+                                # CRITICAL: Use helper function to ensure we always get the SAME assignment
+                                assignment, created = get_or_create_assignment(
                                     mentee=mentee,
                                     mentor=request.user,
-                                    defaults={
-                                        'status': 'active',
-                                        'cohort_id': str(mentee_enrollment.cohort.id),
-                                    }
+                                    cohort_id=mentee_enrollment.cohort.id
                                 )
                                 if created:
-                                    logger.info(f"Auto-created MenteeMentorAssignment {assignment.id} for mentor {request.user.id} and mentee {mentee.id}")
-                                else:
-                                    logger.info(f"Found existing MenteeMentorAssignment {assignment.id} for mentor {request.user.id} and mentee {mentee.id}")
+                                    assignment_was_auto_created = True
+                                logger.info(f"✅ Using MenteeMentorAssignment {assignment.id} for mentor {request.user.id} and mentee {mentee.id}")
                     except User.DoesNotExist:
                         logger.warning(f"Mentee {mentee_id} not found when mentor {request.user.id} tried to send message")
                     except Exception as e:
@@ -2790,17 +2912,15 @@ def messages_endpoint(request, assignment_id):
                         ).select_related('user').first()
                         
                         if enrollment:
-                            # Create assignment for this mentee
-                            assignment, created = MenteeMentorAssignment.objects.get_or_create(
+                            # CRITICAL: Use helper function to ensure we always get the SAME assignment
+                            assignment, created = get_or_create_assignment(
                                 mentee=enrollment.user,
                                 mentor=request.user,
-                                defaults={
-                                    'status': 'active',
-                                    'cohort_id': str(mentor_assignment.cohort.id),
-                                }
+                                cohort_id=mentor_assignment.cohort.id
                             )
                             if created:
-                                logger.info(f"Auto-created MenteeMentorAssignment {assignment.id} for mentor {request.user.id} and mentee {enrollment.user.id} (fallback)")
+                                assignment_was_auto_created = True
+                            logger.info(f"✅ Using MenteeMentorAssignment {assignment.id} for mentor {request.user.id} and mentee {enrollment.user.id} (fallback)")
                             break
             
             if not assignment:
@@ -2808,13 +2928,24 @@ def messages_endpoint(request, assignment_id):
                     {'error': 'Assignment not found and cannot be auto-created. Please ensure you are assigned to a cohort with active students.'},
                     status=status.HTTP_404_NOT_FOUND
                 )
+            
+            # If assignment was auto-created or found, log it
+            if assignment_was_auto_created or str(assignment.id) != str(assignment_id):
+                logger.warning(f"⚠️ Assignment ID mismatch! Requested: {assignment_id}, Using: {assignment.id} (user: {request.user.id}, mentee: {assignment.mentee.id}, mentor: {assignment.mentor.id})")
+                logger.info(f"💡 This means the frontend is using the wrong assignment_id. The correct assignment_id is: {assignment.id}")
+            else:
+                logger.info(f"✅ Using assignment {assignment.id} (user: {request.user.id}, mentee: {assignment.mentee.id}, mentor: {assignment.mentor.id})")
         
         # Verify user is either mentor or mentee in this assignment
         if request.user.id not in [assignment.mentor.id, assignment.mentee.id]:
+            logger.error(f"User {request.user.id} tried to access assignment {assignment.id} but is neither mentor ({assignment.mentor.id}) nor mentee ({assignment.mentee.id})")
             return Response(
                 {'error': 'You can only access messages for your own assignments'},
                 status=status.HTTP_403_FORBIDDEN
             )
+        
+        # Log assignment details for debugging
+        logger.info(f"Processing {request.method} request for assignment {assignment.id} (user: {request.user.id}, mentee: {assignment.mentee.id}, mentor: {assignment.mentor.id})")
         
         if request.method == 'GET':
             # Get messages (exclude archived unless explicitly requested)
@@ -2827,12 +2958,14 @@ def messages_endpoint(request, assignment_id):
             messages = messages.select_related('sender', 'recipient').prefetch_related('attachments').order_by('created_at')
             
             message_count = messages.count()
-            logger.info(f"Returning {message_count} messages for assignment {assignment.id} (user: {request.user.id}, mentee: {assignment.mentee.id}, mentor: {assignment.mentor.id})")
+            logger.info(f"📨 Returning {message_count} messages for assignment {assignment.id} (user: {request.user.id}, mentee: {assignment.mentee.id}, mentor: {assignment.mentor.id})")
             
-            # Log first few messages for debugging
+            # Log all messages for debugging
             if message_count > 0:
-                sample_messages = list(messages[:3])
-                logger.info(f"Sample messages: {[{'id': str(m.id), 'sender': str(m.sender.id), 'recipient': str(m.recipient.id), 'body_preview': m.body[:30] if m.body else ''} for m in sample_messages]}")
+                all_messages = list(messages)
+                logger.info(f"All messages: {[{'id': str(m.id), 'sender_id': str(m.sender.id), 'sender_email': m.sender.email, 'recipient_id': str(m.recipient.id), 'recipient_email': m.recipient.email, 'body_preview': m.body[:50] if m.body else '', 'created_at': str(m.created_at)} for m in all_messages]}")
+            else:
+                logger.warning(f"⚠️ No messages found for assignment {assignment.id} (user: {request.user.id})")
             
             serializer = MentorshipMessageSerializer(messages, many=True, context={'request': request})
             serialized_data = serializer.data
@@ -2840,7 +2973,21 @@ def messages_endpoint(request, assignment_id):
             # Log serialized data for debugging
             logger.info(f"Serialized {len(serialized_data)} messages. First message: {serialized_data[0] if serialized_data else 'None'}")
             
-            return Response(serialized_data, status=status.HTTP_200_OK)
+            # Add assignment_id to response headers in case it was auto-created or different
+            response = Response(serialized_data, status=status.HTTP_200_OK)
+            response['X-Assignment-Id'] = str(assignment.id)
+            # Also include in response body for easier access
+            if assignment_was_auto_created or str(assignment.id) != str(assignment_id):
+                # Wrap in object with assignment_id if it changed
+                response_data = {
+                    'messages': serialized_data,
+                    'assignment_id': str(assignment.id),
+                    'assignment_id_changed': str(assignment.id) != str(assignment_id)
+                }
+                response = Response(response_data, status=status.HTTP_200_OK)
+                response['X-Assignment-Id'] = str(assignment.id)
+            logger.info(f"📨 Returning {len(serialized_data)} messages with assignment_id {assignment.id} (requested: {assignment_id})")
+            return response
         
         elif request.method == 'POST':
             # Determine recipient (opposite of sender)
@@ -2879,8 +3026,9 @@ def messages_endpoint(request, assignment_id):
                 message_id=str(uuid.uuid4())  # Generate unique message_id
             )
             
-            logger.info(f"Created message {message.id} from {request.user.id} ({request.user.email}) to {recipient.id} ({recipient.email}) in assignment {assignment.id}")
-            logger.info(f"Message details: body_length={len(body)}, subject={subject}, files_count={len(files)}")
+            logger.info(f"✅ Created message {message.id} from {request.user.id} ({request.user.email}) to {recipient.id} ({recipient.email}) in assignment {assignment.id}")
+            logger.info(f"Message details: body_length={len(body)}, subject={subject}, files_count={len(files)}, message_id={message.message_id}")
+            logger.info(f"Assignment details: mentee={assignment.mentee.id}, mentor={assignment.mentor.id}, status={assignment.status}")
             
             # Handle file attachments
             for file in files:
@@ -2895,8 +3043,15 @@ def messages_endpoint(request, assignment_id):
             # Reload message with all related objects for serialization
             message = MentorshipMessage.objects.select_related('sender', 'recipient', 'assignment').prefetch_related('attachments').get(id=message.id)
             serializer = MentorshipMessageSerializer(message, context={'request': request})
-            logger.info(f"Returning serialized message {message.id} with assignment {message.assignment.id}, sender {message.sender.id}, recipient {message.recipient.id}")
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            response_data = serializer.data
+            # Include assignment_id in response in case it was auto-created or different
+            response_data['assignment_id'] = str(assignment.id)
+            if assignment_was_auto_created or str(assignment.id) != str(assignment_id):
+                response_data['assignment_id_changed'] = True
+                logger.warning(f"⚠️ Assignment ID changed from {assignment_id} to {assignment.id} - frontend should update!")
+            logger.info(f"✅ Returning serialized message {message.id} with assignment {message.assignment.id}, sender {message.sender.id}, recipient {message.recipient.id}")
+            logger.info(f"📝 Response includes assignment_id: {response_data['assignment_id']}")
+            return Response(response_data, status=status.HTTP_201_CREATED)
     
     except MenteeMentorAssignment.DoesNotExist:
         return Response(

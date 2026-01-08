@@ -86,13 +86,19 @@ export function useMentorship(userId?: string) {
           console.log('Processed mentor data:', mentor);
           return mentor;
         }
-      } catch (error) {
+      } catch (error: any) {
         // If mentor endpoint fails, log and return null
         console.error('Failed to fetch mentor:', error);
+        // Log the full error for debugging
+        if (error?.response?.data) {
+          console.error('Error response data:', error.response.data);
+        }
       }
       return null;
     },
     enabled: !!userId,
+    retry: 2, // Retry twice on failure
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 
   // 2. Scheduling & Session Management - Fetch from backend

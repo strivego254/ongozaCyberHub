@@ -428,9 +428,20 @@ export const mentorClient = {
 
   /**
    * Get messages for a mentor-mentee assignment
+   * Returns messages and optionally the correct assignment_id if it changed
    */
-  async getMessages(assignmentId: string): Promise<MentorshipMessage[]> {
-    return apiGateway.get(`/mentorship/assignments/${assignmentId}/messages`)
+  async getMessages(assignmentId: string): Promise<MentorshipMessage[] | { messages: MentorshipMessage[], assignment_id: string, assignment_id_changed: boolean }> {
+    const response = await apiGateway.get(`/mentorship/assignments/${assignmentId}/messages`)
+    // Handle both array response (old format) and object response (new format with assignment_id)
+    if (Array.isArray(response)) {
+      return response
+    } else if (response?.messages && Array.isArray(response.messages)) {
+      // New format - return as object with assignment_id
+      return response
+    } else {
+      // Fallback
+      return []
+    }
   },
 
   /**

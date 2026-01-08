@@ -43,10 +43,31 @@ export function MentorshipMessaging({ assignmentId, recipientName, onMessagesUpd
     
     try {
       console.log('Loading messages for assignment:', assignmentId, 'user:', user?.id)
-      const data = await mentorClient.getMessages(assignmentId)
-      console.log('Loaded messages:', data.length, 'for assignment:', assignmentId)
-      console.log('Messages data:', data)
-      setMessages(data || [])
+      const response = await mentorClient.getMessages(assignmentId)
+      
+      // Handle both array and object responses
+      let messages: MentorshipMessage[] = []
+      let newAssignmentId: string | null = null
+      
+      if (Array.isArray(response)) {
+        messages = response
+      } else if (response && typeof response === 'object' && 'messages' in response) {
+        messages = response.messages || []
+        if (response.assignment_id && response.assignment_id !== assignmentId) {
+          newAssignmentId = response.assignment_id
+          console.warn(`⚠️ Assignment ID changed from ${assignmentId} to ${newAssignmentId}. Updating...`)
+        }
+      }
+      
+      console.log('Loaded messages:', messages.length, 'for assignment:', assignmentId, newAssignmentId ? `(corrected to: ${newAssignmentId})` : '')
+      console.log('Messages data:', messages)
+      setMessages(messages)
+      
+      // If assignment_id changed, notify parent to update
+      if (newAssignmentId && onMessagesUpdated) {
+        // The parent component should update the assignmentId
+        console.log('Assignment ID changed - parent should update assignmentId to:', newAssignmentId)
+      }
       
       // Mark unread messages as read
       const unreadMessages = data.filter(m => 
@@ -112,10 +133,20 @@ export function MentorshipMessaging({ assignmentId, recipientName, onMessagesUpd
     try {
       setIsSending(true)
       
-      await mentorClient.sendMessage(assignmentId, {
+      const response = await mentorClient.sendMessage(assignmentId, {
         body: messageBody.trim(),
         attachments: selectedFiles.length > 0 ? selectedFiles : undefined,
       })
+      
+      // Check if assignment_id changed in response
+      if (response && typeof response === 'object' && 'assignment_id' in response) {
+        const newAssignmentId = response.assignment_id
+        if (newAssignmentId && newAssignmentId !== assignmentId) {
+          console.warn(`⚠️ Assignment ID changed from ${assignmentId} to ${newAssignmentId} after sending message.`)
+          // Note: We can't update assignmentId here as it's a prop, but the parent should handle it
+          // The next loadMessages() call will use the correct ID
+        }
+      }
       
       // Clear input
       setMessageBody('')

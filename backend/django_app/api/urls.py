@@ -43,13 +43,13 @@ urlpatterns = [
     path('student/dashboard/', include('dashboard.urls')),
     
     # Mentorship Coordination Engine (must come FIRST to avoid URL conflicts with programs router)
-    # path('', include('mentorship_coordination.urls')),  # Temporarily disabled
+    path('', include('mentorship_coordination.urls')),
     
     # Mentorship endpoints
     path('', include('mentorship.urls')),
     
     # Programs & Cohorts (must come after mentorship_coordination to avoid conflicts)
-    # path('', include('programs.urls')),  # Temporarily disabled
+    path('', include('programs.urls')),
     
     # Student Journey Modules
     path('', include('profiler.urls')),
