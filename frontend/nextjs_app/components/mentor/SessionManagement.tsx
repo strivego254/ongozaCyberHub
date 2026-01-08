@@ -901,8 +901,8 @@ export function SessionManagement() {
                             <p className="text-xs text-white whitespace-pre-wrap">
                               {session.structured_notes.discussion_points}
                             </p>
-                          </div>
-                        )}
+                </div>
+                    )}
 
                         {session.structured_notes.challenges && (
                           <div>
@@ -1047,7 +1047,7 @@ export function SessionManagement() {
                         <div className="text-xs text-och-orange italic">
                           Session cancelled{session.cancellation_reason ? `: ${session.cancellation_reason}` : ''}
                         </div>
-                      )}
+                    )}
                   </div>
                   
                     {/* Reschedule Form */}

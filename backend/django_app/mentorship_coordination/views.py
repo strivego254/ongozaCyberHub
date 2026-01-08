@@ -2541,7 +2541,9 @@ def get_mentorship_assignment(request):
 def get_student_mentor(request, mentee_id):
     """
     GET /api/v1/mentorship/mentees/{mentee_id}/mentor
-    Get the mentor assigned to a student's cohort.
+    Get the mentor assigned to a student.
+    First checks for existing MenteeMentorAssignment (created via messaging or direct assignment),
+    then falls back to cohort-level MentorAssignment.
     """
     try:
         # Verify the mentee_id matches the authenticated user (students can only see their own mentor)
@@ -2554,54 +2556,68 @@ def get_student_mentor(request, mentee_id):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # First, get the student's active cohort enrollment
-        try:
-            from programs.models import Enrollment, MentorAssignment, Cohort
-            enrollment = Enrollment.objects.filter(
-                user_id=mentee_id_int,
-                status__in=['active', 'completed']  # Include completed students who might still have mentor access
-            ).select_related('cohort__track').first()
+        mentor = None
+        cohort = None
+        mentor_assignment = None
+        assignment = None
 
-            if not enrollment:
-                return Response(
-                    {'error': 'No active cohort enrollment found. Please contact your program director.'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+        # FIRST: Check for existing MenteeMentorAssignment (created when messages are sent or direct assignment)
+        assignment = MenteeMentorAssignment.objects.filter(
+            mentee_id=mentee_id_int,
+            status='active'
+        ).select_related('mentor').first()
 
-            cohort = enrollment.cohort
-
-            # Get the mentor assigned to this cohort (prefer primary mentors, fallback to any active mentor)
-            mentor_assignment = MentorAssignment.objects.filter(
-                cohort=cohort,
-                active=True
-            ).select_related('mentor').order_by('-role').first()  # Primary mentors first
-
-            if not mentor_assignment:
-                return Response(
-                    {'error': 'No mentor assigned to your cohort. Please contact your program director.'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
-            mentor = mentor_assignment.mentor
-
-        except Exception as cohort_error:
-            # Fallback to individual mentor assignment if cohort approach fails
-            logger.warning(f"Cohort-based mentor lookup failed for mentee {mentee_id_int}: {cohort_error}. Falling back to individual assignment.")
-
-            assignment = MenteeMentorAssignment.objects.filter(
-                mentee_id=mentee_id_int,
-                status='active'
-            ).select_related('mentor').first()
-
-            if not assignment:
-                return Response(
-                    {'error': 'No active mentor assignment found'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
+        if assignment:
+            # Found an active assignment - use it
             mentor = assignment.mentor
-            cohort = None
-            mentor_assignment = None
+            logger.info(f"Found active MenteeMentorAssignment {assignment.id} for mentee {mentee_id_int} with mentor {mentor.id}")
+            
+            # Try to get cohort info for additional context
+            try:
+                from programs.models import Enrollment
+                enrollment = Enrollment.objects.filter(
+                    user_id=mentee_id_int,
+                    status__in=['active', 'completed']
+                ).select_related('cohort').first()
+                if enrollment:
+                    cohort = enrollment.cohort
+            except Exception as e:
+                logger.warning(f"Could not fetch cohort info for mentee {mentee_id_int}: {str(e)}")
+        else:
+            # SECOND: Fallback to cohort-level MentorAssignment
+            logger.info(f"No active MenteeMentorAssignment found for mentee {mentee_id_int}, checking cohort assignment")
+            try:
+                from programs.models import Enrollment, MentorAssignment, Cohort
+                enrollment = Enrollment.objects.filter(
+                    user_id=mentee_id_int,
+                    status__in=['active', 'completed']  # Include completed students who might still have mentor access
+                ).select_related('cohort__track').first()
+
+                if enrollment:
+                    cohort = enrollment.cohort
+
+                    # Get the mentor assigned to this cohort (prefer primary mentors, fallback to any active mentor)
+                    mentor_assignment = MentorAssignment.objects.filter(
+                        cohort=cohort,
+                        active=True
+                    ).select_related('mentor').order_by('-role').first()  # Primary mentors first
+
+                    if mentor_assignment:
+                        mentor = mentor_assignment.mentor
+                        logger.info(f"Found cohort-level MentorAssignment for mentee {mentee_id_int} with mentor {mentor.id}")
+                    else:
+                        logger.warning(f"No mentor assigned to cohort {cohort.id} for mentee {mentee_id_int}")
+                else:
+                    logger.warning(f"No active enrollment found for mentee {mentee_id_int}")
+            except Exception as cohort_error:
+                logger.warning(f"Cohort-based mentor lookup failed for mentee {mentee_id_int}: {cohort_error}")
+
+        # If still no mentor found, return error
+        if not mentor:
+            return Response(
+                {'error': 'No mentor assigned. Please contact your program director.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         # Get mentor's profile information and expertise
         mentor_profile = {
@@ -2615,14 +2631,15 @@ def get_student_mentor(request, mentee_id):
             'readiness_impact': 85.0,  # Would be calculated based on mentee outcomes
             'cohort_id': str(cohort.id) if cohort else None,
             'cohort_name': cohort.name if cohort else None,
-            'assigned_at': mentor_assignment.assigned_at.isoformat() if mentor_assignment else None,
-            'mentor_role': mentor_assignment.role if mentor_assignment else 'assigned',
-            'assignment_type': 'cohort_based' if cohort else 'individual',
+            'assigned_at': mentor_assignment.assigned_at.isoformat() if mentor_assignment else (assignment.assigned_at.isoformat() if assignment else None),
+            'mentor_role': mentor_assignment.role if mentor_assignment else (assignment.assignment_type if assignment else 'assigned'),
+            'assignment_type': 'cohort_based' if mentor_assignment else 'individual',
         }
 
         return Response(mentor_profile, status=status.HTTP_200_OK)
 
     except (ValueError, AttributeError) as e:
+        logger.error(f"Invalid request parameters for get_student_mentor: {str(e)}", exc_info=True)
         return Response(
             {'error': 'Invalid request parameters'},
             status=status.HTTP_400_BAD_REQUEST

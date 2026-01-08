@@ -16,136 +16,299 @@
                 <a href="/">OCH Platform</a>
             </div>
             <div class="nav-menu">
-                <div class="nav-dropdown">
-                    <button class="nav-link">Platform <span>▼</span></button>
-                    <div class="dropdown-content">
-                        <a href="#features">Features</a>
-                        <a href="#personas">Personas</a>
-                        <a href="#analytics">Analytics</a>
-                    </div>
-                </div>
-                <div class="nav-dropdown">
-                    <button class="nav-link">Get Started <span>▼</span></button>
-                    <div class="dropdown-content">
-                        <a href="/signup/student">Sign Up</a>
-                        <a href="#personas">Choose Your Role</a>
-                        <a href="#features">Learn More</a>
-                    </div>
-                </div>
-                <div class="nav-dropdown">
-                    <button class="nav-link">Sign In <span>▼</span></button>
-                    <div class="dropdown-content">
-                        <a href="/login/student">Login</a>
-                        <a href="/signup/student">Create Account</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <section class="hero">
-        <div class="hero-content">
-            <h1 class="hero-title">Empower Your Journey with OCH Platform</h1>
-            <p class="hero-subtitle">Connect, learn, and grow through personalized mentorship and role-based experiences</p>
-            <div class="hero-actions">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/pricing" class="nav-link">Pricing</a>
+                <a href="/about" class="nav-link">About</a>
                 <a href="/signup/student" class="btn btn-primary">Get Started</a>
                 <a href="/login/student" class="btn btn-outline">Sign In</a>
             </div>
         </div>
-    </section>
+    </nav>
 
-    <section id="personas" class="personas-section">
+    <div class="landing-content">
         <div class="container">
-            <h2 class="section-title">Choose Your Persona</h2>
-            <p class="section-subtitle">Tailored experiences for every role</p>
-            <div class="personas-grid">
-                <div class="persona-card" data-persona="student">
-                    <div class="persona-icon">🎓</div>
-                    <h3 class="persona-title">Student</h3>
-                    <p class="persona-description">Learning and mentorship recipient. Access your learning journey, track progress, and connect with mentors</p>
-                    <div class="persona-actions">
-                        <a href="/login/student" class="persona-link">Sign In →</a>
-                        <a href="/signup/student" class="persona-link persona-link-secondary">Sign Up →</a>
+            <!-- Header -->
+            <div class="text-center mb-16">
+                <h1 class="hero-title">About OCH Platform</h1>
+                <p class="hero-subtitle">
+                    Africa's premier cyber talent platform for university students. Transforming students into cyber leaders 
+                    through personalized mentorship and role-based experiences.
+                </p>
+            </div>
+
+            <!-- Mission -->
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="icon-wrapper">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <circle cx="12" cy="12" r="6"></circle>
+                            <circle cx="12" cy="12" r="2"></circle>
+                        </svg>
                     </div>
+                    <h2>Our Mission</h2>
                 </div>
-                <div class="persona-card" data-persona="mentor">
-                    <div class="persona-icon">👥</div>
-                    <h3 class="persona-title">Mentor</h3>
-                    <p class="persona-description">Guide and supporter. Guide and support student growth with powerful mentoring tools</p>
-                    <div class="persona-actions">
-                        <a href="/login/mentor" class="persona-link">Sign In →</a>
-                        <a href="/signup/mentor" class="persona-link persona-link-secondary">Sign Up →</a>
+                <p>
+                    To profile, develop, and track university students' cybersecurity skills and leadership growth across Africa. 
+                    We believe every student has the potential to become a cyber leader, and we provide the structured path, 
+                    community, and opportunities to make that transformation possible.
+                </p>
+            </div>
+
+            <!-- Vision -->
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="icon-wrapper">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
                     </div>
+                    <h2>Our Vision</h2>
                 </div>
-                <div class="persona-card" data-persona="admin">
-                    <div class="persona-icon">⚙️</div>
-                    <h3 class="persona-title">Admin</h3>
-                    <p class="persona-description">Platform administrator. Manage platform operations, users, and system settings</p>
-                    <div class="persona-actions">
-                        <a href="/login/admin" class="persona-link">Sign In →</a>
-                        <a href="/signup/admin" class="persona-link persona-link-secondary">Sign Up →</a>
+                <p>
+                    To become Africa's leading platform for cybersecurity talent development, creating a pipeline of skilled 
+                    professionals who drive innovation, protect critical infrastructure, and lead the continent's digital transformation.
+                </p>
+                <p>
+                    We envision a future where African universities produce world-class cybersecurity professionals who are 
+                    not only technically skilled but also understand the unique challenges and opportunities in the African context.
+                </p>
+            </div>
+
+            <!-- OCH Philosophy -->
+            <div class="content-card gradient-card">
+                <div class="card-header">
+                    <div class="icon-wrapper">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
                     </div>
+                    <h2>The OCH Philosophy</h2>
                 </div>
-                <div class="persona-card" data-persona="director">
-                    <div class="persona-icon">🎯</div>
-                    <h3 class="persona-title">Program Director</h3>
-                    <p class="persona-description">Strategic oversight. Oversee program strategy, outcomes, and strategic planning</p>
-                    <div class="persona-actions">
-                        <a href="/login/director" class="persona-link">Sign In →</a>
-                        <a href="/signup/director" class="persona-link persona-link-secondary">Sign Up →</a>
+                <div class="philosophy-list">
+                    <div class="philosophy-item">
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <div>
+                            <h3>Progressive Transformation</h3>
+                            <p>
+                                Learning is a journey, not a destination. Our 6-phase transformation model ensures students progress 
+                                at their own pace while maintaining clear milestones and goals.
+                            </p>
+                        </div>
                     </div>
-                </div>
-                <div class="persona-card" data-persona="analyst">
-                    <div class="persona-icon">📊</div>
-                    <h3 class="persona-title">Analyst</h3>
-                    <p class="persona-description">Data and insights specialist. Analyze data, generate insights, and create comprehensive reports</p>
-                    <div class="persona-actions">
-                        <a href="/login/analyst" class="persona-link">Sign In →</a>
-                        <a href="/signup/analyst" class="persona-link persona-link-secondary">Sign Up →</a>
+                    <div class="philosophy-item">
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <div>
+                            <h3>Community-First Approach</h3>
+                            <p>
+                                Cybersecurity is a team sport. We build strong communities where students learn from each other, 
+                                mentor peers, and grow together.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="philosophy-item">
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <div>
+                            <h3>Practical Excellence</h3>
+                            <p>
+                                Theory without practice is incomplete. Every concept is reinforced through hands-on labs, real-world 
+                                challenges, and practical competitions.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="philosophy-item">
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <div>
+                            <h3>Leadership Development</h3>
+                            <p>
+                                We don't just create technicians; we develop leaders who can guide teams, make strategic decisions, 
+                                and drive innovation in cybersecurity.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
 
-    <section id="features" class="features-section">
-        <div class="container">
-            <h2 class="section-title">Platform Features</h2>
-            <p class="section-subtitle">Everything you need to succeed</p>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🚀</div>
-                    <h3 class="feature-title">Role-Based Dashboards</h3>
-                    <p class="feature-description">Personalized interfaces tailored to your specific role and needs</p>
+            <!-- Transformation Journey -->
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="icon-wrapper">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                            <polyline points="17 6 23 6 23 12"></polyline>
+                        </svg>
+                    </div>
+                    <h2>The Transformation Journey</h2>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📈</div>
-                    <h3 class="feature-title">Advanced Analytics</h3>
-                    <p class="feature-description">Real-time insights and comprehensive reporting tools</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔐</div>
-                    <h3 class="feature-title">Secure Authentication</h3>
-                    <p class="feature-description">Enterprise-grade security with persona-based access control</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">💬</div>
-                    <h3 class="feature-title">Mentorship Network</h3>
-                    <p class="feature-description">Connect with mentors and mentees in a supportive community</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📚</div>
-                    <h3 class="feature-title">Learning Resources</h3>
-                    <p class="feature-description">Access curated courses, materials, and educational content</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3 class="feature-title">Progress Tracking</h3>
-                    <p class="feature-description">Monitor your growth with detailed progress metrics and achievements</p>
+                <p>
+                    Every student's journey begins at Phase 0 (Entry) and progresses through six distinct phases, each designed 
+                    to build specific competencies and prepare for the next level. Each phase is tied to an OCH Circle, which 
+                    provides the activities, resources, and community needed for growth.
+                </p>
+                <div class="phases-grid">
+                    <div class="phase-card">
+                        <div class="phase-header">
+                            <span class="phase-number">Phase 0</span>
+                        </div>
+                        <h3>Entry</h3>
+                        <p class="phase-circle">Community Circle</p>
+                        <p class="phase-goal">Awareness & Belonging</p>
+                    </div>
+                    <div class="phase-card">
+                        <div class="phase-header">
+                            <span class="phase-number">Phase 1</span>
+                        </div>
+                        <h3>Foundation</h3>
+                        <p class="phase-circle">Masterclass Circle</p>
+                        <p class="phase-goal">Learning & Alignment</p>
+                    </div>
+                    <div class="phase-card">
+                        <div class="phase-header">
+                            <span class="phase-number">Phase 2</span>
+                        </div>
+                        <h3>Discovery</h3>
+                        <p class="phase-circle">Specialist Circle</p>
+                        <p class="phase-goal">Skills & Confidence</p>
+                    </div>
+                    <div class="phase-card">
+                        <div class="phase-header">
+                            <span class="phase-number">Phase 3</span>
+                        </div>
+                        <h3>Competence</h3>
+                        <p class="phase-circle">Mastery Circle</p>
+                        <p class="phase-goal">Deep Practice</p>
+                    </div>
+                    <div class="phase-card">
+                        <div class="phase-header">
+                            <span class="phase-number">Phase 4</span>
+                        </div>
+                        <h3>Contribution</h3>
+                        <p class="phase-circle">Mastermind Circle</p>
+                        <p class="phase-goal">Leadership & Influence</p>
+                    </div>
+                    <div class="phase-card">
+                        <div class="phase-header">
+                            <span class="phase-number">Phase 5</span>
+                        </div>
+                        <h3>Creation</h3>
+                        <p class="phase-circle">Mastermind Circle</p>
+                        <p class="phase-goal">Vision & Legacy</p>
+                    </div>
                 </div>
             </div>
+
+            <!-- Nairobi Pilot Focus -->
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="icon-wrapper">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                    </div>
+                    <h2>Nairobi Pilot - Our Starting Point</h2>
+                </div>
+                <p>
+                    We chose Nairobi as our Phase 1 launch location because of its vibrant tech ecosystem, strong university 
+                    partnerships, and commitment to cybersecurity education. Our pilot focuses on:
+                </p>
+                <div class="pilot-grid">
+                    <div class="pilot-item">
+                        <h3>
+                            <svg class="small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 10v6M2 10l10-5 10 5M2 10l10 5M2 10v6l10 5M12 15l10-5M12 15v6M22 16l-10 5-10-5"></path>
+                            </svg>
+                            University Partnerships
+                        </h3>
+                        <p>
+                            Working closely with leading universities in Nairobi including University of Nairobi, JKUAT, Strathmore, 
+                            and Kenyatta University to integrate OCH into their cybersecurity programs.
+                        </p>
+                    </div>
+                    <div class="pilot-item">
+                        <h3>
+                            <svg class="small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            Community Building
+                        </h3>
+                        <p>
+                            Establishing a strong Nairobi cybersecurity community where students can connect, learn, and grow together 
+                            through events, competitions, and collaborative projects.
+                        </p>
+                    </div>
+                    <div class="pilot-item">
+                        <h3>
+                            <svg class="small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                                <path d="M4 22h16"></path>
+                                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+                                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+                            </svg>
+                            Competition Excellence
+                        </h3>
+                        <p>
+                            Hosting regular competitions that challenge students, build skills, and create pathways to industry 
+                            recognition and career opportunities.
+                        </p>
+                    </div>
+                    <div class="pilot-item">
+                        <h3>
+                            <svg class="small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                            Innovation Hub
+                        </h3>
+                        <p>
+                            Creating an environment where innovative cybersecurity solutions are developed, tested, and launched, 
+                            contributing to Africa's digital security landscape.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <div class="cta-section">
+                <h2>Join the Transformation</h2>
+                <p>
+                    Be part of Africa's cybersecurity transformation. Start your journey today.
+                </p>
+                <a href="/signup/student" class="btn btn-primary btn-large">
+                    Start Your 14-Day Free Trial
+                    <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </a>
+            </div>
         </div>
-    </section>
+    </div>
 
     <footer class="footer">
         <div class="container">
@@ -156,14 +319,15 @@
                 </div>
                 <div class="footer-section">
                     <h4>Quick Links</h4>
-                    <a href="/login/student">Login</a>
-                    <a href="/signup/student">Sign Up</a>
-                    <a href="#personas">Personas</a>
+                    <a href="/">Home</a>
+                    <a href="/pricing">Pricing</a>
+                    <a href="/about">About</a>
+                    <a href="/login/student">Sign In</a>
                 </div>
                 <div class="footer-section">
                     <h4>Resources</h4>
-                    <a href="#features">Features</a>
-                    <a href="/dashboard/analytics">Analytics</a>
+                    <a href="/signup/student">Sign Up</a>
+                    <a href="/login/student">Login</a>
                 </div>
             </div>
             <div class="footer-bottom">
@@ -171,28 +335,5 @@
             </div>
         </div>
     </footer>
-
-    <script>
-        document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
-            const button = dropdown.querySelector('button');
-            button.addEventListener('click', (e) => {
-                e.stopPropagation();
-                dropdown.classList.toggle('active');
-            });
-        });
-
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
-                dropdown.classList.remove('active');
-            });
-        });
-
-        // Respect reduced motion preference
-        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        
-        // Card hover effects are handled by CSS, no JavaScript needed
-        // This ensures animations respect user preferences
-    </script>
 </body>
 </html>
-

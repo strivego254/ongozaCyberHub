@@ -435,6 +435,286 @@ body {
   }
 }
 
+/* Landing Content Styles */
+.landing-content {
+  padding: 6rem 20px 4rem;
+  min-height: 100vh;
+  background-color: var(--och-midnight);
+}
+
+.landing-content .container {
+  max-width: 1280px;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mb-16 {
+  margin-bottom: 4rem;
+}
+
+.mb-12 {
+  margin-bottom: 3rem;
+}
+
+.mb-8 {
+  margin-bottom: 2rem;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-1 {
+  margin-bottom: 0.25rem;
+}
+
+/* Content Cards */
+.content-card {
+  background: rgba(10, 10, 12, 0.8);
+  border: 1px solid rgba(168, 176, 184, 0.2);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  margin-bottom: 3rem;
+}
+
+@media (min-width: 768px) {
+  .content-card {
+    padding: 3rem;
+  }
+}
+
+.gradient-card {
+  background: linear-gradient(135deg, rgba(6, 72, 168, 0.2), rgba(10, 10, 12, 0.3), rgba(6, 72, 168, 0.2));
+  border: 1px solid rgba(6, 72, 168, 0.4);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.card-header h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .card-header h2 {
+    font-size: 2.5rem;
+  }
+}
+
+.icon-wrapper {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--och-defender);
+}
+
+.content-card p {
+  font-size: 1.125rem;
+  color: var(--och-steel);
+  line-height: 1.75;
+  margin-bottom: 1.5rem;
+}
+
+.content-card p:last-child {
+  margin-bottom: 0;
+}
+
+/* Philosophy List */
+.philosophy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.philosophy-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.check-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #10b981;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.philosophy-item h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.philosophy-item p {
+  font-size: 1rem;
+  color: var(--och-steel);
+  margin: 0;
+}
+
+/* Phases Grid */
+.phases-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+@media (min-width: 768px) {
+  .phases-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .phases-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.phase-card {
+  background: rgba(10, 10, 12, 0.5);
+  border: 1px solid rgba(168, 176, 184, 0.2);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.phase-header {
+  margin-bottom: 0.5rem;
+}
+
+.phase-number {
+  color: var(--och-mint);
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.phase-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 0.25rem;
+}
+
+.phase-circle {
+  font-size: 0.75rem;
+  color: var(--och-steel);
+  margin-bottom: 0.5rem;
+}
+
+.phase-goal {
+  font-size: 0.875rem;
+  color: var(--och-mint);
+  margin: 0;
+}
+
+/* Pilot Grid */
+.pilot-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .pilot-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.pilot-item h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.small-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--och-defender);
+}
+
+.pilot-item p {
+  font-size: 1rem;
+  color: var(--och-steel);
+  margin: 0;
+}
+
+/* CTA Section */
+.cta-section {
+  background: linear-gradient(135deg, rgba(6, 72, 168, 0.2), rgba(10, 10, 12, 0.3), rgba(6, 72, 168, 0.2));
+  border: 1px solid rgba(6, 72, 168, 0.4);
+  border-radius: 1.5rem;
+  padding: 3rem;
+  text-align: center;
+  margin-top: 3rem;
+}
+
+.cta-section h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .cta-section h2 {
+    font-size: 3rem;
+  }
+}
+
+.cta-section p {
+  font-size: 1.25rem;
+  color: var(--och-steel);
+  margin-bottom: 2rem;
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.btn-large {
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.arrow-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 @media (max-width: 768px) {
   .hero-title {
     font-size: 2.5rem;
@@ -442,6 +722,7 @@ body {
 
   .nav-menu {
     gap: 1rem;
+    flex-wrap: wrap;
   }
 
   .personas-grid,
@@ -457,6 +738,26 @@ body {
   .btn {
     width: 100%;
     text-align: center;
+  }
+
+  .landing-content {
+    padding: 5rem 20px 3rem;
+  }
+
+  .content-card {
+    padding: 1.5rem;
+  }
+
+  .card-header h2 {
+    font-size: 1.75rem;
+  }
+
+  .cta-section {
+    padding: 2rem 1.5rem;
+  }
+
+  .cta-section h2 {
+    font-size: 2rem;
   }
 }
 

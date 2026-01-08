@@ -29,7 +29,7 @@ function NavigationHeader({ currentPath }: { currentPath: string }) {
             <Link href="/about" className={`${currentPath === '/about' ? 'text-och-mint' : 'text-och-steel'} hover:text-och-mint transition-colors`}>About</Link>
           </div>
           <div className="flex items-center space-x-4">
-            <button onClick={handleStartTrial} className="px-4 py-2 bg-och-defender hover:bg-och-defender/90 text-white rounded-lg font-semibold transition-all duration-200">Get Started</button>
+            <button type="button" onClick={handleStartTrial} className="px-4 py-2 bg-och-defender hover:bg-och-defender/90 text-white rounded-lg font-semibold transition-all duration-200">Get Started</button>
             <Link href="/login/student" className="px-4 py-2 border border-och-mint text-och-mint hover:bg-och-mint/10 rounded-lg font-semibold transition-all duration-200">Sign In</Link>
           </div>
         </div>
@@ -167,6 +167,7 @@ export default function PricingPage() {
                   )}
                 </div>
                 <button
+                  type="button"
                   onClick={handleStartTrial}
                   className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 ${
                     plan.popular
@@ -213,6 +214,7 @@ export default function PricingPage() {
               Start your 14-day free trial today. No credit card required.
             </p>
             <button
+              type="button"
               onClick={handleStartTrial}
               className="px-8 py-4 bg-och-mint hover:bg-och-mint/90 text-och-midnight rounded-xl font-bold text-lg transition-all duration-200 flex items-center space-x-2 mx-auto"
             >
@@ -223,6 +225,45 @@ export default function PricingPage() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-och-steel/20 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            <div>
+              <div className="flex items-center space-x-2 mb-4">
+                <Shield className="h-6 w-6 text-och-mint" />
+                <span className="text-lg font-bold text-och-mint">OCH Platform</span>
+              </div>
+              <p className="text-och-steel">
+                Empowering growth through mentorship and cybersecurity education across Africa.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-4">Quick Links</h4>
+              <div className="space-y-2">
+                <Link href="/" className="block text-och-steel hover:text-och-mint transition-colors">Home</Link>
+                <Link href="/pricing" className="block text-och-steel hover:text-och-mint transition-colors">Pricing</Link>
+                <Link href="/about" className="block text-och-steel hover:text-och-mint transition-colors">About</Link>
+                <Link href="/login/student" className="block text-och-steel hover:text-och-mint transition-colors">Sign In</Link>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-4">Get Started</h4>
+              <div className="space-y-2">
+                <Link href="/signup/student" className="block text-och-steel hover:text-och-mint transition-colors">Sign Up</Link>
+                <Link href="/login/student" className="block text-och-steel hover:text-och-mint transition-colors">Login</Link>
+                <button type="button" onClick={handleStartTrial} className="block text-left text-och-steel hover:text-och-mint transition-colors">
+                  Start Free Trial
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-och-steel/20 pt-8 text-center text-och-steel">
+            <p>&copy; 2024 OCH Platform. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

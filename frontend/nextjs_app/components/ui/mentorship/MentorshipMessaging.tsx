@@ -215,7 +215,7 @@ export function MentorshipMessaging() {
               >
                 <div className="text-xs font-semibold mb-1">
                   {isSent(message) ? 'You' : message.sender.name}
-                </div>
+         </div>
                 <div className="text-sm whitespace-pre-wrap">{message.body}</div>
                 {message.attachments && message.attachments.length > 0 && (
                   <div className="mt-2 space-y-1">
@@ -235,9 +235,9 @@ export function MentorshipMessaging() {
                 )}
                 <div className="text-xs opacity-70 mt-1">
                   {formatTime(message.created_at)}
-                </div>
-              </div>
+               </div>
             </div>
+         </div>
           ))
         )}
         <div ref={messagesEndRef} />
@@ -286,7 +286,7 @@ export function MentorshipMessaging() {
             {selectedFiles.length} file(s) selected
           </div>
         )}
-      </div>
+    </div>
     </Card>
   )
 }
