@@ -14,6 +14,7 @@ from .views import (
     complete_section,
     complete_profiling,
     get_profiling_results,
+    sync_fastapi_profiling,
 )
 
 app_name = 'profiler'
@@ -30,5 +31,6 @@ urlpatterns = [
     path('profiler/future-you', generate_future_you, name='future-you'),
     path('profiler/status', profiler_status, name='status'),
     path('profiler/mentees/<int:mentee_id>/future-you', get_future_you_by_mentee, name='future-you-by-mentee'),
+    path('profiler/sync-fastapi', sync_fastapi_profiling, name='sync-fastapi'),
 ]
 

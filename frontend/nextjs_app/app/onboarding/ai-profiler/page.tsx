@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { apiGateway } from '@/services/apiGateway'
+import { fastapiClient } from '@/services/fastapiClient'
 import AIProfilerWelcome from './components/AIProfilerWelcome'
 import AIProfilerInstructions from './components/AIProfilerInstructions'
 import AIProfilerAssessment from './components/AIProfilerAssessment'
@@ -57,7 +57,7 @@ interface ProfilingResult {
 
 export default function AIProfilerPage() {
   const router = useRouter()
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, reloadUser } = useAuth()
   const [currentSection, setCurrentSection] = useState<ProfilingSection>('welcome')
   const [session, setSession] = useState<ProfilingSession | null>(null)
   const [questions, setQuestions] = useState<ProfilingQuestion[]>([])
@@ -75,20 +75,81 @@ export default function AIProfilerPage() {
 
     if (isLoading || !isAuthenticated) return
 
-    // Start profiling session
-    initializeProfiling()
+    // Check profiling status first
+    checkProfilingStatus()
   }, [isAuthenticated, isLoading, router])
+
+  // Listen for profiling completion event to refresh user
+  useEffect(() => {
+    const handleProfilingCompleted = () => {
+      console.log('🔄 Profiling completed event received, refreshing user...')
+      if (reloadUser) {
+        reloadUser()
+      }
+    }
+
+    window.addEventListener('profiling-completed', handleProfilingCompleted as EventListener)
+    return () => {
+      window.removeEventListener('profiling-completed', handleProfilingCompleted as EventListener)
+    }
+  }, [reloadUser])
+
+  const checkProfilingStatus = async () => {
+    try {
+      setLoading(true)
+      
+      // Check if profiling is already completed
+      const status = await fastapiClient.profiling.checkStatus()
+      
+      if (status.completed) {
+        // Already completed, redirect to dashboard
+        console.log('✅ Profiling already completed')
+        router.push('/dashboard/student')
+        return
+      }
+      
+      // Check if there's an active session
+      if (status.has_active_session && status.session_id) {
+        // Resume existing session
+        setSession({
+          session_id: status.session_id,
+          progress: status.progress
+        })
+        
+        // Get questions
+        const questionsResponse = await fastapiClient.profiling.getQuestions()
+        setQuestions(questionsResponse)
+        
+        // Get progress to determine current question
+        const progress = await fastapiClient.profiling.getProgress(status.session_id)
+        setCurrentQuestionIndex(Math.min(progress.current_question - 1, questionsResponse.length - 1))
+        
+        setLoading(false)
+        return
+      }
+      
+      // Start new profiling session
+      initializeProfiling()
+    } catch (err: any) {
+      setError(err.message || 'Failed to check profiling status')
+      setLoading(false)
+    }
+  }
 
   const initializeProfiling = async () => {
     try {
       setLoading(true)
 
       // Start new profiling session
-      const sessionResponse = await apiGateway.post('/profiling/session/start')
-      setSession(sessionResponse)
+      const sessionResponse = await fastapiClient.profiling.startSession()
+      setSession({
+        session_id: sessionResponse.session_id,
+        status: sessionResponse.status,
+        progress: sessionResponse.progress
+      })
 
       // Get all questions
-      const questionsResponse = await apiGateway.get('/profiling/questions')
+      const questionsResponse = await fastapiClient.profiling.getQuestions()
       setQuestions(questionsResponse)
 
       setLoading(false)
@@ -111,10 +172,19 @@ export default function AIProfilerPage() {
 
     try {
       // Submit response to backend
-      await apiGateway.post(`/profiling/session/${session.session_id}/respond`, {
-        question_id: questionId,
-        selected_option: answer
-      })
+      const response = await fastapiClient.profiling.submitResponse(
+        session.session_id,
+        questionId,
+        answer
+      )
+
+      // Update session progress
+      if (response.progress) {
+        setSession(prev => prev ? {
+          ...prev,
+          progress: response.progress
+        } : null)
+      }
 
       // Update local responses
       setResponses(prev => ({ ...prev, [questionId]: answer }))
@@ -136,8 +206,47 @@ export default function AIProfilerPage() {
 
     try {
       setLoading(true)
-      const resultResponse = await apiGateway.post(`/profiling/session/${session.session_id}/complete`)
+      
+      // Complete profiling session in FastAPI
+      const resultResponse = await fastapiClient.profiling.completeSession(session.session_id)
       setResult(resultResponse)
+      
+      // Sync with Django backend to update user.profiling_complete
+      try {
+        const { apiGateway } = await import('@/services/apiGateway')
+        const syncResponse = await apiGateway.post('/profiler/sync-fastapi', {
+          user_id: user?.id?.toString(),
+          session_id: resultResponse.session_id,
+          completed_at: resultResponse.completed_at,
+          primary_track: resultResponse.primary_track.key,
+          recommendations: resultResponse.recommendations.map(rec => ({
+            track_key: rec.track_key,
+            score: rec.score,
+            confidence_level: rec.confidence_level
+          }))
+        })
+        console.log('✅ Profiling synced with Django backend:', syncResponse)
+        
+        // Refresh user auth state to reflect profiling completion
+        if (typeof window !== 'undefined') {
+          // Dispatch event for auth hook to refresh user
+          window.dispatchEvent(new CustomEvent('profiling-completed', { 
+            detail: { sessionId: resultResponse.session_id }
+          }))
+          
+          // Also reload user directly after a short delay to allow sync to complete
+          setTimeout(() => {
+            if (reloadUser) {
+              reloadUser()
+            }
+          }, 500)
+        }
+      } catch (syncError: any) {
+        console.warn('⚠️ Failed to sync with Django:', syncError)
+        // Continue anyway - the profiling is complete in FastAPI
+        // User can still proceed, sync can happen later
+      }
+      
       setCurrentSection('results')
       setLoading(false)
     } catch (err: any) {
@@ -146,7 +255,15 @@ export default function AIProfilerPage() {
     }
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    // Ensure user state is refreshed before redirecting
+    if (reloadUser) {
+      await reloadUser()
+    }
+    
+    // Small delay to ensure state is updated
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
     // Redirect to dashboard with track recommendation
     if (result?.primary_track) {
       router.push(`/dashboard/student?track=${result.primary_track.key}&welcome=true`)
@@ -226,6 +343,21 @@ export default function AIProfilerPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

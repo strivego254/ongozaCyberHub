@@ -3,12 +3,14 @@ Authentication views for signup, login, MFA, SSO, etc.
 """
 import os
 from rest_framework import status, permissions
+from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.conf import settings
+from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -44,6 +46,7 @@ from users.utils.consent_utils import (
     get_consent_scopes_for_token,
 )
 from users.auth_models import MFAMethod
+from services.email_service import email_service
 
 
 def _get_client_ip(request):
@@ -936,4 +939,363 @@ class ConsentView(APIView):
                 'granted': granted,
             }
         }, status=status.HTTP_200_OK)
+
+
+# Account activation and password reset views
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    """Register new user with email verification"""
+    try:
+        data = request.data
+        email = data.get('email')
+        password = data.get('password')
+        first_name = data.get('first_name', '')
+        last_name = data.get('last_name', '')
+
+        # Validate required fields
+        if not all([email, password]):
+            return Response(
+                {'error': 'Email and password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if user already exists
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {'error': 'User with this email already exists'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create user (inactive until email verified)
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=email,  # Use email as username
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                is_active=False  # User inactive until email verified
+            )
+
+            # Generate verification token and get raw token
+            raw_token = user.generate_verification_token()
+
+            # Send activation email with raw token
+            if email_service.send_activation_email(user, raw_token=raw_token):
+                return Response({
+                    'message': 'Registration successful. Please check your email to activate your account.',
+                    'user_id': user.id
+                }, status=status.HTTP_201_CREATED)
+            else:
+                # If email fails, rollback/delete user and return error
+                user.delete()
+                return Response(
+                    {'error': 'Failed to send activation email. Please try again.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Registration error: {str(e)}")
+        return Response(
+            {'error': 'Registration failed. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_email(request):
+    """Verify user email with token or code (OTP)"""
+    try:
+        token = request.data.get('token')
+        code = request.data.get('code')
+        email = request.data.get('email')
+
+        # Handle code-based verification (OTP flow from SignupView)
+        if code and email:
+            try:
+                # Case-insensitive email lookup
+                user = User.objects.filter(email__iexact=email).first()
+                if not user:
+                    logger.warning(f"Verification attempt with non-existent email: {email}")
+                    return Response(
+                        {'error': 'Invalid verification code or email'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except Exception as e:
+                logger.error(f"Error looking up user for email {email}: {str(e)}")
+                return Response(
+                    {'error': 'Invalid verification code or email'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Verify the OTP code (strip whitespace and ensure string)
+            code = str(code).strip()
+            
+            # Check if user is already active
+            if user.is_active and user.email_verified:
+                return Response({
+                    'message': 'Your email is already verified. You can log in.',
+                    'user_id': user.id
+                }, status=status.HTTP_200_OK)
+            
+            # Verify the OTP code
+            try:
+                code_valid = verify_mfa_code(user, code, method='email')
+            except Exception as e:
+                logger.error(f"Error verifying MFA code for user {user.email}: {str(e)}")
+                return Response(
+                    {'error': 'Error verifying code. Please try again.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            if code_valid:
+                # Activate the user account
+                user.is_active = True
+                user.account_status = 'active'
+                user.email_verified = True
+                if not user.activated_at:
+                    user.activated_at = timezone.now()
+                user.email_verified_at = timezone.now()
+                user.save()
+
+                # Send welcome email
+                try:
+                    email_service.send_welcome_email(user)
+                except Exception as e:
+                    logger.warning(f"Failed to send welcome email to {user.email}: {str(e)}")
+                    # Don't fail verification if welcome email fails
+
+                logger.info(f"Email verified successfully for user {user.email} via OTP code")
+                return Response({
+                    'message': 'Email verified successfully. You can now log in.',
+                    'user_id': user.id
+                }, status=status.HTTP_200_OK)
+            else:
+                logger.warning(f"Invalid or expired verification code for user {user.email}")
+                return Response(
+                    {'error': 'Invalid or expired verification code. Please request a new one.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Handle token-based verification (hashed token system)
+        elif token:
+            # Architecture: Hash incoming token and search database for matching hash
+            import hashlib
+            
+            # Validate token format (should be URL-safe base64, ~43 characters)
+            if not token or len(token) < 32:
+                logger.warning(f"Invalid token format received: {token[:10]}...")
+                return Response(
+                    {'error': 'Invalid verification token format'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Hash the incoming raw token using SHA-256
+            try:
+                token_hash = hashlib.sha256(str(token).encode('utf-8')).hexdigest()
+            except Exception as e:
+                logger.error(f"Error hashing token: {str(e)}")
+                return Response(
+                    {'error': 'Error processing verification token'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Find user with matching hash that hasn't expired (primary method)
+            user = User.objects.filter(
+                verification_hash=token_hash,
+                token_expires_at__gt=timezone.now(),
+                is_active=False
+            ).first()
+
+            # If user found with hashed token system
+            if user:
+                logger.info(f"Found user with hashed token: {user.email}")
+                # Verify token using hashed system (this will activate user, set email_verified, and clear hash)
+                if user.verify_email_token(token):
+                    # Refresh user object to get updated fields
+                    user.refresh_from_db()
+
+                    # Send welcome email
+                    try:
+                        email_service.send_welcome_email(user)
+                    except Exception as e:
+                        logger.warning(f"Failed to send welcome email to {user.email}: {str(e)}")
+                        # Don't fail verification if welcome email fails
+
+                    logger.info(f"Email verified successfully for user {user.email} via hashed token")
+                    return Response({
+                        'message': 'Email verified successfully. You can now log in.',
+                        'user_id': user.id
+                    }, status=status.HTTP_200_OK)
+                else:
+                    logger.warning(f"Token verification failed for user {user.email}")
+                    return Response(
+                        {'error': 'Invalid or expired verification token'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            # Try legacy token system for backward compatibility
+            user = User.objects.filter(
+                email_verification_token=token,
+                is_active=False
+            ).first()
+            
+            if user:
+                logger.info(f"Found user with legacy token: {user.email}")
+                # Use legacy verification
+                if user.verify_email_token(token):
+                    user.is_active = True
+                    user.account_status = 'active'
+                    if not user.activated_at:
+                        user.activated_at = timezone.now()
+                    user.save()
+                    
+                    try:
+                        email_service.send_welcome_email(user)
+                    except Exception as e:
+                        logger.warning(f"Failed to send welcome email to {user.email}: {str(e)}")
+                    
+                    logger.info(f"Email verified successfully for user {user.email} via legacy token")
+                    return Response({
+                        'message': 'Email verified successfully. You can now log in.',
+                        'user_id': user.id
+                    }, status=status.HTTP_200_OK)
+            
+            # Token not found in either system
+            logger.warning(f"Verification token not found: {token_hash[:16]}...")
+            return Response(
+                {'error': 'Invalid or expired verification token. Please request a new activation link.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        else:
+            return Response(
+                {'error': 'Either token or code+email is required for verification'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Email verification error: {str(e)}")
+        return Response(
+            {'error': 'Verification failed. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def request_password_reset(request):
+    """Request password reset email"""
+    try:
+        email = request.data.get('email')
+
+        if not email:
+            return Response(
+                {'error': 'Email is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = User.objects.filter(email=email, is_active=True).first()
+
+        if user:
+            # Generate reset token (email service will also generate, but we generate here first to ensure it's set)
+            user.generate_password_reset_token()
+
+            # Send reset email
+            email_sent = email_service.send_password_reset_email(user)
+            
+            # Log the result for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Password reset email send attempt for {email}: {'SUCCESS' if email_sent else 'FAILED'}")
+            
+            if email_sent:
+                return Response({
+                    'message': 'Password reset email sent. Please check your email.'
+                }, status=status.HTTP_200_OK)
+            else:
+                # Log more details but don't expose to user
+                logger.error(f"Failed to send password reset email for {email}. Check email service configuration.")
+                return Response(
+                    {'error': 'Failed to send password reset email. Please check your email service configuration or try again later.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        else:
+            # Don't reveal if email exists or not for security
+            return Response({
+                'message': 'If an account with this email exists, a password reset link has been sent.'
+            }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Password reset request error: {str(e)}")
+        return Response(
+            {'error': 'Password reset request failed. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    """Reset password with token"""
+    try:
+        token = request.data.get('token')
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        if not all([token, new_password, confirm_password]):
+            return Response(
+                {'error': 'Token, new password, and confirmation are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if new_password != confirm_password:
+            return Response(
+                {'error': 'Passwords do not match'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Find user with this token
+        user = User.objects.filter(
+            password_reset_token=token,
+            is_active=True
+        ).first()
+
+        if not user:
+            return Response(
+                {'error': 'Invalid or expired reset token'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Verify token and update password
+        if user.verify_password_reset_token(token):
+            user.set_password(new_password)
+            user.password_reset_token = None
+            user.password_reset_token_created = None
+            user.save()
+
+            return Response({
+                'message': 'Password reset successfully. You can now log in with your new password.'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Invalid or expired reset token'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Password reset error: {str(e)}")
+        return Response(
+            {'error': 'Password reset failed. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 

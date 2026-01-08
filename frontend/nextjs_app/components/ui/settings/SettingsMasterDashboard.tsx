@@ -139,9 +139,9 @@ export function SettingsMasterDashboard() {
   ];
 
   const systemStatuses = [
-    { label: 'Integrity', value: `${displaySettings.profileCompleteness}%`, status: displaySettings.profileCompleteness >= 80 ? 'active' : 'warning', color: 'text-och-mint' },
-    { label: 'Protocol', value: displayEntitlements.tier.toUpperCase(), status: 'active', color: 'text-och-gold' },
-    { label: 'Visibility', value: displaySettings.portfolioVisibility.toUpperCase(), status: 'active', color: 'text-och-defender' },
+    { label: 'Integrity', value: `${displaySettings.profileCompleteness || 0}%`, status: (displaySettings.profileCompleteness || 0) >= 80 ? 'active' : 'warning', color: 'text-och-mint' },
+    { label: 'Protocol', value: (displayEntitlements.tier || 'free').toUpperCase(), status: 'active', color: 'text-och-gold' },
+    { label: 'Visibility', value: (displaySettings.portfolioVisibility || 'private').toUpperCase(), status: 'active', color: 'text-och-defender' },
   ];
 
   return (

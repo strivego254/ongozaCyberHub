@@ -29,8 +29,15 @@ class User(AbstractUser):
         choices=ACCOUNT_STATUS_CHOICES,
         default='pending_verification'
     )
+    email_verification_token = models.CharField(max_length=255, null=True, blank=True)
+    email_token_created_at = models.DateTimeField(null=True, blank=True)
     email_verified = models.BooleanField(default=False)
     email_verified_at = models.DateTimeField(null=True, blank=True)
+    # Secure hashed verification token (Elite security standard)
+    verification_hash = models.CharField(max_length=64, null=True, blank=True, db_index=True)
+    token_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    password_reset_token = models.CharField(max_length=255, null=True, blank=True)
+    password_reset_token_created = models.DateTimeField(null=True, blank=True)
     activated_at = models.DateTimeField(null=True, blank=True)
     deactivated_at = models.DateTimeField(null=True, blank=True)
     erased_at = models.DateTimeField(null=True, blank=True)
@@ -211,6 +218,139 @@ class User(AbstractUser):
         self.bio = None
         self.phone_number = None
         self.save()
+    
+    def generate_verification_token(self):
+        """
+        Generate secure email verification token with hashing (Elite security standard).
+        
+        Returns:
+            str: Raw token (URL-safe, 32 bytes) - MUST be used immediately, NOT stored in DB
+        
+        Security Features:
+            - Uses secrets.token_urlsafe(32) for cryptographically secure generation
+            - SHA-256 hashing at-rest (only hash stored in DB)
+            - 24-hour expiration timestamp
+            - One-time use (hash cleared after verification)
+        """
+        import secrets
+        import hashlib
+        from django.conf import settings
+        from datetime import timedelta
+        
+        # Generate raw token (URL-safe, 32 bytes = ~43 characters)
+        raw_token = secrets.token_urlsafe(32)
+        
+        # Hash the token using SHA-256 (64 character hex string)
+        token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+        
+        # Calculate expiration (24 hours from now)
+        expiry_hours = getattr(settings, 'ACTIVATION_TOKEN_EXPIRY', 24)
+        self.token_expires_at = timezone.now() + timedelta(hours=expiry_hours)
+        
+        # Store only the hash in database (raw token is NEVER stored)
+        self.verification_hash = token_hash
+        
+        # Clear legacy fields if they exist
+        self.email_verification_token = None
+        self.email_token_created_at = None
+        
+        # Save hash and expiration
+        self.save()
+        
+        # Return raw token (must be used immediately)
+        return raw_token
+
+    def generate_password_reset_token(self):
+        """Generate secure password reset token"""
+        import secrets
+        self.password_reset_token = secrets.token_urlsafe(64)
+        self.password_reset_token_created = timezone.now()
+        self.save()
+
+    def verify_email_token(self, raw_token):
+        """
+        Verify email verification token using hashed comparison (Elite security standard).
+        
+        Args:
+            raw_token: The raw token from the URL
+        
+        Returns:
+            bool: True if token is valid and not expired, False otherwise
+        
+        Security Features:
+            - Hashes incoming token and compares with stored hash
+            - Checks expiration timestamp
+            - One-time use (clears hash after successful verification)
+            - Prevents timing attacks with constant-time comparison
+        """
+        import hashlib
+        from django.conf import settings
+        
+        # Check if user has a verification hash
+        if not self.verification_hash or not self.token_expires_at:
+            return False
+        
+        # Check if token has expired
+        if timezone.now() > self.token_expires_at:
+            return False
+        
+        # Hash the incoming raw token
+        incoming_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+        
+        # Constant-time comparison to prevent timing attacks
+        if not self._constant_time_compare(self.verification_hash, incoming_hash):
+            return False
+        
+        # Token is valid - activate user and clear hash (one-time use)
+        self.email_verified = True
+        self.email_verified_at = timezone.now()
+        self.is_active = True
+        self.account_status = 'active'
+        if not self.activated_at:
+            self.activated_at = timezone.now()
+        
+        # Clear hash and expiration (one-time use)
+        self.verification_hash = None
+        self.token_expires_at = None
+        
+        # Clear legacy fields if they exist
+        self.email_verification_token = None
+        self.email_token_created_at = None
+        
+        self.save()
+        return True
+    
+    def _constant_time_compare(self, val1, val2):
+        """
+        Constant-time string comparison to prevent timing attacks.
+        
+        Args:
+            val1: First string to compare
+            val2: Second string to compare
+        
+        Returns:
+            bool: True if strings are equal, False otherwise
+        """
+        import hmac
+        if len(val1) != len(val2):
+            return False
+        return hmac.compare_digest(val1.encode('utf-8'), val2.encode('utf-8'))
+
+    def verify_password_reset_token(self, token):
+        """Verify password reset token"""
+        from django.conf import settings
+        expiry_hours = getattr(settings, 'PASSWORD_RESET_TOKEN_EXPIRY', 1)
+        if (self.password_reset_token == token and
+            self.password_reset_token_created and
+            not self._token_expired(self.password_reset_token_created, expiry_hours)):
+            return True
+        return False
+
+    def _token_expired(self, created_time, hours):
+        """Check if token has expired"""
+        from datetime import timedelta
+        expiry_time = created_time + timedelta(hours=hours)
+        return timezone.now() > expiry_time
 
 
 class Role(models.Model):

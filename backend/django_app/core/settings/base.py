@@ -10,14 +10,25 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Load environment variables from .env file
-env_path = BASE_DIR / '.env'
-if env_path.exists():
-    load_dotenv(env_path)
+# Priority: 1) Project root, 2) backend/django_app (legacy), 3) backend (legacy)
+PROJECT_ROOT = BASE_DIR.parent.parent  # /home/caleb/kiptoo/striveGo/och/ongozaCyberHub
+
+# Try loading from project root first (primary location)
+root_env = PROJECT_ROOT / '.env'
+if root_env.exists():
+    load_dotenv(root_env, override=True)
+    print(f"✅ Loaded .env from project root: {root_env}")
 else:
-    # Try loading from parent directory
-    parent_env = BASE_DIR.parent / '.env'
-    if parent_env.exists():
-        load_dotenv(parent_env)
+    # Fallback to legacy locations for backward compatibility
+    env_path = BASE_DIR / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"⚠️ Loaded .env from legacy location: {env_path}")
+    else:
+        parent_env = BASE_DIR.parent / '.env'
+        if parent_env.exists():
+            load_dotenv(parent_env)
+            print(f"⚠️ Loaded .env from legacy location: {parent_env}")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')
@@ -203,6 +214,26 @@ ENABLE_METRICS = os.environ.get('ENABLE_METRICS', 'False').lower() == 'true'
 
 # Frontend URL for email links and redirects
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+# Resend settings for email activation and password reset
+RESEND_API_KEY= os.environ.get('RESEND_API_KEY')
+RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+RESEND_FROM_NAME = os.environ.get('RESEND_FROM_NAME', 'Ongoza CyberHub')
+
+DEFAULT_FROM_EMAIL = f"{RESEND_FROM_NAME} <{RESEND_FROM_EMAIL}>"
+
+# Standard SMTP Config
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.resend.com'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False 
+EMAIL_HOST_USER = 'resend'
+EMAIL_HOST_PASSWORD = RESEND_API_KEY
+
+# Token expiry settings
+ACTIVATION_TOKEN_EXPIRY = int(os.environ.get('ACTIVATION_TOKEN_EXPIRY', 24))
+PASSWORD_RESET_TOKEN_EXPIRY = int(os.environ.get('PASSWORD_RESET_TOKEN_EXPIRY', 1))
 
 # drf-spectacular (Swagger/OpenAPI) Settings
 SPECTACULAR_SETTINGS = {

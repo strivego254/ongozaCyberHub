@@ -20,12 +20,13 @@ const FASTAPI_API_URL = process.env.NEXT_PUBLIC_FASTAPI_API_URL || 'http://local
  * Determine if a path should go to Django or FastAPI
  */
 function getBaseUrl(path: string): string {
-  // FastAPI routes (AI, recommendations, embeddings, personality)
+  // FastAPI routes (AI, recommendations, embeddings, personality, profiling)
   const fastApiPaths = [
     '/recommendations',
     '/embeddings',
     '/personality',
     '/ai/',
+    '/profiling',  // FastAPI profiling endpoints
   ];
   
   // Check if path already includes /api/v1

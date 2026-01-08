@@ -145,12 +145,61 @@ function LoginForm() {
       // No need to set it manually - the browser handles it automatically
 
       // Check if profiling is required (mandatory Tier 0 gateway)
-      if (result.profiling_required) {
-        console.log('✅ Profiling required - redirecting to profiling page');
-        setIsRedirecting(true);
-        hasRedirectedRef.current = true;
-        window.location.href = '/profiling';
-        return;
+      // For students/mentees, ALWAYS check FastAPI profiling first
+      const userRoles = result?.user?.roles || []
+      const isStudent = userRoles.some((r: any) => {
+        const roleName = typeof r === 'string' ? r : (r?.role || r?.name || '').toLowerCase()
+        return roleName === 'student' || roleName === 'mentee'
+      })
+
+      // For students, always check FastAPI profiling status (even if Django says not required)
+      if (isStudent) {
+        try {
+          const { fastapiClient } = await import('@/services/fastapiClient')
+          console.log('🔍 Checking FastAPI profiling status for student...')
+          
+          // Ensure token is available for FastAPI requests
+          const accessToken = result.access_token || localStorage.getItem('access_token')
+          if (!accessToken) {
+            console.warn('⚠️ No access token available for FastAPI check')
+          }
+          
+          const fastapiStatus = await fastapiClient.profiling.checkStatus()
+          console.log('📊 FastAPI profiling status:', fastapiStatus)
+          
+            if (!fastapiStatus.completed) {
+              console.log('🚀 FastAPI profiling not completed - redirecting to AI profiler');
+              setIsRedirecting(true)
+              hasRedirectedRef.current = true
+              // Use window.location for reliable redirect during login flow
+              window.location.href = '/onboarding/ai-profiler'
+              return
+            } else {
+            console.log('✅ FastAPI profiling already completed, session_id:', fastapiStatus.session_id)
+            // Profiling completed in FastAPI - verify Django sync
+            // If not synced, sync will happen on dashboard access or can continue
+            // Continue to dashboard
+          }
+        } catch (fastapiError: any) {
+          console.error('❌ Failed to check FastAPI profiling status:', fastapiError)
+          // If FastAPI check fails, check Django status as fallback
+          if (result.profiling_required) {
+            console.warn('⚠️ FastAPI unavailable, falling back to Django profiling check')
+            setIsRedirecting(true)
+            hasRedirectedRef.current = true
+            router.push('/profiling')
+            return
+          }
+          // If Django says not required and FastAPI is down, continue to dashboard
+          // This allows access if FastAPI is temporarily unavailable
+        }
+      } else if (result.profiling_required) {
+        // Non-student users use Django profiling
+        console.log('✅ Django profiling required for non-student user');
+        setIsRedirecting(true)
+        hasRedirectedRef.current = true
+        router.push('/profiling')
+        return
       }
 
       // Determine redirect route
@@ -496,21 +545,31 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* Remember Me */}
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-steel-grey bg-och-midnight text-cyber-mint focus:ring-cyber-mint focus:ring-offset-0 focus:ring-2 cursor-pointer"
-              />
-              <label
-                htmlFor="remember-me"
-                className="ml-2 text-sm text-steel-grey cursor-pointer"
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-steel-grey bg-och-midnight text-cyber-mint focus:ring-cyber-mint focus:ring-offset-0 focus:ring-2 cursor-pointer"
+                />
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 text-sm text-steel-grey cursor-pointer"
+                >
+                  Remember me
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => router.push('/forgot-password')}
+                className="text-sm text-cyber-mint hover:text-cyber-mint/80 transition-colors"
               >
-                Remember me
-              </label>
+                Forgot Password?
+              </button>
             </div>
 
             {/* CTA */}

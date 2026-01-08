@@ -825,6 +825,63 @@ def profiler_status(request):
     }, status=status.HTTP_200_OK)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sync_fastapi_profiling(request):
+    """
+    POST /api/v1/profiler/sync-fastapi
+    Sync profiling completion from FastAPI profiling engine.
+    """
+    user = request.user
+    user_id = request.data.get('user_id')
+    session_id = request.data.get('session_id')
+    completed_at = request.data.get('completed_at')
+    primary_track = request.data.get('primary_track')
+    recommendations = request.data.get('recommendations', [])
+    
+    # Verify user_id matches authenticated user
+    if user_id and str(user.id) != str(user_id):
+        return Response(
+            {'error': 'User ID mismatch'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        # Update user profiling status
+        user.profiling_complete = True
+        
+        if completed_at:
+            from dateutil.parser import parse
+            user.profiling_completed_at = parse(completed_at)
+        
+        if session_id:
+            try:
+                import uuid
+                user.profiling_session_id = uuid.UUID(session_id)
+            except Exception as e:
+                logger.warning(f"Failed to set profiling_session_id: {e}")
+        
+        user.save()
+        
+        # Log the sync
+        logger.info(f"Synced profiling completion from FastAPI for user {user.id}, session {session_id}")
+        
+        return Response({
+            'status': 'synced',
+            'message': 'Profiling completion synced successfully',
+            'user_id': user.id,
+            'profiling_complete': user.profiling_complete,
+            'completed_at': user.profiling_completed_at.isoformat() if user.profiling_completed_at else None,
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Failed to sync profiling from FastAPI: {e}")
+        return Response(
+            {'error': f'Failed to sync profiling: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_future_you_by_mentee(request, mentee_id):

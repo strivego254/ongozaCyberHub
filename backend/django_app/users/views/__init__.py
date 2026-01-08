@@ -10,6 +10,10 @@ from .auth_views import (
     LogoutView,
     MeView,
     ConsentView,
+    register_user,
+    verify_email,
+    request_password_reset,
+    reset_password,
 )
 from .admin_views import (
     RoleViewSet,
