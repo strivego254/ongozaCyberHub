@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/sponsor' },
   { label: 'Cohorts', href: '/dashboard/sponsor/cohorts' },
   { label: 'Employees', href: '/dashboard/sponsor/employees' },
+  { label: 'Marketplace', href: '/dashboard/sponsor/marketplace' },
   { label: 'Finance', href: '/dashboard/sponsor/finance' },
   { label: 'Reports', href: '/dashboard/sponsor/reports' },
   { label: 'Team', href: '/dashboard/sponsor/team' },

@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import views_websocket
+from . import portfolio_views
 
 app_name = 'dashboard'
 
@@ -15,5 +16,11 @@ urlpatterns = [
     path('habits/', views.dashboard_habits, name='habits'),
     path('ai-coach-nudge/', views.ai_coach_nudge, name='ai-coach-nudge'),
     path('sse/', views_websocket.dashboard_sse, name='sse'),
+    
+    # Portfolio endpoints - order matters! More specific routes first
+    path('portfolio/<str:user_id>/items', portfolio_views.create_portfolio_item, name='portfolio-create'),
+    path('portfolio/<str:user_id>/health', portfolio_views.get_portfolio_health, name='portfolio-health'),
+    path('portfolio/<str:user_id>', portfolio_views.get_portfolio_items, name='portfolio-items'),
+    path('portfolio/item/<uuid:item_id>', portfolio_views.get_portfolio_item, name='portfolio-item-detail'),
 ]
 

@@ -51,11 +51,32 @@ class PortfolioItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='portfolio_items')
     title = models.CharField(max_length=255)
+    summary = models.TextField(blank=True, null=True)
+    item_type = models.CharField(max_length=50, default='mission', choices=[
+        ('mission', 'Mission'),
+        ('reflection', 'Reflection'),
+        ('certification', 'Certification'),
+        ('github', 'GitHub'),
+        ('thm', 'TryHackMe'),
+        ('external', 'External'),
+        ('other', 'Other'),
+    ])
     status = models.CharField(max_length=20, choices=[
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
         ('pending', 'Pending'),
+        ('in_review', 'In Review'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
-    ], default='pending')
+        ('published', 'Published'),
+    ], default='draft')
+    visibility = models.CharField(max_length=20, choices=[
+        ('private', 'Private'),
+        ('unlisted', 'Unlisted'),
+        ('public', 'Public'),
+    ], default='private')
+    skill_tags = models.TextField(blank=True, null=True, help_text='JSON array of skill tags')
+    evidence_files = models.TextField(blank=True, null=True, help_text='JSON array of evidence file objects')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -32,7 +32,8 @@ import {
   MapPin,
   Globe,
   ArrowUpRight,
-  Command
+  Command,
+  Store
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -140,6 +141,7 @@ export function StudentDashboardHub() {
               { label: 'Coaching OS', icon: MessageSquare, href: '/dashboard/student/coaching' },
               { label: 'Professional Portfolio', icon: Briefcase, href: '/dashboard/student/portfolio' },
               { label: 'Mentorship Hub', icon: Users, href: '/dashboard/student/mentorship' },
+              { label: 'Marketplace', icon: Store, href: '/dashboard/student/marketplace' },
             ].map((link, i) => (
               <button
                 key={i}

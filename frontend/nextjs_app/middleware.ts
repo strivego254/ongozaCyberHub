@@ -88,6 +88,7 @@ function canAccess(pathname: string, roles: string[]): boolean {
     if (pathname.startsWith('/dashboard/admin')) return roles.includes('admin')
     if (pathname.startsWith('/dashboard/mentor')) return roles.includes('mentor')
     if (pathname.startsWith('/dashboard/sponsor')) return roles.includes('sponsor_admin')
+    if (pathname.startsWith('/dashboard/sponsor/marketplace')) return roles.includes('sponsor_admin')
     if (pathname.startsWith('/dashboard/analyst')) return roles.includes('analyst')
     if (pathname.startsWith('/dashboard/analytics')) return roles.includes('analyst') || roles.includes('program_director')
     if (pathname.startsWith('/dashboard/employer') || pathname.startsWith('/dashboard/marketplace')) return roles.includes('employer')

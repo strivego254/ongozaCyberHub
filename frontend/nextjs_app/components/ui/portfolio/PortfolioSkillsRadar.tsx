@@ -20,14 +20,32 @@ interface PortfolioSkillsRadarProps {
 }
 
 export function PortfolioSkillsRadar({ skills }: PortfolioSkillsRadarProps) {
+  // Normalize skills data - handle both string arrays and object arrays
+  const normalizedSkills = (skills || []).map((skill: any) => {
+    // If it's a string, convert to object format
+    if (typeof skill === 'string') {
+      return {
+        skill: skill,
+        score: 5, // Default score
+        count: 1, // Default count
+      };
+    }
+    // If it's already an object, ensure all fields exist
+    return {
+      skill: skill.skill || skill.name || '',
+      score: skill.score || 5,
+      count: skill.count || 1,
+    };
+  }).filter((skill: any) => skill.skill && skill.skill.trim() !== ''); // Filter out empty skills
+
   // Transform skills data for radar chart
-  const radarData = skills
+  const radarData = normalizedSkills
     .slice(0, 8) // Top 8 skills for readability
     .map((skill) => ({
       name: skill.skill.length > 12 ? skill.skill.substring(0, 12) + '...' : skill.skill,
       fullName: skill.skill,
-      score: Math.min(100, skill.score * 10), // Scale 0-10 to 0-100
-      count: skill.count,
+      score: Math.min(100, (skill.score || 5) * 10), // Scale 0-10 to 0-100
+      count: skill.count || 1,
     }));
 
   // If no skills, show empty state

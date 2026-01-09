@@ -307,15 +307,22 @@ export function PortfolioDashboard() {
             {/* STATUS LIFECYCLE INDICATOR */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                {[
-                 { label: 'Drafts', count: items.filter(i => i.status === 'draft').length, color: 'text-och-steel' },
-                 { label: 'Submitted', count: items.filter(i => i.status === 'submitted').length, color: 'text-och-defender' },
-                 { label: 'In Review', count: pendingReviews.length, color: 'text-och-gold' },
-                 { label: 'Approved', count: approvedItems.length, color: 'text-och-mint' },
+                 { label: 'Drafts', status: 'draft' as PortfolioItemStatus, count: items.filter(i => i.status === 'draft').length, color: 'text-och-steel' },
+                 { label: 'Submitted', status: 'submitted' as PortfolioItemStatus, count: items.filter(i => i.status === 'submitted').length, color: 'text-och-defender' },
+                 { label: 'In Review', status: 'in_review' as PortfolioItemStatus, count: pendingReviews.length, color: 'text-och-gold' },
+                 { label: 'Approved', status: 'approved' as PortfolioItemStatus, count: approvedItems.length, color: 'text-och-mint' },
                ].map((phase, i) => (
-                 <div key={i} className="p-4 rounded-2xl bg-white/5 border border-och-steel/10 flex items-center justify-between group hover:border-white/20 transition-all">
+                 <button
+                   key={i}
+                   onClick={() => setStatusFilter(phase.status)}
+                   className={clsx(
+                     "p-4 rounded-2xl bg-white/5 border flex items-center justify-between group hover:border-white/20 transition-all cursor-pointer",
+                     statusFilter === phase.status ? "border-och-gold/50 bg-och-gold/10" : "border-och-steel/10"
+                   )}
+                 >
                     <span className="text-[9px] font-black text-och-steel uppercase tracking-widest">{phase.label}</span>
                     <span className={clsx("text-lg font-black", phase.color)}>{phase.count}</span>
-                 </div>
+                 </button>
                ))}
             </div>
 
@@ -344,6 +351,27 @@ export function PortfolioDashboard() {
                   ))}
                 </AnimatePresence>
               </div>
+            ) : searchQuery || statusFilter !== 'all' || typeFilter !== 'all' ? (
+              <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-och-steel/10 rounded-[3rem]">
+                <div className="w-24 h-24 rounded-full bg-och-steel/5 flex items-center justify-center mb-8">
+                  <Briefcase className="w-12 h-12 text-och-steel/30" />
+                </div>
+                <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3">No Items Found</h3>
+                <p className="text-och-steel text-sm max-w-md italic font-medium mb-6">
+                  No portfolio items match your current filters. Try adjusting your search or status filter.
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="h-12 px-8 rounded-xl border-och-gold/30 text-och-gold font-black uppercase tracking-widest hover:bg-och-gold hover:text-black transition-all"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('all');
+                    setTypeFilter('all');
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-och-steel/10 rounded-[3rem]">
                 <div className="w-24 h-24 rounded-full bg-och-steel/5 flex items-center justify-center mb-8 relative">
@@ -351,15 +379,16 @@ export function PortfolioDashboard() {
                   <Briefcase className="w-12 h-12 text-och-steel/30" />
                 </div>
                 <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3">Repository Empty</h3>
-                <p className="text-och-steel text-sm max-w-md italic font-medium">
+                <p className="text-och-steel text-sm max-w-md italic font-medium mb-6">
                   "Your professional stat sheet is awaiting data. Complete missions or import certifications to build your verified highlight reel."
                 </p>
                 <Button 
                   variant="outline" 
-                  className="mt-8 h-12 px-8 rounded-xl border-och-gold/30 text-och-gold font-black uppercase tracking-widest hover:bg-och-gold hover:text-black transition-all"
-                  onClick={() => router.push('/dashboard/student/missions')}
+                  className="h-12 px-8 rounded-xl border-och-gold/30 text-och-gold font-black uppercase tracking-widest hover:bg-och-gold hover:text-black transition-all"
+                  onClick={() => setIsFormOpen(true)}
                 >
-                  Deploy First Mission
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create First Outcome
                 </Button>
               </div>
             )}
@@ -388,7 +417,13 @@ export function PortfolioDashboard() {
 
       <AnimatePresence>
         {isFormOpen && (
-          <PortfolioItemForm onClose={() => setIsFormOpen(false)} />
+          <PortfolioItemForm 
+            onClose={() => {
+              setIsFormOpen(false)
+              // Refetch items after closing form to ensure new items appear
+              refetch()
+            }} 
+          />
         )}
       </AnimatePresence>
     </div>

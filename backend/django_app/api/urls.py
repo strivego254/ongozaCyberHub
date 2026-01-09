@@ -67,6 +67,9 @@ urlpatterns = [
     # TalentScope Analytics
     path('talentscope/', include('talentscope.urls')),
     
+    # Career / Marketplace module
+    path('', include('marketplace.urls')),
+    
     # Community Module
     path('community/', include('community.urls')),
     

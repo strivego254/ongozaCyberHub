@@ -29,7 +29,8 @@ import {
   Shield,
   LayoutDashboard,
   Bell,
-  LogOut
+  LogOut,
+  Store
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -50,6 +51,7 @@ export function LeftSidebar() {
     { label: 'Coaching OS', icon: MessageSquare, href: '/dashboard/student/coaching' },
     { label: 'Repository', icon: Briefcase, href: '/dashboard/student/portfolio' },
     { label: 'Mentorship', icon: Users, href: '/dashboard/student/mentorship' },
+    { label: 'Marketplace', icon: Store, href: '/dashboard/student/marketplace' },
     { label: 'Profiling Results', icon: Star, href: '/dashboard/student/profiling' },
     { label: 'Settings', icon: Settings, href: '/dashboard/student/settings' },
   ];

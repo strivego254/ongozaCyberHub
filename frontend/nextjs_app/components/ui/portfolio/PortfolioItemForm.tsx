@@ -35,7 +35,7 @@ export function PortfolioItemForm({ itemId, onClose, initialData }: PortfolioIte
   const { user } = useAuth();
   const userId = user?.id;
 
-  const { createItem, updateItem, isLoading, isCreating, isUpdating } = usePortfolio(userId);
+  const { createItem, updateItem, isLoading, isCreating, isUpdating, refetch } = usePortfolio(userId);
   const { settings, entitlements } = useSettingsMaster(userId);
   const isProfessional = entitlements?.tier === 'professional';
 
@@ -195,10 +195,13 @@ export function PortfolioItemForm({ itemId, onClose, initialData }: PortfolioIte
       }
 
       setShowSuccess(true);
+      // Trigger refetch after creation
       setTimeout(() => {
+        if (refetch) {
+          refetch();
+        }
         onClose();
-        router.refresh();
-      }, isSubmission ? 3000 : 1500);
+      }, isSubmission ? 2000 : 1000);
     } catch (error) {
       console.error('Error saving portfolio item:', error);
       setSubmissionFeedback('ERROR: SUBMISSION FAILED. TELEMETRY ROLLBACK INITIATED.');

@@ -68,6 +68,9 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   
   // Sponsor/Employer Admin routes
   { path: '/dashboard/sponsor', roles: ['sponsor_admin'] },
+  { path: '/dashboard/sponsor/marketplace', roles: ['sponsor_admin'] },
+  { path: '/dashboard/sponsor/marketplace/talent', roles: ['sponsor_admin'] },
+  { path: '/dashboard/sponsor/marketplace/jobs', roles: ['sponsor_admin'] },
   
   // Admin routes
   { path: '/dashboard/admin', roles: ['admin'] },

@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
   { label: 'Portfolio', href: '/dashboard/student/portfolio', icon: '' },
   { label: 'Community', href: '/dashboard/student/community', icon: '' },
   { label: 'Mentorship', href: '/dashboard/student/mentorship', icon: '' },
+  { label: 'Marketplace', href: '/dashboard/student/marketplace', icon: '' },
   { label: 'Settings', href: '/dashboard/student/settings', icon: '' },
 ]
 

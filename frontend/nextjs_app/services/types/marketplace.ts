@@ -1,3 +1,4 @@
+// Legacy types (kept for backward compatibility)
 export interface JobListing {
   id: string
   title: string
@@ -33,4 +34,13 @@ export interface EmployerInterest {
   timestamp: string
   status: 'viewed' | 'interested' | 'contacted'
 }
+
+// New marketplace types (from marketplaceClient)
+export type {
+  MarketplaceProfile,
+  Employer,
+  JobPosting,
+  EmployerInterestLog,
+  TalentBrowseParams,
+} from '../marketplaceClient'
 

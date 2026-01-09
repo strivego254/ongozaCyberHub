@@ -14,8 +14,8 @@ const mockKPIs = [
 
 const mockActions = [
   { label: 'Browse Talent', href: '/dashboard/employer/talent', icon: '🔍' },
-  { label: 'Filter Talent', href: '/dashboard/employer/talent/filter', icon: '👥' },
-  { label: 'Post Role', href: '/dashboard/employer/roles', icon: '📝' },
+  { label: 'Filter Talent', href: '/dashboard/employer/talent', icon: '👥' },
+  { label: 'Post Role', href: '/dashboard/employer/jobs', icon: '📝' },
   { label: 'My Contacts', href: '/dashboard/employer/contacts', icon: '💼' },
 ]
 
@@ -119,7 +119,7 @@ export default function EmployerClient() {
               ))}
             </div>
             <div className="mt-4 pt-4 border-t border-och-defender/20">
-              <Link href="/dashboard/employer/roles">
+              <Link href="/dashboard/employer/jobs">
                 <Button variant="outline" className="w-full text-sm">
                   Manage Postings →
                 </Button>
