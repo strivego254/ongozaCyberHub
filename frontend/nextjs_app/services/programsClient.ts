@@ -459,6 +459,7 @@ class ProgramsClient {
     status?: string
     page?: number
     pageSize?: number
+    viewAll?: boolean
   }): Promise<{
     results: Cohort[]
     count: number
@@ -470,6 +471,7 @@ class ProgramsClient {
     if (params?.status) queryParams.push(`status=${params.status}`)
     if (params?.page) queryParams.push(`page=${params.page}`)
     if (params?.pageSize) queryParams.push(`page_size=${params.pageSize}`)
+    if (params?.viewAll) queryParams.push(`view_all=true`)
     const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : ''
     return apiGateway.get(`/cohorts/${queryString}`)
   }

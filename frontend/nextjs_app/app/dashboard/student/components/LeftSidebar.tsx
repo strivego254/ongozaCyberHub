@@ -23,6 +23,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Flame,
   Zap,
   Star,
@@ -30,7 +32,12 @@ import {
   LayoutDashboard,
   Bell,
   LogOut,
-  Store
+  Store,
+  Activity,
+  Target as TargetIcon,
+  User,
+  CreditCard,
+  Lock
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -43,6 +50,7 @@ export function LeftSidebar() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
 
   const navLinks = [
     { label: 'Control Center', icon: LayoutDashboard, href: '/dashboard/student' },
@@ -53,8 +61,18 @@ export function LeftSidebar() {
     { label: 'Mentorship', icon: Users, href: '/dashboard/student/mentorship' },
     { label: 'Marketplace', icon: Store, href: '/dashboard/student/marketplace' },
     { label: 'Profiling Results', icon: Star, href: '/dashboard/student/profiling' },
-    { label: 'Settings', icon: Settings, href: '/dashboard/student/settings' },
   ];
+
+  const settingsMenuItems = [
+    { label: 'Overview', icon: Activity, href: '/dashboard/student/settings/overview' },
+    { label: 'Onboarding', icon: TargetIcon, href: '/dashboard/student/settings/onboarding' },
+    { label: 'Profile & Identity', icon: User, href: '/dashboard/student/settings/profile' },
+    { label: 'Subscription', icon: CreditCard, href: '/dashboard/student/settings/subscription' },
+    { label: 'Privacy & Consent', icon: Shield, href: '/dashboard/student/settings/privacy' },
+    { label: 'Security', icon: Lock, href: '/dashboard/student/settings/security' },
+  ];
+
+  const isSettingsActive = pathname?.startsWith('/dashboard/student/settings');
 
   return (
     <div className="relative flex flex-col h-full bg-och-midnight border-r border-och-steel/10 w-full">
@@ -132,6 +150,76 @@ export function LeftSidebar() {
             </button>
           );
         })}
+
+        {/* Settings with Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              if (isCollapsed) {
+                router.push('/dashboard/student/settings/overview');
+              } else {
+                setSettingsDropdownOpen(!settingsDropdownOpen);
+              }
+            }}
+            className={clsx(
+              "w-full flex items-center gap-4 p-4 rounded-2xl transition-all group relative",
+              isSettingsActive 
+                ? "bg-och-gold text-black shadow-lg shadow-och-gold/20" 
+                : "text-och-steel hover:bg-white/5 hover:text-white"
+            )}
+          >
+            <Settings className={clsx("w-5 h-5 shrink-0 transition-transform group-hover:scale-110", isSettingsActive ? "text-black" : "text-och-gold/60 group-hover:text-och-gold")} />
+            {!isCollapsed && (
+              <>
+                <span className="text-[10px] font-black uppercase tracking-widest truncate flex-1 text-left">Settings</span>
+                {settingsDropdownOpen ? (
+                  <ChevronUp className="w-4 h-4 shrink-0" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 shrink-0" />
+                )}
+              </>
+            )}
+            {isSettingsActive && !isCollapsed && (
+              <motion.div layoutId="active-settings-pill" className="absolute left-0 w-1 h-6 bg-black rounded-r-full" />
+            )}
+          </button>
+
+          {/* Settings Dropdown Menu */}
+          {!isCollapsed && settingsDropdownOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-2 ml-4 space-y-1 border-l-2 border-och-steel/20 pl-4"
+            >
+              {settingsMenuItems.map((item) => {
+                const isItemActive = pathname === item.href;
+                const ItemIcon = item.icon;
+                return (
+                  <button
+                    key={item.href}
+                    onClick={() => {
+                      router.push(item.href);
+                      setSettingsDropdownOpen(false);
+                    }}
+                    className={clsx(
+                      "w-full flex items-center gap-3 p-3 rounded-xl transition-all group relative",
+                      isItemActive
+                        ? "bg-och-mint/10 text-och-mint border border-och-mint/30"
+                        : "text-och-steel hover:bg-white/5 hover:text-white"
+                    )}
+                  >
+                    <ItemIcon className={clsx("w-4 h-4 shrink-0", isItemActive ? "text-och-mint" : "text-och-steel/60")} />
+                    <span className="text-[9px] font-semibold uppercase tracking-wide truncate">{item.label}</span>
+                    {isItemActive && (
+                      <div className="absolute left-0 w-1 h-4 bg-och-mint rounded-r-full" />
+                    )}
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </div>
       </nav>
 
       {/* 3. QUICK TELEMETRY (Only if not collapsed) */}
