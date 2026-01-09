@@ -54,3 +54,6 @@ echo "   3. If you have existing tables, you may need to use: python manage.py m
 
 
 
+
+
+

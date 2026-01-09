@@ -11,7 +11,17 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies
 COPY backend/fastapi_app/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install critical packages first
+RUN pip install --no-cache-dir --timeout=1000 \
+    "fastapi>=0.104.0" \
+    "uvicorn[standard]>=0.24.0" \
+    "pydantic>=2.5.0" \
+    "asyncpg>=0.29.0" \
+    "psycopg2-binary>=2.9.9"
+
+# Then install remaining packages
+RUN pip install --no-cache-dir --timeout=1000 -r requirements.txt
 
 # Copy FastAPI application
 COPY backend/fastapi_app/ .

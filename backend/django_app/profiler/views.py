@@ -5,6 +5,7 @@ Comprehensive profiling system with aptitude and behavioral assessments.
 import os
 import requests
 import uuid
+import logging
 from django.utils import timezone
 from django.db import transaction
 from rest_framework import status
@@ -22,6 +23,8 @@ from .serializers import (
 )
 from .session_manager import session_manager
 from student_dashboard.services import DashboardAggregationService
+
+logger = logging.getLogger(__name__)
 
 
 def safe_uuid_conversion(value):

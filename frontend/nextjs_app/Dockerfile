@@ -1,44 +1,55 @@
-# Multi-stage build for Next.js production
-FROM node:18-alpine AS base
+# Multi-stage build for Next.js production (optimized for DigitalOcean)
+# Stage 1: Install dependencies
+FROM node:18-alpine AS deps
 
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
+
+# Install dependencies for building native modules
+RUN apk add --no-cache libc6-compat python3 make g++
 
 # Copy package files
 COPY frontend/nextjs_app/package.json frontend/nextjs_app/package-lock.json* ./
-RUN npm ci
 
-# Rebuild the source code only when needed
-FROM base AS builder
+# Install dependencies with clean cache
+RUN npm ci --only=production && npm cache clean --force
+
+# Stage 2: Build the application
+FROM node:18-alpine AS builder
+
 WORKDIR /app
+
+# Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy application source
 COPY frontend/nextjs_app/ .
 
 # Set build-time environment variables
 ARG NEXT_PUBLIC_DJANGO_API_URL
 ARG NEXT_PUBLIC_FASTAPI_API_URL
 ARG NEXT_PUBLIC_FRONTEND_URL
+
 ENV NEXT_PUBLIC_DJANGO_API_URL=$NEXT_PUBLIC_DJANGO_API_URL
 ENV NEXT_PUBLIC_FASTAPI_API_URL=$NEXT_PUBLIC_FASTAPI_API_URL
 ENV NEXT_PUBLIC_FRONTEND_URL=$NEXT_PUBLIC_FRONTEND_URL
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build Next.js
+# Build Next.js application
 RUN npm run build
 
-# Production image, copy all the files and run next
-FROM base AS runner
+# Stage 3: Production runner (minimal image)
+FROM node:18-alpine AS runner
+
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create non-root user
+# Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy necessary files
+# Copy necessary files from builder
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -46,6 +57,7 @@ COPY --from=builder /app/.next/static ./.next/static
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
 
+# Switch to non-root user
 USER nextjs
 
 EXPOSE 3000
@@ -57,6 +69,7 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
+# Start Next.js server
 CMD ["node", "server.js"]
 
 
