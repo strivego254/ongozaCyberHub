@@ -8,17 +8,17 @@ import time
 
 from schemas.profiling import (
     ProfilingSession, ProfilingResult, ProfilingProgress,
-    TrackRecommendation, OCH_TRACKS
+    TrackRecommendation, OCH_TRACKS, SubmitResponseRequest
 )
 from schemas.profiling_questions import ALL_PROFILING_QUESTIONS
 from services.profiling_service import profiling_service
 from utils.auth import verify_token
 
-async def get_current_user_id(token: str = Depends(verify_token)) -> UUID:
+async def get_current_user_id(user_id: int = Depends(verify_token)) -> int:
     """Extract user ID from JWT token."""
-    return token
+    return user_id
 
-router = APIRouter(prefix="/api/v1/profiling", tags=["ai-profiling"])
+router = APIRouter(prefix="/profiling", tags=["ai-profiling"])
 
 
 # In-memory session storage (in production, use Redis or database)
@@ -26,7 +26,7 @@ _active_sessions = {}
 
 
 @router.post("/session/start", response_model=dict)
-async def start_profiling_session(user_id: UUID = Depends(get_current_user_id)):
+async def start_profiling_session(user_id: int = Depends(get_current_user_id)):
     """
     Start a new AI profiling session for a user.
 
@@ -65,7 +65,7 @@ async def start_profiling_session(user_id: UUID = Depends(get_current_user_id)):
 @router.get("/session/{session_id}/progress", response_model=ProfilingProgress)
 async def get_session_progress(
     session_id: str,
-    user_id: UUID = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """
     Get current progress for a profiling session.
@@ -88,7 +88,7 @@ async def get_session_progress(
 
 
 @router.get("/questions", response_model=List[dict])
-async def get_profiling_questions(user_id: UUID = Depends(get_current_user_id)):
+async def get_profiling_questions(user_id: int = Depends(get_current_user_id)):
     """
     Get all profiling questions for the assessment.
     """
@@ -99,7 +99,7 @@ async def get_profiling_questions(user_id: UUID = Depends(get_current_user_id)):
 @router.get("/question/{question_id}")
 async def get_specific_question(
     question_id: str,
-    user_id: UUID = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """
     Get a specific profiling question.
@@ -117,13 +117,14 @@ async def get_specific_question(
 @router.post("/session/{session_id}/respond")
 async def submit_question_response(
     session_id: str,
-    question_id: str,
-    selected_option: str,
-    user_id: UUID = Depends(get_current_user_id)
+    request: SubmitResponseRequest,
+    user_id: int = Depends(get_current_user_id)
 ):
     """
     Submit a response to a profiling question.
     """
+    question_id = request.question_id
+    selected_option = request.selected_option
     session = _active_sessions.get(session_id)
     if not session:
         raise HTTPException(
@@ -174,7 +175,7 @@ async def submit_question_response(
 @router.post("/session/{session_id}/complete", response_model=ProfilingResult)
 async def complete_profiling_session(
     session_id: str,
-    user_id: UUID = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """
     Complete a profiling session and generate track recommendations.
@@ -207,9 +208,12 @@ async def complete_profiling_session(
     try:
         result = profiling_service.complete_session(session)
 
-        # In production, save results to database
-        # For now, just mark session as completed
+        # Mark session as completed
         session.completed_at = result.completed_at
+
+        # Note: Django sync will be handled by the frontend after completion
+        # This ensures proper authentication token is passed
+        # The frontend will call Django's sync endpoint with user's auth token
 
         return result
 
@@ -221,7 +225,7 @@ async def complete_profiling_session(
 
 
 @router.get("/tracks", response_model=dict)
-async def get_available_tracks(user_id: UUID = Depends(get_current_user_id)):
+async def get_available_tracks(user_id: int = Depends(get_current_user_id)):
     """
     Get information about all available OCH tracks.
     """
@@ -239,7 +243,7 @@ async def get_available_tracks(user_id: UUID = Depends(get_current_user_id)):
 @router.get("/session/{session_id}/results", response_model=ProfilingResult)
 async def get_profiling_results(
     session_id: str,
-    user_id: UUID = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """
     Get profiling results for a completed session.
@@ -280,10 +284,52 @@ async def get_profiling_results(
     return result
 
 
+@router.get("/status", response_model=dict)
+async def check_profiling_status(user_id: int = Depends(get_current_user_id)):
+    """
+    Check if user has completed profiling.
+    Returns status and session information if available.
+    """
+    # Check for completed session
+    completed_session = None
+    active_session = None
+    
+    # Check for completed or active sessions for this user
+    for session in _active_sessions.values():
+        if session.user_id == user_id:
+            if session.completed_at is not None:
+                completed_session = session
+            elif session.completed_at is None:
+                active_session = session
+    
+    if completed_session:
+        return {
+            "completed": True,
+            "session_id": str(completed_session.id),
+            "completed_at": completed_session.completed_at.isoformat() if completed_session.completed_at else None,
+            "has_active_session": False
+        }
+    
+    if active_session:
+        progress = profiling_service.get_progress(active_session)
+        return {
+            "completed": False,
+            "session_id": str(active_session.id),
+            "has_active_session": True,
+            "progress": progress.dict()
+        }
+    
+    return {
+        "completed": False,
+        "session_id": None,
+        "has_active_session": False
+    }
+
+
 @router.delete("/session/{session_id}")
 async def delete_profiling_session(
     session_id: str,
-    user_id: UUID = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """
     Delete a profiling session (for testing/admin purposes).

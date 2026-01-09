@@ -25,7 +25,7 @@ class ProfilingService:
         self.questions = ALL_PROFILING_QUESTIONS
         self.question_map = {q.id: q for q in self.questions}
 
-    def create_session(self, user_id: str) -> ProfilingSession:
+    def create_session(self, user_id: int) -> ProfilingSession:
         """
         Create a new profiling session for a user.
 
@@ -37,7 +37,7 @@ class ProfilingService:
         """
         session = ProfilingSession(
             id=str(uuid.uuid4()),
-            user_id=user_id,
+            user_id=user_id,  # Django uses integer user IDs
             responses=[],
             started_at=datetime.utcnow(),
             scores=None,
@@ -64,7 +64,7 @@ class ProfilingService:
             "question": question.question,
             "category": question.category,
             "options": [
-                {"value": opt["value"], "text": opt["text"]}
+                {"value": opt.value, "text": opt.text}
                 for opt in question.options
             ]
         }
@@ -97,7 +97,7 @@ class ProfilingService:
             return False
 
         # Validate option exists
-        valid_options = [opt["value"] for opt in question.options]
+        valid_options = [opt.value for opt in question.options]
         if selected_option not in valid_options:
             return False
 
@@ -143,7 +143,7 @@ class ProfilingService:
             # Find the selected option and its scores
             selected_option_data = None
             for option in question.options:
-                if option["value"] == response.selected_option:
+                if option.value == response.selected_option:
                     selected_option_data = option
                     break
 
@@ -155,7 +155,7 @@ class ProfilingService:
             category_counts[question.category] += 1
 
             # Add weighted scores
-            for track, score in selected_option_data["scores"].items():
+            for track, score in selected_option_data.scores.items():
                 scores[track] += score * weight
 
         # Normalize scores by number of questions answered in each category
@@ -343,6 +343,21 @@ class ProfilingService:
 
 # Global service instance
 profiling_service = ProfilingService()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

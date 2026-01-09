@@ -1,50 +1,69 @@
-# Multi-stage build for Django production
-FROM python:3.11-slim as builder
+# Multi-stage build for Django production (optimized for DigitalOcean)
+# Stage 1: Build dependencies
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
-    postgresql-client \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
 COPY backend/django_app/requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Production stage
+# Upgrade pip first
+RUN pip install --no-cache-dir --user --upgrade pip
+
+# Install critical packages first
+RUN pip install --no-cache-dir --user --timeout=1000 \
+    "Django>=5.0,<6.0" \
+    "psycopg2-binary>=2.9.9" \
+    "djangorestframework>=3.14.0" \
+    "django-environ>=0.10.0"
+
+# Then install remaining packages
+RUN pip install --no-cache-dir --user --timeout=1000 -r requirements.txt
+
+# Stage 2: Production runtime
 FROM python:3.11-slim
 
-# Create non-root user
-RUN groupadd -r django && useradd -r -g django django
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Create non-root user for security
+RUN groupadd -r django && \
+    useradd -r -g django -u 1000 django && \
+    mkdir -p /app /app/staticfiles /app/media /var/log/django && \
+    chown -R django:django /app /var/log/django
 
 WORKDIR /app
 
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y \
+# Install runtime dependencies only (minimal)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Copy Python packages from builder
 COPY --from=builder /root/.local /home/django/.local
 
-# Copy Django application
-COPY backend/django_app/ .
-
-# Set Python path
+# Set Python path to include user packages
 ENV PATH=/home/django/.local/bin:$PATH
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
 
-# Create directories for static files and logs
-RUN mkdir -p /app/staticfiles /app/media /var/log/django && \
-    chown -R django:django /app /var/log/django
+# Copy Django application
+COPY --chown=django:django backend/django_app/ .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput || true
+# Collect static files (as root, then change ownership)
+RUN python manage.py collectstatic --noinput || true && \
+    chown -R django:django /app/staticfiles
 
 # Switch to non-root user
 USER django
@@ -56,15 +75,21 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/health/ || exit 1
 
-# Run with gunicorn
+# Run with gunicorn (production WSGI server)
+# Workers: (2 * CPU cores) + 1, but capped at 4 for DigitalOcean droplets
 CMD ["gunicorn", "core.wsgi:application", \
      "--bind", "0.0.0.0:8000", \
      "--workers", "4", \
      "--threads", "2", \
+     "--worker-class", "sync", \
      "--timeout", "120", \
+     "--keep-alive", "5", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
-     "--log-level", "info"]
+     "--log-level", "info", \
+     "--capture-output"]
 
 
 

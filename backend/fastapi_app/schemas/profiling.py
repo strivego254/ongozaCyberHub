@@ -4,7 +4,6 @@ Schemas for AI profiling system.
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 from datetime import datetime
-from uuid import UUID
 
 
 class TrackInfo(BaseModel):
@@ -16,12 +15,19 @@ class TrackInfo(BaseModel):
     career_paths: List[str]
 
 
+class QuestionOption(BaseModel):
+    """An option for a profiling question."""
+    value: str
+    text: str
+    scores: Dict[str, int]  # Track scores like {"builders": 3, "leaders": 2}
+
+
 class ProfilingQuestion(BaseModel):
     """A profiling question with multiple choice options."""
     id: str
     question: str
     category: str  # technical_aptitude, problem_solving, scenario_preference, work_style
-    options: List[Dict[str, str]]  # [{"value": "A", "text": "Option A", "scores": {"builders": 2, "leaders": 1}}]
+    options: List[QuestionOption]
 
 
 class ProfilingResponse(BaseModel):
@@ -31,10 +37,16 @@ class ProfilingResponse(BaseModel):
     response_time_ms: Optional[int] = None
 
 
+class SubmitResponseRequest(BaseModel):
+    """Request model for submitting a profiling question response."""
+    question_id: str
+    selected_option: str
+
+
 class ProfilingSession(BaseModel):
     """A complete profiling session."""
     id: str
-    user_id: UUID
+    user_id: int  # Django uses integer user IDs, not UUIDs
     responses: List[ProfilingResponse]
     started_at: datetime
     completed_at: Optional[datetime] = None
@@ -54,7 +66,7 @@ class TrackRecommendation(BaseModel):
 
 class ProfilingResult(BaseModel):
     """Complete profiling result."""
-    user_id: UUID
+    user_id: int  # Django uses integer user IDs, not UUIDs
     session_id: str
     recommendations: List[TrackRecommendation]
     primary_track: TrackInfo
@@ -169,6 +181,21 @@ OCH_TRACKS = {
         ]
     )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,47 +1,66 @@
-# Multi-stage build for FastAPI production
-FROM python:3.11-slim as builder
+# Multi-stage build for FastAPI production (optimized for DigitalOcean)
+# Stage 1: Build dependencies
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
-    postgresql-client \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
 COPY backend/fastapi_app/requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Production stage
+# Upgrade pip first
+RUN pip install --no-cache-dir --user --upgrade pip
+
+# Install critical packages first
+RUN pip install --no-cache-dir --user --timeout=1000 \
+    "fastapi>=0.104.0" \
+    "uvicorn[standard]>=0.24.0" \
+    "pydantic>=2.5.0" \
+    "asyncpg>=0.29.0" \
+    "psycopg2-binary>=2.9.9"
+
+# Then install remaining packages
+RUN pip install --no-cache-dir --user --timeout=1000 -r requirements.txt
+
+# Stage 2: Production runtime
 FROM python:3.11-slim
 
-# Create non-root user
-RUN groupadd -r fastapi && useradd -r -g fastapi fastapi
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Create non-root user for security
+RUN groupadd -r fastapi && \
+    useradd -r -g fastapi -u 1000 fastapi && \
+    mkdir -p /app /var/log/fastapi && \
+    chown -R fastapi:fastapi /app /var/log/fastapi
 
 WORKDIR /app
 
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y \
+# Install runtime dependencies only (minimal)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Copy Python packages from builder
 COPY --from=builder /root/.local /home/fastapi/.local
 
-# Copy FastAPI application
-COPY backend/fastapi_app/ .
-
-# Set Python path
+# Set Python path to include user packages
 ENV PATH=/home/fastapi/.local/bin:$PATH
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
 
-# Create directories for logs
-RUN mkdir -p /var/log/fastapi && \
-    chown -R fastapi:fastapi /app /var/log/fastapi
+# Copy FastAPI application
+COPY --chown=fastapi:fastapi backend/fastapi_app/ .
 
 # Switch to non-root user
 USER fastapi
@@ -53,14 +72,17 @@ EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 
-# Run with uvicorn workers
+# Run with uvicorn workers (production ASGI server)
+# Workers: (2 * CPU cores) + 1, but capped at 4 for DigitalOcean droplets
 CMD ["uvicorn", "main:app", \
      "--host", "0.0.0.0", \
      "--port", "8001", \
      "--workers", "4", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--log-level", "info", \
      "--access-log", \
-     "--no-use-colors"]
+     "--no-use-colors", \
+     "--timeout-keep-alive", "5"]
 
 
 

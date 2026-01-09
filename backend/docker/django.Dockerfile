@@ -11,7 +11,16 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies
 COPY backend/django_app/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install critical packages first
+RUN pip install --no-cache-dir --timeout=1000 \
+    "Django>=5.0,<6.0" \
+    "psycopg2-binary>=2.9.9" \
+    "djangorestframework>=3.14.0" \
+    "django-environ>=0.10.0"
+
+# Then install remaining packages
+RUN pip install --no-cache-dir --timeout=1000 -r requirements.txt
 
 # Copy Django application
 COPY backend/django_app/ .
