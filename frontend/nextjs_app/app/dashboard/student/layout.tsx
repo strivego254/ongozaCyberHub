@@ -38,9 +38,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       </div>
       
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <main className="flex-1 overflow-y-auto relative scrollbar-hide">
+        <main className="flex-1 overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className={clsx(
-            "w-full p-4 lg:p-10 pb-32 lg:pb-10 transition-all duration-500",
+            "w-full p-3 lg:p-6 pb-24 lg:pb-6 transition-all duration-500",
             isSidebarCollapsed ? "max-w-none" : "max-w-[1600px] mx-auto"
           )}>
             <ErrorBoundary>

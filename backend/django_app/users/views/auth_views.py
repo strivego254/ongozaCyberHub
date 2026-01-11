@@ -1394,6 +1394,6 @@ class SessionsView(APIView):
             logger.error(f"Error revoking session: {str(e)}")
             return Response(
                 {'error': 'Failed to revoke session'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 

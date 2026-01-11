@@ -27,6 +27,18 @@ export default function ProfilingPage() {
 
     if (isLoading || !isAuthenticated) return
 
+    // Redirect students to the new AI profiler
+    const userRoles = user?.roles || []
+    const isStudent = userRoles.some((r: any) => {
+      const roleName = typeof r === 'string' ? r : (r?.role || r?.name || '').toLowerCase()
+      return roleName === 'student' || roleName === 'mentee'
+    })
+
+    if (isStudent) {
+      router.push('/onboarding/ai-profiler')
+      return
+    }
+
     // Check if profiling is required
     const checkProfiling = async () => {
       try {
@@ -56,7 +68,7 @@ export default function ProfilingPage() {
     }
 
     checkProfiling()
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, router, user])
 
   const handleStart = async () => {
     try {

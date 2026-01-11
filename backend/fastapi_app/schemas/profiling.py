@@ -2,31 +2,28 @@
 Schemas for AI profiling system.
 """
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any, TYPE_CHECKING
 from datetime import datetime
 
-
-class TrackInfo(BaseModel):
-    """Information about an OCH track."""
-    key: str
-    name: str
-    description: str
-    focus_areas: List[str]
-    career_paths: List[str]
+if TYPE_CHECKING:
+    from .profiling_tracks import TrackInfo
+else:
+    # Import TrackInfo from profiling_tracks to avoid circular imports
+    from .profiling_tracks import TrackInfo
 
 
 class QuestionOption(BaseModel):
     """An option for a profiling question."""
     value: str
     text: str
-    scores: Dict[str, int]  # Track scores like {"builders": 3, "leaders": 2}
+    scores: Dict[str, int]  # Track scores like {"defender": 3, "offensive": 2}
 
 
 class ProfilingQuestion(BaseModel):
     """A profiling question with multiple choice options."""
     id: str
     question: str
-    category: str  # technical_aptitude, problem_solving, scenario_preference, work_style
+    category: str  # technical_aptitude, problem_solving, scenario_preference, work_style, cybersecurity_mindset
     options: List[QuestionOption]
 
 
@@ -62,6 +59,19 @@ class TrackRecommendation(BaseModel):
     confidence_level: str  # high, medium, low
     reasoning: List[str]
     career_suggestions: List[str]
+    strengths_aligned: List[str]  # Strengths that align with this track
+    optimal_path: str  # Recommended learning path
+
+
+class DeepInsights(BaseModel):
+    """Deep insights about the user's profile."""
+    primary_strengths: List[str]
+    learning_preferences: Dict[str, Any]
+    career_alignment: Dict[str, Any]
+    optimal_learning_path: List[str]
+    recommended_foundations: List[str]
+    growth_opportunities: List[str]
+    personality_traits: Dict[str, Any]
 
 
 class ProfilingResult(BaseModel):
@@ -70,7 +80,9 @@ class ProfilingResult(BaseModel):
     session_id: str
     recommendations: List[TrackRecommendation]
     primary_track: TrackInfo
+    secondary_track: Optional[TrackInfo] = None
     assessment_summary: str
+    deep_insights: Optional[DeepInsights] = None
     completed_at: datetime
 
 
@@ -83,125 +95,18 @@ class ProfilingProgress(BaseModel):
     estimated_time_remaining: int  # seconds
 
 
-# OCH Tracks Definition
-OCH_TRACKS = {
-    "builders": TrackInfo(
-        key="builders",
-        name="Builders",
-        description="Focused on engineering and technical construction. You excel at building robust systems, writing clean code, and turning complex technical requirements into working solutions.",
-        focus_areas=[
-            "Software Architecture",
-            "System Design",
-            "Code Quality",
-            "Technical Implementation",
-            "DevOps & Infrastructure"
-        ],
-        career_paths=[
-            "Software Engineer",
-            "System Architect",
-            "DevOps Engineer",
-            "Full-Stack Developer",
-            "Technical Lead"
-        ]
-    ),
-    "leaders": TrackInfo(
-        key="leaders",
-        name="Leaders",
-        description="Focused on management and executive decision-making. You thrive in coordinating teams, making strategic decisions, and driving organizational success.",
-        focus_areas=[
-            "Team Management",
-            "Strategic Planning",
-            "Project Coordination",
-            "Stakeholder Management",
-            "Business Strategy"
-        ],
-        career_paths=[
-            "Engineering Manager",
-            "Product Manager",
-            "Technical Program Manager",
-            "VP of Engineering",
-            "CTO"
-        ]
-    ),
-    "entrepreneurs": TrackInfo(
-        key="entrepreneurs",
-        name="Entrepreneurs",
-        description="Focused on transforming skills into business value. You excel at identifying market opportunities, building products, and creating sustainable business models.",
-        focus_areas=[
-            "Product Development",
-            "Market Analysis",
-            "Business Development",
-            "Customer Discovery",
-            "Revenue Models"
-        ],
-        career_paths=[
-            "Startup Founder",
-            "Product Entrepreneur",
-            "Business Development Manager",
-            "Innovation Lead",
-            "Entrepreneur-in-Residence"
-        ]
-    ),
-    "researchers": TrackInfo(
-        key="researchers",
-        name="Researchers",
-        description="Focused on deep-dive technical investigation. You love exploring cutting-edge technologies, conducting experiments, and pushing the boundaries of what's possible.",
-        focus_areas=[
-            "Research & Development",
-            "Technical Innovation",
-            "Data Science",
-            "Machine Learning",
-            "Emerging Technologies"
-        ],
-        career_paths=[
-            "Research Scientist",
-            "Data Scientist",
-            "ML Engineer",
-            "Research Engineer",
-            "Principal Researcher"
-        ]
-    ),
-    "educators": TrackInfo(
-        key="educators",
-        name="Educators",
-        description="Focused on training and knowledge transfer. You excel at breaking down complex concepts, mentoring others, and fostering learning environments.",
-        focus_areas=[
-            "Technical Training",
-            "Mentorship",
-            "Content Creation",
-            "Knowledge Sharing",
-            "Community Building"
-        ],
-        career_paths=[
-            "Technical Trainer",
-            "Engineering Mentor",
-            "Content Creator",
-            "Community Manager",
-            "Learning & Development Lead"
-        ]
-    )
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Export OCH_TRACKS from profiling_tracks module
+# This ensures backward compatibility while using the correct 5 tracks
+__all__ = [
+    'TrackInfo',
+    'QuestionOption',
+    'ProfilingQuestion',
+    'ProfilingResponse',
+    'SubmitResponseRequest',
+    'ProfilingSession',
+    'TrackRecommendation',
+    'DeepInsights',
+    'ProfilingResult',
+    'ProfilingProgress',
+    'OCH_TRACKS',
+]

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dashboard', '0002_rename_cohort_prog_user_id_cohort_idx_cohort_prog_user_id_3ea554_idx_and_more'),
+        ('dashboard', '0002_initial'),
     ]
 
     operations = [

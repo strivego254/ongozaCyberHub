@@ -217,7 +217,9 @@ export function OCHSettingsSecurity() {
         ua: session.ua || session.user_agent,
       }));
       
-      setActiveSessions(normalizedSessions);
+      // Filter to show only the current session for better UX
+      const currentSession = normalizedSessions.find(s => s.current) || normalizedSessions[0];
+      setActiveSessions(currentSession ? [currentSession] : []);
     } catch (err) {
       console.error('Failed to load sessions:', err);
       setActiveSessions([]);
@@ -541,7 +543,7 @@ export function OCHSettingsSecurity() {
           </div>
         </Card>
 
-        {/* Section 2: Active Sessions */}
+        {/* Section 2: Current Session */}
         <Card className="bg-och-midnight/60 border border-och-steel/10 rounded-[2.5rem] p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -549,47 +551,30 @@ export function OCHSettingsSecurity() {
                 <Monitor className="w-6 h-6 text-och-mint" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight">Active Sessions</h2>
-                <p className="text-[10px] text-och-steel font-black uppercase tracking-widest mt-1">Manage devices where you're logged in</p>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tight">Current Session</h2>
+                <p className="text-[10px] text-och-steel font-black uppercase tracking-widest mt-1">Your active device and connection details</p>
               </div>
             </div>
-            {activeSessions.filter(s => !s.current).length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRevokeAllSessions}
-                disabled={saving}
-              >
-                Revoke All Others
-              </Button>
-            )}
           </div>
 
           {activeSessions.length === 0 ? (
             <div className="p-8 text-center">
-              <p className="text-och-steel">No active sessions found</p>
+              <p className="text-och-steel">No active session found</p>
             </div>
           ) : (
             <div className="space-y-3">
               {activeSessions.map((session) => {
                 const DeviceIcon = getDeviceIcon(session.device_type);
                 const deviceName = session.device_name || session.device_info || 'Unknown Device';
-                const isCurrent = session.current;
                 
                 return (
                   <div
                     key={session.id}
-                    className={`flex items-center justify-between p-4 bg-white/5 border rounded-xl ${
-                      isCurrent ? 'border-och-mint/30 bg-och-mint/5' : 'border-white/5'
-                    }`}
+                    className="flex items-center justify-between p-4 bg-och-mint/5 border border-och-mint/30 rounded-xl"
                   >
                     <div className="flex items-center gap-4 flex-1">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${
-                        isCurrent 
-                          ? 'bg-och-mint/10 border-och-mint/20' 
-                          : 'bg-och-steel/10 border-och-steel/20'
-                      }`}>
-                        <DeviceIcon className={`w-5 h-5 ${isCurrent ? 'text-och-mint' : 'text-och-steel'}`} />
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center border bg-och-mint/10 border-och-mint/20">
+                        <DeviceIcon className="w-5 h-5 text-och-mint" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
@@ -601,11 +586,9 @@ export function OCHSettingsSecurity() {
                               {getDeviceTypeLabel(session.device_type)}
                             </Badge>
                           )}
-                          {isCurrent && (
-                            <Badge variant="mint" className="text-[9px] font-black uppercase">
-                              Current
-                            </Badge>
-                          )}
+                          <Badge variant="mint" className="text-[9px] font-black uppercase">
+                            Active
+                          </Badge>
                           {session.is_trusted && (
                             <Badge variant="gold" className="text-[9px] font-black uppercase">
                               Trusted
@@ -637,18 +620,6 @@ export function OCHSettingsSecurity() {
                         )}
                       </div>
                     </div>
-                    {!isCurrent && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRevokeSession(session.id)}
-                        disabled={saving}
-                        className="text-och-orange border-och-orange/50 hover:bg-och-orange/10"
-                      >
-                        <LogOut className="w-4 h-4 mr-1" />
-                        Revoke
-                      </Button>
-                    )}
                   </div>
                 );
               })}

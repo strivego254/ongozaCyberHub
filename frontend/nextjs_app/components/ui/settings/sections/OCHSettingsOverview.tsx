@@ -1,16 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CreditCard, Shield, Target, AlertCircle, GraduationCap, TrendingUp
+  CreditCard, Shield, Target, AlertCircle, GraduationCap, TrendingUp, RefreshCw, CheckCircle2, XCircle, Loader2
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { apiGateway } from '@/services/apiGateway';
 import { subscriptionClient } from '@/services/subscriptionClient';
 import { profilerClient } from '@/services/profilerClient';
+import { fastapiClient } from '@/services/fastapiClient';
 import { programsClient, type Track } from '@/services/programsClient';
 
 interface ProfileData {
@@ -38,13 +41,10 @@ interface SubscriptionData {
 interface ProfilerStatus {
   completed: boolean;
   status: 'not_started' | 'in_progress' | 'completed';
-  sections_completed: string[];
-  future_you_completed: boolean;
-  track_recommendation?: {
-    track_id?: string;
-    confidence?: number;
-    persona?: any;
-  };
+  session_id?: string | null;
+  has_active_session?: boolean;
+  completed_at?: string;
+  progress?: any;
 }
 
 interface ProfilerResults {
@@ -109,9 +109,25 @@ export function OCHSettingsOverview() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [profilerStatus, setProfilerStatus] = useState<ProfilerStatus | null>(null);
   const [profilerResults, setProfilerResults] = useState<ProfilerResults | null>(null);
+  const [fastapiProfilingStatus, setFastapiProfilingStatus] = useState<any>(null);
+  const [fastapiProfilingResults, setFastapiProfilingResults] = useState<any>(null);
   const [university, setUniversity] = useState<UniversityInfo | null>(null);
   const [primaryTrack, setPrimaryTrack] = useState<TrackRecommendation | null>(null);
   const [secondaryTrack, setSecondaryTrack] = useState<TrackRecommendation | null>(null);
+  
+  // Retake request state
+  const [retakeRequestStatus, setRetakeRequestStatus] = useState<'idle' | 'pending' | 'approved' | 'rejected' | 'loading'>('idle');
+  const [isRetakeDialogOpen, setIsRetakeDialogOpen] = useState(false);
+  const [retakeRequestReason, setRetakeRequestReason] = useState('');
+  const [retakeRequestError, setRetakeRequestError] = useState<string | null>(null);
+  
+  // Track selection state
+  const [availableTracks, setAvailableTracks] = useState<any[]>([]);
+  const [selectedTrackKey, setSelectedTrackKey] = useState<string | null>(null);
+  const [isTrackSelectionDialogOpen, setIsTrackSelectionDialogOpen] = useState(false);
+  const [trackSelectionError, setTrackSelectionError] = useState<string | null>(null);
+  const [hasSelectedTrack, setHasSelectedTrack] = useState(false);
+  const [trackSelectionLoading, setTrackSelectionLoading] = useState(false);
 
   // Load all data
   useEffect(() => {
@@ -130,11 +146,18 @@ export function OCHSettingsOverview() {
         loadProfile(),
         loadSubscription(),
         loadProfilerStatus(),
+        loadFastapiProfilingStatus(),
         loadUniversity(),
       ]);
       
       // Load profiler results after status is loaded
       await loadProfilerResults();
+      await loadFastapiProfilingResults();
+      
+      // Load additional data
+      await loadRetakeRequestStatus();
+      await loadAvailableTracks();
+      await checkTrackSelectionStatus();
     } catch (err: any) {
       console.error('Failed to load overview data:', err);
       setError(err?.message || 'Failed to load overview. Please refresh the page.');
@@ -183,12 +206,134 @@ export function OCHSettingsOverview() {
       setProfilerStatus({
         completed: data.completed || false,
         status: data.status || 'not_started',
-        sections_completed: data.sections_completed || [],
-        future_you_completed: data.future_you_completed || false,
-        track_recommendation: data.track_recommendation,
       });
     } catch (err) {
       console.error('Failed to load profiler status:', err);
+    }
+  };
+
+  const loadFastapiProfilingStatus = async () => {
+    try {
+      const status = await fastapiClient.profiling.checkStatus();
+      setFastapiProfilingStatus(status);
+      
+      // Update profilerStatus with FastAPI data if available
+      if (status.completed) {
+        setProfilerStatus({
+          completed: true,
+          status: 'completed',
+          session_id: status.session_id,
+          has_active_session: status.has_active_session,
+          completed_at: status.completed_at,
+          progress: status.progress,
+        });
+      } else if (status.has_active_session) {
+        setProfilerStatus({
+          completed: false,
+          status: 'in_progress',
+          session_id: status.session_id,
+          has_active_session: true,
+          progress: status.progress,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load FastAPI profiling status:', err);
+      // Don't set error state, just log - Django fallback will handle it
+    }
+  };
+
+  const loadFastapiProfilingResults = async () => {
+    try {
+      if (!fastapiProfilingStatus?.completed || !fastapiProfilingStatus?.session_id) {
+        return;
+      }
+
+      const results = await fastapiClient.profiling.getResults(fastapiProfilingStatus.session_id);
+      setFastapiProfilingResults(results);
+
+      // Load primary track from FastAPI results
+      if (results.primary_track) {
+        const primaryTrackData = results.primary_track;
+        const primaryRec = results.recommendations?.[0];
+        
+        // Try to get track details from tracks API
+        try {
+          const tracks = await fastapiClient.profiling.getTracks();
+          const trackKey = primaryTrackData.key || primaryTrackData.track_key;
+          const trackData = tracks.tracks?.[trackKey];
+          
+          if (trackData) {
+            setPrimaryTrack({
+              track: {
+                name: trackData.name,
+                key: trackData.key,
+                track_type: 'primary',
+                description: trackData.description,
+                competencies: {},
+                missions: [],
+                director: null,
+              } as Track,
+              confidence: primaryRec?.score ? primaryRec.score / 100 : undefined,
+              reason: primaryRec?.reasoning || primaryRec?.track_name,
+              isPrimary: true,
+            });
+          } else {
+            // Fallback to basic track info
+            setPrimaryTrack({
+              track: {
+                name: primaryTrackData.name || primaryTrackData.track_name || primaryRec?.track_name || 'Unknown Track',
+                key: trackKey || '',
+                track_type: 'primary',
+                description: primaryTrackData.description || '',
+                competencies: {},
+                missions: [],
+                director: null,
+              } as Track,
+              confidence: primaryRec?.score ? primaryRec.score / 100 : undefined,
+              reason: primaryRec?.reasoning,
+              isPrimary: true,
+            });
+          }
+        } catch (trackErr) {
+          console.error('Failed to load track details:', trackErr);
+          // Fallback to basic info
+          setPrimaryTrack({
+            track: {
+              name: primaryTrackData.name || primaryTrackData.track_name || results.recommendations?.[0]?.track_name || 'Unknown Track',
+              key: primaryTrackData.key || primaryTrackData.track_key || '',
+              track_type: 'primary',
+              description: primaryTrackData.description || '',
+              competencies: {},
+              missions: [],
+              director: null,
+            } as Track,
+            confidence: results.recommendations?.[0]?.score ? results.recommendations[0].score / 100 : undefined,
+            reason: results.recommendations?.[0]?.reasoning,
+            isPrimary: true,
+          });
+        }
+      }
+
+      // Set profiler results for scores display
+      if (results.recommendations?.[0]) {
+        setProfilerResults({
+          completed: true,
+          result: {
+            overall_score: results.recommendations[0].score,
+            aptitude_score: results.recommendations[0].score,
+            behavioral_score: results.recommendations[0].score,
+            recommended_tracks: results.recommendations.map(r => ({
+              track_id: r.track_key,
+              track_name: r.track_name,
+              confidence: r.score / 100,
+              reason: r.reasoning,
+            })),
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load FastAPI profiling results:', err);
+      // Don't throw - fallback to Django if needed
     }
   };
 
@@ -246,7 +391,7 @@ export function OCHSettingsOverview() {
           // Fallback to track_name if available
           if (primaryTrackData.track_name) {
             setPrimaryTrack({
-              track: { name: primaryTrackData.track_name, key: '', track_type: 'primary', description: '', competencies: {}, missions: [] } as Track,
+              track: { name: primaryTrackData.track_name, key: '', track_type: 'primary', description: '', competencies: {}, missions: [], director: null } as Track,
               confidence: primaryTrackData.confidence,
               reason: primaryTrackData.reason,
               isPrimary: true,
@@ -271,7 +416,7 @@ export function OCHSettingsOverview() {
           // Fallback to track_name if available
           if (secondaryTrackData.track_name) {
             setSecondaryTrack({
-              track: { name: secondaryTrackData.track_name, key: '', track_type: 'primary', description: '', competencies: {}, missions: [] } as Track,
+              track: { name: secondaryTrackData.track_name, key: '', track_type: 'primary', description: '', competencies: {}, missions: [], director: null } as Track,
               confidence: secondaryTrackData.confidence,
               reason: secondaryTrackData.reason,
               isPrimary: false,
@@ -318,6 +463,103 @@ export function OCHSettingsOverview() {
       }
     } catch (err) {
       console.error('Failed to load university:', err);
+    }
+  };
+
+  const loadRetakeRequestStatus = async () => {
+    try {
+      // Check if user has a pending retake request
+      const response = await apiGateway.get('/profiling/retake-request/status');
+      setRetakeRequestStatus(response.status || 'idle');
+    } catch (err: any) {
+      // If endpoint doesn't exist, that's fine - user hasn't made a request yet
+      if (err.status !== 404) {
+        console.error('Failed to load retake request status:', err);
+      }
+      setRetakeRequestStatus('idle');
+    }
+  };
+
+  const loadAvailableTracks = async () => {
+    try {
+      const tracksResponse = await fastapiClient.profiling.getTracks();
+      const tracksArray = Object.values(tracksResponse.tracks || {}).map((track: any) => ({
+        key: track.key,
+        name: track.name,
+        description: track.description,
+        focus_areas: track.focus_areas || [],
+        career_paths: track.career_paths || [],
+      }));
+      setAvailableTracks(tracksArray);
+    } catch (err) {
+      console.error('Failed to load available tracks:', err);
+      setAvailableTracks([]);
+    }
+  };
+
+  const checkTrackSelectionStatus = async () => {
+    try {
+      // Check if user has already selected a track (one-time only)
+      const response = await apiGateway.get('/profiling/track-selection/status') as { has_selected?: boolean; selected_track_key?: string };
+      setHasSelectedTrack(response.has_selected || false);
+      if (response.selected_track_key) {
+        setSelectedTrackKey(response.selected_track_key);
+      }
+    } catch (err: any) {
+      // If endpoint doesn't exist or user hasn't selected, that's fine
+      if (err.status !== 404) {
+        console.error('Failed to check track selection status:', err);
+      }
+      setHasSelectedTrack(false);
+    }
+  };
+
+  const handleRetakeRequest = async () => {
+    if (!retakeRequestReason.trim()) {
+      setRetakeRequestError('Please provide a reason for requesting a retake.');
+      return;
+    }
+
+    setRetakeRequestError(null);
+    try {
+      await apiGateway.post('/profiling/retake-request', {
+        reason: retakeRequestReason,
+      });
+      setRetakeRequestStatus('pending');
+      setIsRetakeDialogOpen(false);
+      setRetakeRequestReason('');
+    } catch (err: any) {
+      console.error('Failed to submit retake request:', err);
+      setRetakeRequestError(err.message || 'Failed to submit retake request. Please try again.');
+    }
+  };
+
+  const handleTrackSelection = async () => {
+    if (!selectedTrackKey) {
+      setTrackSelectionError('Please select a track.');
+      return;
+    }
+
+    if (hasSelectedTrack) {
+      setTrackSelectionError('You have already selected a track. This is a one-time only choice.');
+      return;
+    }
+
+    setTrackSelectionError(null);
+    setTrackSelectionLoading(true);
+    try {
+      await apiGateway.post('/profiling/track-selection', {
+        track_key: selectedTrackKey,
+      });
+      setHasSelectedTrack(true);
+      setIsTrackSelectionDialogOpen(false);
+      // Reload data to reflect the change
+      await loadAllData();
+    } catch (err: any) {
+      console.error('Failed to select track:', err);
+      setTrackSelectionError(err.message || 'Failed to select track. Please try again.');
+    } finally {
+      setTrackSelectionLoading(false);
     }
   };
 
@@ -400,9 +642,15 @@ export function OCHSettingsOverview() {
               </div>
             </div>
             <div>
-              <div className="text-och-steel mb-1">Profiler</div>
+              <div className="text-och-steel mb-1">AI Profiling</div>
               <div className="text-white font-medium">
-                {profilerStatus?.completed ? 'Complete' : 'Pending'}
+                {fastapiProfilingStatus?.completed 
+                  ? `Complete${fastapiProfilingStatus.completed_at ? ' • ' + new Date(fastapiProfilingStatus.completed_at).toLocaleDateString() : ''}` 
+                  : fastapiProfilingStatus?.has_active_session 
+                    ? 'In Progress' 
+                    : profilerStatus?.completed 
+                      ? 'Complete (Legacy)' 
+                      : 'Pending'}
               </div>
             </div>
             <div>
@@ -438,14 +686,133 @@ export function OCHSettingsOverview() {
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-2">
               <Target className="w-5 h-5 text-och-defender" />
-              <h3 className="font-semibold text-white">TalentScope</h3>
+              <h3 className="font-semibold text-white">AI Profiling</h3>
             </div>
             <div className="text-2xl font-bold text-och-mint mb-1">
-              {profilerStatus?.completed ? 'Baseline Set' : 'Not Started'}
+              {fastapiProfilingStatus?.completed 
+                ? 'Complete' 
+                : fastapiProfilingStatus?.has_active_session 
+                  ? 'In Progress' 
+                  : profilerStatus?.completed 
+                    ? 'Complete (Legacy)' 
+                    : 'Not Started'}
             </div>
-            <div className="text-sm text-och-steel">
-              Day Zero Metrics: {profilerStatus?.completed ? 'Complete' : 'Pending'}
+            <div className="text-sm text-och-steel mb-3">
+              {fastapiProfilingStatus?.completed 
+                ? `Completed${fastapiProfilingStatus.completed_at ? ' • ' + new Date(fastapiProfilingStatus.completed_at).toLocaleDateString() : ''}` 
+                : fastapiProfilingStatus?.has_active_session 
+                  ? 'Assessment in progress' 
+                  : profilerStatus?.completed 
+                    ? 'Legacy profiling complete' 
+                    : 'Assessment pending'}
             </div>
+            {primaryTrack?.track?.name && (
+              <div className="mt-3 pt-3 border-t border-och-steel/20">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs text-och-steel uppercase tracking-widest font-bold">Mapped Track</div>
+                  {primaryTrack.confidence && (
+                    <Badge variant="gold" className="text-[9px] font-black uppercase px-1.5 py-0.5">
+                      {Math.round(primaryTrack.confidence * 100)}% Match
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-lg font-bold text-och-gold mb-1">
+                  {primaryTrack.track.name}
+                </div>
+                {primaryTrack.track.description && (
+                  <p className="text-xs text-och-steel line-clamp-2 leading-relaxed">
+                    {primaryTrack.track.description}
+                  </p>
+                )}
+              </div>
+            )}
+            
+            {/* Retake Request Button */}
+            {fastapiProfilingStatus?.completed && (
+              <div className="mt-4 pt-4 border-t border-och-steel/20">
+                {retakeRequestStatus === 'pending' && (
+                  <div className="flex items-center gap-2 mb-3 p-2 bg-och-orange/10 border border-och-orange/20 rounded-lg">
+                    <AlertCircle className="w-4 h-4 text-och-orange" />
+                    <p className="text-xs text-och-steel">
+                      Retake request pending approval from program director/admin
+                    </p>
+                  </div>
+                )}
+                {retakeRequestStatus === 'approved' && (
+                  <div className="flex items-center gap-2 mb-3 p-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <p className="text-xs text-och-steel">Retake request approved</p>
+                  </div>
+                )}
+                {retakeRequestStatus === 'rejected' && (
+                  <div className="flex items-center gap-2 mb-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <XCircle className="w-4 h-4 text-red-400" />
+                    <p className="text-xs text-och-steel">Retake request rejected</p>
+                  </div>
+                )}
+                {retakeRequestStatus === 'idle' && (
+                  <Dialog open={isRetakeDialogOpen} onOpenChange={setIsRetakeDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs"
+                      >
+                        <RefreshCw className="w-3 h-3 mr-2" />
+                        Request AI Profiling Retake
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-och-midnight border-och-steel/20">
+                      <DialogHeader>
+                        <DialogTitle className="text-white">Request AI Profiling Retake</DialogTitle>
+                        <DialogDescription className="text-och-steel">
+                          Your request will be reviewed by a program director or administrator. 
+                          Please provide a reason for requesting a retake.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 mt-4">
+                        <div>
+                          <label className="text-sm text-white mb-2 block">Reason for Retake</label>
+                          <textarea
+                            value={retakeRequestReason}
+                            onChange={(e) => setRetakeRequestReason(e.target.value)}
+                            placeholder="Explain why you need to retake the AI profiling assessment..."
+                            className="w-full p-3 bg-slate-950 border border-och-steel/30 rounded-lg text-white text-sm placeholder-och-steel focus:outline-none focus:ring-2 focus:ring-och-gold/50"
+                            rows={4}
+                          />
+                        </div>
+                        {retakeRequestError && (
+                          <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                            <p className="text-xs text-red-400">{retakeRequestError}</p>
+                          </div>
+                        )}
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setIsRetakeDialogOpen(false);
+                              setRetakeRequestReason('');
+                              setRetakeRequestError(null);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="gold"
+                            size="sm"
+                            onClick={handleRetakeRequest}
+                            disabled={!retakeRequestReason.trim()}
+                          >
+                            Submit Request
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+            )}
           </Card>
 
           <Card className="p-6">

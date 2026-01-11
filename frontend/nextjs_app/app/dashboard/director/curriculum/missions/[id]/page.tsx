@@ -8,11 +8,13 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { missionsClient, type MissionTemplate } from '@/services/missionsClient'
-import { programsClient, type Program, type Track } from '@/services/programsClient'
+import { programsClient, type Program, type Track, type Cohort } from '@/services/programsClient'
 import { djangoClient } from '@/services/djangoClient'
-import { useProgram, usePrograms, useTracks } from '@/hooks/usePrograms'
+import { useProgram, usePrograms, useTracks, useCohorts } from '@/hooks/usePrograms'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import Link from 'next/link'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { apiGateway } from '@/services/apiGateway'
 
 const EditIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,6 +108,12 @@ export default function MissionDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [missionForm, setMissionForm] = useState<Partial<MissionTemplate>>({})
+  
+  // Publish dialog state
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
+  const [selectedCohorts, setSelectedCohorts] = useState<string[]>([])
+  const [isPublishing, setIsPublishing] = useState(false)
+  const { cohorts, isLoading: cohortsLoading } = useCohorts({ viewAll: true })
 
   // Track linking (Programs → Tracks)
   const { programs } = usePrograms()
@@ -398,10 +406,10 @@ export default function MissionDetailPage() {
         average_ai_score: averageAiScore,
         average_mentor_score: averageMentorScore,
         approval_rate: approvalRate,
-        submissions: enrichedSubmissions,
-        cohorts,
-        mentors,
-        performance_over_time: performanceOverTime,
+        submissions: enrichedSubmissions || [],
+        cohorts: cohorts || [],
+        mentors: mentors || [],
+        performance_over_time: performanceOverTime || [],
       })
     } catch (err: any) {
       console.error('Failed to load mission analytics:', err)
@@ -481,6 +489,39 @@ export default function MissionDetailPage() {
     } catch (error: any) {
       console.error('Failed to delete mission:', error)
       alert(error?.response?.data?.detail || error?.message || 'Failed to delete mission')
+    }
+  }
+
+  const handlePublishToCohorts = async () => {
+    if (selectedCohorts.length === 0) {
+      alert('Please select at least one cohort')
+      return
+    }
+
+    setIsPublishing(true)
+    try {
+      // First, ensure mission status is published
+      const updatedMission = await missionsClient.updateMission(missionId, {
+        ...missionForm,
+        status: 'published',
+      })
+
+      // Then publish to selected cohorts
+      // Note: This assumes a backend endpoint exists. If not, we'll need to create it.
+      // For now, we'll make a POST request to publish the mission to cohorts
+      await apiGateway.post(`/missions/${missionId}/publish-to-cohorts/`, {
+        cohort_ids: selectedCohorts,
+      })
+
+      alert(`Mission published to ${selectedCohorts.length} cohort(s) successfully!`)
+      setIsPublishDialogOpen(false)
+      setSelectedCohorts([])
+      await loadMissionData() // Reload to reflect status change
+    } catch (error: any) {
+      console.error('Failed to publish mission:', error)
+      alert(error?.response?.data?.detail || error?.message || 'Failed to publish mission to cohorts')
+    } finally {
+      setIsPublishing(false)
     }
   }
 
@@ -639,6 +680,81 @@ export default function MissionDetailPage() {
                       <EditIcon />
                       <span className="ml-2">Edit</span>
                     </Button>
+                    <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="gold" className="bg-och-gold/20 hover:bg-och-gold/30 text-och-gold border border-och-gold/40">
+                          <UsersIcon />
+                          <span className="ml-2">Publish to Cohorts</span>
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="bg-och-midnight border-och-steel/20 max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle className="text-white">Publish Mission to Cohorts</DialogTitle>
+                          <DialogDescription className="text-och-steel">
+                            Select one or more cohorts to publish this mission to. The mission will be available to all students in the selected cohorts.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="mt-4 max-h-96 overflow-y-auto">
+                          {cohortsLoading ? (
+                            <div className="text-center py-8 text-och-steel">Loading cohorts...</div>
+                          ) : cohorts.length === 0 ? (
+                            <div className="text-center py-8 text-och-steel">No cohorts available</div>
+                          ) : (
+                            <div className="space-y-2">
+                              {cohorts.map((cohort) => (
+                                <label
+                                  key={cohort.id}
+                                  className="flex items-center gap-3 p-3 rounded-lg border border-och-steel/20 hover:bg-och-midnight/50 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCohorts.includes(cohort.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedCohorts([...selectedCohorts, cohort.id])
+                                      } else {
+                                        setSelectedCohorts(selectedCohorts.filter(id => id !== cohort.id))
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-och-gold bg-och-midnight border-och-steel/40 rounded focus:ring-och-gold"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-white font-medium">{cohort.name}</div>
+                                    {cohort.track_name && (
+                                      <div className="text-xs text-och-steel">Track: {cohort.track_name}</div>
+                                    )}
+                                    {cohort.status && (
+                                      <Badge variant="steel" className="text-xs mt-1">
+                                        {cohort.status}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <DialogFooter className="mt-4">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setIsPublishDialogOpen(false)
+                              setSelectedCohorts([])
+                            }}
+                            disabled={isPublishing}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="gold"
+                            onClick={handlePublishToCohorts}
+                            disabled={isPublishing || selectedCohorts.length === 0}
+                          >
+                            {isPublishing ? 'Publishing...' : `Publish to ${selectedCohorts.length} Cohort(s)`}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                     <Button
                       variant="outline"
                       onClick={handleDeleteMission}
@@ -789,6 +905,238 @@ export default function MissionDetailPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* OCH Admin Fields */}
+                <div className="mt-6 pt-6 border-t border-och-steel/20">
+                  <h4 className="text-lg font-bold text-white mb-4">OCH Admin Configuration</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">Status</label>
+                      <select
+                        value={missionForm.status || 'draft'}
+                        onChange={(e) => setMissionForm({ ...missionForm, status: e.target.value as any })}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                      >
+                        <option value="draft">Draft</option>
+                        <option value="approved">Approved</option>
+                        <option value="published">Published</option>
+                        <option value="retired">Retired</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">Assessment Mode</label>
+                      <select
+                        value={missionForm.assessment_mode || 'hybrid'}
+                        onChange={(e) => setMissionForm({ ...missionForm, assessment_mode: e.target.value as any })}
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                      >
+                        <option value="auto">Auto (AI Only)</option>
+                        <option value="manual">Manual (Mentor Only)</option>
+                        <option value="hybrid">Hybrid (AI + Mentor)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">Time Constraint (Hours)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="168"
+                        value={missionForm.time_constraint_hours ?? ''}
+                        onChange={(e) => setMissionForm({ ...missionForm, time_constraint_hours: e.target.value ? parseInt(e.target.value) : undefined })}
+                        placeholder="e.g., 24, 48, 72"
+                        className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
+                      <input
+                        type="checkbox"
+                        checked={missionForm.requires_mentor_review ?? false}
+                        onChange={(e) => setMissionForm({ ...missionForm, requires_mentor_review: e.target.checked })}
+                        className="w-4 h-4 text-och-gold bg-och-midnight border-och-steel/40 rounded focus:ring-och-gold"
+                      />
+                      Requires Mentor Review
+                    </label>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-white mb-2">Story Narrative</label>
+                    <textarea
+                      value={missionForm.story_narrative || ''}
+                      onChange={(e) => setMissionForm({ ...missionForm, story_narrative: e.target.value })}
+                      rows={4}
+                      placeholder="Enter the mission story/narrative context..."
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-white mb-2">Competencies</label>
+                    <textarea
+                      value={(missionForm.competencies || []).join(', ')}
+                      onChange={(e) => {
+                        const competencies = e.target.value.split(',').map(c => c.trim()).filter(c => c.length > 0)
+                        setMissionForm({ ...missionForm, competencies })
+                      }}
+                      rows={2}
+                      placeholder="Enter competencies separated by commas..."
+                      className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                    />
+                    <p className="text-xs text-och-steel mt-1">
+                      Separate multiple competencies with commas
+                    </p>
+                  </div>
+
+                  {/* Subtasks Section */}
+                  <div className="mt-6 pt-6 border-t border-och-steel/20">
+                    <div className="flex items-center justify-between mb-4">
+                      <h5 className="text-base font-bold text-white">Subtasks</h5>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newSubtask = {
+                            id: `subtask-${Date.now()}`,
+                            title: '',
+                            description: '',
+                            order: (missionForm.subtasks || []).length + 1,
+                            required: true,
+                            dependencies: [],
+                          }
+                          setMissionForm({
+                            ...missionForm,
+                            subtasks: [...(missionForm.subtasks || []), newSubtask],
+                          })
+                        }}
+                      >
+                        <PlusIcon />
+                        <span className="ml-2">Add Subtask</span>
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      {(missionForm.subtasks || []).map((subtask, idx) => (
+                        <div key={subtask.id || idx} className="p-4 bg-och-midnight/30 rounded-lg border border-och-steel/20">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-och-steel mb-1">Title</label>
+                              <input
+                                value={subtask.title || ''}
+                                onChange={(e) => {
+                                  const updated = [...(missionForm.subtasks || [])]
+                                  updated[idx] = { ...subtask, title: e.target.value }
+                                  setMissionForm({ ...missionForm, subtasks: updated })
+                                }}
+                                className="w-full px-3 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white text-sm focus:outline-none focus:border-och-defender"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-och-steel mb-1">Order</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={subtask.order || idx + 1}
+                                onChange={(e) => {
+                                  const updated = [...(missionForm.subtasks || [])]
+                                  updated[idx] = { ...subtask, order: parseInt(e.target.value) || idx + 1 }
+                                  setMissionForm({ ...missionForm, subtasks: updated })
+                                }}
+                                className="w-full px-3 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white text-sm focus:outline-none focus:border-och-defender"
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <label className="block text-xs font-medium text-och-steel mb-1">Description</label>
+                            <textarea
+                              value={subtask.description || ''}
+                              onChange={(e) => {
+                                const updated = [...(missionForm.subtasks || [])]
+                                updated[idx] = { ...subtask, description: e.target.value }
+                                setMissionForm({ ...missionForm, subtasks: updated })
+                              }}
+                              rows={2}
+                              className="w-full px-3 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white text-sm focus:outline-none focus:border-och-defender"
+                            />
+                          </div>
+                          <div className="mt-2 flex items-center justify-between">
+                            <label className="flex items-center gap-2 text-xs font-medium text-white">
+                              <input
+                                type="checkbox"
+                                checked={subtask.required ?? true}
+                                onChange={(e) => {
+                                  const updated = [...(missionForm.subtasks || [])]
+                                  updated[idx] = { ...subtask, required: e.target.checked }
+                                  setMissionForm({ ...missionForm, subtasks: updated })
+                                }}
+                                className="w-3 h-3 text-och-gold bg-och-midnight border-och-steel/40 rounded focus:ring-och-gold"
+                              />
+                              Required
+                            </label>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const updated = (missionForm.subtasks || []).filter((_, i) => i !== idx)
+                                setMissionForm({ ...missionForm, subtasks: updated })
+                              }}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              <TrashIcon />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {(!missionForm.subtasks || missionForm.subtasks.length === 0) && (
+                        <p className="text-sm text-och-steel text-center py-4">No subtasks added yet</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Evidence Upload Schema */}
+                  <div className="mt-6 pt-6 border-t border-och-steel/20">
+                    <h5 className="text-base font-bold text-white mb-4">Evidence Upload Configuration</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-white mb-2">Max File Size (MB)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={missionForm.evidence_upload_schema?.max_file_size_mb || 10}
+                          onChange={(e) => setMissionForm({
+                            ...missionForm,
+                            evidence_upload_schema: {
+                              ...(missionForm.evidence_upload_schema || {}),
+                              max_file_size_mb: parseInt(e.target.value) || 10,
+                            },
+                          })}
+                          className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-white mb-2">Allowed File Types</label>
+                        <input
+                          value={(missionForm.evidence_upload_schema?.file_types || []).join(', ')}
+                          onChange={(e) => {
+                            const fileTypes = e.target.value.split(',').map(t => t.trim()).filter(t => t.length > 0)
+                            setMissionForm({
+                              ...missionForm,
+                              evidence_upload_schema: {
+                                ...(missionForm.evidence_upload_schema || {}),
+                                file_types: fileTypes,
+                              },
+                            })
+                          }}
+                          placeholder="e.g., pdf, zip, jpg, png"
+                          className="w-full px-4 py-2 bg-och-midnight/50 border border-och-steel/20 rounded-lg text-white focus:outline-none focus:border-och-defender"
+                        />
+                        <p className="text-xs text-och-steel mt-1">Separate file types with commas</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </Card>
           )}
@@ -909,15 +1257,16 @@ export default function MissionDetailPage() {
           )}
 
           {/* Cohorts and Mentors */}
+          {analytics && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Cohorts */}
             <Card>
               <div className="p-6">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                   <UsersIcon />
-                  Cohorts ({analytics.cohorts.length})
+                  Cohorts ({analytics.cohorts?.length || 0})
                 </h3>
-                {analytics.cohorts.length > 0 ? (
+                {analytics.cohorts && analytics.cohorts.length > 0 ? (
                   <div className="space-y-3">
                     {analytics.cohorts.map((cohort) => (
                       <div
@@ -946,8 +1295,8 @@ export default function MissionDetailPage() {
             {/* Mentors */}
             <Card>
               <div className="p-6">
-                <h3 className="text-xl font-bold text-white mb-4">Mentor Reviews ({analytics.mentors.length})</h3>
-                {analytics.mentors.length > 0 ? (
+                <h3 className="text-xl font-bold text-white mb-4">Mentor Reviews ({analytics.mentors?.length || 0})</h3>
+                {analytics.mentors && analytics.mentors.length > 0 ? (
                   <div className="space-y-3">
                     {analytics.mentors.map((mentor) => (
                       <div
@@ -973,14 +1322,16 @@ export default function MissionDetailPage() {
               </div>
             </Card>
           </div>
+          )}
 
           {/* Submissions List */}
+          {analytics && (
           <Card>
             <div className="p-6">
               <h3 className="text-xl font-bold text-white mb-4">
-                Submissions ({analytics.submissions.length})
+                Submissions ({analytics.submissions?.length || 0})
               </h3>
-              {analytics.submissions.length > 0 ? (
+              {analytics.submissions && analytics.submissions.length > 0 ? (
                 <div className="space-y-3">
                   {analytics.submissions.map((submission) => (
                     <div
@@ -1053,6 +1404,7 @@ export default function MissionDetailPage() {
               )}
             </div>
           </Card>
+          )}
         </div>
       </DirectorLayout>
     </RouteGuard>
