@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Save, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { useMissionStore } from '../lib/store/missionStore'
+import { useMissionStore } from '@/app/dashboard/student/missions/lib/store/missionStore'
 import { useMissionProgress } from '../hooks/useMissionProgress'
 
 interface MobileFloatingActionBarProps {
