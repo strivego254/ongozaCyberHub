@@ -6,9 +6,10 @@ interface CardProps {
   className?: string
   glow?: boolean
   gradient?: 'defender' | 'leadership' | 'none'
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void
 }
 
-export const Card = ({ children, className, glow = false, gradient = 'none' }: CardProps) => {
+export const Card = ({ children, className, glow = false, gradient = 'none', onClick }: CardProps) => {
   const gradientClasses = {
     defender: 'bg-defender-gradient',
     leadership: 'bg-leadership-gradient',
@@ -23,6 +24,7 @@ export const Card = ({ children, className, glow = false, gradient = 'none' }: C
         glow && 'animate-pulse-glow',
         className
       )}
+      onClick={onClick}
     >
       {children}
     </div>

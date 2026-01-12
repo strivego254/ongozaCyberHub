@@ -5,8 +5,9 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
-import { marketplaceClient, type JobPosting } from '@/services/marketplaceClient'
-import { Plus, Edit, Trash2, Calendar, MapPin, DollarSign } from 'lucide-react'
+import { marketplaceClient, type JobPosting, type JobApplication } from '@/services/marketplaceClient'
+import { Plus, Edit, Trash2, Calendar, MapPin, DollarSign, Users, MessageSquare, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 export default function JobPostingsPage() {
   const [jobs, setJobs] = useState<JobPosting[]>([])
@@ -29,6 +30,16 @@ export default function JobPostingsPage() {
     application_deadline: '',
   })
   const [skillInput, setSkillInput] = useState('')
+  
+  // Applications state
+  const [selectedJobForApplications, setSelectedJobForApplications] = useState<JobPosting | null>(null)
+  const [applications, setApplications] = useState<JobApplication[]>([])
+  const [applicationsLoading, setApplicationsLoading] = useState(false)
+  const [showApplicationsModal, setShowApplicationsModal] = useState(false)
+  const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null)
+  const [showApplicationDetailModal, setShowApplicationDetailModal] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [applicationNotes, setApplicationNotes] = useState('')
 
   useEffect(() => {
     loadJobs()
@@ -152,6 +163,105 @@ export default function JobPostingsPage() {
     }))
   }
 
+  const loadJobApplications = async (jobId: string) => {
+    try {
+      setApplicationsLoading(true)
+      console.log('Loading applications for job:', jobId)
+      const apps = await marketplaceClient.getJobApplications(jobId)
+      console.log('Applications API response:', apps)
+      // Handle both array and paginated response
+      const applicationsList = Array.isArray(apps) 
+        ? apps 
+        : (apps?.results || apps?.data || [])
+      console.log('Processed applications:', applicationsList)
+      setApplications(applicationsList)
+    } catch (err: any) {
+      console.error('Failed to load applications:', err)
+      alert(`Failed to load applications: ${err.message || 'Unknown error'}`)
+      setApplications([])
+    } finally {
+      setApplicationsLoading(false)
+    }
+  }
+
+
+  const handleViewApplications = async (job: JobPosting) => {
+    setSelectedJobForApplications(job)
+    setShowApplicationsModal(true)
+    // Load applications immediately when opening modal
+    await loadJobApplications(job.id)
+  }
+
+  const handleUpdateStatus = async (applicationId: string, newStatus: JobApplication['status']) => {
+    try {
+      setUpdatingStatus(true)
+      await marketplaceClient.updateApplicationStatus(applicationId, newStatus)
+      await loadJobApplications(selectedJobForApplications!.id)
+      setShowApplicationDetailModal(false)
+      alert('Application status updated successfully')
+    } catch (err: any) {
+      console.error('Failed to update status:', err)
+      alert(err.message || 'Failed to update application status')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  const handleUpdateApplication = async (applicationId: string) => {
+    try {
+      setUpdatingStatus(true)
+      await marketplaceClient.updateApplication(applicationId, {
+        notes: applicationNotes,
+      })
+      await loadJobApplications(selectedJobForApplications!.id)
+      setShowApplicationDetailModal(false)
+      setApplicationNotes('')
+      alert('Application updated successfully')
+    } catch (err: any) {
+      console.error('Failed to update application:', err)
+      alert(err.message || 'Failed to update application')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  const handleViewApplicationDetail = async (application: JobApplication) => {
+    try {
+      const detail = await marketplaceClient.getApplicationDetailsEmployer(application.id)
+      setSelectedApplication(detail)
+      setApplicationNotes(detail.notes || '')
+      setShowApplicationDetailModal(true)
+    } catch (err: any) {
+      console.error('Failed to load application details:', err)
+      alert(err.message || 'Failed to load application details')
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, 'mint' | 'gold' | 'steel' | 'defender'> = {
+      pending: 'steel',
+      reviewing: 'gold',
+      shortlisted: 'mint',
+      interview: 'defender',
+      accepted: 'mint',
+      rejected: 'steel',
+      withdrawn: 'steel',
+    }
+    return colors[status] || 'steel'
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending': return <Clock className="w-4 h-4" />
+      case 'reviewing': return <Loader2 className="w-4 h-4 animate-spin" />
+      case 'shortlisted': return <CheckCircle className="w-4 h-4" />
+      case 'interview': return <MessageSquare className="w-4 h-4" />
+      case 'accepted': return <CheckCircle className="w-4 h-4" />
+      case 'rejected': return <XCircle className="w-4 h-4" />
+      default: return <Clock className="w-4 h-4" />
+    }
+  }
+
   return (
     <div className="min-h-screen bg-och-midnight p-6">
       <div className="max-w-7xl mx-auto">
@@ -172,6 +282,7 @@ export default function JobPostingsPage() {
             Post New Job
           </Button>
         </div>
+
 
         {/* Form */}
         {showForm && (
@@ -363,6 +474,14 @@ export default function JobPostingsPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 ml-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleViewApplications(job)}
+                      title="View Applications"
+                    >
+                      <Users className="w-4 h-4 mr-1" />
+                      Applications
+                    </Button>
                     <Button variant="outline" onClick={() => handleEdit(job)}>
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -383,6 +502,208 @@ export default function JobPostingsPage() {
               </Card>
             ))}
           </div>
+        )}
+
+        {/* Applications Modal */}
+        {showApplicationsModal && (
+          <Dialog open={showApplicationsModal} onOpenChange={setShowApplicationsModal}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-och-midnight border-och-defender/30">
+              <DialogHeader>
+              <DialogTitle className="text-2xl font-bold text-och-gold">
+                Applications for {selectedJobForApplications?.title || 'Job'}
+              </DialogTitle>
+              </DialogHeader>
+              
+              {applicationsLoading ? (
+                <div className="text-center py-12 text-och-steel">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                  Loading applications...
+                </div>
+              ) : applications.length === 0 ? (
+                <div className="text-center py-12 text-och-steel">
+                  <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg mb-2">No applications yet</p>
+                  <p className="text-sm">Applications will appear here when students apply to this job.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {applications.map((app) => (
+                    <Card key={app.id} className="p-6 hover:border-och-gold/50 transition-colors">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-xl font-bold text-white">
+                              {app.applicant_name || app.applicant_email || 'Unknown Applicant'}
+                            </h3>
+                          </div>
+                          <p className="text-sm text-och-steel mb-2">{app.applicant_email}</p>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <span className="text-och-steel">Applied:</span>
+                              <p className="text-white">{new Date(app.applied_at).toLocaleDateString()}</p>
+                            </div>
+                            {app.match_score && (
+                              <div>
+                                <span className="text-och-steel">Match Score:</span>
+                                <p className="text-white">{app.match_score}%</p>
+                              </div>
+                            )}
+                            {app.status_changed_at && (
+                              <div>
+                                <span className="text-och-steel">Status Changed:</span>
+                                <p className="text-white">{new Date(app.status_changed_at).toLocaleDateString()}</p>
+                              </div>
+                            )}
+                          </div>
+                          {app.cover_letter && (
+                            <div className="mt-3 p-3 bg-och-midnight/50 rounded-lg">
+                              <p className="text-xs text-och-steel mb-1">Cover Letter:</p>
+                              <p className="text-sm text-white line-clamp-2">{app.cover_letter}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-2 ml-4">
+                          <Badge variant={getStatusColor(app.status) as any} className="flex items-center gap-1">
+                            {getStatusIcon(app.status)}
+                            {app.status.replace('_', ' ').toUpperCase()}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewApplicationDetail(app)}
+                          >
+                            View Details
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Application Detail Modal */}
+        {showApplicationDetailModal && selectedApplication && (
+          <Dialog open={showApplicationDetailModal} onOpenChange={setShowApplicationDetailModal}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-och-midnight border-och-defender/30">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold text-och-gold">
+                  Application Details
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-6">
+                {/* Applicant Info */}
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-3">Applicant Information</h3>
+                  <div className="p-4 bg-och-midnight/50 rounded-lg space-y-2">
+                    <div>
+                      <span className="text-och-steel">Name:</span>
+                      <p className="text-white">{selectedApplication.applicant_name || selectedApplication.applicant_email}</p>
+                    </div>
+                    <div>
+                      <span className="text-och-steel">Email:</span>
+                      <p className="text-white">{selectedApplication.applicant_email}</p>
+                    </div>
+                    <div>
+                      <span className="text-och-steel">Applied:</span>
+                      <p className="text-white">{new Date(selectedApplication.applied_at).toLocaleDateString()}</p>
+                    </div>
+                    {selectedApplication.match_score && (
+                      <div>
+                        <span className="text-och-steel">Match Score:</span>
+                        <p className="text-white">{selectedApplication.match_score}%</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Job Info */}
+                {selectedApplication.job_posting && (
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-3">Job Information</h3>
+                    <div className="p-4 bg-och-midnight/50 rounded-lg">
+                      <p className="text-white font-semibold">{selectedApplication.job_posting.title}</p>
+                      <p className="text-och-steel text-sm">{selectedApplication.job_posting.location || 'Remote'}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cover Letter */}
+                {selectedApplication.cover_letter && (
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-3">Cover Letter</h3>
+                    <div className="p-4 bg-och-midnight/50 rounded-lg">
+                      <p className="text-white whitespace-pre-wrap">{selectedApplication.cover_letter}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Status Management */}
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-3">Status Management</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm text-och-steel mb-2 block">Current Status</label>
+                      <Badge variant={getStatusColor(selectedApplication.status) as any} className="text-lg">
+                        {selectedApplication.status.replace('_', ' ').toUpperCase()}
+                      </Badge>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm text-och-steel mb-2 block">Update Status</label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {['pending', 'reviewing', 'shortlisted', 'interview', 'accepted', 'rejected'].map((status) => (
+                          <Button
+                            key={status}
+                            variant={selectedApplication.status === status ? 'gold' : 'outline'}
+                            size="sm"
+                            onClick={() => handleUpdateStatus(selectedApplication.id, status as JobApplication['status'])}
+                            disabled={updatingStatus || selectedApplication.status === status}
+                            className="text-xs"
+                          >
+                            {status.replace('_', ' ').toUpperCase()}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm text-och-steel mb-2 block">Internal Notes</label>
+                      <textarea
+                        value={applicationNotes}
+                        onChange={(e) => setApplicationNotes(e.target.value)}
+                        rows={4}
+                        className="w-full bg-och-midnight/50 border border-och-defender/30 rounded-lg px-4 py-2 text-white"
+                        placeholder="Add internal notes about this applicant..."
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => handleUpdateApplication(selectedApplication.id)}
+                        disabled={updatingStatus}
+                      >
+                        {updatingStatus ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Save Notes
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
     </div>

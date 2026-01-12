@@ -4,21 +4,80 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { marketplaceClient, type MarketplaceProfile } from '@/services/marketplaceClient'
+import { Input } from '@/components/ui/Input'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { marketplaceClient, type MarketplaceProfile, type EmployerInterestLog, type JobPosting, type JobApplication } from '@/services/marketplaceClient'
 import { useAuth } from '@/hooks/useAuth'
-import { Eye, EyeOff, CheckCircle, XCircle, TrendingUp, Clock, User } from 'lucide-react'
+import { useMarketplace, useJobApplications } from '@/hooks/useMarketplace'
+import { Eye, EyeOff, CheckCircle, XCircle, TrendingUp, Clock, User, Mail, Building2, Briefcase, FileText, Search, Filter, MapPin, DollarSign, Calendar, Send, Check, Loader2, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 
 export default function MarketplaceProfilePage() {
   const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState('profile')
   const [profile, setProfile] = useState<MarketplaceProfile | null>(null)
+  const [contactRequests, setContactRequests] = useState<EmployerInterestLog[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingContacts, setLoadingContacts] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
+  
+  // Jobs state
+  const [jobs, setJobs] = useState<JobPosting[]>([])
+  const [jobsLoading, setJobsLoading] = useState(false)
+  const [jobsError, setJobsError] = useState<string | null>(null)
+  const [jobFilters, setJobFilters] = useState({
+    job_type: '' as '' | 'full_time' | 'part_time' | 'contract' | 'internship',
+    min_match_score: '',
+  })
+  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null)
+  const [showApplyModal, setShowApplyModal] = useState(false)
+  const [coverLetter, setCoverLetter] = useState('')
+  const [applying, setApplying] = useState(false)
+  
+  // Applications
+  const { applications: applicationsData, isLoading: applicationsLoading, error: applicationsError, refetch: refetchApplications } = useJobApplications()
+  // Ensure applications is always an array
+  const applications = Array.isArray(applicationsData) ? applicationsData : []
 
   useEffect(() => {
     loadProfile()
+    loadContactRequests()
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'jobs') {
+      loadJobs()
+    }
+  }, [activeTab, jobFilters])
+
+  // Reload profile when page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadProfile()
+        loadContactRequests()
+        if (activeTab === 'applications') {
+          refetchApplications()
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [activeTab, refetchApplications])
+
+  const loadContactRequests = async () => {
+    try {
+      setLoadingContacts(true)
+      const response = await marketplaceClient.getContactRequests()
+      const requests = Array.isArray(response) ? response : (response?.results || [])
+      setContactRequests(requests)
+    } catch (err: any) {
+      console.error('Failed to load contact requests:', err)
+    } finally {
+      setLoadingContacts(false)
+    }
+  }
 
   const loadProfile = async () => {
     try {
@@ -34,8 +93,57 @@ export default function MarketplaceProfilePage() {
     }
   }
 
+  const loadJobs = async () => {
+    try {
+      setJobsLoading(true)
+      setJobsError(null)
+      const params: any = {}
+      if (jobFilters.job_type) params.job_type = jobFilters.job_type
+      if (jobFilters.min_match_score) params.min_match_score = parseFloat(jobFilters.min_match_score)
+      
+      const jobsData = await marketplaceClient.browseJobs(params)
+      setJobs(jobsData)
+    } catch (err: any) {
+      console.error('Failed to load jobs:', err)
+      setJobsError(err.message || 'Failed to load jobs')
+    } finally {
+      setJobsLoading(false)
+    }
+  }
+
+  const handleApply = async (job: JobPosting) => {
+    try {
+      setApplying(true)
+      await marketplaceClient.applyToJob(job.id, coverLetter)
+      alert('Application submitted successfully!')
+      setShowApplyModal(false)
+      setCoverLetter('')
+      setSelectedJob(null)
+      await loadJobs() // Refresh to update has_applied status
+      refetchApplications() // Refresh applications list
+    } catch (err: any) {
+      console.error('Failed to apply:', err)
+      alert(err.message || 'Failed to submit application')
+    } finally {
+      setApplying(false)
+    }
+  }
+
   const toggleVisibility = async () => {
     if (!profile) return
+    
+    const wantsToEnable = !profile.is_visible
+    if (wantsToEnable) {
+      if (profile.tier === 'free') {
+        alert('Upgrade to Starter+ tier to enable visibility')
+        return
+      }
+      if (!profile.employer_share_consent) {
+        alert('Grant employer consent in settings first')
+        return
+      }
+    }
+    
     try {
       setUpdating(true)
       const updated = await marketplaceClient.updateProfileVisibility(!profile.is_visible)
@@ -63,7 +171,7 @@ export default function MarketplaceProfilePage() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'mint' | 'gold' | 'steel'> = {
+    const variants: Record<string, 'mint' | 'gold' | 'steel' | 'defender'> = {
       job_ready: 'mint',
       emerging_talent: 'gold',
       foundation_mode: 'steel',
@@ -77,344 +185,612 @@ export default function MarketplaceProfilePage() {
     return { name: 'Free', color: 'steel', canContact: false }
   }
 
-  if (loading) {
+  const getJobTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      full_time: 'Full Time',
+      part_time: 'Part Time',
+      contract: 'Contract',
+      internship: 'Internship',
+    }
+    return labels[type] || type
+  }
+
+  const getApplicationStatusColor = (status: string) => {
+    const colors: Record<string, 'mint' | 'gold' | 'steel' | 'defender'> = {
+      pending: 'steel',
+      reviewing: 'gold',
+      shortlisted: 'mint',
+      interview: 'defender',
+      accepted: 'mint',
+      rejected: 'steel',
+      withdrawn: 'steel',
+    }
+    return colors[status] || 'steel'
+  }
+
+  const getMatchScoreColor = (score: number) => {
+    if (score >= 80) return 'mint'
+    if (score >= 60) return 'gold'
+    if (score >= 40) return 'defender'
+    return 'steel'
+  }
+
+  if (loading && !profile) {
     return (
       <div className="min-h-screen bg-och-midnight p-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <Card className="p-8">
-            <div className="text-center text-och-steel">Loading marketplace profile...</div>
+            <div className="text-center text-och-steel">Loading marketplace...</div>
           </Card>
         </div>
       </div>
     )
   }
 
-  if (error || !profile) {
+  if (error && !profile) {
     return (
       <div className="min-h-screen bg-och-midnight p-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <Card className="p-8">
-            <div className="text-center text-red-400">{error || 'Profile not found'}</div>
+            <div className="text-center text-red-400">{error}</div>
           </Card>
         </div>
       </div>
     )
   }
 
-  const tierInfo = getTierDisplay(profile.tier)
+  const tierInfo = profile ? getTierDisplay(profile.tier) : null
 
   return (
     <div className="min-h-screen bg-och-midnight p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-och-gold">Marketplace Profile</h1>
-          <p className="text-och-steel mb-4">Manage your visibility to employers and view your career readiness.</p>
-          <div className="bg-och-defender/20 border border-och-defender/30 rounded-lg p-4 mb-4">
-            <p className="text-sm text-och-steel">
-              <strong className="text-white">💡 How it works:</strong> Make yourself discoverable by employers by upgrading your tier, granting consent, and toggling visibility ON. 
-              Improve your readiness score by completing missions and building your portfolio to increase your chances of being hired.
-            </p>
-          </div>
+          <h1 className="text-4xl font-bold mb-2 text-och-gold">Marketplace</h1>
+          <p className="text-och-steel mb-4">Manage your profile, discover jobs, and track your applications.</p>
         </div>
 
-        {/* Visibility Toggle */}
-        <Card className="mb-6 p-6">
-          <div className="flex justify-between items-center">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-white mb-2">Profile Visibility</h2>
-              <p className="text-och-steel mb-2">
-                {profile.is_visible
-                  ? 'Your profile is visible to employers in the marketplace.'
-                  : 'Your profile is hidden from employers.'}
-              </p>
-              {!profile.is_visible && (
-                <div className="bg-och-midnight/50 rounded-lg p-3 mt-3">
-                  <p className="text-xs text-och-steel">
-                    <strong className="text-white">To be visible:</strong> You need Starter+ tier, employer consent, and visibility ON. 
-                    {profile.tier === 'free' && ' Upgrade your tier first.'}
-                    {!profile.employer_share_consent && ' Grant employer consent in settings.'}
-                  </p>
-                </div>
-              )}
-            </div>
-            <Button
-              variant={profile.is_visible ? 'gold' : 'outline'}
-              onClick={toggleVisibility}
-              disabled={updating || profile.tier === 'free' || !profile.employer_share_consent}
-              title={
-                profile.tier === 'free'
-                  ? 'Upgrade to Starter+ tier to enable visibility'
-                  : !profile.employer_share_consent
-                  ? 'Grant employer consent in settings first'
-                  : profile.is_visible
-                  ? 'Click to hide your profile from employers'
-                  : 'Click to make your profile visible to employers'
-              }
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 bg-och-midnight/50 border border-och-defender/30 mb-6">
+            <TabsTrigger 
+              value="profile" 
+              className="data-[state=active]:bg-och-gold/20 data-[state=active]:text-och-gold"
             >
-              {updating ? (
-                'Updating...'
-              ) : profile.is_visible ? (
-                <>
-                  <Eye className="w-4 h-4 mr-2" />
-                  Visible
-                </>
-              ) : (
-                <>
-                  <EyeOff className="w-4 h-4 mr-2" />
-                  Hidden
-                </>
-              )}
-            </Button>
-          </div>
-        </Card>
+              <User className="w-4 h-4 mr-2" />
+              Profile
+            </TabsTrigger>
+            <TabsTrigger 
+              value="jobs"
+              className="data-[state=active]:bg-och-gold/20 data-[state=active]:text-och-gold"
+            >
+              <Briefcase className="w-4 h-4 mr-2" />
+              Jobs
+            </TabsTrigger>
+            <TabsTrigger 
+              value="applications"
+              className="data-[state=active]:bg-och-gold/20 data-[state=active]:text-och-gold"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Applications
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Tier & Consent Status */}
-        <Card className="mb-6 p-6">
-          <h2 className="text-2xl font-bold text-white mb-4">Subscription & Privacy</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-defender/20">
-              <div className="flex items-center gap-2 mb-2">
-                <User className="w-5 h-5 text-och-gold" />
-                <span className="text-sm text-och-steel font-medium">Subscription Tier</span>
-              </div>
-              <Badge variant={tierInfo.color as any} className="text-lg mb-2">
-                {tierInfo.name}
-              </Badge>
-              {profile.tier === 'free' ? (
-                <div className="bg-och-orange/10 border border-och-orange/30 rounded p-2 mt-2">
-                  <p className="text-xs text-och-orange font-medium">
-                    ⚠️ Free tier profiles are never visible to employers. Upgrade to Starter ($3) or Professional ($7) to be discoverable.
-                  </p>
+          {/* Profile Tab */}
+          <TabsContent value="profile" className="space-y-6">
+            {profile && (
+              <>
+                {/* Visibility Toggle */}
+                <Card className="p-6">
+                  <div className="flex justify-between items-center">
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold text-white mb-2">Profile Visibility</h2>
+                      <p className="text-och-steel mb-2">
+                        {profile.is_visible
+                          ? 'Your profile is visible to employers in the marketplace.'
+                          : 'Your profile is hidden from employers.'}
+                      </p>
+                    </div>
+                    <Button
+                      variant={profile.is_visible ? 'gold' : 'outline'}
+                      onClick={toggleVisibility}
+                      disabled={updating}
+                    >
+                      {updating ? (
+                        'Updating...'
+                      ) : profile.is_visible ? (
+                        <>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Visible
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="w-4 h-4 mr-2" />
+                          Hidden
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </Card>
+
+                {/* Tier & Consent Status */}
+                {tierInfo && (
+                  <Card className="p-6">
+                    <h2 className="text-2xl font-bold text-white mb-4">Subscription & Privacy</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-defender/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <User className="w-5 h-5 text-och-gold" />
+                          <span className="text-sm text-och-steel font-medium">Subscription Tier</span>
+                        </div>
+                        <Badge variant={tierInfo.color as any} className="text-lg mb-2">
+                          {tierInfo.name}
+                        </Badge>
+                        {profile.tier === 'free' ? (
+                          <p className="text-xs text-och-orange mt-2">
+                            ⚠️ Free tier profiles are never visible to employers.
+                          </p>
+                        ) : tierInfo.canContact ? (
+                          <p className="text-xs text-och-mint mt-2">
+                            ✅ Visible and contactable! Employers can reach out to you directly.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-och-steel mt-2">
+                            ✅ Visible to employers. Upgrade to Professional tier to enable direct contact.
+                          </p>
+                        )}
+                      </div>
+                      <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-defender/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          {profile.employer_share_consent ? (
+                            <CheckCircle className="w-5 h-5 text-och-mint" />
+                          ) : (
+                            <XCircle className="w-5 h-5 text-och-steel" />
+                          )}
+                          <span className="text-sm text-och-steel font-medium">Employer Share Consent</span>
+                        </div>
+                        <Badge variant={profile.employer_share_consent ? 'mint' : 'steel'} className="mb-2">
+                          {profile.employer_share_consent ? 'Granted' : 'Not Granted'}
+                        </Badge>
+                        {!profile.employer_share_consent && (
+                          <Link href="/dashboard/student/settings/profile">
+                            <Button variant="outline" size="sm" className="w-full text-xs mt-2">
+                              Go to Consent Management
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {/* Career Readiness Report */}
+                <Card className="p-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">Career Readiness Report</h2>
+                  {profile.readiness_score !== null ? (
+                    <div className="space-y-6">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-och-steel">Overall Readiness Score</span>
+                          <Badge variant={getReadinessColor(profile.readiness_score)} className="text-lg">
+                            {profile.readiness_score}% - {getReadinessLabel(profile.readiness_score)}
+                          </Badge>
+                        </div>
+                        <div className="w-full bg-och-midnight/50 rounded-full h-4">
+                          <div
+                            className={`h-4 rounded-full ${
+                              profile.readiness_score >= 80
+                                ? 'bg-och-mint'
+                                : profile.readiness_score >= 60
+                                ? 'bg-och-gold'
+                                : 'bg-och-steel'
+                            }`}
+                            style={{ width: `${profile.readiness_score}%` }}
+                          />
+                        </div>
+                      </div>
+                      {profile.job_fit_score !== null && (
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-och-steel">Job Fit Score</span>
+                            <Badge variant={getReadinessColor(profile.job_fit_score)}>
+                              {profile.job_fit_score}%
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-och-steel mr-2">Profile Status:</span>
+                        <Badge variant={getStatusBadge(profile.profile_status)}>
+                          {profile.profile_status.replace('_', ' ').toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-och-steel">
+                      <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Complete missions and update your portfolio to generate readiness scores.</p>
+                    </div>
+                  )}
+                </Card>
+
+                {/* Skills & Portfolio */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="p-6">
+                    <h3 className="text-xl font-bold text-white mb-4">Skills</h3>
+                    {profile.skills.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {profile.skills.map((skill) => (
+                          <Badge key={skill} variant="defender">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-och-steel text-sm">No skills listed yet.</p>
+                    )}
+                  </Card>
+                  <Card className="p-6">
+                    <h3 className="text-xl font-bold text-white mb-4">Portfolio Depth</h3>
+                    {profile.portfolio_depth ? (
+                      <Badge variant="gold" className="text-lg capitalize">
+                        {profile.portfolio_depth}
+                      </Badge>
+                    ) : (
+                      <p className="text-och-steel text-sm">No portfolios yet. Add items to your portfolio to increase your depth.</p>
+                    )}
+                  </Card>
                 </div>
-              ) : !tierInfo.canContact ? (
-                <p className="text-xs text-och-steel mt-2">
-                  ✅ Visible to employers. Upgrade to Professional tier to enable direct employer contact.
-                </p>
-              ) : (
-                <p className="text-xs text-och-mint mt-2">
-                  ✅ Visible and contactable! Employers can reach out to you directly.
-                </p>
-              )}
-            </div>
-            <div className="p-4 bg-och-midnight/50 rounded-lg border border-och-defender/20">
-              <div className="flex items-center gap-2 mb-2">
-                {profile.employer_share_consent ? (
-                  <CheckCircle className="w-5 h-5 text-och-mint" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-och-steel" />
-                )}
-                <span className="text-sm text-och-steel font-medium">Employer Share Consent</span>
-              </div>
-              <Badge variant={profile.employer_share_consent ? 'mint' : 'steel'} className="mb-2">
-                {profile.employer_share_consent ? 'Granted' : 'Not Granted'}
-              </Badge>
-              {!profile.employer_share_consent ? (
-                <div className="bg-och-orange/10 border border-och-orange/30 rounded p-2 mt-2">
-                  <p className="text-xs text-och-orange font-medium">
-                    ⚠️ You must grant employer consent in Settings → Consent Management to be visible.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs text-och-mint mt-2">
-                  ✅ You've granted permission for employers to view your profile.
-                </p>
-              )}
-            </div>
-          </div>
-          
-          {/* Requirements Checklist */}
-          <div className="mt-4 p-4 bg-och-midnight/30 rounded-lg border border-och-defender/20">
-            <h3 className="text-sm font-bold text-white mb-3">Requirements to be Discoverable:</h3>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                {profile.tier !== 'free' ? (
-                  <CheckCircle className="w-4 h-4 text-och-mint" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-och-steel" />
-                )}
-                <span className={`text-xs ${profile.tier !== 'free' ? 'text-och-mint' : 'text-och-steel'}`}>
-                  {profile.tier !== 'free' ? '✓' : '✗'} Subscription Tier: {profile.tier === 'free' ? 'Upgrade to Starter+ ($3/month minimum)' : `Current tier: ${tierInfo.name}`}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {profile.employer_share_consent ? (
-                  <CheckCircle className="w-4 h-4 text-och-mint" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-och-steel" />
-                )}
-                <span className={`text-xs ${profile.employer_share_consent ? 'text-och-mint' : 'text-och-steel'}`}>
-                  {profile.employer_share_consent ? '✓' : '✗'} Employer Consent: {profile.employer_share_consent ? 'Granted' : 'Grant in Settings → Consent Management'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {profile.is_visible ? (
-                  <CheckCircle className="w-4 h-4 text-och-mint" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-och-steel" />
-                )}
-                <span className={`text-xs ${profile.is_visible ? 'text-och-mint' : 'text-och-steel'}`}>
-                  {profile.is_visible ? '✓' : '✗'} Profile Visibility: {profile.is_visible ? 'Visible to employers' : 'Toggle visibility ON above'}
-                </span>
-              </div>
-            </div>
-            {profile.tier !== 'free' && profile.employer_share_consent && profile.is_visible && (
-              <div className="mt-3 p-2 bg-och-mint/10 border border-och-mint/30 rounded">
-                <p className="text-xs text-och-mint font-medium">
-                  🎉 All requirements met! Your profile is discoverable by employers.
-                </p>
-              </div>
+
+                {/* Contact Requests */}
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold text-white">Contact Requests</h2>
+                    {contactRequests.length > 0 && (
+                      <Badge variant="mint" className="text-lg">
+                        {contactRequests.length} {contactRequests.length === 1 ? 'Request' : 'Requests'}
+                      </Badge>
+                    )}
+                  </div>
+                  {loadingContacts ? (
+                    <div className="text-center py-8 text-och-steel">Loading...</div>
+                  ) : contactRequests.length === 0 ? (
+                    <div className="text-center py-8 text-och-steel">
+                      <Mail className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No contact requests yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {contactRequests.map((request) => (
+                        <div
+                          key={request.id}
+                          className="p-6 bg-och-midnight/50 rounded-lg border border-och-gold/30 hover:border-och-gold/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Building2 className="w-5 h-5 text-och-gold" />
+                                <h3 className="text-lg font-bold text-white">
+                                  {request.employer?.company_name || 'Unknown Employer'}
+                                </h3>
+                              </div>
+                              {request.employer && (
+                                <div className="space-y-1 text-sm text-och-steel ml-7">
+                                  {request.employer.sector && (
+                                    <p>Industry: {request.employer.sector}</p>
+                                  )}
+                                  {request.employer.country && (
+                                    <p>Location: {request.employer.country}</p>
+                                  )}
+                                  {request.employer.website && (
+                                    <p>
+                                      Website:{' '}
+                                      <a
+                                        href={request.employer.website}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-och-gold hover:underline"
+                                      >
+                                        {request.employer.website}
+                                      </a>
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <Badge variant="gold">New</Badge>
+                          </div>
+
+                          {(request.subject || request.message) && (
+                            <div className="mt-4 pt-4 border-t border-och-defender/20">
+                              {request.subject && (
+                                <h4 className="text-sm font-semibold text-white mb-2">
+                                  Subject: {request.subject}
+                                </h4>
+                              )}
+                              {request.message && (
+                                <div className="bg-och-midnight/30 rounded-lg p-4">
+                                  <p className="text-sm text-och-steel whitespace-pre-wrap">
+                                    {request.message}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="mt-4 pt-4 border-t border-och-defender/20">
+                            <p className="text-xs text-och-steel">
+                              Received on {new Date(request.created_at).toLocaleDateString()} at{' '}
+                              {new Date(request.created_at).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </>
             )}
-          </div>
-        </Card>
+          </TabsContent>
 
-        {/* Career Readiness Report */}
-        <Card className="mb-6 p-6">
-          <h2 className="text-2xl font-bold text-white mb-4">Career Readiness Report</h2>
-          
-          {profile.readiness_score !== null ? (
-            <div className="space-y-6">
-              {/* Readiness Score */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-och-steel">Overall Readiness Score</span>
-                  <Badge variant={getReadinessColor(profile.readiness_score)} className="text-lg">
-                    {profile.readiness_score}% - {getReadinessLabel(profile.readiness_score)}
-                  </Badge>
-                </div>
-                <div className="w-full bg-och-midnight/50 rounded-full h-4">
-                  <div
-                    className={`h-4 rounded-full ${
-                      profile.readiness_score >= 80
-                        ? 'bg-och-mint'
-                        : profile.readiness_score >= 60
-                        ? 'bg-och-gold'
-                        : 'bg-och-steel'
-                    }`}
-                    style={{ width: `${profile.readiness_score}%` }}
+          {/* Jobs Tab */}
+          <TabsContent value="jobs" className="space-y-6">
+            <Card className="p-6">
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Search jobs..."
+                    className="bg-och-midnight/50"
                   />
                 </div>
+                <select
+                  value={jobFilters.job_type}
+                  onChange={(e) => setJobFilters({ ...jobFilters, job_type: e.target.value as any })}
+                  className="px-4 py-2 bg-och-midnight/50 border border-och-defender/30 rounded-lg text-white"
+                >
+                  <option value="">All Types</option>
+                  <option value="full_time">Full Time</option>
+                  <option value="part_time">Part Time</option>
+                  <option value="contract">Contract</option>
+                  <option value="internship">Internship</option>
+                </select>
+                <select
+                  value={jobFilters.min_match_score}
+                  onChange={(e) => setJobFilters({ ...jobFilters, min_match_score: e.target.value })}
+                  className="px-4 py-2 bg-och-midnight/50 border border-och-defender/30 rounded-lg text-white"
+                >
+                  <option value="">All Match Scores</option>
+                  <option value="80">80%+ Match</option>
+                  <option value="60">60%+ Match</option>
+                  <option value="40">40%+ Match</option>
+                </select>
               </div>
 
-              {/* Job Fit Score */}
-              {profile.job_fit_score !== null && (
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-och-steel">Job Fit Score</span>
-                    <Badge variant={getReadinessColor(profile.job_fit_score)}>
-                      {profile.job_fit_score}%
-                    </Badge>
-                  </div>
-                  <div className="w-full bg-och-midnight/50 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${
-                        profile.job_fit_score >= 80
-                          ? 'bg-och-mint'
-                          : profile.job_fit_score >= 60
-                          ? 'bg-och-gold'
-                          : 'bg-och-steel'
-                      }`}
-                      style={{ width: `${profile.job_fit_score}%` }}
-                    />
-                  </div>
+              {jobsLoading ? (
+                <div className="text-center py-12 text-och-steel">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                  Loading jobs...
+                </div>
+              ) : jobsError ? (
+                <div className="text-center py-12 text-red-400">{jobsError}</div>
+              ) : jobs.length === 0 ? (
+                <div className="text-center py-12 text-och-steel">
+                  <Briefcase className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg mb-2">No jobs found</p>
+                  <p className="text-sm">Try adjusting your filters or check back later.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {jobs.map((job) => (
+                    <Card key={job.id} className="p-6 hover:border-och-gold/50 transition-colors">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="text-xl font-bold text-white mb-1">{job.title}</h3>
+                            <p className="text-sm text-och-steel">{job.employer?.company_name || 'Company'}</p>
+                          </div>
+                          {job.match_score !== undefined && (
+                            <Badge variant={getMatchScoreColor(job.match_score) as any}>
+                              {job.match_score}% match
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 text-sm text-och-steel">
+                          {job.location && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              {job.location}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="w-4 h-4" />
+                            {getJobTypeLabel(job.job_type)}
+                          </div>
+                          {(job.salary_min || job.salary_max) && (
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="w-4 h-4" />
+                              {job.salary_currency} {job.salary_min?.toLocaleString()} - {job.salary_max?.toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-sm text-och-steel line-clamp-2">{job.description}</p>
+
+                        {job.required_skills && job.required_skills.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {job.required_skills.slice(0, 3).map((skill) => (
+                              <Badge key={skill} variant="defender" className="text-xs">
+                                {skill}
+                              </Badge>
+                            ))}
+                            {job.required_skills.length > 3 && (
+                              <Badge variant="steel" className="text-xs">
+                                +{job.required_skills.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="pt-4 border-t border-och-defender/20">
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              className="flex-1 text-xs"
+                              onClick={() => {
+                                setSelectedJob(job)
+                                setShowApplyModal(true)
+                              }}
+                              disabled={job.has_applied}
+                            >
+                              {job.has_applied ? (
+                                <>
+                                  <Check className="w-3 h-3 mr-1" />
+                                  Applied
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-3 h-3 mr-1" />
+                                  Apply
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
               )}
+            </Card>
+          </TabsContent>
 
-              {/* Hiring Timeline */}
-              {profile.hiring_timeline_days !== null && (
-                <div className="flex items-center gap-2 text-och-steel">
-                  <Clock className="w-5 h-5" />
-                  <span>
-                    Estimated hiring timeline: <strong className="text-white">{profile.hiring_timeline_days} days</strong>
-                  </span>
+          {/* Applications Tab */}
+          <TabsContent value="applications" className="space-y-6">
+            <Card className="p-6">
+              <h2 className="text-2xl font-bold text-white mb-6">My Applications</h2>
+              
+              {applicationsLoading ? (
+                <div className="text-center py-12 text-och-steel">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                  Loading applications...
+                </div>
+              ) : applicationsError ? (
+                <div className="text-center py-12 text-red-400">{applicationsError}</div>
+              ) : !applications || !Array.isArray(applications) || applications.length === 0 ? (
+                <div className="text-center py-12 text-och-steel">
+                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg mb-2">No applications yet</p>
+                  <p className="text-sm mb-4">Start browsing jobs and apply to positions that match your skills.</p>
+                  <Button variant="gold" onClick={() => setActiveTab('jobs')}>
+                    Browse Jobs
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {applications.map((app) => (
+                    <Card key={app.id} className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-white mb-1">
+                            {app.job_posting.title}
+                          </h3>
+                          <p className="text-sm text-och-steel">
+                            {app.job_posting.employer?.company_name || 'Company'}
+                          </p>
+                        </div>
+                        <Badge variant={getApplicationStatusColor(app.status) as any}>
+                          {app.status.replace('_', ' ').toUpperCase()}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+                        <div>
+                          <span className="text-och-steel">Applied:</span>
+                          <p className="text-white">{new Date(app.applied_at).toLocaleDateString()}</p>
+                        </div>
+                        {app.match_score && (
+                          <div>
+                            <span className="text-och-steel">Match Score:</span>
+                            <p className="text-white">{app.match_score}%</p>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-och-steel">Location:</span>
+                          <p className="text-white">{app.job_posting.location || 'Remote'}</p>
+                        </div>
+                        <div>
+                          <span className="text-och-steel">Type:</span>
+                          <p className="text-white">{getJobTypeLabel(app.job_posting.job_type)}</p>
+                        </div>
+                      </div>
+
+                      {app.cover_letter && (
+                        <div className="mb-4">
+                          <span className="text-och-steel text-sm">Cover Letter:</span>
+                          <p className="text-white text-sm mt-1">{app.cover_letter}</p>
+                        </div>
+                      )}
+                    </Card>
+                  ))}
                 </div>
               )}
+            </Card>
+          </TabsContent>
+        </Tabs>
 
-              {/* Profile Status */}
-              <div>
-                <span className="text-och-steel mr-2">Profile Status:</span>
-                <Badge variant={getStatusBadge(profile.profile_status)}>
-                  {profile.profile_status.replace('_', ' ').toUpperCase()}
-                </Badge>
+        {/* Apply Modal */}
+        {showApplyModal && selectedJob && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-2xl w-full p-6">
+              <h2 className="text-2xl font-bold text-white mb-4">Apply to {selectedJob.title}</h2>
+              <p className="text-och-steel mb-4">{selectedJob.employer?.company_name}</p>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-white mb-2">
+                  Cover Letter (Optional)
+                </label>
+                <textarea
+                  value={coverLetter}
+                  onChange={(e) => setCoverLetter(e.target.value)}
+                  className="w-full h-32 px-4 py-2 bg-och-midnight/50 border border-och-defender/30 rounded-lg text-white"
+                  placeholder="Tell the employer why you're a great fit..."
+                />
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-och-steel">
-              <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Complete missions and update your portfolio to generate readiness scores.</p>
-            </div>
-          )}
-        </Card>
 
-        {/* Skills & Portfolio */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <Card className="p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Skills</h3>
-            {profile.skills.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {profile.skills.map((skill) => (
-                  <Badge key={skill} variant="defender">
-                    {skill}
-                  </Badge>
-                ))}
+              <div className="flex gap-3">
+                <Button
+                  variant="gold"
+                  onClick={() => handleApply(selectedJob)}
+                  disabled={applying}
+                  className="flex-1"
+                >
+                  {applying ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Submit Application
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowApplyModal(false)
+                    setSelectedJob(null)
+                    setCoverLetter('')
+                  }}
+                  disabled={applying}
+                >
+                  Cancel
+                </Button>
               </div>
-            ) : (
-              <p className="text-och-steel text-sm">No skills listed yet.</p>
-            )}
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Portfolio Depth</h3>
-            <Badge variant="gold" className="text-lg">
-              {profile.portfolio_depth}
-            </Badge>
-            <p className="text-sm text-och-steel mt-2">
-              {profile.portfolio_depth === 'deep'
-                ? 'Your portfolio shows comprehensive work and achievements.'
-                : profile.portfolio_depth === 'moderate'
-                ? 'Your portfolio has good depth. Add more items to improve visibility.'
-                : 'Consider adding more portfolio items to showcase your work.'}
-            </p>
-          </Card>
-        </div>
-
-        {/* Additional Info */}
-        <Card className="p-6">
-          <h3 className="text-xl font-bold text-white mb-4">Profile Details</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-och-steel">Primary Role:</span>
-              <p className="text-white">{profile.primary_role || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="text-och-steel">Primary Track:</span>
-              <p className="text-white">{profile.primary_track_key || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="text-och-steel">Last Updated:</span>
-              <p className="text-white">{new Date(profile.updated_at).toLocaleDateString()}</p>
-            </div>
+            </Card>
           </div>
-        </Card>
-
-        {/* Actions */}
-        <div className="flex gap-4">
-          <Link href="/dashboard/student/portfolio">
-            <Button variant="gold">Update Portfolio</Button>
-          </Link>
-          {profile.tier !== 'professional' && (
-            <Link href="/dashboard/student/subscription">
-              <Button variant="outline">Upgrade to Professional</Button>
-            </Link>
-          )}
-          {!profile.employer_share_consent && (
-            <Link href="/settings">
-              <Button variant="outline">Grant Employer Consent</Button>
-            </Link>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )
 }
-
-

@@ -39,7 +39,8 @@ export interface Employer {
 
 export interface JobPosting {
   id: string
-  employer_id: string
+  employer_id?: string
+  employer?: Employer
   title: string
   description: string
   location: string | null
@@ -51,6 +52,23 @@ export interface JobPosting {
   is_active: boolean
   application_deadline: string | null
   posted_at: string
+  match_score?: number
+  has_applied?: boolean
+}
+
+export interface JobApplication {
+  id: string
+  job_posting: JobPosting
+  applicant: string
+  applicant_name?: string
+  applicant_email?: string
+  status: 'pending' | 'reviewing' | 'shortlisted' | 'interview' | 'rejected' | 'withdrawn' | 'accepted'
+  cover_letter: string
+  match_score: number | null
+  notes: string
+  applied_at: string
+  updated_at: string
+  status_changed_at: string | null
 }
 
 export interface EmployerInterestLog {
@@ -59,6 +77,8 @@ export interface EmployerInterestLog {
   profile_id: string
   action: 'view' | 'favorite' | 'shortlist' | 'contact_request'
   metadata: Record<string, any>
+  message?: string
+  subject?: string
   created_at: string
 }
 
@@ -126,6 +146,21 @@ export const marketplaceClient = {
   },
 
   /**
+   * Get employer's interest logs (favorites, shortlists, contact requests)
+   */
+  async getInterestLogs(action?: 'favorite' | 'shortlist' | 'contact_request'): Promise<EmployerInterestLog[]> {
+    const params = action ? { action } : {}
+    return apiGateway.get('/marketplace/interest/list', { params })
+  },
+
+  /**
+   * Get contact requests received by student
+   */
+  async getContactRequests(): Promise<EmployerInterestLog[]> {
+    return apiGateway.get('/marketplace/contacts')
+  },
+
+  /**
    * Get job postings for current employer
    */
   async getJobPostings(): Promise<JobPosting[]> {
@@ -182,6 +217,96 @@ export const marketplaceClient = {
     description?: string
   }): Promise<Employer> {
     return apiGateway.post('/marketplace/employer/me', data)
+  },
+
+  // Student job browsing methods
+  /**
+   * Browse jobs as a student (with match scores)
+   */
+  async browseJobs(params?: {
+    job_type?: 'full_time' | 'part_time' | 'contract' | 'internship'
+    min_match_score?: number
+  }): Promise<JobPosting[]> {
+    const queryParams = new URLSearchParams()
+    if (params?.job_type) queryParams.append('job_type', params.job_type)
+    if (params?.min_match_score) queryParams.append('min_match_score', params.min_match_score.toString())
+
+    const queryString = queryParams.toString()
+    const url = `/marketplace/jobs/browse${queryString ? `?${queryString}` : ''}`
+    return apiGateway.get(url)
+  },
+
+  /**
+   * Get job details with match score
+   */
+  async getJobDetails(jobId: string): Promise<JobPosting> {
+    return apiGateway.get(`/marketplace/jobs/${jobId}/detail`)
+  },
+
+  /**
+   * Apply to a job
+   */
+  async applyToJob(jobId: string, coverLetter?: string): Promise<JobApplication> {
+    return apiGateway.post(`/marketplace/jobs/${jobId}/apply`, {
+      job_posting: jobId,
+      cover_letter: coverLetter || '',
+    })
+  },
+
+  /**
+   * Get student's job applications
+   */
+  async getMyApplications(): Promise<JobApplication[]> {
+    return apiGateway.get('/marketplace/applications')
+  },
+
+  /**
+   * Get application details
+   */
+  async getApplicationDetails(applicationId: string): Promise<JobApplication> {
+    return apiGateway.get(`/marketplace/applications/${applicationId}`)
+  },
+
+  // Employer application management methods
+  /**
+   * Get applications for a specific job (employer only)
+   */
+  async getJobApplications(jobId: string): Promise<JobApplication[]> {
+    return apiGateway.get(`/marketplace/jobs/${jobId}/applications`)
+  },
+
+  /**
+   * Get all applications across all jobs (employer only)
+   */
+  async getAllApplications(): Promise<{
+    results: JobApplication[]
+    stats?: Record<string, number>
+  }> {
+    return apiGateway.get('/marketplace/applications/employer')
+  },
+
+  /**
+   * Get application details (employer view)
+   */
+  async getApplicationDetailsEmployer(applicationId: string): Promise<JobApplication> {
+    return apiGateway.get(`/marketplace/applications/${applicationId}/employer`)
+  },
+
+  /**
+   * Update application status (employer only)
+   */
+  async updateApplicationStatus(applicationId: string, status: JobApplication['status']): Promise<JobApplication> {
+    return apiGateway.patch(`/marketplace/applications/${applicationId}/status`, { status })
+  },
+
+  /**
+   * Update application (status and notes) (employer only)
+   */
+  async updateApplication(applicationId: string, data: {
+    status?: JobApplication['status']
+    notes?: string
+  }): Promise<JobApplication> {
+    return apiGateway.patch(`/marketplace/applications/${applicationId}/employer`, data)
   },
 }
 

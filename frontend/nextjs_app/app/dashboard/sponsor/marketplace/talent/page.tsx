@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { marketplaceClient, type MarketplaceProfile } from '@/services/marketplaceClient'
-import { Search, Filter, Heart, Bookmark, Mail, User } from 'lucide-react'
+import { Search, Filter, Heart, Bookmark, Mail, User, Check, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { TalentProfileModal } from '@/components/marketplace/TalentProfileModal'
+import { ContactModal } from '@/components/marketplace/ContactModal'
 
 export default function TalentBrowsePage() {
   const [talent, setTalent] = useState<MarketplaceProfile[]>([])
@@ -22,12 +24,43 @@ export default function TalentBrowsePage() {
   })
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  // Track loading states for each action per profile
+  const [actionLoading, setActionLoading] = useState<Record<string, 'favorite' | 'shortlist' | 'contact_request' | null>>({})
+  // Track successful actions for visual feedback
+  const [actionSuccess, setActionSuccess] = useState<Record<string, Set<'favorite' | 'shortlist' | 'contact_request'>>>({})
+  // Modal state
+  const [selectedProfile, setSelectedProfile] = useState<MarketplaceProfile | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  // Contact modal state
+  const [contactModalOpen, setContactModalOpen] = useState(false)
+  const [profileForContact, setProfileForContact] = useState<MarketplaceProfile | null>(null)
+  // Track favorited and shortlisted profiles
+  const [favoritedProfiles, setFavoritedProfiles] = useState<Set<string>>(new Set())
+  const [shortlistedProfiles, setShortlistedProfiles] = useState<Set<string>>(new Set())
 
   const commonSkills = ['Python', 'Security', 'Cloud', 'DevOps', 'Linux', 'Networking', 'Kubernetes', 'Docker', 'AWS', 'Azure']
 
   useEffect(() => {
     loadTalent()
+    loadFavoritesAndShortlists()
   }, [filters])
+
+  const loadFavoritesAndShortlists = async () => {
+    try {
+      const [favorites, shortlists] = await Promise.all([
+        marketplaceClient.getInterestLogs('favorite'),
+        marketplaceClient.getInterestLogs('shortlist'),
+      ])
+      
+      const favoritesArray = Array.isArray(favorites) ? favorites : (favorites?.results || [])
+      const shortlistsArray = Array.isArray(shortlists) ? shortlists : (shortlists?.results || [])
+      
+      setFavoritedProfiles(new Set(favoritesArray.map((log: any) => log.profile?.id || log.profile_id)))
+      setShortlistedProfiles(new Set(shortlistsArray.map((log: any) => log.profile?.id || log.profile_id)))
+    } catch (err) {
+      console.error('Failed to load favorites/shortlists:', err)
+    }
+  }
 
   const loadTalent = async () => {
     try {
@@ -61,12 +94,66 @@ export default function TalentBrowsePage() {
   }
 
   const handleInterest = async (profileId: string, action: 'favorite' | 'shortlist' | 'contact_request') => {
+    const actionKey = `${profileId}-${action}`
+    
+    // Prevent duplicate actions while loading
+    if (actionLoading[actionKey]) {
+      return
+    }
+
     try {
+      setActionLoading(prev => ({ ...prev, [actionKey]: action }))
+      
       await marketplaceClient.logInterest(profileId, action)
-      // Optionally refresh or show success message
+      
+      // Mark as successful
+      setActionSuccess(prev => {
+        const newState = { ...prev }
+        if (!newState[profileId]) {
+          newState[profileId] = new Set()
+        }
+        newState[profileId].add(action)
+        return newState
+      })
+
+      // Update favorites/shortlists sets
+      if (action === 'favorite') {
+        setFavoritedProfiles(prev => new Set([...prev, profileId]))
+      } else if (action === 'shortlist') {
+        setShortlistedProfiles(prev => new Set([...prev, profileId]))
+      }
+
+      // Show success message based on action
+      const messages = {
+        favorite: 'Added to favorites',
+        shortlist: 'Added to shortlist',
+        contact_request: 'Contact request sent',
+      }
+      
+      // Clear success state after 3 seconds
+      setTimeout(() => {
+        setActionSuccess(prev => {
+          const newState = { ...prev }
+          if (newState[profileId]) {
+            newState[profileId].delete(action)
+            if (newState[profileId].size === 0) {
+              delete newState[profileId]
+            }
+          }
+          return newState
+        })
+      }, 3000)
+
     } catch (err: any) {
       console.error('Failed to log interest:', err)
-      alert(err.message || 'Failed to save interest')
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to save interest'
+      alert(errorMessage)
+    } finally {
+      setActionLoading(prev => {
+        const newState = { ...prev }
+        delete newState[actionKey]
+        return newState
+      })
     }
   }
 
@@ -195,15 +282,31 @@ export default function TalentBrowsePage() {
             <div className="text-center text-och-steel">No talent profiles found matching your criteria.</div>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {talent.map((profile) => (
-              <Card key={profile.id} className="p-6 hover:border-och-gold/50 transition-colors">
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {talent.map((profile) => (
+                <Card 
+                  key={profile.id} 
+                  className="p-6 hover:border-och-gold/50 hover:shadow-lg hover:shadow-och-gold/20 transition-all cursor-pointer group"
+                  onClick={(e) => {
+                    // Only open modal if clicking on the card content, not on buttons
+                    if ((e.target as HTMLElement).closest('button')) {
+                      return
+                    }
+                    console.log('Card clicked, opening modal for profile:', profile.id, profile.mentee_name)
+                    setSelectedProfile(profile)
+                    setModalOpen(true)
+                    // Log view action
+                    marketplaceClient.logInterest(profile.id, 'view').catch(console.error)
+                  }}
+                >
                 <div className="space-y-4">
                   {/* Header */}
                   <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-xl font-bold text-white mb-1">{profile.mentee_name}</h3>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-1 group-hover:text-och-gold transition-colors">{profile.mentee_name}</h3>
                       <p className="text-sm text-och-steel">{profile.primary_role || 'Cybersecurity Professional'}</p>
+                      <p className="text-xs text-och-steel/70 mt-1">Click to view full profile</p>
                     </div>
                     <Badge variant={profile.tier === 'professional' ? 'mint' : 'steel'}>
                       {profile.tier === 'professional' ? 'Professional' : profile.tier === 'starter' ? 'Starter' : 'Free'}
@@ -269,39 +372,114 @@ export default function TalentBrowsePage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2 pt-4 border-t border-och-defender/20">
+                  <div className="flex gap-2 pt-4 border-t border-och-defender/20" onClick={(e) => e.stopPropagation()}>
                     <Button
-                      variant="outline"
+                      variant={actionSuccess[profile.id]?.has('favorite') ? 'gold' : 'outline'}
                       className="flex-1 text-xs"
                       onClick={() => handleInterest(profile.id, 'favorite')}
+                      disabled={!!actionLoading[`${profile.id}-favorite`]}
                     >
-                      <Heart className="w-3 h-3 mr-1" />
+                      {actionLoading[`${profile.id}-favorite`] ? (
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      ) : actionSuccess[profile.id]?.has('favorite') ? (
+                        <Check className="w-3 h-3 mr-1" />
+                      ) : (
+                        <Heart className="w-3 h-3 mr-1" />
+                      )}
                       Favorite
                     </Button>
                     <Button
-                      variant="outline"
+                      variant={actionSuccess[profile.id]?.has('shortlist') ? 'gold' : 'outline'}
                       className="flex-1 text-xs"
                       onClick={() => handleInterest(profile.id, 'shortlist')}
+                      disabled={!!actionLoading[`${profile.id}-shortlist`]}
                     >
-                      <Bookmark className="w-3 h-3 mr-1" />
+                      {actionLoading[`${profile.id}-shortlist`] ? (
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      ) : actionSuccess[profile.id]?.has('shortlist') ? (
+                        <Check className="w-3 h-3 mr-1" />
+                      ) : (
+                        <Bookmark className="w-3 h-3 mr-1" />
+                      )}
                       Shortlist
                     </Button>
                     {profile.tier === 'professional' && (
                       <Button
-                        variant="gold"
+                        variant={actionSuccess[profile.id]?.has('contact_request') ? 'mint' : 'gold'}
                         className="flex-1 text-xs"
-                        onClick={() => handleInterest(profile.id, 'contact_request')}
+                        onClick={() => {
+                          setProfileForContact(profile)
+                          setContactModalOpen(true)
+                        }}
+                        disabled={!!actionLoading[`${profile.id}-contact_request`] || actionSuccess[profile.id]?.has('contact_request')}
                       >
-                        <Mail className="w-3 h-3 mr-1" />
-                        Contact
+                        {actionSuccess[profile.id]?.has('contact_request') ? (
+                          <>
+                            <Check className="w-3 h-3 mr-1" />
+                            Contacted
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="w-3 h-3 mr-1" />
+                            Contact
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>
                 </div>
               </Card>
             ))}
-          </div>
+            </div>
+          </>
         )}
+
+        {/* Profile Detail Modal - Always render, controlled by open prop */}
+        <TalentProfileModal
+          profile={selectedProfile}
+          open={modalOpen && !!selectedProfile}
+          onClose={() => {
+            setModalOpen(false)
+            setSelectedProfile(null)
+          }}
+          onFavorite={(profileId) => handleInterest(profileId, 'favorite')}
+          onShortlist={(profileId) => handleInterest(profileId, 'shortlist')}
+          onContact={(profileId) => {
+            const profile = talent.find(p => p.id === profileId)
+            if (profile) {
+              setProfileForContact(profile)
+              setContactModalOpen(true)
+            }
+          }}
+          isFavorited={selectedProfile ? favoritedProfiles.has(selectedProfile.id) || actionSuccess[selectedProfile.id]?.has('favorite') : false}
+          isShortlisted={selectedProfile ? shortlistedProfiles.has(selectedProfile.id) || actionSuccess[selectedProfile.id]?.has('shortlist') : false}
+          actionLoading={actionLoading}
+        />
+
+        {/* Contact Modal */}
+        <ContactModal
+          open={contactModalOpen}
+          onClose={() => {
+            setContactModalOpen(false)
+            setProfileForContact(null)
+          }}
+          profile={profileForContact}
+          onSuccess={() => {
+            // Mark as contacted
+            if (profileForContact) {
+              setActionSuccess(prev => {
+                const newState = { ...prev }
+                if (!newState[profileForContact.id]) {
+                  newState[profileForContact.id] = new Set()
+                }
+                newState[profileForContact.id].add('contact_request')
+                return newState
+              })
+              // Reload favorites/shortlists to update state
+              loadFavoritesAndShortlists()
+            }
+          }}
+        />
       </div>
     </div>
   )

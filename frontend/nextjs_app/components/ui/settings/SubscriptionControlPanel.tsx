@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Check, ArrowRight, X, CreditCard, Calendar, TrendingUp, BarChart3, Receipt, Clock, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/Badge';
 
 // Local types to replace missing @/lib/settings imports
 export interface UserEntitlements {
-  tier: 'free' | 'starter' | 'professional';
+  tier: 'free' | 'starter' | 'professional' | 'starter_3' | 'professional_7';
   subscriptionStatus: 'active' | 'inactive' | 'trial';
   aiCoachFullAccess?: boolean;
   mentorAccess?: boolean;
@@ -39,24 +39,27 @@ export function checkFeatureAccess(
   settings: UserSettings, 
   feature: string
 ): { enabled: boolean; reason: string } {
+  // Normalize tier value (handle both 'professional' and 'professional_7', etc.)
   const tier = entitlements.tier;
+  const normalizedTier = tier === 'professional_7' || tier === 'professional' ? 'professional' :
+                         tier === 'starter_3' || tier === 'starter' ? 'starter' : 'free';
 
   if (feature === 'ai_coach_full') {
-    return tier === 'professional'
+    return normalizedTier === 'professional'
       ? { enabled: true, reason: 'Unlimited with Professional' }
-      : tier === 'starter'
+      : normalizedTier === 'starter'
       ? { enabled: true, reason: 'Enhanced with Starter' }
       : { enabled: false, reason: 'Limited in Free' };
   }
 
   if (feature === 'mentor_access') {
-    return tier !== 'free'
+    return normalizedTier !== 'free'
       ? { enabled: true, reason: 'Included in your plan' }
       : { enabled: false, reason: 'Requires Starter+' };
   }
 
   if (feature === 'portfolio_export') {
-    return tier !== 'free'
+    return normalizedTier !== 'free'
       ? { enabled: true, reason: 'Included in your plan' }
       : { enabled: false, reason: 'Requires Starter+' };
   }
@@ -69,10 +72,15 @@ export function checkFeatureAccess(
  */
 export function getUpgradeRecommendations(entitlements: UserEntitlements, settings: UserSettings): string[] {
   const recs: string[] = [];
-  if (entitlements.tier === 'free') {
+  // Normalize tier value
+  const tier = entitlements.tier;
+  const normalizedTier = tier === 'professional_7' || tier === 'professional' ? 'professional' :
+                         tier === 'starter_3' || tier === 'starter' ? 'starter' : 'free';
+  
+  if (normalizedTier === 'free') {
     recs.push('Upgrade to Starter to unlock Mentor Reviews');
     recs.push('Upgrade to Professional for Unlimited AI Coaching');
-  } else if (entitlements.tier === 'starter') {
+  } else if (normalizedTier === 'starter') {
     recs.push('Upgrade to Professional for Unlimited AI Coaching');
   }
   return recs;
@@ -114,25 +122,61 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
   const mentorAccess = checkFeatureAccess(entitlements, settings, 'mentor_access');
   const portfolioExport = checkFeatureAccess(entitlements, settings, 'portfolio_export');
 
-  // Mock billing history - in production, fetch from API
-  const billingHistory = [
-    { id: '1', date: '2024-01-15', amount: 99, status: 'paid', description: 'Professional Plan - January 2024' },
-    { id: '2', date: '2023-12-15', amount: 99, status: 'paid', description: 'Professional Plan - December 2023' },
-    { id: '3', date: '2023-11-15', amount: 99, status: 'paid', description: 'Professional Plan - November 2023' },
-  ];
+  // Fetch billing history from API
+  const [billingHistory, setBillingHistory] = useState<Array<{
+    id: string;
+    date: string;
+    amount: number;
+    status: string;
+    description: string;
+  }>>([]);
+  const [billingLoading, setBillingLoading] = useState(false);
+
+  // Fetch billing history and refetch when entitlements change
+  useEffect(() => {
+    const fetchBillingHistory = async () => {
+      setBillingLoading(true);
+      try {
+        const { apiGateway } = await import('@/services/apiGateway');
+        const response = await apiGateway.get('/subscription/billing-history') as any;
+        // Handle both array response and object with billing_history property
+        if (Array.isArray(response)) {
+          setBillingHistory(response);
+        } else if (response && response.billing_history) {
+          setBillingHistory(response.billing_history);
+        } else {
+          setBillingHistory([]);
+        }
+      } catch (error) {
+        console.error('Error fetching billing history:', error);
+        setBillingHistory([]);
+      } finally {
+        setBillingLoading(false);
+      }
+    };
+
+    if (showBillingHistory) {
+      fetchBillingHistory();
+    }
+  }, [showBillingHistory, entitlements?.tier]); // Refetch when tier changes
+
+  // Normalize tier for comparison first
+  const tier = entitlements.tier;
+  const normalizedTier = tier === 'professional_7' || tier === 'professional' ? 'professional' :
+                         tier === 'starter_3' || tier === 'starter' ? 'starter' : 'free';
 
   // Mock payment methods - in production, fetch from Stripe/Paystack
   const paymentMethods = [
     { id: '1', type: 'card', last4: '4242', brand: 'Visa', expiryMonth: 12, expiryYear: 2025, isDefault: true },
   ];
 
-  // Mock usage analytics
+  // Mock usage analytics (use normalized tier)
   const usageStats = {
-    aiCoachMessages: { used: 245, limit: entitlements.tier === 'professional' ? -1 : entitlements.tier === 'starter' ? 600 : 150 },
+    aiCoachMessages: { used: 245, limit: normalizedTier === 'professional' ? -1 : normalizedTier === 'starter' ? 600 : 150 },
     mentorSessions: { used: 3, limit: entitlements.mentorAccess ? -1 : 0 },
     portfolioExports: { used: 2, limit: entitlements.portfolioExportEnabled ? -1 : 0 },
   };
-
+  
   const tiers = [
     {
       name: 'Free',
@@ -147,7 +191,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
         { name: 'Unlimited AI Coach', included: false },
         { name: 'Priority support', included: false },
       ],
-      current: entitlements.tier === 'free',
+      current: normalizedTier === 'free',
     },
     {
       name: 'Starter',
@@ -161,7 +205,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
         { name: 'Unlimited AI Coach', included: false },
         { name: 'Priority support', included: false },
       ],
-      current: entitlements.tier === 'starter',
+      current: normalizedTier === 'starter',
     },
     {
       name: 'Professional',
@@ -174,12 +218,12 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
         { name: 'Advanced analytics', included: true },
         { name: 'Custom habits', included: true },
       ],
-      current: entitlements.tier === 'professional',
+      current: normalizedTier === 'professional',
     },
   ];
 
   const currentTier = tiers.find(t => t.current) || tiers[0];
-  const canUpgrade = entitlements.tier !== 'professional';
+  const canUpgrade = normalizedTier !== 'professional';
 
   return (
     <div className="space-y-6">
@@ -201,7 +245,8 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
               <div>
                 <div className="text-sm font-semibold text-slate-400 mb-1">Current Plan</div>
                 <div className="text-2xl font-bold text-slate-100 capitalize">
-                  {entitlements.tier}
+                  {normalizedTier === 'professional' ? 'Professional' : 
+                   normalizedTier === 'starter' ? 'Starter' : 'Free'}
                 </div>
                 <div className="text-sm text-slate-500 mt-1">{currentTier.priceLabel}</div>
               </div>
@@ -314,8 +359,8 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
                   size="lg"
                   className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
                   onClick={() => {
-                    // Open billing portal (Stripe/Paystack)
-                    window.open('/api/billing/portal', '_blank');
+                    // Navigate to upgrade page
+                    window.location.href = '/dashboard/student/subscription/upgrade?plan=professional_7';
                   }}
                 >
                   Upgrade Now
@@ -380,7 +425,16 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
                   ))}
                 </ul>
                 {!tier.current && (
-                  <Button variant="outline" size="sm" className="w-full">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => {
+                      const planTier = tier.name === 'Professional' ? 'professional_7' : 
+                                      tier.name === 'Starter' ? 'starter_3' : 'free';
+                      window.location.href = `/dashboard/student/subscription/upgrade?plan=${planTier}`;
+                    }}
+                  >
                     {tier.name === 'Professional' ? 'Upgrade' : 'Switch Plan'}
                     <ArrowRight className="w-3 h-3 ml-2" />
                   </Button>

@@ -28,6 +28,7 @@ from .views.sso_views import (
     apple_sso_login,
     okta_sso_login,
 )
+from .views.settings_views import user_settings
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -54,6 +55,8 @@ urlpatterns = [
     path('auth/me/', MeView.as_view(), name='me-slash'),
     path('profile', ProfileView.as_view(), name='profile'),
     path('profile/', ProfileView.as_view(), name='profile-slash'),
+    path('settings', user_settings, name='user-settings'),
+    path('settings/', user_settings, name='user-settings-slash'),
     path('auth/consents', ConsentView.as_view(), name='consents'),
     path('auth/consents/', ConsentView.as_view(), name='consents-slash'),
     path('auth/password/reset/request', PasswordResetRequestView.as_view(), name='password-reset-request'),

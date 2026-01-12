@@ -1,18 +1,25 @@
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+import logging
 
 from users.utils.consent_utils import check_consent
 from subscriptions.utils import get_user_tier
 
-from .models import Employer, MarketplaceProfile, EmployerInterestLog, JobPosting
+logger = logging.getLogger(__name__)
+
+from .models import Employer, MarketplaceProfile, EmployerInterestLog, JobPosting, JobApplication
 from .serializers import (
     EmployerSerializer,
     MarketplaceProfileListSerializer,
     MarketplaceProfileDetailSerializer,
     EmployerInterestLogSerializer,
     JobPostingSerializer,
+    JobPostingListSerializer,
+    JobApplicationSerializer,
+    JobApplicationCreateSerializer,
 )
 
 
@@ -110,9 +117,11 @@ class MarketplaceTalentListView(generics.ListAPIView):
 class MarketplaceProfileMeView(APIView):
     """
     GET /api/v1/marketplace/profile/me
+    PATCH /api/v1/marketplace/profile/me
 
     Returns the current mentee's marketplace profile (or a skeleton)
     so they can see their readiness status and visibility.
+    Allows updating profile visibility.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -121,24 +130,136 @@ class MarketplaceProfileMeView(APIView):
         user = request.user
         try:
             profile = user.marketplace_profile
+            # Sync tier from subscription if it's different
+            try:
+                current_tier = get_user_tier(user.id)
+            except Exception as e:
+                logger.warning(f"Error getting user tier for user {user.id}: {e}")
+                current_tier = 'free'
+            
+            tier_mapping = {
+                'free': 'free',
+                'starter': 'starter',
+                'starter_3': 'starter',
+                'starter_normal': 'starter',
+                'starter_enhanced': 'starter',
+                'premium': 'professional',
+                'professional_7': 'professional',
+                'professional': 'professional',
+            }
+            expected_tier = tier_mapping.get(current_tier or 'free', 'free')
+            
+            # Sync employer_share_consent from current consent scope
+            current_consent = check_consent(user, 'employer_share')
+            needs_save = False
+            
+            # Update tier if it doesn't match subscription
+            if profile.tier != expected_tier:
+                profile.tier = expected_tier
+                needs_save = True
+                logger.info(f"Synced marketplace profile tier to {expected_tier} for user {user.email}")
+            
+            # Update consent if it doesn't match current consent scope
+            if profile.employer_share_consent != current_consent:
+                profile.employer_share_consent = current_consent
+                needs_save = True
+                logger.info(f"Synced marketplace profile consent to {current_consent} for user {user.email}")
+            
+            if needs_save:
+                profile.last_updated_at = timezone.now()
+                profile.save()
         except MarketplaceProfile.DoesNotExist:
             # Create a non-visible skeleton profile the first time
-            tier = get_user_tier(user.id)
-            tier_label = 'free'
-            if tier.startswith('starter'):
-                tier_label = 'starter'
-            elif tier in ['professional', 'premium']:
-                tier_label = 'professional'
+            try:
+                tier = get_user_tier(user.id)
+            except Exception as e:
+                logger.warning(f"Error getting user tier for user {user.id}: {e}")
+                tier = 'free'
+            
+            tier_mapping = {
+                'free': 'free',
+                'starter': 'starter',
+                'starter_3': 'starter',
+                'starter_normal': 'starter',
+                'starter_enhanced': 'starter',
+                'premium': 'professional',
+                'professional_7': 'professional',
+                'professional': 'professional',
+            }
+            tier_label = tier_mapping.get(tier or 'free', 'free')
 
+            current_consent = check_consent(user, 'employer_share')
             profile = MarketplaceProfile.objects.create(
                 mentee=user,
                 tier=tier_label,
                 is_visible=False,
-                employer_share_consent=check_consent(user, 'employer_share'),
+                employer_share_consent=current_consent,
             )
+            logger.info(f"Created marketplace profile for user {user.email} with tier {tier_label} and consent {current_consent}")
 
         serializer = MarketplaceProfileDetailSerializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        """Update marketplace profile visibility."""
+        user = request.user
+        try:
+            profile = user.marketplace_profile
+        except MarketplaceProfile.DoesNotExist:
+            logger.warning(f"Marketplace profile not found for user {user.id}")
+            return Response(
+                {'detail': 'Marketplace profile not found. Please refresh the page.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        try:
+            # Sync employer_share_consent from current consent scope before validation
+            current_consent = check_consent(user, 'employer_share')
+            if profile.employer_share_consent != current_consent:
+                profile.employer_share_consent = current_consent
+                profile.save(update_fields=['employer_share_consent', 'last_updated_at'])
+                logger.info(f"Synced marketplace profile consent to {current_consent} for user {user.email}")
+            
+            # Update is_visible if provided
+            if 'is_visible' in request.data:
+                is_visible = request.data.get('is_visible')
+                # Handle string booleans from frontend
+                if isinstance(is_visible, str):
+                    is_visible = is_visible.lower() in ('true', '1', 'yes')
+                elif not isinstance(is_visible, bool):
+                    return Response(
+                        {'detail': 'is_visible must be a boolean'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Validate that user can set visibility
+                if is_visible:
+                    # Check requirements: tier must not be free, and consent must be granted
+                    if profile.tier == 'free':
+                        return Response(
+                            {'detail': 'Upgrade to Starter+ tier to enable visibility'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    # Re-check consent (use current_consent which we just synced)
+                    if not current_consent:
+                        return Response(
+                            {'detail': 'Grant employer consent in settings first. Go to Settings → Consent Management and grant "Employer Share" consent.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                
+                profile.is_visible = is_visible
+                profile.last_updated_at = timezone.now()
+                profile.save()
+                logger.info(f"Updated marketplace profile visibility to {is_visible} for user {user.email}")
+            
+            serializer = MarketplaceProfileDetailSerializer(profile)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error updating marketplace profile for user {user.id}: {e}", exc_info=True)
+            return Response(
+                {'detail': f'Failed to update profile: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class EmployerInterestLogView(generics.CreateAPIView):
@@ -183,8 +304,82 @@ class EmployerInterestLogView(generics.CreateAPIView):
             metadata=metadata,
         )
 
+        # If this is a contact request, send notification to the student
+        if action == 'contact_request':
+            try:
+                from django.conf import settings
+                from services.email_service import EmailService
+                email_service = EmailService()
+                
+                student = profile.mentee
+                employer_name = employer.company_name
+                
+                # Send email notification
+                email_service.send_contact_request_notification(
+                    to_email=student.email,
+                    student_name=student.get_full_name() or student.email,
+                    employer_name=employer_name,
+                    profile_url=f"{settings.FRONTEND_URL}/dashboard/student/marketplace/contacts"
+                )
+                logger.info(f"Contact request notification sent to {student.email} from {employer_name}")
+            except Exception as e:
+                logger.error(f"Failed to send contact request notification: {e}", exc_info=True)
+                # Don't fail the request if notification fails
+
         serializer = EmployerInterestLogSerializer(log)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class EmployerInterestListView(generics.ListAPIView):
+    """
+    GET /api/v1/marketplace/interest
+    
+    List employer's interest logs (favorites, shortlists, contact requests).
+    Filter by action: ?action=favorite|shortlist|contact_request
+    """
+    permission_classes = [permissions.IsAuthenticated, IsEmployer]
+    serializer_class = EmployerInterestLogSerializer
+
+    def get_queryset(self):
+        employer = get_employer_for_user(self.request.user)
+        if not employer:
+            return EmployerInterestLog.objects.none()
+        
+        queryset = EmployerInterestLog.objects.filter(
+            employer=employer
+        ).select_related('profile', 'profile__mentee', 'employer').order_by('-created_at')
+        
+        # Filter by action if provided
+        action = self.request.query_params.get('action')
+        if action:
+            queryset = queryset.filter(action=action)
+        
+        return queryset
+
+
+class StudentContactRequestsView(generics.ListAPIView):
+    """
+    GET /api/v1/marketplace/contacts
+    
+    List contact requests received by the current student.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = EmployerInterestLogSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        
+        # Get student's marketplace profile
+        try:
+            profile = MarketplaceProfile.objects.get(mentee=user)
+        except MarketplaceProfile.DoesNotExist:
+            return EmployerInterestLog.objects.none()
+        
+        # Get all contact requests for this profile
+        return EmployerInterestLog.objects.filter(
+            profile=profile,
+            action='contact_request'
+        ).select_related('employer', 'profile').order_by('-created_at')
 
 
 class JobPostingListCreateView(generics.ListCreateAPIView):

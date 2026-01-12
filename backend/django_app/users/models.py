@@ -141,7 +141,8 @@ class User(AbstractUser):
         help_text='Current cyber security exposure level for TalentScope baseline'
     )
     
-    # Metadata
+    # Metadata and settings
+    metadata = models.JSONField(default=dict, blank=True, help_text='User metadata and settings')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

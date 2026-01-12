@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Employer, MarketplaceProfile, EmployerInterestLog, JobPosting
+from .models import Employer, MarketplaceProfile, EmployerInterestLog, JobPosting, JobApplication
 
 
 class EmployerSerializer(serializers.ModelSerializer):
@@ -21,6 +21,7 @@ class MarketplaceProfileListSerializer(serializers.ModelSerializer):
     mentee_id = serializers.SerializerMethodField()
     mentee_name = serializers.SerializerMethodField()
     mentee_country = serializers.SerializerMethodField()
+    portfolio_depth = serializers.SerializerMethodField()
 
     class Meta:
         model = MarketplaceProfile
@@ -52,6 +53,29 @@ class MarketplaceProfileListSerializer(serializers.ModelSerializer):
     def get_mentee_country(self, obj):
         # Optional country field on user profile
         return getattr(obj.mentee, 'country', None)
+
+    def get_portfolio_depth(self, obj):
+        """
+        Calculate portfolio_depth dynamically based on actual portfolio items count.
+        Returns: 'basic', 'moderate', 'deep', or empty string if no items.
+        """
+        try:
+            from dashboard.models import PortfolioItem
+            # Count portfolio items for this user
+            item_count = PortfolioItem.objects.filter(user=obj.mentee).count()
+            
+            # Determine depth based on count
+            if item_count == 0:
+                return ''
+            elif item_count <= 2:
+                return 'basic'
+            elif item_count <= 5:
+                return 'moderate'
+            else:
+                return 'deep'
+        except Exception as e:
+            # Fallback to stored value if calculation fails
+            return obj.portfolio_depth or ''
 
 
 class MarketplaceProfileDetailSerializer(MarketplaceProfileListSerializer):
@@ -112,6 +136,8 @@ class JobPostingSerializer(serializers.ModelSerializer):
 class EmployerInterestLogSerializer(serializers.ModelSerializer):
     employer = EmployerSerializer(read_only=True)
     profile = MarketplaceProfileListSerializer(read_only=True)
+    message = serializers.SerializerMethodField()
+    subject = serializers.SerializerMethodField()
 
     class Meta:
         model = EmployerInterestLog
@@ -121,7 +147,94 @@ class EmployerInterestLogSerializer(serializers.ModelSerializer):
             'profile',
             'action',
             'metadata',
+            'message',
+            'subject',
             'created_at',
         ]
 
+    def get_message(self, obj):
+        """Extract message from metadata if it exists."""
+        return obj.metadata.get('message', '') if obj.metadata else ''
+
+    def get_subject(self, obj):
+        """Extract subject from metadata if it exists."""
+        return obj.metadata.get('subject', 'Contact Request') if obj.metadata else 'Contact Request'
+
+
+class JobPostingListSerializer(serializers.ModelSerializer):
+    """Serializer for listing jobs to students with match score."""
+    employer = EmployerSerializer(read_only=True)
+    match_score = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        read_only=True,
+        help_text='Calculated match score (0-100)',
+    )
+    has_applied = serializers.BooleanField(
+        read_only=True,
+        help_text='Whether current user has applied to this job',
+    )
+
+    class Meta:
+        model = JobPosting
+        fields = [
+            'id',
+            'employer',
+            'title',
+            'location',
+            'job_type',
+            'description',
+            'required_skills',
+            'salary_min',
+            'salary_max',
+            'salary_currency',
+            'posted_at',
+            'application_deadline',
+            'match_score',
+            'has_applied',
+        ]
+
+
+class JobApplicationSerializer(serializers.ModelSerializer):
+    """Serializer for job applications."""
+    job_posting = JobPostingSerializer(read_only=True)
+    applicant_name = serializers.SerializerMethodField()
+    applicant_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JobApplication
+        fields = [
+            'id',
+            'job_posting',
+            'applicant',
+            'applicant_name',
+            'applicant_email',
+            'status',
+            'cover_letter',
+            'match_score',
+            'notes',
+            'applied_at',
+            'updated_at',
+            'status_changed_at',
+        ]
+        read_only_fields = ['id', 'applicant', 'applied_at', 'updated_at', 'status_changed_at', 'match_score']
+
+    def get_applicant_name(self, obj):
+        try:
+            return obj.applicant.get_full_name() or obj.applicant.email
+        except Exception:
+            return obj.applicant.email
+
+    def get_applicant_email(self, obj):
+        return obj.applicant.email
+
+
+class JobApplicationCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating job applications."""
+    class Meta:
+        model = JobApplication
+        fields = [
+            'job_posting',
+            'cover_letter',
+        ]
 

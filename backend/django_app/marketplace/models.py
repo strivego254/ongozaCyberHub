@@ -251,3 +251,72 @@ class EmployerInterestLog(models.Model):
         return f'{self.employer.company_name} {self.action} {self.profile.mentee.email}'
 
 
+class JobApplication(models.Model):
+    """
+    Tracks student applications to job postings.
+    """
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('reviewing', 'Under Review'),
+        ('shortlisted', 'Shortlisted'),
+        ('interview', 'Interview Scheduled'),
+        ('rejected', 'Rejected'),
+        ('withdrawn', 'Withdrawn'),
+        ('accepted', 'Accepted'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    job_posting = models.ForeignKey(
+        JobPosting,
+        on_delete=models.CASCADE,
+        related_name='applications',
+        db_index=True,
+    )
+    applicant = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='job_applications',
+        db_index=True,
+        help_text='Student who applied',
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=STATUS_CHOICES,
+        default='pending',
+        db_index=True,
+    )
+    cover_letter = models.TextField(
+        blank=True,
+        help_text='Optional cover letter from applicant',
+    )
+    match_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Calculated match score based on skills (0-100)',
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text='Internal notes from employer',
+    )
+    applied_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    status_changed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When status was last changed',
+    )
+
+    class Meta:
+        db_table = 'marketplace_job_applications'
+        indexes = [
+            models.Index(fields=['job_posting', 'status']),
+            models.Index(fields=['applicant', 'status']),
+            models.Index(fields=['status', 'applied_at']),
+        ]
+        unique_together = [['job_posting', 'applicant']]
+
+    def __str__(self) -> str:
+        return f'{self.applicant.email} -> {self.job_posting.title} ({self.status})'

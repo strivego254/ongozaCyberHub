@@ -26,16 +26,21 @@ export interface SettingsUpdate {
   [key: string]: any;
 }
 
-// Stub functions - TODO: Implement Django API endpoints
+// Fetch and update user settings from Django API
 const getUserSettings = async (userId: string): Promise<UserSettings | null> => {
   try {
-    // TODO: Replace with actual Django endpoint
-    // const response = await apiGateway.get(`/settings/${userId}`);
-    // return response;
-    return null;
+    const { apiGateway } = await import('@/services/apiGateway');
+    const response = await apiGateway.get('/settings') as any;
+    // Map backend response to frontend format
+    return {
+      portfolioVisibility: response.portfolioVisibility || 'private',
+    };
   } catch (error) {
     console.error('Error fetching user settings:', error);
-    return null;
+    // Return default settings on error
+    return {
+      portfolioVisibility: 'private',
+    };
   }
 };
 
@@ -45,10 +50,18 @@ const updateUserSettings = async (
   hasPortfolioItems?: boolean
 ): Promise<UserSettings> => {
   try {
-    // TODO: Replace with actual Django endpoint
-    // const response = await apiGateway.patch(`/settings/${userId}`, updates);
-    // return response;
-    return updates as UserSettings;
+    const { apiGateway } = await import('@/services/apiGateway');
+    // Map frontend format to backend format
+    const payload: any = {};
+    if (updates.portfolioVisibility) {
+      payload.portfolioVisibility = updates.portfolioVisibility;
+    }
+    
+    const response = await apiGateway.patch('/settings', payload) as any;
+    // Map backend response to frontend format
+    return {
+      portfolioVisibility: response.portfolioVisibility || 'private',
+    };
   } catch (error) {
     console.error('Error updating user settings:', error);
     throw error;
@@ -57,13 +70,44 @@ const updateUserSettings = async (
 
 const getUserEntitlements = async (userId: string): Promise<UserEntitlements | null> => {
   try {
-    // TODO: Replace with actual Django endpoint
-    // const response = await apiGateway.get(`/entitlements/${userId}`);
-    // return response;
-    return null;
+    const { apiGateway } = await import('@/services/apiGateway');
+    // Fetch subscription status from the API
+    const response = await apiGateway.get('/subscription/status') as any;
+    
+    // Map backend tier values to frontend tier values
+    const tierMapping: Record<string, 'free' | 'starter' | 'professional'> = {
+      'free': 'free',
+      'starter_3': 'starter',
+      'starter': 'starter',
+      'professional_7': 'professional',
+      'professional': 'professional',
+      'premium': 'professional',
+    };
+    
+    const mappedTier = tierMapping[response.tier || 'free'] || 'free';
+    
+    return {
+      tier: mappedTier,
+      subscriptionStatus: response.status === 'active' ? 'active' : 'inactive',
+      mentorAccess: mappedTier !== 'free',
+      portfolioExportEnabled: mappedTier !== 'free',
+      missionAccess: mappedTier === 'professional' ? 'full' : 'basic',
+      enhancedAccessUntil: response.days_enhanced_left ? 
+        new Date(Date.now() + response.days_enhanced_left * 24 * 60 * 60 * 1000).toISOString() : 
+        undefined,
+      nextBillingDate: response.next_payment || response.next_billing_date,
+      portfolioCapabilities: response.features || [],
+    };
   } catch (error) {
     console.error('Error fetching user entitlements:', error);
-    return null;
+    // Return default free tier on error
+    return {
+      tier: 'free',
+      subscriptionStatus: 'inactive',
+      mentorAccess: false,
+      portfolioExportEnabled: false,
+      missionAccess: 'basic',
+    };
   }
 };
 

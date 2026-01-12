@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useRouter } from 'next/navigation'
-import { Search, Briefcase, Users, TrendingUp } from 'lucide-react'
+import { Search, Briefcase, Users, TrendingUp, Heart, Bookmark, Mail } from 'lucide-react'
 import { marketplaceClient } from '@/services/marketplaceClient'
 import { useEffect } from 'react'
 
@@ -120,7 +120,7 @@ export default function MarketplacePage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-8 hover:border-och-gold/50 transition-colors">
             <div className="flex items-center gap-4 mb-4">
               <div className="p-4 bg-och-mint/20 rounded-lg">
@@ -142,6 +142,78 @@ export default function MarketplacePage() {
               type="button"
             >
               Browse Talent
+            </Button>
+          </Card>
+
+          <Card className="p-8 hover:border-och-gold/50 transition-colors">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-4 bg-pink-500/20 rounded-lg">
+                <Heart className="w-8 h-8 text-pink-400" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-1">Favorites</h3>
+                <p className="text-och-steel">View your favorited talent profiles</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                router.push('/dashboard/sponsor/marketplace/favorites')
+              }}
+              type="button"
+            >
+              View Favorites
+            </Button>
+          </Card>
+
+          <Card className="p-8 hover:border-och-gold/50 transition-colors">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-4 bg-och-gold/20 rounded-lg">
+                <Mail className="w-8 h-8 text-och-gold" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-1">Contacted Students</h3>
+                <p className="text-och-steel">View students you have contacted</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                router.push('/dashboard/sponsor/marketplace/contacts')
+              }}
+              type="button"
+            >
+              View Contacts
+            </Button>
+          </Card>
+
+          <Card className="p-8 hover:border-och-gold/50 transition-colors">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-4 bg-blue-500/20 rounded-lg">
+                <Bookmark className="w-8 h-8 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-1">Shortlist</h3>
+                <p className="text-och-steel">Manage your shortlisted candidates</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                router.push('/dashboard/sponsor/marketplace/shortlist')
+              }}
+              type="button"
+            >
+              View Shortlist
             </Button>
           </Card>
 

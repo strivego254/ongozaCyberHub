@@ -3,7 +3,7 @@ URL configuration for Subscription Engine.
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import subscription_status, upgrade_subscription, stripe_webhook
+from .views import subscription_status, upgrade_subscription, stripe_webhook, billing_history
 from .admin_views import (
     SubscriptionPlanViewSet, UserSubscriptionAdminViewSet,
     PaymentGatewayViewSet, PaymentTransactionViewSet,
@@ -25,6 +25,7 @@ urlpatterns = [
     # Public/user endpoints
     path('subscription/status', subscription_status, name='status'),
     path('subscription/upgrade', upgrade_subscription, name='upgrade'),
+    path('subscription/billing-history', billing_history, name='billing-history'),
     path('subscription/webhooks/stripe', stripe_webhook, name='stripe-webhook'),
     # Admin endpoints
     path('', include(admin_router.urls)),

@@ -316,6 +316,135 @@ class EmailService:
         except Exception as e:
             logger.error(f"Failed to send password reset email to {user.email}: {str(e)}")
             return False
+    
+    @staticmethod
+    def send_application_status_update_notification(student, job, application, old_status: str, new_status: str) -> bool:
+        """
+        Send notification to student when their application status is updated.
+        
+        Args:
+            student: User object (applicant)
+            job: JobPosting object
+            application: JobApplication object
+            old_status: Previous status
+            new_status: New status
+        
+        Returns:
+            bool: True if email sent successfully, False otherwise
+        """
+        try:
+            service = EmailService()
+            student_name = student.get_full_name() or student.email
+            job_title = job.title
+            employer_name = job.employer.company_name if job.employer else 'Employer'
+            
+            status_labels = {
+                'pending': 'Pending Review',
+                'reviewing': 'Under Review',
+                'shortlisted': 'Shortlisted',
+                'interview': 'Interview Scheduled',
+                'accepted': 'Accepted',
+                'rejected': 'Rejected',
+                'withdrawn': 'Withdrawn',
+            }
+            
+            subject = f"Application Status Update: {job_title}"
+            
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #F5A623;">Application Status Update</h2>
+                <p>Hello {student_name},</p>
+                <p>Your application status for <strong>{job_title}</strong> at <strong>{employer_name}</strong> has been updated.</p>
+                <div style="background-color: #1a1a2e; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Previous Status:</strong> {status_labels.get(old_status, old_status)}</p>
+                    <p><strong>New Status:</strong> {status_labels.get(new_status, new_status)}</p>
+                </div>
+                <p>You can view your application details in your marketplace dashboard.</p>
+                <a href="{service.frontend_url}/dashboard/student/marketplace" style="display: inline-block; background-color: #F5A623; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 20px;">
+                    View Application
+                </a>
+            </div>
+            """
+            
+            return service._execute_send(
+                to_email=student.email,
+                subject=subject,
+                html_content=html_content,
+                email_type="transactional"
+            )
+        except Exception as e:
+            logger.error(f"Failed to send application status update notification: {e}")
+            return False
+
+    def send_contact_request_notification(self, to_email: str, student_name: str, employer_name: str, profile_url: str) -> bool:
+        """
+        Send notification email when an employer contacts a student.
+        
+        Args:
+            to_email: Student's email address
+            student_name: Student's name
+            employer_name: Employer's company name
+            profile_url: URL to view contact requests
+            
+        Returns:
+            bool: True if email sent successfully, False otherwise
+        """
+        try:
+            html_content = f"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <span style="font-weight: 800; font-size: 24px; color: #1E3A8A; letter-spacing: -0.5px;">ONGOZA <span style="color: #F97316;">CYBERHUB</span></span>
+                    </div>
+
+                    <div style="background-color: #FFFFFF; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-top: 4px solid #10B981;">
+                        <h2 style="margin-top: 0; color: #1E3A8A; font-size: 20px; font-weight: 700;">🎉 New Contact Request!</h2>
+                        <div style="color: #334155; line-height: 1.6; font-size: 16px;">
+                            <p>Hi {student_name},</p>
+                            <p><strong>{employer_name}</strong> has expressed interest in connecting with you through the Marketplace!</p>
+                            
+                            <div style="background: #F0FDF4; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                                <p style="margin: 0; color: #065F46; font-weight: 600;">This is a great opportunity to explore potential career opportunities.</p>
+                            </div>
+                            
+                            <div style="text-align: center; margin-top: 32px;">
+                                <a href="{profile_url}" style="background-color: #10B981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 16px;">
+                                    View Contact Request
+                                </a>
+                            </div>
+                            
+                            <p style="margin-top: 24px; color: #475569; font-size: 14px;">
+                                You can view and manage all contact requests in your Marketplace dashboard.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 24px;">
+                        <p style="color: #64748B; font-size: 13px;">
+                            © 2024 Ongoza CyberHub | Mission-Driven Education<br>
+                            Bank Row, Cloud Park, OT Valley Districts
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            return self._execute_send(
+                to_email,
+                f"New contact request from {employer_name}",
+                html_content,
+                "contact_request"
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to send contact request notification to {to_email}: {str(e)}")
+            return False
 
 
 # Create singleton instance
