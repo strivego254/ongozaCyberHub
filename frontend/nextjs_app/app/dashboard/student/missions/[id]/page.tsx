@@ -6,7 +6,7 @@ import { MissionView } from '../components/MissionView'
 import { MissionViewEnhanced } from '../components/MissionViewEnhanced'
 import { MissionSubmission } from '../components/MissionSubmission'
 import { ReviewFeedback } from '../components/ReviewFeedback'
-import { useMissionStore } from '../../lib/store/missionStore'
+import { useMissionStore } from '@/app/dashboard/student/missions/lib/store/missionStore'
 import { useQuery } from '@tanstack/react-query'
 import { apiGateway } from '@/services/apiGateway'
 
