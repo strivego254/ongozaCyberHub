@@ -205,10 +205,54 @@ def list_student_missions(request):
     total_count = missions.count()
     missions_page = missions[offset:offset + page_size]
     
+    # Get student's track and difficulty level
+    from programs.models import Enrollment
+    enrollment = Enrollment.objects.filter(user=user, status='active').select_related('cohort__track').first()
+    student_track = enrollment.track_key if enrollment and enrollment.track_key else None
+    
+    # Get student's current difficulty level (default to beginner for new users)
+    from django.contrib.sessions.models import Session
+    student_difficulty = getattr(user, 'mission_difficulty_level', None) or 'beginner'
+    
+    # Track progression requirements (missions needed to progress)
+    PROGRESSION_REQUIREMENTS = {
+        'defender': {'beginner': 3, 'intermediate': 5, 'advanced': 3},
+        'offensive': {'beginner': 3, 'intermediate': 5, 'advanced': 3},
+        'grc': {'beginner': 4, 'intermediate': 6, 'advanced': 4},
+        'innovation': {'beginner': 3, 'intermediate': 5, 'advanced': 3},
+        'leadership': {'beginner': 4, 'intermediate': 6, 'advanced': 4},
+    }
+    
     # Build response with submission status
     results = []
     for mission in missions_page:
         submission = user_submissions.get(str(mission.id))
+        
+        # Determine if mission is locked
+        is_locked = False
+        lock_reason = None
+        
+        # Lock if mission track doesn't match student track
+        if student_track and mission.track_key and mission.track_key != student_track:
+            is_locked = True
+            track_names = {
+                'defender': 'Defender',
+                'offensive': 'Offensive',
+                'grc': 'GRC',
+                'innovation': 'Innovation',
+                'leadership': 'Leadership',
+            }
+            lock_reason = f"This mission is for {track_names.get(mission.track_key, mission.track_key)} track. Your track is {track_names.get(student_track, student_track)}."
+        
+        # Lock if difficulty is higher than student's current level
+        difficulty_levels = ['beginner', 'intermediate', 'advanced', 'capstone']
+        if not is_locked:
+            mission_diff_index = difficulty_levels.index(mission.difficulty) if mission.difficulty in difficulty_levels else 0
+            student_diff_index = difficulty_levels.index(student_difficulty) if student_difficulty in difficulty_levels else 0
+            
+            if mission_diff_index > student_diff_index:
+                is_locked = True
+                lock_reason = f"Complete more {student_difficulty} missions to unlock {mission.difficulty} level missions."
         
         mission_data = {
             'id': str(mission.id),
@@ -221,6 +265,8 @@ def list_student_missions(request):
             'competency_tags': mission.competencies or [],
             'track_key': mission.track_key,
             'requirements': mission.requirements or {},
+            'is_locked': is_locked,
+            'lock_reason': lock_reason,
         }
         
         if submission:

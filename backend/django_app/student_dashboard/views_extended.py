@@ -49,14 +49,46 @@ def get_student_profile(request):
     # Get Future-You from Profiler
     profiler_data = ProfilerService.get_future_you(user.id)
     
+    # Get profiled track from ProfilerSession (AI engine result)
+    profiled_track_key = None
+    try:
+        from profiler.models import ProfilerSession
+        profiler_session = ProfilerSession.objects.filter(
+            user=user,
+            status='finished'
+        ).order_by('-completed_at').first()
+        
+        if profiler_session:
+            # Try to get track_key from recommended_track_id
+            if profiler_session.recommended_track_id:
+                from programs.models import Track
+                track = Track.objects.filter(id=profiler_session.recommended_track_id).first()
+                if track and hasattr(track, 'key'):
+                    profiled_track_key = track.key
+                elif track and hasattr(track, 'track_key'):
+                    profiled_track_key = track.track_key
+            
+            # Fallback: Try to extract from futureyou_persona
+            if not profiled_track_key and profiler_session.futureyou_persona:
+                persona_data = profiler_session.futureyou_persona
+                if isinstance(persona_data, dict):
+                    profiled_track_key = persona_data.get('track_key') or persona_data.get('track')
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Could not get profiled track: {e}")
+        pass
+    
     # Get enrollment info
     enrollment = Enrollment.objects.filter(user=user, status='active').first()
     track_name = None
+    track_key = None
     cohort_name = None
     mentor_name = None
     
     if enrollment:
         track_name = enrollment.track.name if enrollment.track else None
+        track_key = enrollment.track_key if enrollment.track_key else (enrollment.track.key if enrollment.track and hasattr(enrollment.track, 'key') else None)
         cohort_name = enrollment.cohort.name if enrollment.cohort else None
         # Get mentor assignment (mentor is assigned to cohort, not directly to user)
         if enrollment.cohort:
@@ -81,6 +113,7 @@ def get_student_profile(request):
         'basic': {
             'name': user.get_full_name() or user.email,
             'track': track_name or 'Not assigned',
+            'track_key': track_key,
             'cohort': cohort_name or 'Not assigned',
             'mentor': mentor_name or 'Not assigned',
         },
@@ -88,6 +121,15 @@ def get_student_profile(request):
             'persona': profiler_data.get('persona', 'Not assessed'),
             'skills_needed': profiler_data.get('skills_needed', []),
             'alignment': profiler_data.get('alignment', 0),
+            'track': profiler_data.get('track', 'Not recommended'),
+        },
+        'profiled_track': {
+            'track_key': profiled_track_key,
+            'track_name': profiled_track_key,  # Will be mapped on frontend
+        },
+        'enrollment': {
+            'track_key': track_key,
+            'track_name': track_name,
         },
         'consents': consents,
     }

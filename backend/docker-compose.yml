@@ -1,3 +1,7 @@
+# Enable BuildKit for faster builds with cache mounts
+# Run with: DOCKER_BUILDKIT=1 docker-compose build
+# Or set in your shell: export DOCKER_BUILDKIT=1
+
 services:
   # PostgreSQL Relational Database (for Django)
   postgres-relational:

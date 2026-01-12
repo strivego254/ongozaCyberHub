@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -20,7 +21,14 @@ from users.views.oidc_views import (
 )
 from core.settings.metrics import metrics_view
 
+
+def health_check(request):
+    """Simple health check endpoint for Docker."""
+    return HttpResponse("OK", status=200)
+
+
 urlpatterns = [
+    path('health/', health_check, name='health-check-root'),
     path('admin/', admin.site.urls),
     
     # OIDC Discovery Endpoints

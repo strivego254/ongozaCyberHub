@@ -8,7 +8,7 @@ import { missionsClient, type MissionTemplate } from '@/services/missionsClient'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   Loader2,
   Target,
@@ -28,6 +28,7 @@ import {
   FileCode,
   Map
 } from 'lucide-react'
+import { MissionsTableView } from './components/MissionsTableView'
 
 interface Mission {
   id: string
@@ -70,6 +71,8 @@ export default function MissionsClient() {
   const [loading, setLoading] = useState(true)
   const [loadingDirectorMissions, setLoadingDirectorMissions] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [studentTrack, setStudentTrack] = useState<string | undefined>()
+  const [studentDifficulty, setStudentDifficulty] = useState<string>('beginner')
   const [filters, setFilters] = useState({
     status: 'all',
     difficulty: 'all',
@@ -92,9 +95,30 @@ export default function MissionsClient() {
 
     if (authLoading || !isAuthenticated) return
 
+    loadStudentInfo()
     loadMissions()
     loadDirectorMissions()
   }, [isAuthenticated, authLoading, pagination.page, filters.status, filters.difficulty, filters.track, filters.search])
+
+  const loadStudentInfo = async () => {
+    try {
+      // Get student's enrollment to determine track
+      const profileResponse = await apiGateway.get('/student/profile')
+      if (profileResponse?.enrollment?.track_key) {
+        setStudentTrack(profileResponse.enrollment.track_key)
+      }
+      
+      // Get student's current difficulty level
+      const progressResponse = await apiGateway.get('/student/curriculum/progress')
+      if (progressResponse?.current_difficulty) {
+        setStudentDifficulty(progressResponse.current_difficulty)
+      }
+    } catch (err) {
+      console.error('Failed to load student info:', err)
+      // Default to beginner if we can't fetch
+      setStudentDifficulty('beginner')
+    }
+  }
 
   const loadMissions = async () => {
     setLoading(true)
@@ -447,8 +471,10 @@ export default function MissionsClient() {
                 >
                   <option value="all">All Tracks</option>
                   <option value="defender">Defender</option>
-                  <option value="builder">Builder</option>
-                  <option value="analyst">Analyst</option>
+                  <option value="offensive">Offensive</option>
+                  <option value="grc">GRC</option>
+                  <option value="innovation">Innovation</option>
+                  <option value="leadership">Leadership</option>
                 </select>
               </div>
 
@@ -476,189 +502,16 @@ export default function MissionsClient() {
         </motion.div>
       </section>
 
-      {/* Missions List - Full Width */}
+      {/* Missions Table View */}
       <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-12 lg:py-16">
-        {/* Mission Count */}
-        <div className="flex items-center justify-between mb-6 sm:mb-8">
-          <p className="text-sm sm:text-base text-och-steel font-medium">
-            Showing <span className="text-white font-bold">{allMissions.length}</span> missions
-            {directorMissions.length > 0 && (
-              <span className="ml-2 text-xs text-och-gold">
-                ({directorMissions.length} director-defined)
-              </span>
-            )}
-          </p>
-        </div>
-
-        {/* Mission Grid */}
-        {allMissions.length === 0 && !loading && !loadingDirectorMissions ? (
-          <Card className="w-full p-12 sm:p-16 text-center bg-och-midnight/60 border border-och-steel/20 rounded-2xl sm:rounded-3xl">
-            <div className="w-20 h-20 rounded-full bg-och-steel/10 flex items-center justify-center mx-auto mb-6">
-              <Target className="w-10 h-10 text-och-steel" />
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black text-white mb-3 uppercase tracking-tight">No Missions Found</h3>
-            <p className="text-sm sm:text-base text-och-steel">Try adjusting your filters or check back later.</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            {allMissions.map((mission, idx) => {
-              const difficultyConfig = getDifficultyConfig(mission.difficulty)
-              const DifficultyIcon = difficultyConfig.icon
-
-              return (
-                <motion.div
-                  key={mission.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                >
-                  <Card
-                    className="w-full h-full bg-gradient-to-br from-och-midnight/60 to-och-midnight/40 border border-och-steel/20 rounded-2xl sm:rounded-3xl p-6 sm:p-8 hover:border-och-defender/40 transition-all cursor-pointer group"
-                    onClick={() => handleMissionClick(mission.id)}
-                  >
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-3 mb-4 sm:mb-6">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          {getStatusBadge(mission.status)}
-                          <Badge
-                            variant={difficultyConfig.color as any}
-                            className="text-[10px] sm:text-xs font-black uppercase"
-                          >
-                            {difficultyConfig.label}
-                          </Badge>
-                        </div>
-                        {mission.code && (
-                          <p className="text-[10px] sm:text-xs text-och-steel font-mono mb-2">{mission.code}</p>
-                        )}
-                        <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white mb-2 uppercase tracking-tight leading-tight line-clamp-2">
-                          {mission.title}
-                        </h3>
-                      </div>
-                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl ${difficultyConfig.bgClass} border ${difficultyConfig.borderClass} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
-                        <DifficultyIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${difficultyConfig.colorClass}`} />
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    {mission.description && (
-                      <p className="text-sm sm:text-base text-och-steel mb-4 sm:mb-6 line-clamp-3 leading-relaxed">
-                        {mission.description}
-                      </p>
-                    )}
-
-                    {/* Metadata */}
-                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-och-steel mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-och-steel/10">
-                      {mission.type && (
-                        <div className="flex items-center gap-1.5">
-                          <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span className="capitalize">{mission.type}</span>
-                        </div>
-                      )}
-                      {mission.estimated_time_minutes && (
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span>{formatTime(mission.estimated_time_minutes)}</span>
-                        </div>
-                      )}
-                      {mission.track_key && (
-                        <div className="flex items-center gap-1.5">
-                          <Map className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span className="capitalize">{mission.track_key}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Competency Tags */}
-                    {mission.competency_tags && mission.competency_tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
-                        {mission.competency_tags.slice(0, 4).map((tag, tagIdx) => (
-                          <Badge key={tagIdx} variant="steel" className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {mission.competency_tags.length > 4 && (
-                          <Badge variant="steel" className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5">
-                            +{mission.competency_tags.length - 4}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Progress Info */}
-                    {mission.status && mission.status !== 'not_started' && (
-                      <div className="space-y-2 mb-4 sm:mb-6 pt-4 sm:pt-6 border-t border-och-steel/10">
-                        {mission.progress_percent !== undefined && (
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <span className="text-och-steel">Progress</span>
-                            <span className="text-white font-bold">{mission.progress_percent}%</span>
-                          </div>
-                        )}
-                        {mission.artifacts_uploaded !== undefined && mission.artifacts_required !== undefined && (
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <span className="text-och-steel">Artifacts</span>
-                            <span className="text-white font-bold">
-                              {mission.artifacts_uploaded}/{mission.artifacts_required}
-                            </span>
-                          </div>
-                        )}
-                        {mission.ai_score !== undefined && (
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <span className="text-och-steel">AI Score</span>
-                            <span className="text-white font-bold">{mission.ai_score.toFixed(1)}%</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Action Button */}
-                    <Button
-                      variant="defender"
-                      className="w-full font-black uppercase tracking-widest text-xs sm:text-sm group-hover:bg-och-defender/90 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleMissionClick(mission.id)
-                      }}
-                    >
-                      View Mission
-                      <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </Card>
-                </motion.div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {pagination.total > pagination.page_size && (
-          <div className="flex items-center justify-between pt-8 sm:pt-12 mt-8 sm:mt-12 border-t border-och-steel/20">
-            <div className="text-sm sm:text-base text-och-steel font-medium">
-              Page <span className="text-white font-bold">{pagination.page}</span> of{' '}
-              <span className="text-white font-bold">{Math.ceil(pagination.total / pagination.page_size)}</span>
-            </div>
-            <div className="flex gap-2 sm:gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
-                disabled={!pagination.has_previous || loading}
-                className="font-black uppercase tracking-widest text-xs sm:text-sm"
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
-                disabled={!pagination.has_next || loading}
-                className="font-black uppercase tracking-widest text-xs sm:text-sm"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+        <MissionsTableView
+          missions={allMissions}
+          loading={loading || loadingDirectorMissions}
+          pagination={pagination}
+          onPageChange={(page) => setPagination({ ...pagination, page })}
+          studentTrack={studentTrack}
+          studentDifficulty={studentDifficulty}
+        />
       </section>
     </div>
   )
