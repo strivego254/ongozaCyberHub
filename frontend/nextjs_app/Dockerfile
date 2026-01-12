@@ -52,17 +52,11 @@ ENV NODE_ENV=production
 ENV NEXT_BUILD_VERBOSE=1
 RUN mv .eslintrc.json .eslintrc.json.bak 2>/dev/null || true && \
     mv eslint.config.mjs eslint.config.mjs.bak 2>/dev/null || true && \
-    npm run build 2>&1 | tee /tmp/build-output.log && \
-    BUILD_EXIT=${PIPESTATUS[0]} && \
-    if [ $BUILD_EXIT -ne 0 ]; then \
-      echo "=== BUILD FAILED ===" && \
-      cat /tmp/build-output.log && \
-      exit 1; \
-    fi && \
+    npm run build > /tmp/build-output.log 2>&1 || (cat /tmp/build-output.log && exit 1) && \
     echo "=== BUILD SUCCEEDED ===" && \
     ls -la /app/.next/ 2>&1 | head -20 && \
     echo "=== Checking standalone ===" && \
-    ls -la /app/.next/standalone/ 2>&1 | head -20 || echo "Standalone directory not found" && \
+    (ls -la /app/.next/standalone/ 2>&1 | head -20 || echo "Standalone directory not found") && \
     echo "=== Checking static ===" && \
     if [ -d /app/.next/static ]; then \
       echo "Static directory exists"; \
