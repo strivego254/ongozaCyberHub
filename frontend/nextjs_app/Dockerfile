@@ -52,7 +52,25 @@ ENV NODE_ENV=production
 ENV NEXT_BUILD_VERBOSE=1
 RUN mv .eslintrc.json .eslintrc.json.bak 2>/dev/null || true && \
     mv eslint.config.mjs eslint.config.mjs.bak 2>/dev/null || true && \
-    npm run build 2>&1 | tee /tmp/build-output.log || (echo "=== BUILD FAILED ===" && cat /tmp/build-output.log && exit 1)
+    npm run build 2>&1 | tee /tmp/build-output.log && \
+    BUILD_EXIT=${PIPESTATUS[0]} && \
+    if [ $BUILD_EXIT -ne 0 ]; then \
+      echo "=== BUILD FAILED ===" && \
+      cat /tmp/build-output.log && \
+      exit 1; \
+    fi && \
+    echo "=== BUILD SUCCEEDED ===" && \
+    ls -la /app/.next/ 2>&1 | head -20 && \
+    echo "=== Checking standalone ===" && \
+    ls -la /app/.next/standalone/ 2>&1 | head -20 || echo "Standalone directory not found" && \
+    echo "=== Checking static ===" && \
+    if [ -d /app/.next/static ]; then \
+      echo "Static directory exists"; \
+      ls -la /app/.next/static/ | head -10; \
+    else \
+      echo "Static directory does not exist, creating empty one"; \
+      mkdir -p /app/.next/static; \
+    fi
 
 # Stage 3: Production runner (minimal image)
 FROM node:18-alpine AS runner
@@ -67,8 +85,13 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy necessary files from builder
+# Copy public directory
 COPY --from=builder /app/public ./public
+
+# Copy standalone build output (includes server and most files)
 COPY --from=builder /app/.next/standalone ./
+
+# Copy static files (directory is guaranteed to exist from builder stage)
 COPY --from=builder /app/.next/static ./.next/static
 
 # Set correct permissions
