@@ -31,7 +31,10 @@ interface CoachingControlPanelProps {
 }
 
 export function CoachingControlPanel({ settings, onUpdate }: CoachingControlPanelProps) {
+  // All hooks must be called before any conditional returns
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [coachingIntensity, setCoachingIntensity] = useState<'gentle' | 'moderate' | 'intensive'>('moderate');
+  const [coachingFrequency, setCoachingFrequency] = useState<'low' | 'medium' | 'high'>('medium');
   
   // Handle missing settings gracefully
   if (!settings) {
@@ -51,8 +54,6 @@ export function CoachingControlPanel({ settings, onUpdate }: CoachingControlPane
       </Card>
     );
   }
-  const [coachingIntensity, setCoachingIntensity] = useState<'gentle' | 'moderate' | 'intensive'>('moderate');
-  const [coachingFrequency, setCoachingFrequency] = useState<'low' | 'medium' | 'high'>('medium');
 
   const coachStyles = [
     {

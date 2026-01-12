@@ -84,6 +84,11 @@ interface SubscriptionControlPanelProps {
 }
 
 export function SubscriptionControlPanel({ entitlements, settings }: SubscriptionControlPanelProps) {
+  // All hooks must be called before any conditional returns
+  const [showBillingHistory, setShowBillingHistory] = useState(false);
+  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
+  const [showUsageAnalytics, setShowUsageAnalytics] = useState(false);
+  
   // Always render with defaults if data is missing
   if (!entitlements || !settings) {
     return (
@@ -104,10 +109,6 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
       </div>
     );
   }
-
-  const [showBillingHistory, setShowBillingHistory] = useState(false);
-  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
-  const [showUsageAnalytics, setShowUsageAnalytics] = useState(false);
 
   const recommendations = getUpgradeRecommendations(entitlements, settings);
   const aiCoachAccess = checkFeatureAccess(entitlements, settings, 'ai_coach_full');

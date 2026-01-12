@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
   // Linting should be done separately in CI/CD
   eslint: {
     ignoreDuringBuilds: true,
+    // Disable ESLint completely during builds
+    dirs: [],
   },
   
   // Skip TypeScript type checking during build for faster builds
