@@ -11,22 +11,53 @@ RUN apk add --no-cache libc6-compat python3 make g++
 COPY frontend/nextjs_app/package.json frontend/nextjs_app/package-lock.json* ./
 
 # Install ALL dependencies (including devDependencies needed for build)
-# Configure npm for better network reliability
-RUN npm config set fetch-retries 5 && \
+# Configure npm for better network reliability with aggressive retries
+RUN npm config set fetch-retries 10 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
-    npm config set fetch-timeout 300000
+    npm config set fetch-timeout 600000 && \
+    npm config set maxsockets 1
 
 # Use npm ci if package-lock.json exists, otherwise use npm install
-# Add retry logic for network issues
+# Add retry logic for network issues with exponential backoff
 RUN if [ -f package-lock.json ]; then \
-      npm ci --prefer-offline --no-audit || \
-      (sleep 5 && npm ci --prefer-offline --no-audit) || \
-      (sleep 10 && npm ci); \
+      for attempt in 1 2 3 4 5; do \
+        echo "=== npm ci attempt $attempt of 5 ===" && \
+        if npm ci --prefer-offline --no-audit --legacy-peer-deps 2>&1; then \
+          echo "✓ npm ci succeeded on attempt $attempt" && \
+          break; \
+        else \
+          echo "✗ npm ci failed on attempt $attempt" && \
+          if [ $attempt -lt 5 ]; then \
+            delay=$((5 * attempt)) && \
+            echo "Waiting ${delay}s before retry..." && \
+            sleep $delay; \
+          else \
+            echo "Trying without --legacy-peer-deps..." && \
+            npm ci --prefer-offline --no-audit 2>&1 || \
+            npm ci 2>&1 || exit 1; \
+          fi; \
+        fi; \
+      done; \
     else \
-      npm install --prefer-offline --no-audit || \
-      (sleep 5 && npm install --prefer-offline --no-audit) || \
-      (sleep 10 && npm install); \
+      for attempt in 1 2 3 4 5; do \
+        echo "=== npm install attempt $attempt of 5 ===" && \
+        if npm install --prefer-offline --no-audit --legacy-peer-deps 2>&1; then \
+          echo "✓ npm install succeeded on attempt $attempt" && \
+          break; \
+        else \
+          echo "✗ npm install failed on attempt $attempt" && \
+          if [ $attempt -lt 5 ]; then \
+            delay=$((5 * attempt)) && \
+            echo "Waiting ${delay}s before retry..." && \
+            sleep $delay; \
+          else \
+            echo "Trying without --legacy-peer-deps..." && \
+            npm install --prefer-offline --no-audit 2>&1 || \
+            npm install 2>&1 || exit 1; \
+          fi; \
+        fi; \
+      done; \
     fi && \
     npm cache clean --force
 
@@ -68,13 +99,28 @@ ENV NODE_ENV=production
 # Build Next.js application
 # Temporarily disable ESLint config files during build to prevent blocking
 ENV NEXT_BUILD_VERBOSE=1
+
 RUN mv .eslintrc.json .eslintrc.json.bak 2>/dev/null || true && \
     mv eslint.config.mjs eslint.config.mjs.bak 2>/dev/null || true && \
-    echo "=== Starting Next.js build ===" && \
-    npm run build || { \
-      echo "=== BUILD FAILED ===" && \
-      exit 1; \
-    } && \
+    echo "=== Starting Next.js build with retry logic ===" && \
+    for attempt in 1 2 3; do \
+      echo "=== Build attempt $attempt of 3 ===" && \
+      if npm run build 2>&1; then \
+        echo "✓ Build succeeded on attempt $attempt" && \
+        break; \
+      else \
+        echo "✗ Build failed on attempt $attempt" && \
+        if [ $attempt -lt 3 ]; then \
+          delay=$((10 * attempt)) && \
+          echo "Cleaning cache and waiting ${delay}s before retry..." && \
+          rm -rf .next node_modules/.cache 2>/dev/null || true && \
+          sleep $delay; \
+        else \
+          echo "✗ All build attempts failed" && \
+          exit 1; \
+        fi; \
+      fi; \
+    done && \
     echo "=== BUILD SUCCEEDED ===" && \
     echo "=== Verifying build output ===" && \
     ls -la /app/.next/ 2>&1 && \
