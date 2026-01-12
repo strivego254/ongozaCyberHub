@@ -34,11 +34,15 @@ const nextConfig = {
       tls: false,
     };
     
-    // Handle ESM/CommonJS interop
-    config.resolve.extensionAlias = {
-      '.js': ['.js', '.ts', '.tsx'],
-      '.jsx': ['.jsx', '.tsx'],
-    };
+    // Explicitly ensure @ alias resolves correctly (Next.js should handle this, but being explicit helps in Docker)
+    const path = require('path');
+    if (!config.resolve.alias) {
+      config.resolve.alias = {};
+    }
+    // Only set if not already set by Next.js
+    if (!config.resolve.alias['@']) {
+      config.resolve.alias['@'] = path.resolve(__dirname);
+    }
     
     // Ignore problematic modules if needed
     config.externals = config.externals || [];
