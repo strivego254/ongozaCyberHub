@@ -5,7 +5,7 @@
 'use client'
 
 import { useEffect, useCallback, useRef } from 'react'
-import { useMissionStore } from '../lib/store'
+import { useMissionStore } from '../lib/store/missionStore'
 
 const AUTO_SAVE_INTERVAL = 30000 // 30 seconds
 const OFFLINE_STORAGE_KEY = 'missionDraft'

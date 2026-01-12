@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { RadialProgress } from './shared/RadialProgress'
 import { StatusBadge } from './shared/StatusBadge'
-import { useMissionStore } from '../lib/store'
+import { useMissionStore } from '../lib/store/missionStore'
 import type { Mission } from '../types'
 import clsx from 'clsx'
 

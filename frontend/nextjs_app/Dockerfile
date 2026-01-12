@@ -47,6 +47,11 @@ COPY frontend/nextjs_app/package.json frontend/nextjs_app/package-lock.json* ./
 # Copy application source (copy everything needed for build)
 COPY frontend/nextjs_app/ .
 
+# Verify missionStore file exists (for debugging)
+RUN echo "=== Checking for missionStore ===" && \
+    ls -la app/dashboard/student/missions/lib/store/ 2>&1 || echo "Directory not found" && \
+    cat app/dashboard/student/missions/lib/store/missionStore.ts 2>&1 | head -5 || echo "File not found"
+
 # Set build-time environment variables
 ARG NEXT_PUBLIC_DJANGO_API_URL=http://localhost:8000
 ARG NEXT_PUBLIC_FASTAPI_API_URL=http://localhost:8001
