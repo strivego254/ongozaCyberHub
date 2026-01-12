@@ -52,7 +52,7 @@ ENV NODE_ENV=production
 ENV NEXT_BUILD_VERBOSE=1
 RUN mv .eslintrc.json .eslintrc.json.bak 2>/dev/null || true && \
     mv eslint.config.mjs eslint.config.mjs.bak 2>/dev/null || true && \
-    npm run build > /tmp/build-output.log 2>&1 || (cat /tmp/build-output.log && exit 1) && \
+    npm run build && \
     echo "=== BUILD SUCCEEDED ===" && \
     ls -la /app/.next/ 2>&1 | head -20 && \
     echo "=== Checking standalone ===" && \
