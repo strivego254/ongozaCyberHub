@@ -47,8 +47,10 @@ ENV NEXT_PUBLIC_FRONTEND_URL=${NEXT_PUBLIC_FRONTEND_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build Next.js application with verbose output for debugging
-RUN npm run build || (echo "Build failed. Checking for errors..." && cat .next/trace 2>/dev/null || true && exit 1)
+# Build Next.js application
+# Set verbose mode and capture full output
+ENV NEXT_BUILD_VERBOSE=1
+RUN npm run build 2>&1 | tee /tmp/build-output.log || (echo "=== BUILD FAILED ===" && cat /tmp/build-output.log && exit 1)
 
 # Stage 3: Production runner (minimal image)
 FROM node:18-alpine AS runner
