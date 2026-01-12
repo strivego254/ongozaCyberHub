@@ -22,7 +22,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiGateway } from '@/services/apiGateway'
-import { useMissionStore } from '@/app/dashboard/student/missions/lib/store/missionStore'
+import { useMissionStore } from '@/lib/stores/missionStore'
 import { MissionCardEnhanced } from './MissionCardEnhanced'
 import { MissionBlockerBanner } from '@/components/ui/coaching/MissionBlockerBanner'
 import { Card } from '@/components/ui/Card'

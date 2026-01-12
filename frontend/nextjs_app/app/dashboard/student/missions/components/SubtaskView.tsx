@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { apiGateway } from '@/services/apiGateway'
-import { useMissionStore } from '@/app/dashboard/student/missions/lib/store/missionStore'
+import { useMissionStore } from '@/lib/stores/missionStore'
 import type { Subtask } from '../types'
 
 interface SubtaskViewProps {

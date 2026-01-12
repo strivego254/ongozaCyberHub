@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { StatusBadge } from './shared/StatusBadge'
 import { MobileFloatingActionBar } from './MobileFloatingActionBar'
-import { useMissionStore } from '@/app/dashboard/student/missions/lib/store/missionStore'
+import { useMissionStore } from '@/lib/stores/missionStore'
 import clsx from 'clsx'
 
 interface SubtaskViewEnhancedProps {
