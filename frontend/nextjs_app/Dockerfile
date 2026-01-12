@@ -11,11 +11,22 @@ RUN apk add --no-cache libc6-compat python3 make g++
 COPY frontend/nextjs_app/package.json frontend/nextjs_app/package-lock.json* ./
 
 # Install ALL dependencies (including devDependencies needed for build)
+# Configure npm for better network reliability
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-timeout 300000
+
 # Use npm ci if package-lock.json exists, otherwise use npm install
+# Add retry logic for network issues
 RUN if [ -f package-lock.json ]; then \
-      npm ci; \
+      npm ci --prefer-offline --no-audit || \
+      (sleep 5 && npm ci --prefer-offline --no-audit) || \
+      (sleep 10 && npm ci); \
     else \
-      npm install; \
+      npm install --prefer-offline --no-audit || \
+      (sleep 5 && npm install --prefer-offline --no-audit) || \
+      (sleep 10 && npm install); \
     fi && \
     npm cache clean --force
 
