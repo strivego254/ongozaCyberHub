@@ -1,5 +1,5 @@
 # Multi-stage build for Next.js production (optimized for DigitalOcean)
-# Stage 1: Install dependencies
+# Stage 1: Install dependencies (including devDependencies for build)
 FROM node:18-alpine AS deps
 
 WORKDIR /app
@@ -10,32 +10,45 @@ RUN apk add --no-cache libc6-compat python3 make g++
 # Copy package files
 COPY frontend/nextjs_app/package.json frontend/nextjs_app/package-lock.json* ./
 
-# Install dependencies with clean cache
-RUN npm ci --only=production && npm cache clean --force
+# Install ALL dependencies (including devDependencies needed for build)
+# Use npm ci if package-lock.json exists, otherwise use npm install
+RUN if [ -f package-lock.json ]; then \
+      npm ci; \
+    else \
+      npm install; \
+    fi && \
+    npm cache clean --force
 
 # Stage 2: Build the application
 FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Install build dependencies
+RUN apk add --no-cache libc6-compat python3 make g++
+
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy application source
+# Copy package files
+COPY frontend/nextjs_app/package.json frontend/nextjs_app/package-lock.json* ./
+
+# Copy application source (copy everything needed for build)
 COPY frontend/nextjs_app/ .
 
 # Set build-time environment variables
-ARG NEXT_PUBLIC_DJANGO_API_URL
-ARG NEXT_PUBLIC_FASTAPI_API_URL
-ARG NEXT_PUBLIC_FRONTEND_URL
+ARG NEXT_PUBLIC_DJANGO_API_URL=http://localhost:8000
+ARG NEXT_PUBLIC_FASTAPI_API_URL=http://localhost:8001
+ARG NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000
 
-ENV NEXT_PUBLIC_DJANGO_API_URL=$NEXT_PUBLIC_DJANGO_API_URL
-ENV NEXT_PUBLIC_FASTAPI_API_URL=$NEXT_PUBLIC_FASTAPI_API_URL
-ENV NEXT_PUBLIC_FRONTEND_URL=$NEXT_PUBLIC_FRONTEND_URL
+ENV NEXT_PUBLIC_DJANGO_API_URL=${NEXT_PUBLIC_DJANGO_API_URL}
+ENV NEXT_PUBLIC_FASTAPI_API_URL=${NEXT_PUBLIC_FASTAPI_API_URL}
+ENV NEXT_PUBLIC_FRONTEND_URL=${NEXT_PUBLIC_FRONTEND_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 
-# Build Next.js application
-RUN npm run build
+# Build Next.js application with verbose output for debugging
+RUN npm run build || (echo "Build failed. Checking for errors..." && cat .next/trace 2>/dev/null || true && exit 1)
 
 # Stage 3: Production runner (minimal image)
 FROM node:18-alpine AS runner
