@@ -63,7 +63,13 @@ ENV NODE_ENV=production
 ENV NEXT_BUILD_VERBOSE=1
 RUN mv .eslintrc.json .eslintrc.json.bak 2>/dev/null || true && \
     mv eslint.config.mjs eslint.config.mjs.bak 2>/dev/null || true && \
-    npm run build && \
+    echo "=== Starting Next.js build ===" && \
+    npm run build 2>&1 | tee /tmp/build-output.log || { \
+      echo "=== BUILD FAILED - Showing last 100 lines ===" && \
+      tail -100 /tmp/build-output.log && \
+      echo "=== Full build log saved to /tmp/build-output.log ===" && \
+      exit 1; \
+    } && \
     echo "=== BUILD SUCCEEDED ===" && \
     ls -la /app/.next/ 2>&1 | head -20 && \
     echo "=== Checking standalone ===" && \
