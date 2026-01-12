@@ -6,7 +6,8 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserRoles, getPrimaryRole, type Role } from '@/utils/rbac';
 import { Card } from '@/components/ui/Card';
@@ -16,7 +17,10 @@ import { UniversityCommunityView } from './UniversityCommunityView';
 import { GlobalFeedView } from './GlobalFeedView';
 import { CommunityLeaderboard } from './CommunityLeaderboard';
 import { CreatePostModal } from './CreatePostModal';
-import { Users, Globe, Trophy, Plus, Settings, Shield } from 'lucide-react';
+import { Users, Globe, Trophy, Plus, Settings, Shield, MessageCircle, UserCircle, ChevronRight, ExternalLink, MessageSquare } from 'lucide-react';
+import { apiGateway } from '@/services/apiGateway';
+import { programsClient } from '@/services/programsClient';
+import { communityClient } from '@/services/communityClient';
 
 type TabType = 'university' | 'global' | 'leaderboard';
 
@@ -150,12 +154,70 @@ function getCommunityPermissions(roles: Role[], primaryRole: Role | null): Commu
 
 export function CommunityDashboard() {
   const { user } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('university');
   const [showCreatePost, setShowCreatePost] = useState(false);
+  
+  // Cohort data state
+  const [cohortId, setCohortId] = useState<string | null>(null);
+  const [cohortName, setCohortName] = useState<string | null>(null);
+  const [cohortDiscussions, setCohortDiscussions] = useState<any[]>([]);
+  const [cohortMentors, setCohortMentors] = useState<any[]>([]);
+  const [loadingCohortData, setLoadingCohortData] = useState(true);
 
   const roles = useMemo(() => getUserRoles(user), [user]);
   const primaryRole = useMemo(() => getPrimaryRole(user), [user]);
   const permissions = useMemo(() => getCommunityPermissions(roles, primaryRole), [roles, primaryRole]);
+  
+  // Fetch cohort data (only for students)
+  useEffect(() => {
+    const fetchCohortData = async () => {
+      if (!user?.id || !roles.includes('student') && !roles.includes('mentee')) {
+        setLoadingCohortData(false);
+        return;
+      }
+
+      setLoadingCohortData(true);
+      try {
+        // Get student profile to find cohort
+        const profileResponse = await apiGateway.get('/student/profile');
+        const enrollment = profileResponse?.enrollment;
+        
+        if (enrollment?.cohort_id) {
+          const cohortIdStr = String(enrollment.cohort_id);
+          setCohortId(cohortIdStr);
+          setCohortName(enrollment.cohort_name || null);
+
+          // Fetch cohort discussions/feed
+          try {
+            const feedResponse = await communityClient.getFeed({ 
+              page: 1, 
+              page_size: 5 
+            });
+            setCohortDiscussions(feedResponse.results || []);
+          } catch (feedError) {
+            console.error('Failed to fetch cohort discussions:', feedError);
+            setCohortDiscussions([]);
+          }
+
+          // Fetch cohort mentors
+          try {
+            const mentors = await programsClient.getCohortMentors(cohortIdStr);
+            setCohortMentors(mentors.filter((m: any) => m.active !== false) || []);
+          } catch (mentorError) {
+            console.error('Failed to fetch cohort mentors:', mentorError);
+            setCohortMentors([]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch cohort data:', error);
+      } finally {
+        setLoadingCohortData(false);
+      }
+    };
+
+    fetchCohortData();
+  }, [user?.id, roles]);
 
   // Don't show community for employers or finance
   if (roles.includes('employer') || roles.includes('finance')) {
@@ -265,26 +327,204 @@ export function CommunityDashboard() {
 
       {/* Content */}
       <div className="mt-6">
-        {activeTab === 'university' && (
-          <UniversityCommunityView
-            userId={user?.id}
-            permissions={permissions}
-            roles={roles}
-          />
-        )}
-        {activeTab === 'global' && (
-          <GlobalFeedView
-            userId={user?.id}
-            permissions={permissions}
-            roles={roles}
-          />
-        )}
-        {activeTab === 'leaderboard' && (
-          <CommunityLeaderboard
-            userId={user?.id}
-            permissions={permissions}
-            roles={roles}
-          />
+        {activeTab === 'university' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content */}
+            <div className="lg:col-span-2">
+              <UniversityCommunityView
+                userId={user?.id}
+                permissions={permissions}
+                roles={roles}
+              />
+            </div>
+            
+            {/* Sidebar - Cohort & Mentors (only for students) */}
+            {(roles.includes('student') || roles.includes('mentee')) && (
+              <div className="lg:col-span-1 space-y-6">
+                {/* My Cohort Section */}
+                <Card className="p-5 bg-och-midnight/60 border border-och-steel/20">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-black text-och-steel uppercase tracking-wider">
+                      My Cohort
+                    </h3>
+                    {cohortName && (
+                      <Badge variant="defender" className="text-xs">
+                        {cohortName}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {loadingCohortData ? (
+                    <div className="space-y-3">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="h-16 bg-white/5 rounded-lg animate-pulse" />
+                      ))}
+                    </div>
+                  ) : cohortDiscussions.length > 0 ? (
+                    <div className="space-y-3">
+                      {cohortDiscussions.slice(0, 3).map((discussion: any) => (
+                        <button
+                          key={discussion.id}
+                          onClick={() => {
+                            // Scroll to post if it exists in the feed, or navigate
+                            const postElement = document.querySelector(`[data-post-id="${discussion.id}"]`);
+                            if (postElement) {
+                              postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            } else {
+                              // Could navigate to a specific post view if available
+                              window.location.hash = `post-${discussion.id}`;
+                            }
+                          }}
+                          className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-all group"
+                        >
+                          <div className="flex items-start gap-2">
+                            <MessageCircle className="w-4 h-4 text-och-gold mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-white uppercase tracking-wide truncate mb-1">
+                                {discussion.title || 'Discussion'}
+                              </p>
+                              <p className="text-xs text-och-steel line-clamp-2">
+                                {discussion.content || discussion.excerpt || ''}
+                              </p>
+                              {discussion.comment_count > 0 && (
+                                <div className="flex items-center gap-2 mt-2">
+                                  <MessageSquare className="w-3 h-3 text-och-steel" />
+                                  <span className="text-xs text-och-steel">
+                                    {discussion.comment_count} {discussion.comment_count === 1 ? 'reply' : 'replies'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-och-steel group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" />
+                          </div>
+                        </button>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-och-steel/30 text-och-steel hover:bg-white/10 text-xs mt-3"
+                        onClick={() => router.push('/dashboard/student')}
+                      >
+                        <ExternalLink className="w-3 h-3 mr-2" />
+                        View All Discussions
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <MessageCircle className="w-8 h-8 text-och-steel/50 mx-auto mb-2" />
+                      <p className="text-xs text-och-steel mb-3">
+                        {cohortName ? `No discussions in ${cohortName} yet` : 'No cohort discussions available'}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-och-steel/30 text-och-steel hover:bg-white/10 text-xs"
+                        onClick={() => setShowCreatePost(true)}
+                      >
+                        Start Discussion
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+
+                {/* Reach Out to Mentors Section */}
+                <Card className="p-5 bg-och-midnight/60 border border-och-steel/20">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-black text-och-steel uppercase tracking-wider">
+                      Reach Out to Mentors
+                    </h3>
+                    {cohortMentors.length > 0 && (
+                      <Badge variant="mint" className="text-xs">
+                        {cohortMentors.length} {cohortMentors.length === 1 ? 'Mentor' : 'Mentors'}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {loadingCohortData ? (
+                    <div className="space-y-3">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="h-14 bg-white/5 rounded-lg animate-pulse" />
+                      ))}
+                    </div>
+                  ) : cohortMentors.length > 0 ? (
+                    <div className="space-y-2">
+                      {cohortMentors.slice(0, 4).map((mentor: any) => {
+                        const mentorName = mentor.mentor_name || 
+                          (mentor.mentor?.first_name && mentor.mentor?.last_name 
+                            ? `${mentor.mentor.first_name} ${mentor.mentor.last_name}`
+                            : mentor.mentor?.email || 'Mentor');
+                        const mentorRole = mentor.role || 'Mentor';
+                        
+                        return (
+                          <button
+                            key={mentor.id || mentor.mentor?.id}
+                            onClick={() => router.push(`/dashboard/student/mentorship?mentor=${mentor.mentor?.id || mentor.mentor_id}`)}
+                            className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-all group"
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-och-mint/20 flex items-center justify-center flex-shrink-0">
+                                <UserCircle className="w-5 h-5 text-och-mint" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-white uppercase tracking-wide truncate">
+                                  {mentorName}
+                                </p>
+                                <p className="text-xs text-och-steel capitalize">
+                                  {mentorRole}
+                                </p>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-och-steel group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" />
+                          </button>
+                        );
+                      })}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-och-steel/30 text-och-steel hover:bg-white/10 text-xs mt-3"
+                        onClick={() => router.push('/dashboard/student/mentorship')}
+                      >
+                        <ExternalLink className="w-3 h-3 mr-2" />
+                        View All Mentors
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <UserCircle className="w-8 h-8 text-och-steel/50 mx-auto mb-2" />
+                      <p className="text-xs text-och-steel mb-3">
+                        {cohortName ? `No mentors assigned to ${cohortName} yet` : 'No mentors available'}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-och-steel/30 text-och-steel hover:bg-white/10 text-xs"
+                        onClick={() => router.push('/dashboard/student/mentorship')}
+                      >
+                        View Mentorship
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {activeTab === 'global' && (
+              <GlobalFeedView
+                userId={user?.id}
+                permissions={permissions}
+                roles={roles}
+              />
+            )}
+            {activeTab === 'leaderboard' && (
+              <CommunityLeaderboard
+                userId={user?.id}
+                permissions={permissions}
+                roles={roles}
+              />
+            )}
+          </>
         )}
       </div>
 

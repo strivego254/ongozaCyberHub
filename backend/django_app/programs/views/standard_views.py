@@ -503,6 +503,7 @@ class CohortViewSet(viewsets.ModelViewSet):
         user = self.request.user
         track_id = self.request.query_params.get('track_id')
         status_filter = self.request.query_params.get('status')
+        view_all = self.request.query_params.get('view_all', '').lower() in ('true', '1', 'yes')
         
         queryset = Cohort.objects.all()
         
@@ -513,44 +514,50 @@ class CohortViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=status_filter)
         
         if not user.is_staff:
-            # Base visibility: tracks user directs OR cohorts they're assigned as mentors
-            visibility_q = (
-                Q(track__director=user) |
-                Q(mentor_assignments__mentor=user) |
-                Q(track__program__tracks__director=user)  # cohorts in programs where they direct at least one track
-            )
+            # If view_all is requested and user is a mentor, allow read-only access to all active cohorts
+            if view_all and user.is_mentor:
+                # Mentors can view all cohorts (read-only) when view_all=true
+                # Only show active/running cohorts for better UX
+                queryset = queryset.filter(status__in=['active', 'running'])
+            else:
+                # Base visibility: tracks user directs OR cohorts they're assigned as mentors
+                visibility_q = (
+                    Q(track__director=user) |
+                    Q(mentor_assignments__mentor=user) |
+                    Q(track__program__tracks__director=user)  # cohorts in programs where they direct at least one track
+                )
 
-            # Also support RBAC UserRole scoping for program_director (track/cohort scopes)
-            director_role = Role.objects.filter(name='program_director').first()
-            if director_role:
-                director_roles = UserRole.objects.filter(user=user, role=director_role, is_active=True)
+                # Also support RBAC UserRole scoping for program_director (track/cohort scopes)
+                director_role = Role.objects.filter(name='program_director').first()
+                if director_role:
+                    director_roles = UserRole.objects.filter(user=user, role=director_role, is_active=True)
 
-                # scope_ref based grants
-                cohort_refs = list(director_roles.filter(scope='cohort', scope_ref__isnull=False).values_list('scope_ref', flat=True))
-                track_refs = list(director_roles.filter(scope='track', scope_ref__isnull=False).values_list('scope_ref', flat=True))
+                    # scope_ref based grants
+                    cohort_refs = list(director_roles.filter(scope='cohort', scope_ref__isnull=False).values_list('scope_ref', flat=True))
+                    track_refs = list(director_roles.filter(scope='track', scope_ref__isnull=False).values_list('scope_ref', flat=True))
 
-                # legacy string-based grants
-                legacy_track_keys = list(director_roles.exclude(track_key__isnull=True).exclude(track_key='').values_list('track_key', flat=True))
-                legacy_cohort_ids_raw = list(director_roles.exclude(cohort_id__isnull=True).exclude(cohort_id='').values_list('cohort_id', flat=True))
-                legacy_cohort_ids = []
-                for raw in legacy_cohort_ids_raw:
-                    try:
-                        legacy_cohort_ids.append(uuid.UUID(str(raw)))
-                    except Exception:
-                        continue
+                    # legacy string-based grants
+                    legacy_track_keys = list(director_roles.exclude(track_key__isnull=True).exclude(track_key='').values_list('track_key', flat=True))
+                    legacy_cohort_ids_raw = list(director_roles.exclude(cohort_id__isnull=True).exclude(cohort_id='').values_list('cohort_id', flat=True))
+                    legacy_cohort_ids = []
+                    for raw in legacy_cohort_ids_raw:
+                        try:
+                            legacy_cohort_ids.append(uuid.UUID(str(raw)))
+                        except Exception:
+                            continue
 
-                if cohort_refs or legacy_cohort_ids:
-                    visibility_q = visibility_q | Q(id__in=cohort_refs + legacy_cohort_ids)
-                if track_refs:
-                    visibility_q = visibility_q | Q(track_id__in=track_refs)
-                if legacy_track_keys:
-                    visibility_q = visibility_q | Q(track__key__in=legacy_track_keys)
+                    if cohort_refs or legacy_cohort_ids:
+                        visibility_q = visibility_q | Q(id__in=cohort_refs + legacy_cohort_ids)
+                    if track_refs:
+                        visibility_q = visibility_q | Q(track_id__in=track_refs)
+                    if legacy_track_keys:
+                        visibility_q = visibility_q | Q(track__key__in=legacy_track_keys)
 
-                # If they have a global program_director role, treat it as broad access
-                if director_roles.filter(scope='global').exists():
-                    visibility_q = Q()  # no restriction
+                    # If they have a global program_director role, treat it as broad access
+                    if director_roles.filter(scope='global').exists():
+                        visibility_q = Q()  # no restriction
 
-            queryset = queryset.filter(visibility_q).distinct()
+                queryset = queryset.filter(visibility_q).distinct()
         
         return queryset
     

@@ -188,13 +188,21 @@ export function PortfolioDashboard() {
                   <div className="flex-1 h-px bg-och-gold/20" />
                 </div>
                 <h4 className="text-sm font-black text-white mb-2 uppercase tracking-tight">Public Profile</h4>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-och-midnight/80 border border-och-steel/10 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-och-gold/20 flex items-center justify-center">
-                    <User className="w-4 h-4 text-och-gold" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-och-steel font-black uppercase tracking-widest leading-none mb-1">och.africa/student/</p>
-                    <p className="text-xs text-white font-bold truncate">@{user?.email?.split('@')[0] || 'handle'}</p>
+                <div className="p-3 rounded-xl bg-och-midnight/80 border border-och-steel/10 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-och-gold/20 flex items-center justify-center">
+                      <User className="w-4 h-4 text-och-gold" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-white font-bold truncate">
+                        {user?.first_name && user?.last_name 
+                          ? `${user.first_name} ${user.last_name}`
+                          : user?.first_name || user?.name || 'Student'}
+                      </p>
+                      <p className="text-[10px] text-och-steel font-medium truncate mt-0.5">
+                        {user?.email || 'No email'}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-300 leading-relaxed mb-6 italic">

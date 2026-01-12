@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { Target, ChevronRight, Shield, Zap, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 export function MissionCockpit({ progress }: { progress: any }) {

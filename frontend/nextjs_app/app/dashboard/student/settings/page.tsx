@@ -1,33 +1,41 @@
 /**
- * Settings Page - Student Dashboard
- * Uses the modern Settings Master Dashboard
+ * Student Settings Page - Redirects to Overview by default
+ * 
+ * Managing your account as a student (mentee) in the OCH ecosystem is a continuous 
+ * process of identity formation and professional development, moving beyond simple 
+ * administrative maintenance. Your account serves as the primary data source for 
+ * the TalentScope analytics engine, which quantifies your readiness for the 
+ * cybersecurity marketplace.
+ * 
+ * Analogy: Managing your OCH account is like maintaining a digital pilot's logbook 
+ * and passport. Your initial Profiling is your flight physical; your Subscription 
+ * determines which aircraft (features) you can fly; and your Consent Settings are 
+ * the security clearances you grant to different control towers (mentors and employers).
  */
 
 'use client';
 
-import { SettingsMasterDashboard } from '@/components/ui/settings/SettingsMasterDashboard';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { RouteGuard } from '@/components/auth/RouteGuard';
 
 export default function SettingsPage() {
-  try {
-    return <SettingsMasterDashboard />;
-  } catch (error) {
-    console.error('Settings page error:', error);
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 lg:p-12 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold text-red-400 mb-4">Settings Error</h2>
-          <p className="text-slate-400 mb-4">
-            {error instanceof Error ? error.message : 'Failed to load settings'}
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
-          >
-            Reload Page
-          </button>
+  const router = useRouter();
+  
+  useEffect(() => {
+    // Redirect to overview by default
+    router.replace('/dashboard/student/settings/overview');
+  }, [router]);
+
+  return (
+    <RouteGuard>
+      <div className="min-h-screen bg-gradient-to-br from-och-midnight via-och-midnight/95 to-och-defender/5 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-och-mint border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-och-steel">Redirecting to settings overview...</p>
         </div>
       </div>
-    );
-  }
+    </RouteGuard>
+  );
 }
 

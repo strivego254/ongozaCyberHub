@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { BookOpen, Activity, MessageSquare, CheckCircle2, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
 import clsx from 'clsx';
 
 export function HabitEngine() {

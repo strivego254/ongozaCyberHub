@@ -175,6 +175,23 @@ export const fastapiClient = {
     }> {
       return apiGateway.get(`/profiling/session/${sessionId}/results`);
     },
+
+    /**
+     * Get all available OCH tracks
+     */
+    async getTracks(): Promise<{
+      tracks: Record<string, {
+        key: string;
+        name: string;
+        description: string;
+        focus_areas: string[];
+        career_paths: string[];
+      }>;
+      total_tracks: number;
+      description: string;
+    }> {
+      return apiGateway.get('/profiling/tracks');
+    },
   },
 };
 

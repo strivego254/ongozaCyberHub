@@ -1,12 +1,12 @@
 /**
  * Redesigned Student Dashboard Hub
- * The "Mission Control" for OCH students.
- * Guiding from curiosity to employability with high-tech cockpit visuals.
+ * Cockpit-style command center for Kenyan university students
+ * Mobile-first, intuitive, and dynamically evolving
  */
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Shield, 
@@ -18,376 +18,1034 @@ import {
   Users, 
   Star,
   Clock,
-  LayoutGrid,
-  List,
-  Search,
-  Bell,
   CheckCircle2,
-  AlertCircle,
   Briefcase,
-  ExternalLink,
   ChevronRight,
   Flame,
   LineChart,
-  MapPin,
   Globe,
   ArrowUpRight,
-  Command,
-  Store
+  Store,
+  PlayCircle,
+  BookOpen,
+  Award,
+  BarChart3,
+  Sparkles,
+  Trophy,
+  Bell,
+  Calendar,
+  Map,
+  Rocket,
+  Activity,
+  Brain,
+  TrendingDown,
+  Eye,
+  Lock,
+  Unlock,
+  MessageCircle,
+  UserCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStore } from '../lib/store/dashboardStore';
-import { useSettingsMaster } from '@/hooks/useSettingsMaster';
 import { CoachingNudge } from '@/components/coaching/CoachingNudge';
+import { fastapiClient } from '@/services/fastapiClient';
+import { apiGateway } from '@/services/apiGateway';
+import { programsClient } from '@/services/programsClient';
+import { communityClient } from '@/services/communityClient';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.4,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  },
+};
 
 export function StudentDashboardHub() {
   const router = useRouter();
   const { user } = useAuth();
-  const { readiness, cohortProgress, trackOverview } = useDashboardStore();
-  const { settings } = useSettingsMaster(user?.id);
+  const { 
+    readiness, 
+    cohortProgress, 
+    trackOverview, 
+    gamification, 
+    portfolio, 
+    nextActions,
+    habits,
+    events,
+    communityFeed,
+    leaderboard,
+  } = useDashboardStore();
+  const prefersReducedMotion = useReducedMotion();
   
-  const [activeFeed, setActiveFeed] = useState<'local' | 'global'>('local');
+  const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'community'>('overview');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [profiledTrack, setProfiledTrack] = useState<string | null>(null);
+  const [loadingTrack, setLoadingTrack] = useState(true);
+  
+  // Cohort data state
+  const [cohortId, setCohortId] = useState<string | null>(null);
+  const [cohortName, setCohortName] = useState<string | null>(null);
+  const [cohortDiscussions, setCohortDiscussions] = useState<any[]>([]);
+  const [cohortMentors, setCohortMentors] = useState<any[]>([]);
+  const [loadingCohortData, setLoadingCohortData] = useState(true);
+
+  // Track key to display name mapping
+  const getTrackDisplayName = (trackKey: string | null | undefined): string => {
+    if (!trackKey) return '';
+    
+    const trackMap: Record<string, string> = {
+      'defender': 'Cyber Defender',
+      'offensive': 'Cyber Offensive',
+      'grc': 'Cyber GRC',
+      'innovation': 'Cyber Innovator',
+      'leadership': 'Cyber Leader',
+    };
+    
+    return trackMap[trackKey.toLowerCase()] || trackKey;
+  };
+
+  // Fetch profiled track from backend
+  useEffect(() => {
+    const fetchProfiledTrack = async () => {
+      if (!user?.id) {
+        setLoadingTrack(false);
+        return;
+      }
+
+      try {
+        // Try FastAPI profiling results first (AI engine results)
+        try {
+          const profilingStatus = await fastapiClient.profiling.checkStatus();
+          if (profilingStatus.completed && profilingStatus.session_id) {
+            const results = await fastapiClient.profiling.getResults(profilingStatus.session_id);
+            
+            // primary_track is a TrackInfo object with a 'key' field
+            if (results.primary_track) {
+              const trackKey = results.primary_track.key || results.primary_track.track_key;
+              if (trackKey) {
+                setProfiledTrack(trackKey);
+                setLoadingTrack(false);
+                return;
+              }
+            }
+            
+            // Fallback: Check recommendations if primary_track not available
+            if (results.recommendations && results.recommendations.length > 0) {
+              const primaryRec = results.recommendations[0];
+              if (primaryRec.track_key) {
+                setProfiledTrack(primaryRec.track_key);
+                setLoadingTrack(false);
+                return;
+              }
+            }
+          }
+        } catch (fastapiError) {
+          console.log('FastAPI profiling not available, trying Django...', fastapiError);
+        }
+
+        // Fallback to Django student profile
+        try {
+          const profileResponse = await apiGateway.get('/student/profile');
+          
+          // Check profiled_track first (from AI profiling engine)
+          if (profileResponse?.profiled_track?.track_key) {
+            setProfiledTrack(profileResponse.profiled_track.track_key);
+            setLoadingTrack(false);
+            return;
+          }
+          
+          // Check future_you track
+          if (profileResponse?.future_you?.track) {
+            const track = profileResponse.future_you.track;
+            // Extract track key from track name
+            const trackKey = typeof track === 'string' 
+              ? track.toLowerCase().replace(/\s+/g, '_').replace('cyber_', '').replace('_track', '')
+              : track?.key || track?.track_key;
+            if (trackKey && trackKey !== 'not recommended') {
+              setProfiledTrack(trackKey);
+              setLoadingTrack(false);
+              return;
+            }
+          }
+          
+          // Check enrollment track_key
+          if (profileResponse?.enrollment?.track_key) {
+            setProfiledTrack(profileResponse.enrollment.track_key);
+            setLoadingTrack(false);
+            return;
+          }
+          
+          // Check basic track_key
+          if (profileResponse?.basic?.track_key) {
+            setProfiledTrack(profileResponse.basic.track_key);
+            setLoadingTrack(false);
+            return;
+          }
+        } catch (djangoError) {
+          console.log('Django profile not available:', djangoError);
+        }
+      } catch (error) {
+        console.error('Failed to fetch profiled track:', error);
+      } finally {
+        setLoadingTrack(false);
+      }
+    };
+
+    fetchProfiledTrack();
+  }, [user?.id]);
+
+  // Fetch cohort data (enrollment, discussions, mentors)
+  useEffect(() => {
+    const fetchCohortData = async () => {
+      if (!user?.id) {
+        setLoadingCohortData(false);
+        return;
+      }
+
+      setLoadingCohortData(true);
+      try {
+        // Get student profile to find cohort
+        const profileResponse = await apiGateway.get('/student/profile');
+        const enrollment = profileResponse?.enrollment;
+        
+        if (enrollment?.cohort_id) {
+          const cohortIdStr = String(enrollment.cohort_id);
+          setCohortId(cohortIdStr);
+          setCohortName(enrollment.cohort_name || null);
+
+          // Fetch cohort discussions/feed
+          try {
+            // Get community feed (will include cohort discussions)
+            const feedResponse = await communityClient.getFeed({ 
+              page: 1, 
+              page_size: 5 
+            });
+            setCohortDiscussions(feedResponse.results || []);
+          } catch (feedError) {
+            console.error('Failed to fetch cohort discussions:', feedError);
+            setCohortDiscussions([]);
+          }
+
+          // Fetch cohort mentors
+          try {
+            const mentors = await programsClient.getCohortMentors(cohortIdStr);
+            setCohortMentors(mentors.filter((m: any) => m.active !== false) || []);
+          } catch (mentorError) {
+            console.error('Failed to fetch cohort mentors:', mentorError);
+            setCohortMentors([]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch cohort data:', error);
+      } finally {
+        setLoadingCohortData(false);
+      }
+    };
+
+    fetchCohortData();
+  }, [user?.id]);
 
   // Real data from API
   const readinessScore = readiness?.score || 0;
-  const healthScore = readiness?.health_score || 0;
+  const healthScore = readiness?.health_score || readinessScore;
   const persona = readiness?.persona || user?.persona || "Not Set";
+  const streak = gamification?.streak || 0;
+  const points = gamification?.points || 0;
+  const rank = gamification?.rank || 'Bronze';
+  const circleLevel = gamification?.level || '1';
+  const badges = gamification?.badges || 0;
+
+  // Get track display name for welcome message
+  const trackDisplayName = getTrackDisplayName(profiledTrack);
+  const welcomeMessage = trackDisplayName 
+    ? `${trackDisplayName}`
+    : user?.first_name || 'Student';
+  
+  // Full welcome text for desktop
+  const welcomeText = trackDisplayName 
+    ? `Welcome back, ${trackDisplayName}`
+    : `Welcome back, ${user?.first_name || 'Student'}`;
+
+  // Animation config
+  const animationConfig = prefersReducedMotion 
+    ? { duration: 0.1 }
+    : { duration: 0.4, ease: [0.22, 1, 0.36, 1] };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      
-      {/* 1. MISSION CONTROL HEADER (Cockpit Telemetry) */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 bg-gradient-to-br from-och-midnight via-och-midnight to-och-defender/5 p-8 rounded-[3rem] border border-och-steel/10 shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-och-gold/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-och-gold/10 transition-all duration-1000" />
-        
-        <div className="flex items-center gap-6 relative z-10">
-          <div className="w-20 h-20 rounded-3xl bg-och-gold/10 border border-och-gold/20 flex items-center justify-center relative group-hover:scale-105 transition-transform duration-500">
-             <div className="absolute inset-0 bg-och-gold/5 animate-pulse" />
-             <Compass className="w-10 h-10 text-och-gold" />
-          </div>
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Mission Control</h1>
-              <Badge variant="gold" className="text-[10px] font-black tracking-[0.2em] px-2 h-5">ACTIVE OPERATIONS</Badge>
+    <div className="min-h-screen bg-gradient-to-br from-och-midnight via-och-midnight/95 to-slate-950">
+      {/* TOP NAVIGATION BAR - Mobile-First */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="sticky top-0 z-50 bg-och-midnight/95 backdrop-blur-md border-b border-och-steel/20"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo & Welcome */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-och-gold to-och-gold/80 flex items-center justify-center">
+                <Shield className="w-6 h-6 text-black" />
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-xs text-och-steel font-bold uppercase tracking-wider">
+                  {loadingTrack ? 'Loading...' : 'Welcome back'}
+                </p>
+                <p className="text-sm font-black text-white">
+                  {loadingTrack ? user?.first_name || 'Student' : welcomeText}
+                </p>
+              </div>
+              <div className="sm:hidden">
+                <p className="text-sm font-black text-white">
+                  {loadingTrack 
+                    ? user?.first_name || 'Student' 
+                    : (trackDisplayName ? `${trackDisplayName}` : user?.first_name || 'Student')
+                  }
+                </p>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-4">
-              <p className="text-och-steel text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-och-mint animate-ping" />
-                Welcome Back, {user?.first_name || 'Cyber Builder'}
-              </p>
-              <div className="h-4 w-px bg-och-steel/20 hidden sm:block" />
-              <p className="text-och-gold text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5" />
-                Persona: {persona}
-              </p>
-            </div>
-          </div>
-        </div>
 
-        <div className="flex flex-wrap gap-4 w-full xl:w-auto relative z-10">
-          {[
-            { label: 'Readiness Score', value: readinessScore, icon: TrendingUp, color: 'text-och-mint', trend: '+14' },
-            { label: 'Platform Health', value: `${healthScore}%`, icon: Shield, color: 'text-och-defender' },
-            { label: 'Daily Streak', value: '12d', icon: Flame, color: 'text-och-gold' },
-          ].map((stat, i) => (
-            <div key={i} className="flex-1 min-w-[160px] xl:min-w-[180px] p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-all">
-               <div className={clsx("p-2 rounded-xl bg-current/10 mb-2 transition-transform group-hover:scale-110", stat.color)}>
-                 <stat.icon className="w-4 h-4" />
-               </div>
-               <p className="text-[9px] text-och-steel font-black uppercase tracking-widest leading-none mb-1.5">{stat.label}</p>
-               <div className="flex items-baseline gap-1.5">
-                 <span className="text-2xl font-black text-white">{stat.value}</span>
-                 {stat.trend && <span className="text-[9px] text-och-mint font-bold">{stat.trend}</span>}
-               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* 2. NAVIGATION & ACTION PROMPTS (Left Column) */}
-        <aside className="lg:col-span-3 space-y-8">
-          
-          {/* WHAT TO DO NEXT (Dynamic Prompt) */}
-          <div className="p-6 rounded-[2.5rem] bg-gradient-to-br from-och-gold/20 to-transparent border border-och-gold/20 relative overflow-hidden">
-             <div className="flex items-center gap-2 mb-4">
-               <Zap className="w-4 h-4 text-och-gold" />
-               <span className="text-[10px] font-black text-white uppercase tracking-widest">Action Prompt</span>
-             </div>
-             <h3 className="text-lg font-black text-white leading-tight uppercase tracking-tight mb-4 italic">
-               "Deploy to Module 3: Network Defense. Your mentor left a priority note."
-             </h3>
-             <Button 
-               variant="defender" 
-               className="w-full h-12 rounded-2xl bg-och-gold text-black hover:bg-white transition-all font-black uppercase tracking-widest text-[10px]"
-               onClick={() => router.push('/dashboard/student/curriculum')}
-             >
-               Start Next Step
-               <ChevronRight className="w-4 h-4 ml-1" />
-             </Button>
-          </div>
-
-          {/* QUICK LINKS SIDEBAR */}
-          <nav className="space-y-2">
-            {[
-              { label: 'Curriculum GPS', icon: Compass, href: '/dashboard/student/curriculum' },
-              { label: 'Mission Hub', icon: Target, href: '/dashboard/student/missions' },
-              { label: 'Coaching OS', icon: MessageSquare, href: '/dashboard/student/coaching' },
-              { label: 'Professional Portfolio', icon: Briefcase, href: '/dashboard/student/portfolio' },
-              { label: 'Mentorship Hub', icon: Users, href: '/dashboard/student/mentorship' },
-              { label: 'Marketplace', icon: Store, href: '/dashboard/student/marketplace' },
-            ].map((link, i) => (
+            {/* Notification Bell & Quick Actions */}
+            <div className="flex items-center gap-2">
               <button
-                key={i}
-                onClick={() => router.push(link.href)}
-                className="w-full flex items-center justify-between p-4 rounded-2xl bg-och-steel/5 border border-white/5 text-och-steel hover:text-white hover:bg-white/10 hover:border-white/10 transition-all group"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all"
               >
-                <div className="flex items-center gap-4">
-                  <link.icon className="w-4 h-4 transition-transform group-hover:scale-110" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">{link.label}</span>
-                </div>
-                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all" />
+                <Bell className="w-5 h-5 text-och-steel" />
+                {events && events.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-och-defender rounded-full border border-och-midnight" />
+                )}
               </button>
-            ))}
-          </nav>
-
-          {/* IDENTITY STATUS */}
-          <div className="p-6 rounded-[2.5rem] bg-och-midnight border border-och-steel/10">
-             <div className="flex items-center gap-2 mb-4">
-               <Globe className="w-3.5 h-3.5 text-och-mint" />
-               <span className="text-[10px] font-black text-och-steel uppercase tracking-widest">Global Identity</span>
-             </div>
-             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 mb-4">
-                <div className="w-8 h-8 rounded-full bg-och-gold/20 flex items-center justify-center">
-                  <Star className="w-4 h-4 text-och-gold" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] text-och-steel font-black uppercase tracking-tighter mb-0.5">och.africa/student/</p>
-                  <p className="text-xs text-white font-bold truncate">@{user?.email?.split('@')[0] || 'handle'}</p>
-                </div>
-             </div>
-             <p className="text-[10px] text-slate-400 leading-relaxed italic">
-               "Your portfolio is currently in Anonymous Mode. Reach Readiness 750 to unlock Talent Visibility."
-             </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/dashboard/student/settings')}
+                className="hidden sm:flex"
+              >
+                Settings
+              </Button>
+            </div>
           </div>
-        </aside>
+        </div>
+      </motion.div>
 
-        {/* 3. CENTER OPS (Coaching & Missions) */}
-        <main className="lg:col-span-6 space-y-8">
-          
-          {/* HABITS ENGINE (Quick Log) */}
-          <Card className="p-8 rounded-[3rem] bg-och-midnight/50 border border-och-steel/10 backdrop-blur-md">
-             <div className="flex items-center justify-between mb-8">
-                <div>
-                   <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Habits Engine</h2>
-                   <p className="text-och-steel text-[10px] font-black uppercase tracking-widest mt-1">Daily Log: Learn • Practice • Reflect</p>
-                </div>
-                <Badge variant="mint" className="h-6 px-3 text-[10px] font-black tracking-widest">12 DAY STREAK</Badge>
-             </div>
-             
-             <div className="grid grid-cols-3 gap-4 mb-8">
-                {[
-                  { label: 'Learn', icon: Clock, color: 'text-och-gold' },
-                  { label: 'Practice', icon: Target, color: 'text-och-defender' },
-                  { label: 'Reflect', icon: MessageSquare, color: 'text-och-mint' },
-                ].map((habit, i) => (
-                  <button key={i} className="group p-6 rounded-3xl bg-white/5 border border-white/5 hover:border-white/20 transition-all flex flex-col items-center justify-center text-center gap-3">
-                     <div className={clsx("p-3 rounded-2xl bg-current/10 group-hover:scale-110 transition-transform", habit.color)}>
-                        <habit.icon className="w-6 h-6" />
-                     </div>
-                     <span className="text-[10px] font-black text-white uppercase tracking-widest">{habit.label}</span>
-                     <div className="w-2 h-2 rounded-full bg-och-steel/20 group-active:bg-och-mint transition-colors" />
-                  </button>
-                ))}
-             </div>
-
-             <div className="p-6 rounded-2xl bg-gradient-to-r from-och-mint/10 to-transparent border border-och-mint/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4 text-center sm:text-left">
-                   <div className="w-10 h-10 rounded-full bg-och-mint/20 flex items-center justify-center">
-                      <Star className="w-5 h-5 text-och-mint" />
-                   </div>
-                   <div>
-                     <p className="text-[10px] text-och-mint font-black uppercase tracking-widest mb-1">Daily Reflection Prompt</p>
-                     <p className="text-xs text-white font-bold italic">"How did today's lab session shift your perspective on Threat Intelligence?"</p>
-                   </div>
-                </div>
-                <Button variant="outline" size="sm" className="h-10 px-6 rounded-xl border-och-mint/30 text-och-mint hover:bg-och-mint hover:text-black font-black uppercase tracking-widest text-[9px]">
-                   Open Reflection OS
-                </Button>
-             </div>
-          </Card>
-
-          {/* ACTIVE MISSION (Current Ops) */}
-          <div className="space-y-4">
-             <div className="flex items-center justify-between px-2">
+      {/* MAIN CONTENT */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        {/* FLIGHT INSTRUMENTS - TalentScope Metrics */}
+        <motion.div
+          variants={prefersReducedMotion ? {} : containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+          {/* Readiness Score - Primary Instrument */}
+          <motion.div variants={itemVariants}>
+            <Card className="p-5 bg-gradient-to-br from-och-mint/10 to-transparent border border-och-mint/20">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                   <Target className="w-5 h-5 text-och-defender" />
-                   <span className="text-sm font-black text-white uppercase tracking-tighter">Current Operations</span>
+                  <TrendingUp className="w-5 h-5 text-och-mint" />
+                  <span className="text-xs font-black text-och-steel uppercase tracking-wider">
+                    Readiness
+                  </span>
                 </div>
-                <button className="text-[10px] font-black text-och-gold uppercase tracking-widest hover:underline" onClick={() => router.push('/dashboard/student/missions')}>
-                   View All Missions
+                <Badge variant="mint" className="text-xs font-bold">
+                  {readinessScore}/100
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-white">
+                    {readinessScore}
+                  </span>
+                  <span className="text-xs text-och-steel">points</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-och-mint rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${readinessScore}%` }}
+                    transition={{ duration: 1, delay: 0.3 }}
+                  />
+                </div>
+                {readiness?.trend && (
+                  <p className="text-xs text-och-mint font-bold">
+                    {readiness.trend > 0 ? '+' : ''}{readiness.trend} this week
+                  </p>
+                )}
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Streak Counter */}
+          <motion.div variants={itemVariants}>
+            <Card className="p-5 bg-gradient-to-br from-och-gold/10 to-transparent border border-och-gold/20">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-och-gold" />
+                  <span className="text-xs font-black text-och-steel uppercase tracking-wider">
+                    Streak
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-white">
+                    {streak}
+                  </span>
+                  <span className="text-xs text-och-steel">days</span>
+                </div>
+                <p className="text-xs text-och-gold font-bold">
+                  Keep it going! 🔥
+                </p>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Points & Level */}
+          <motion.div variants={itemVariants}>
+            <Card className="p-5 bg-gradient-to-br from-och-defender/10 to-transparent border border-och-defender/20">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-och-defender" />
+                  <span className="text-xs font-black text-och-steel uppercase tracking-wider">
+                    Points
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-white">
+                    {points.toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-xs text-och-steel">
+                  Level {circleLevel} • {rank}
+                </p>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Badges & Achievements */}
+          <motion.div variants={itemVariants}>
+            <Card className="p-5 bg-gradient-to-br from-och-orange/10 to-transparent border border-och-orange/20">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-och-orange" />
+                  <span className="text-xs font-black text-och-steel uppercase tracking-wider">
+                    Badges
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-white">
+                    {badges}
+                  </span>
+                </div>
+                <p className="text-xs text-och-steel">
+                  Achievements unlocked
+                </p>
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
+
+        {/* WHAT TO DO NEXT - Actionable Guidance */}
+        {nextActions && nextActions.length > 0 && (
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <Card className="p-6 bg-gradient-to-br from-och-gold/20 via-och-gold/10 to-transparent border border-och-gold/30">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-och-gold/20 flex items-center justify-center shrink-0">
+                  <Rocket className="w-6 h-6 text-och-gold" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-black text-white mb-2 uppercase tracking-tight">
+                    What to do next
+                  </h3>
+                  <p className="text-sm text-white mb-4 leading-relaxed">
+                    {nextActions[0].title || "Continue your learning journey"}
+                  </p>
+                  {nextActions[0].description && (
+                    <p className="text-xs text-och-steel mb-4">
+                      {nextActions[0].description}
+                    </p>
+                  )}
+                  <Button
+                    variant="defender"
+                    className="bg-och-gold text-black hover:bg-white font-bold uppercase tracking-wide text-xs"
+                    onClick={() => router.push(nextActions[0].href || '/dashboard/student/curriculum')}
+                  >
+                    Start Now
+                    <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* MAIN CONTENT TABS */}
+        <div className="space-y-6">
+          {/* Tab Navigation */}
+          <div className="flex gap-2 border-b border-och-steel/20">
+            {[
+              { id: 'overview', label: 'Overview', icon: Activity },
+              { id: 'progress', label: 'Progress', icon: LineChart },
+              { id: 'community', label: 'Community', icon: Users },
+            ].map((tab) => {
+              const TabIcon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={clsx(
+                    "flex items-center gap-2 px-4 py-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-all",
+                    activeTab === tab.id
+                      ? "border-och-gold text-white"
+                      : "border-transparent text-och-steel hover:text-white"
+                  )}
+                >
+                  <TabIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
                 </button>
-             </div>
-             
-             <div className="p-8 rounded-[3rem] bg-gradient-to-br from-och-defender/20 via-och-midnight to-och-midnight border border-och-defender/20 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-och-defender/5 rounded-full -mr-24 -mt-24 group-hover:scale-110 transition-transform duration-700" />
-                
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-6 relative z-10">
-                   <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                         <Badge variant="defender" className="text-[8px] font-black px-2 uppercase h-5">TIER 3: INTERMEDIATE</Badge>
-                         <span className="text-[10px] text-och-steel font-black uppercase tracking-widest">• 2h Estimated</span>
+              );
+            })}
+          </div>
+
+          {/* Tab Content */}
+          <AnimatePresence mode="wait">
+            {activeTab === 'overview' && (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                {/* Two Column Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column - Missions & Curriculum */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {/* Active Mission */}
+                    <Card className="p-6 bg-gradient-to-br from-och-defender/20 to-transparent border border-och-defender/30">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Target className="w-5 h-5 text-och-defender" />
+                        <h3 className="text-lg font-black text-white uppercase tracking-tight">
+                          Current Mission
+                        </h3>
                       </div>
-                      <h3 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">Ransomware Triage: Apex Protocol</h3>
-                      <p className="text-xs text-slate-400 max-w-md italic">
-                        "Initial telemetry suggests a localized encryption event on the R&D segment. You are tasked with primary containment."
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-base font-bold text-white mb-2">
+                            {trackOverview?.trackName || 'Cyber Defense Fundamentals'}
+                          </h4>
+                          <p className="text-sm text-och-steel">
+                            Continue your journey through the {trackOverview?.trackName || 'cybersecurity'} track
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs text-och-steel font-bold">Progress</span>
+                              <span className="text-xs text-white font-bold">
+                                {Math.round(cohortProgress?.percentage || 0)}%
+                              </span>
+                            </div>
+                            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                              <motion.div
+                                className="h-full bg-och-defender rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${cohortProgress?.percentage || 0}%` }}
+                                transition={{ duration: 1 }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="defender"
+                          className="w-full font-bold uppercase tracking-wide text-xs"
+                          onClick={() => router.push('/dashboard/student/missions')}
+                        >
+                          <PlayCircle className="w-4 h-4 mr-2" />
+                          Continue Mission
+                        </Button>
+                      </div>
+                    </Card>
+
+                    {/* Daily Habits Engine */}
+                    <Card className="p-6 bg-och-midnight/60 border border-och-steel/20">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-och-mint" />
+                          <h3 className="text-lg font-black text-white uppercase tracking-tight">
+                            Daily Habits
+                          </h3>
+                        </div>
+                        {streak > 0 && (
+                          <Badge variant="gold" className="text-xs font-bold">
+                            {streak} Day Streak
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: 'Learn', icon: BookOpen, color: 'och-gold', href: '/dashboard/student/curriculum' },
+                          { label: 'Practice', icon: Target, color: 'och-defender', href: '/dashboard/student/missions' },
+                          { label: 'Reflect', icon: MessageSquare, color: 'och-mint', href: '/dashboard/student/coaching' },
+                        ].map((habit) => {
+                          const HabitIcon = habit.icon;
+                          return (
+                            <button
+                              key={habit.label}
+                              onClick={() => router.push(habit.href)}
+                              className={clsx(
+                                "p-4 rounded-xl bg-white/5 border border-white/10 hover:border-och-gold/30 transition-all flex flex-col items-center gap-2 group"
+                              )}
+                            >
+                              <div className={clsx("p-3 rounded-lg bg-och-gold/10 group-hover:bg-och-gold/20 transition-all")}>
+                                <HabitIcon className={clsx("w-5 h-5 text-och-gold")} />
+                              </div>
+                              <span className="text-xs font-bold text-white uppercase tracking-wide">
+                                {habit.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  </div>
+
+                  {/* Right Column - Cohort Discussions & Mentors */}
+                  <div className="space-y-6">
+                    {/* Cohort Group Discussions */}
+                    <Card className="p-5 bg-och-midnight/60 border border-och-steel/20">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-black text-och-steel uppercase tracking-wider">
+                          Cohort Discussions
+                        </h3>
+                        {cohortId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-och-gold hover:text-och-gold/80"
+                            onClick={() => router.push('/dashboard/student/community')}
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            View All
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {loadingCohortData ? (
+                        <div className="space-y-3">
+                          {[1, 2].map((i) => (
+                            <div key={i} className="h-16 bg-white/5 rounded-lg animate-pulse" />
+                          ))}
+                        </div>
+                      ) : cohortDiscussions.length > 0 ? (
+                        <div className="space-y-3">
+                          {cohortDiscussions.slice(0, 3).map((discussion: any) => (
+                            <button
+                              key={discussion.id}
+                              onClick={() => router.push(`/dashboard/student/community?post=${discussion.id}`)}
+                              className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-all group"
+                            >
+                              <div className="flex items-start gap-2">
+                                <MessageCircle className="w-4 h-4 text-och-gold mt-0.5 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold text-white uppercase tracking-wide truncate mb-1">
+                                    {discussion.title || 'Discussion'}
+                                  </p>
+                                  <p className="text-xs text-och-steel line-clamp-2">
+                                    {discussion.content || discussion.excerpt || ''}
+                                  </p>
+                                  {discussion.comment_count > 0 && (
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <MessageSquare className="w-3 h-3 text-och-steel" />
+                                      <span className="text-xs text-och-steel">
+                                        {discussion.comment_count} {discussion.comment_count === 1 ? 'reply' : 'replies'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-och-steel group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" />
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6">
+                          <MessageCircle className="w-8 h-8 text-och-steel/50 mx-auto mb-2" />
+                          <p className="text-xs text-och-steel mb-3">
+                            {cohortName ? `No discussions in ${cohortName} yet` : 'No cohort discussions available'}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-och-steel/30 text-och-steel hover:bg-white/10 text-xs"
+                            onClick={() => router.push('/dashboard/student/community')}
+                          >
+                            Start Discussion
+                          </Button>
+                        </div>
+                      )}
+                    </Card>
+
+                    {/* Available Cohort Mentors */}
+                    <Card className="p-5 bg-och-midnight/60 border border-och-steel/20">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-black text-och-steel uppercase tracking-wider">
+                          Cohort Mentors
+                        </h3>
+                        {cohortId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-och-gold hover:text-och-gold/80"
+                            onClick={() => router.push('/dashboard/student/mentorship')}
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            View All
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {loadingCohortData ? (
+                        <div className="space-y-3">
+                          {[1, 2].map((i) => (
+                            <div key={i} className="h-14 bg-white/5 rounded-lg animate-pulse" />
+                          ))}
+                        </div>
+                      ) : cohortMentors.length > 0 ? (
+                        <div className="space-y-2">
+                          {cohortMentors.slice(0, 4).map((mentor: any) => {
+                            const mentorName = mentor.mentor_name || 
+                              (mentor.mentor?.first_name && mentor.mentor?.last_name 
+                                ? `${mentor.mentor.first_name} ${mentor.mentor.last_name}`
+                                : mentor.mentor?.email || 'Mentor');
+                            const mentorRole = mentor.role || 'Mentor';
+                            
+                            return (
+                              <button
+                                key={mentor.id || mentor.mentor?.id}
+                                onClick={() => router.push(`/dashboard/student/mentorship?mentor=${mentor.mentor?.id || mentor.mentor_id}`)}
+                                className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-all group"
+                              >
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div className="w-8 h-8 rounded-full bg-och-gold/20 flex items-center justify-center flex-shrink-0">
+                                    <UserCircle className="w-5 h-5 text-och-gold" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-white uppercase tracking-wide truncate">
+                                      {mentorName}
+                                    </p>
+                                    <p className="text-xs text-och-steel capitalize">
+                                      {mentorRole}
+                                    </p>
+                                  </div>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-och-steel group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6">
+                          <UserCircle className="w-8 h-8 text-och-steel/50 mx-auto mb-2" />
+                          <p className="text-xs text-och-steel mb-3">
+                            {cohortName ? `No mentors assigned to ${cohortName} yet` : 'No mentors available'}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-och-steel/30 text-och-steel hover:bg-white/10 text-xs"
+                            onClick={() => router.push('/dashboard/student/mentorship')}
+                          >
+                            View Mentorship
+                          </Button>
+                        </div>
+                      )}
+                    </Card>
+
+                    {/* AI Success Advisor */}
+                    <Card className="p-5 bg-gradient-to-br from-och-mint/10 to-transparent border border-och-mint/20">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Brain className="w-5 h-5 text-och-mint" />
+                        <h3 className="text-sm font-black text-white uppercase tracking-tight">
+                          AI Success Advisor
+                        </h3>
+                      </div>
+                      <p className="text-xs text-och-steel mb-4 leading-relaxed">
+                        Your co-pilot for cybersecurity transformation. Ask questions, get guidance, and stay aligned with your Future-You persona.
                       </p>
-                   </div>
-                   <div className="flex flex-col items-center gap-2">
-                      <div className="w-20 h-20 rounded-full border-4 border-white/5 flex items-center justify-center relative">
-                         <div className="absolute inset-0 border-4 border-och-defender rounded-full border-t-transparent animate-spin-slow" />
-                         <span className="text-xl font-black text-white">42%</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-och-mint/30 text-och-mint hover:bg-och-mint hover:text-black font-bold uppercase tracking-wide text-xs"
+                        onClick={() => router.push('/dashboard/student/coaching')}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Chat with AI Coach
+                      </Button>
+                    </Card>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'progress' && (
+              <motion.div
+                key="progress"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                {/* TalentScope Analytics */}
+                <Card className="p-6 bg-och-midnight/60 border border-och-steel/20">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <LineChart className="w-5 h-5 text-och-mint" />
+                      <h3 className="text-lg font-black text-white uppercase tracking-tight">
+                        TalentScope Analytics
+                      </h3>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => router.push('/dashboard/student/portfolio')}
+                    >
+                      <ArrowUpRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Readiness Breakdown */}
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wide">
+                        Readiness Breakdown
+                      </h4>
+                      <div className="space-y-3">
+                        {[
+                          { label: 'Technical Depth', value: 74, color: 'bg-och-gold' },
+                          { label: 'Behavioral Readiness', value: 88, color: 'bg-och-mint' },
+                          { label: 'Identity Alignment', value: 92, color: 'bg-och-defender' },
+                        ].map((metric) => (
+                          <div key={metric.label} className="space-y-2">
+                            <div className="flex justify-between text-xs font-bold">
+                              <span className="text-och-steel">{metric.label}</span>
+                              <span className="text-white">{metric.value}%</span>
+                            </div>
+                            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                              <motion.div
+                                className={`h-full ${metric.color} rounded-full`}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${metric.value}%` }}
+                                transition={{ duration: 1, delay: 0.2 }}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <span className="text-[9px] text-och-steel font-black uppercase tracking-widest">Progress</span>
-                   </div>
-                </div>
+                    </div>
 
-                <div className="flex items-center gap-4 mt-12 relative z-10">
-                   <Button 
-                    variant="defender" 
-                    className="flex-1 h-14 rounded-2xl bg-och-defender text-black hover:bg-white transition-all font-black uppercase tracking-widest text-[11px] shadow-lg shadow-och-defender/20"
-                    onClick={() => router.push('/dashboard/student/missions')}
-                   >
-                     Resume Mission
-                     <Zap className="w-4 h-4 ml-2 fill-current" />
-                   </Button>
-                   <Button 
-                    variant="outline" 
-                    className="h-14 px-8 rounded-2xl border-och-steel/20 text-och-steel hover:text-white transition-all font-black uppercase tracking-widest text-[11px]"
-                   >
-                     Evidence (3)
-                   </Button>
-                </div>
-             </div>
-          </div>
-        </main>
-
-        {/* 4. ANALYTICS & COMMUNITY (Right Column) */}
-        <aside className="lg:col-span-3 space-y-8">
-          
-          {/* TALENTSCOPE RADAR (Mini) */}
-          <div className="p-6 rounded-[2.5rem] bg-white/5 border border-white/5">
-             <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                   <LineChart className="w-4 h-4 text-och-mint" />
-                   <span className="text-[10px] font-black text-white uppercase tracking-widest">TalentScope Radar</span>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-och-steel" />
-             </div>
-             
-             <div className="aspect-square w-full rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center mb-6 relative">
-                <div className="absolute inset-4 rounded-full border border-white/5" />
-                <div className="absolute inset-12 rounded-full border border-white/5" />
-                <div className="absolute inset-20 rounded-full border border-white/5" />
-                <div className="w-full h-full p-4 flex items-center justify-center">
-                   {/* Placeholder for Skills Radar */}
-                   <div className="w-full h-full bg-och-mint/10 rounded-full animate-pulse flex items-center justify-center">
-                      <p className="text-[8px] text-och-mint font-black uppercase tracking-[0.3em]">TELEMETRY ACTIVE</p>
-                   </div>
-                </div>
-             </div>
-
-             <div className="space-y-3">
-                {[
-                  { label: 'Technical Dept', val: 74, color: 'bg-och-gold' },
-                  { label: 'Behavorial Readiness', val: 88, color: 'bg-och-mint' },
-                  { label: 'Identity Alignment', val: 92, color: 'bg-och-defender' },
-                ].map((m, i) => (
-                  <div key={i} className="space-y-1.5">
-                     <div className="flex justify-between text-[8px] font-black uppercase tracking-widest">
-                        <span className="text-och-steel">{m.label}</span>
-                        <span className="text-white">{m.val}%</span>
-                     </div>
-                     <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                        <div className={clsx("h-full rounded-full", m.color)} style={{ width: `${m.val}%` }} />
-                     </div>
+                    {/* Future-You Blueprint */}
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wide">
+                        Your Future-You Blueprint
+                      </h4>
+                      <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-lg bg-och-gold/20 flex items-center justify-center">
+                            <Star className="w-5 h-5 text-och-gold" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-och-steel font-bold uppercase tracking-wider">
+                              Persona
+                            </p>
+                            <p className="text-sm font-black text-white">
+                              {persona}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-och-steel leading-relaxed">
+                          Your personalized career path based on your strengths and aspirations. Track your progress toward becoming your Future-You.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                ))}
-             </div>
-          </div>
+                </Card>
 
-          {/* COMMUNITY FEED (Tabs) */}
-          <div className="p-6 rounded-[2.5rem] bg-och-midnight border border-och-steel/10 space-y-6">
-             <div className="flex p-1 bg-white/5 rounded-2xl border border-white/5">
-                <button 
-                  onClick={() => setActiveFeed('local')}
-                  className={clsx(
-                    "flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
-                    activeFeed === 'local' ? "bg-och-gold text-black" : "text-och-steel hover:text-white"
-                  )}
-                >
-                  Local Feed
-                </button>
-                <button 
-                  onClick={() => setActiveFeed('global')}
-                  className={clsx(
-                    "flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
-                    activeFeed === 'global' ? "bg-och-gold text-black" : "text-och-steel hover:text-white"
-                  )}
-                >
-                  Global Feed
-                </button>
-             </div>
+                {/* Track Progress */}
+                {trackOverview && (
+                  <Card className="p-6 bg-och-midnight/60 border border-och-steel/20">
+                    <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4">
+                      Track Progress
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-bold text-white">
+                            {trackOverview.trackName || 'Current Track'}
+                          </span>
+                          <span className="text-sm font-bold text-och-gold">
+                            {trackOverview.completedMilestones || 0}/{trackOverview.totalMilestones || 0} Milestones
+                          </span>
+                        </div>
+                        <div className="h-3 bg-white/5 rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-och-gold rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ 
+                              width: `${((trackOverview.completedMilestones || 0) / (trackOverview.totalMilestones || 1)) * 100}%` 
+                            }}
+                            transition={{ duration: 1 }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </motion.div>
+            )}
 
-             <div className="space-y-4">
-                {[
-                  { user: 'Sarah K.', action: 'Achieved "First Blood" in module 2', time: '12m ago', icon: Zap },
-                  { user: 'Uni of Nairobi', action: 'New mentorship session open for GRC track', time: '1h ago', icon: Users },
-                  { user: 'Michael O.', action: 'Verified 5 items in Portfolio', time: '3h ago', icon: CheckCircle2 },
-                ].map((post, i) => (
-                  <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/20 transition-all cursor-pointer">
-                     <div className="w-10 h-10 rounded-xl bg-och-midnight border border-och-steel/10 flex items-center justify-center shrink-0">
-                        <post.icon className="w-5 h-5 text-och-gold" />
-                     </div>
-                     <div className="min-w-0">
-                        <p className="text-[10px] text-white font-black uppercase tracking-tight mb-1">{post.user}</p>
-                        <p className="text-[10px] text-slate-400 italic leading-tight mb-2 truncate">"{post.action}"</p>
-                        <span className="text-[8px] text-och-steel font-black uppercase tracking-widest">{post.time}</span>
-                     </div>
+            {activeTab === 'community' && (
+              <motion.div
+                key="community"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                {/* University Community Feed */}
+                <Card className="p-6 bg-och-midnight/60 border border-och-steel/20">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-och-gold" />
+                      <h3 className="text-lg font-black text-white uppercase tracking-tight">
+                        Community Feed
+                      </h3>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => router.push('/dashboard/student/community')}
+                    >
+                      View All
+                      <ArrowUpRight className="w-4 h-4 ml-1" />
+                    </Button>
                   </div>
-                ))}
-             </div>
+                  
+                  <div className="space-y-3">
+                    {communityFeed && communityFeed.length > 0 ? (
+                      communityFeed.slice(0, 5).map((post: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-och-midnight border border-och-steel/10 flex items-center justify-center shrink-0">
+                              <Users className="w-5 h-5 text-och-gold" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-white mb-1">
+                                {post.user || 'Community Member'}
+                              </p>
+                              <p className="text-xs text-och-steel leading-relaxed">
+                                {post.action || post.content || 'Shared an update'}
+                              </p>
+                              {post.time && (
+                                <p className="text-[10px] text-och-steel mt-2">
+                                  {post.time}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center">
+                        <Users className="w-12 h-12 text-och-steel mx-auto mb-3 opacity-50" />
+                        <p className="text-sm text-och-steel">
+                          No community updates yet. Check back soon!
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
 
-             <Button 
-               variant="outline" 
-               className="w-full h-10 rounded-xl border-och-steel/20 text-och-steel hover:text-white font-black uppercase tracking-widest text-[9px]"
-               onClick={() => router.push('/dashboard/student/community')}
-             >
-                Open Community Hub
-             </Button>
-          </div>
-        </aside>
+                {/* Upcoming Events */}
+                {events && events.length > 0 && (
+                  <Card className="p-6 bg-och-midnight/60 border border-och-steel/20">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Calendar className="w-5 h-5 text-och-defender" />
+                      <h3 className="text-lg font-black text-white uppercase tracking-tight">
+                        Upcoming Events
+                      </h3>
+                    </div>
+                    <div className="space-y-3">
+                      {events.slice(0, 3).map((event: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="p-4 rounded-xl bg-white/5 border border-white/10"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <p className="text-sm font-bold text-white mb-1">
+                                {event.title || 'Event'}
+                              </p>
+                              <p className="text-xs text-och-steel">
+                                {event.date || event.time || 'TBA'}
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                            >
+                              RSVP
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* 5. MOBILE FLOATING NOTIFICATION (Top-right "Bell") */}
-      <button className="fixed top-8 right-8 z-50 w-12 h-12 rounded-2xl bg-och-gold text-black flex items-center justify-center shadow-lg shadow-och-gold/20 hover:scale-110 transition-transform sm:hidden">
-         <div className="relative">
-            <Bell className="w-6 h-6" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-och-defender rounded-full border-2 border-och-gold" />
-         </div>
-      </button>
-
-      {/* 6. AI COACHING NUDGE (Coaching OS Integration) */}
+      {/* AI Coaching Nudge (Floating) */}
       <CoachingNudge userId={user?.id?.toString()} autoLoad={true} />
-
     </div>
   );
 }
-
-

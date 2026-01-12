@@ -61,7 +61,6 @@ const generateBreadcrumbs = (pathname: string): BreadcrumbItem[] => {
   }
 
   let currentPath = dashboardBase
-  let skipNext = false
   
   segments.forEach((segment, index) => {
     // Skip 'dashboard' segment

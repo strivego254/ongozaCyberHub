@@ -45,7 +45,7 @@ from users.utils.consent_utils import (
     revoke_consent,
     get_consent_scopes_for_token,
 )
-from users.auth_models import MFAMethod
+from users.auth_models import MFAMethod, UserSession
 from services.email_service import email_service
 
 
@@ -1296,6 +1296,104 @@ def reset_password(request):
         logger.error(f"Password reset error: {str(e)}")
         return Response(
             {'error': 'Password reset failed. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+class SessionsView(APIView):
+    """
+    GET /api/v1/auth/sessions
+    List all active sessions for the current user.
+    DELETE /api/v1/auth/sessions/{session_id}
+    Revoke a specific session.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get all active sessions for the current user"""
+        user = request.user
+        
+        # Get all active (non-revoked) sessions that haven't expired
+        sessions = UserSession.objects.filter(
+            user=user,
+            revoked_at__isnull=True,
+            expires_at__gt=timezone.now()
+        ).order_by('-last_activity')
+        
+        # Get current session ID from refresh token if available
+        current_session_id = None
+        try:
+            # Try to get current session from request metadata
+            # This is a simplified approach - in production, you'd extract from the JWT
+            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            # For now, we'll mark the most recent session as current
+            if sessions.exists():
+                current_session_id = str(sessions.first().id)
+        except:
+            pass
+        
+        sessions_data = []
+        for session in sessions:
+            sessions_data.append({
+                'id': str(session.id),
+                'device_name': session.device_name or 'Unknown Device',
+                'device_type': session.device_type or 'unknown',
+                'device_info': session.device_name or 'Unknown Device',
+                'ip_address': str(session.ip_address) if session.ip_address else None,
+                'location': None,  # Could be derived from IP using a geolocation service
+                'last_active': session.last_activity.isoformat() if session.last_activity else session.created_at.isoformat(),
+                'last_activity': session.last_activity.isoformat() if session.last_activity else None,
+                'created_at': session.created_at.isoformat(),
+                'current': str(session.id) == current_session_id,
+                'is_trusted': session.is_trusted,
+                'mfa_verified': session.mfa_verified,
+                'ua': session.ua,
+            })
+        
+        return Response(sessions_data, status=status.HTTP_200_OK)
+    
+    def delete(self, request, session_id=None):
+        """Revoke a specific session"""
+        user = request.user
+        
+        try:
+            if session_id:
+                # Revoke specific session
+                session = UserSession.objects.get(id=session_id, user=user)
+                session.revoked_at = timezone.now()
+                session.save()
+                return Response({'message': 'Session revoked successfully'}, status=status.HTTP_200_OK)
+            else:
+                # Revoke all other sessions (keep current)
+                # Get current session from refresh token
+                # For now, revoke all except the most recent
+                sessions = UserSession.objects.filter(
+                    user=user,
+                    revoked_at__isnull=True,
+                    expires_at__gt=timezone.now()
+                ).order_by('-last_activity')
+                
+                if sessions.exists():
+                    # Keep the most recent session
+                    current_session = sessions.first()
+                    other_sessions = sessions.exclude(id=current_session.id)
+                    other_sessions.update(revoked_at=timezone.now())
+                    return Response({
+                        'message': f'{other_sessions.count()} session(s) revoked successfully'
+                    }, status=status.HTTP_200_OK)
+                else:
+                    return Response({'message': 'No sessions to revoke'}, status=status.HTTP_200_OK)
+        except UserSession.DoesNotExist:
+            return Response(
+                {'error': 'Session not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error revoking session: {str(e)}")
+            return Response(
+                {'error': 'Failed to revoke session'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

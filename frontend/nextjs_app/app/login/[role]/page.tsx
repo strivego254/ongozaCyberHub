@@ -187,7 +187,7 @@ function LoginForm() {
             console.warn('⚠️ FastAPI unavailable, falling back to Django profiling check')
             setIsRedirecting(true)
             hasRedirectedRef.current = true
-            router.push('/profiling')
+            window.location.href = '/onboarding/ai-profiler'
             return
           }
           // If Django says not required and FastAPI is down, continue to dashboard

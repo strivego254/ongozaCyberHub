@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
-import { useCohorts, useTracks, usePrograms } from '@/hooks/usePrograms'
+// Removed unused hooks - we now fetch only assigned cohorts dynamically
 import { programsClient, type Cohort, type Track, type MentorAssignment, type Milestone, type Module, type Enrollment } from '@/services/programsClient'
 import { mentorClient } from '@/services/mentorClient'
 import type { MenteeFlag } from '@/services/types/mentor'
@@ -41,10 +41,6 @@ export default function MentorCohortsTracksPage() {
   const router = useRouter()
   const mentorId = user?.id?.toString()
   
-  const { cohorts, isLoading: cohortsLoading } = useCohorts({ page: 1, pageSize: 500 })
-  const { tracks, isLoading: tracksLoading } = useTracks()
-  const { programs, isLoading: programsLoading } = usePrograms()
-  
   const [assignments, setAssignments] = useState<AssignmentWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,6 +48,8 @@ export default function MentorCohortsTracksPage() {
   const [expandedTracks, setExpandedTracks] = useState<Set<string>>(new Set())
   const [trackDetails, setTrackDetails] = useState<Record<string, { milestones: Milestone[]; modules: Module[] }>>({})
   const [cohortEnrollments, setCohortEnrollments] = useState<Record<string, { enrollments: Enrollment[]; loading: boolean }>>({})
+  const [tracksCache, setTracksCache] = useState<Map<string, Track>>(new Map())
+  const [programsCache, setProgramsCache] = useState<Map<string, { id: string; name: string }>>(new Map())
 
   const [selectedMentees, setSelectedMentees] = useState<Set<string>>(new Set())
   const [showFlagModal, setShowFlagModal] = useState(false)
@@ -67,59 +65,140 @@ export default function MentorCohortsTracksPage() {
   const [viewMode, setViewMode] = useState<'cohorts' | 'tracks'>('cohorts')
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null)
 
-  // Load mentor assignments efficiently using getMentorAssignments API
+  // Load mentor assignments dynamically - fetch assigned cohorts using cohorts API (automatically filtered by mentor)
   useEffect(() => {
     const loadAssignments = async () => {
-      if (!mentorId) return
+      if (!mentorId) {
+        setIsLoading(false)
+        return
+      }
 
       setIsLoading(true)
       setError(null)
 
       try {
-        // Use the efficient API endpoint that filters by mentor
-        const mentorAssignmentsList = await programsClient.getMentorAssignments(mentorId)
+        // Fetch cohorts - backend automatically filters to show only cohorts where mentor is assigned
+        // This uses the CohortViewSet which filters by mentor_assignments__mentor=user
+        const cohortsResponse = await programsClient.getCohorts({ page: 1, pageSize: 500 })
+        const cohortDetails = Array.isArray(cohortsResponse) ? cohortsResponse : cohortsResponse.results || []
         
-        // Filter only active assignments
-        const activeAssignments = mentorAssignmentsList.filter(a => a.active)
-        
-        if (activeAssignments.length === 0) {
+        if (cohortDetails.length === 0) {
           setAssignments([])
           setIsLoading(false)
           return
         }
-
-        // Get unique cohort IDs
-        const cohortIds = Array.from(new Set(activeAssignments.map(a => String(a.cohort))))
         
-        // Fetch cohort details in parallel
-        const cohortPromises = cohortIds.map(async (cohortId) => {
+        // Get mentor assignments for each cohort to get assignment details (role, assigned_at, etc.)
+        const assignmentPromises = cohortDetails.map(async (cohort) => {
           try {
-            return await programsClient.getCohort(cohortId)
+            const mentors = await programsClient.getCohortMentors(cohort.id)
+            // Find the assignment for this mentor
+            const mentorAssignment = mentors.find((m: any) => {
+              const mId = typeof m.mentor === 'string' ? m.mentor : m.mentor?.id || m.mentor?.toString()
+              return String(mId) === String(mentorId) && m.active !== false
+            })
+            
+            // If assignment not found but cohort is in list, create a fallback assignment
+            // This handles edge cases where backend filtered by assignment but API doesn't return it
+            if (!mentorAssignment) {
+              console.warn(`Mentor assignment not found for cohort ${cohort.id}, creating fallback`)
+              const fallbackAssignment: MentorAssignment = {
+                id: '',
+                mentor: mentorId,
+                cohort: cohort.id,
+                role: 'support',
+                active: true,
+                assigned_at: new Date().toISOString(),
+              }
+              return { cohort, mentorAssignment: fallbackAssignment }
+            }
+            
+            return { cohort, mentorAssignment }
           } catch (err) {
-            console.error(`Failed to load cohort ${cohortId}:`, err)
-            return null
+            console.error(`Failed to load mentors for cohort ${cohort.id}:`, err)
+            // Create fallback assignment if cohort is in filtered list
+            const fallbackAssignment: MentorAssignment = {
+              id: '',
+              mentor: mentorId,
+              cohort: cohort.id,
+              role: 'support',
+              active: true,
+              assigned_at: new Date().toISOString(),
+            }
+            return { cohort, mentorAssignment: fallbackAssignment }
           }
         })
         
-        const cohortDetails = (await Promise.all(cohortPromises)).filter(Boolean) as Cohort[]
+        const assignmentResults = await Promise.all(assignmentPromises)
         
-        // Build assignments with details
+        // Filter out any null results (shouldn't happen with fallback, but just in case)
+        const validAssignments = assignmentResults.filter(item => item && item.mentorAssignment) as Array<{ cohort: Cohort; mentorAssignment: MentorAssignment }>
+        
+        // Get unique track IDs from valid cohorts
+        const trackIds = Array.from(new Set(validAssignments.map(item => item.cohort.track).filter(Boolean)))
+        
+        // Fetch track details dynamically
+        const trackPromises = trackIds.map(async (trackId) => {
+          try {
+            const track = await programsClient.getTrack(trackId!)
+            return { trackId: trackId!, track }
+          } catch (err) {
+            console.error(`Failed to load track ${trackId}:`, err)
+            return { trackId: trackId!, track: null }
+          }
+        })
+        
+        const trackResults = await Promise.all(trackPromises)
+        
+        // Build tracks cache and collect program IDs
+        const newTracksCache = new Map<string, Track>()
+        const programIds = new Set<string>()
+        trackResults.forEach(({ trackId, track }) => {
+          if (track) {
+            newTracksCache.set(trackId, track)
+            if (track.program) {
+              programIds.add(track.program)
+            }
+          }
+        })
+        
+        // Fetch programs in parallel
+        const programPromises = Array.from(programIds).map(async (programId) => {
+          try {
+            const program = await programsClient.getProgram(programId)
+            return { programId, program: { id: program.id || '', name: program.name } }
+          } catch (err) {
+            console.error(`Failed to load program ${programId}:`, err)
+            return { programId, program: null }
+          }
+        })
+        
+        const programResults = await Promise.all(programPromises)
+        
+        // Build programs cache
+        const newProgramsCache = new Map<string, { id: string; name: string }>()
+        programResults.forEach(({ programId, program }) => {
+          if (program) {
+            newProgramsCache.set(programId, program)
+          }
+        })
+        
+        // Set caches
+        setTracksCache(newTracksCache)
+        setProgramsCache(newProgramsCache)
+        
+        // Build assignments with details using fetched tracks and programs
         const assignmentsWithDetails: AssignmentWithDetails[] = []
         
-        for (const assignment of activeAssignments) {
-          const cohort = cohortDetails.find(c => String(c.id) === String(assignment.cohort))
-          if (!cohort) continue
-          
-          const track = tracks.find(t => String(t.id) === String(cohort.track))
-          const program = track?.program 
-            ? programs.find(p => String(p.id) === String(track.program))
-            : null
+        for (const { cohort, mentorAssignment } of validAssignments) {
+          const track = cohort.track ? newTracksCache.get(String(cohort.track)) : null
+          const program = track?.program ? newProgramsCache.get(track.program) : null
 
           assignmentsWithDetails.push({
-            assignment,
+            assignment: mentorAssignment,
             cohort,
             track: track || null,
-            program: program ? { id: program.id || '', name: program.name } : null,
+            program: program || null,
             milestones: [],
             modules: [],
           })
@@ -128,21 +207,35 @@ export default function MentorCohortsTracksPage() {
         setAssignments(assignmentsWithDetails)
       } catch (err: any) {
         console.error('Failed to load mentor assignments:', err)
-        setError(err?.message || 'Failed to load assigned cohorts and tracks')
+        setError(err?.message || 'Failed to load assigned cohorts. Please contact your Program Director if you believe this is an error.')
       } finally {
         setIsLoading(false)
       }
     }
 
-    // Only load when mentorId is available and tracks/programs are loaded
-    if (mentorId && !tracksLoading && !programsLoading) {
+    // Load assignments when mentorId is available
+    if (mentorId) {
       loadAssignments()
     }
-  }, [mentorId, tracks, tracksLoading, programs, programsLoading])
+  }, [mentorId])
 
   // Load track details when expanded
   const loadTrackDetails = async (trackId: string) => {
     if (trackDetails[trackId]) return // Already loaded
+
+    // Check if track exists in cache first
+    let track = tracksCache.get(trackId)
+    if (!track) {
+      try {
+        track = await programsClient.getTrack(trackId)
+        if (track) {
+          setTracksCache(prev => new Map(prev).set(trackId, track!))
+        }
+      } catch (err) {
+        console.error(`Failed to load track ${trackId}:`, err)
+        return
+      }
+    }
 
     try {
       const [milestones, allModules] = await Promise.all([
@@ -181,6 +274,28 @@ export default function MentorCohortsTracksPage() {
       console.error(`Failed to load track details for ${trackId}:`, err)
     }
   }
+
+  // Reload assignments when programs cache is updated (for tracks that load programs asynchronously)
+  useEffect(() => {
+    if (assignments.length === 0) return
+
+    setAssignments(prevAssignments => {
+      return prevAssignments.map(assignment => {
+        const track = assignment.cohort.track ? tracksCache.get(String(assignment.cohort.track)) : assignment.track
+        const program = track?.program ? (programsCache.get(track.program) || assignment.program) : assignment.program
+        
+        // Only update if something changed
+        if (track !== assignment.track || program !== assignment.program) {
+          return {
+            ...assignment,
+            track: track || null,
+            program: program || null,
+          }
+        }
+        return assignment
+      })
+    })
+  }, [programsCache])
 
   // Load enrollments for a cohort
   const loadCohortEnrollments = async (cohortId: string) => {
@@ -436,12 +551,14 @@ export default function MentorCohortsTracksPage() {
     return Array.from(trackMap.values())
   }, [assignments])
 
-  if (isLoading || tracksLoading || programsLoading) {
+  if (isLoading) {
     return (
       <RouteGuard>
         <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-6 xl:px-8">
-          <div className="text-center py-12">
-            <div className="text-och-steel">Loading your assigned cohorts and tracks...</div>
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-16 h-16 border-4 border-och-mint border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="text-och-steel text-lg">Loading your assigned cohorts...</div>
+            <div className="text-och-steel/60 text-sm mt-2">Fetching data from backend</div>
           </div>
         </div>
       </RouteGuard>
@@ -465,29 +582,50 @@ export default function MentorCohortsTracksPage() {
       <div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-6 xl:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-och-mint">Assigned Cohorts & Tracks</h1>
-          <p className="text-och-steel">
-            View and manage your assigned cohorts, tracks, and curriculum structure.
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold mb-3 text-och-mint">My Assigned Cohorts</h1>
+              <p className="text-och-steel text-lg">
+                View and manage cohorts assigned to you by the Program Director
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => router.push('/dashboard/mentor/all-cohorts')}
+            >
+              View All Cohorts →
+            </Button>
+          </div>
+          {assignments.length > 0 && (
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-och-mint/10 border border-och-mint/30 rounded-lg">
+              <span className="text-och-mint font-semibold">{assignments.length}</span>
+              <span className="text-och-steel">
+                {assignments.length === 1 ? 'cohort assigned' : 'cohorts assigned'}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Search and Filters */}
-        <Card className="mb-6 p-4">
+        <Card className="mb-6 p-5 bg-gradient-to-br from-och-midnight to-och-midnight/80 border-och-steel/30">
           <div className="flex flex-col md:flex-row gap-4 items-center">
-            <div className="flex-1 w-full">
+            <div className="flex-1 w-full relative">
+              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-och-steel" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               <input
                 type="text"
                 placeholder="Search cohorts, tracks, or programs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white placeholder-och-steel focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint"
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-och-midnight/50 border border-och-steel/20 text-white placeholder-och-steel/60 focus:outline-none focus:ring-2 focus:ring-och-mint focus:border-och-mint transition-all"
               />
             </div>
             <div className="flex items-center gap-3">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="px-4 py-2 rounded-lg bg-och-midnight border border-och-steel/20 text-white focus:outline-none focus:ring-2 focus:ring-och-mint"
+                className="px-4 py-2.5 rounded-lg bg-och-midnight/50 border border-och-steel/20 text-white focus:outline-none focus:ring-2 focus:ring-och-mint transition-all cursor-pointer"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -495,11 +633,12 @@ export default function MentorCohortsTracksPage() {
                 <option value="closing">Closing</option>
                 <option value="closed">Closed</option>
               </select>
-              <div className="flex gap-2 bg-och-midnight/50 rounded-lg p-1">
+              <div className="flex gap-2 bg-och-midnight/70 rounded-lg p-1 border border-och-steel/20">
                 <Button
                   variant={viewMode === 'cohorts' ? 'defender' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('cohorts')}
+                  className="transition-all"
                 >
                   By Cohort
                 </Button>
@@ -507,6 +646,7 @@ export default function MentorCohortsTracksPage() {
                   variant={viewMode === 'tracks' ? 'defender' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('tracks')}
+                  className="transition-all"
                 >
                   By Track
                 </Button>
@@ -516,15 +656,30 @@ export default function MentorCohortsTracksPage() {
         </Card>
 
         {filteredAssignments.length === 0 ? (
-          <Card className="p-6">
-            <div className="text-center py-12">
-              <p className="text-och-steel mb-4">
+          <Card className="p-12">
+            <div className="text-center py-8">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-och-steel/10 flex items-center justify-center">
+                <svg className="w-10 h-10 text-och-steel" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <p className="text-xl text-white font-semibold mb-2">
                 {assignments.length === 0 
-                  ? 'No assigned cohorts found.'
-                  : 'No cohorts match your search criteria.'}
+                  ? 'No Assigned Cohorts'
+                  : 'No Matching Cohorts'}
+              </p>
+              <p className="text-och-steel mb-6 max-w-md mx-auto">
+                {assignments.length === 0 
+                  ? "You don't have any cohorts assigned to you yet. Cohorts are assigned by the Program Director."
+                  : 'Try adjusting your search or filter criteria to find cohorts.'}
               </p>
               {assignments.length === 0 && (
-                <p className="text-sm text-och-steel">Contact your Program Director if you believe this is an error.</p>
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-och-defender/20 border border-och-defender/30 rounded-lg">
+                  <svg className="w-5 h-5 text-och-defender" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm text-och-steel">Contact your Program Director if you believe this is an error</span>
+                </div>
               )}
             </div>
           </Card>
@@ -695,10 +850,10 @@ export default function MentorCohortsTracksPage() {
                                 toggleCohort(cohort.id)
                               }
                             }}
-                            className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                            className={`p-4 rounded-lg border cursor-pointer transition-all transform ${
                               isSelected
-                                ? 'border-och-mint bg-och-mint/10'
-                                : 'border-och-steel/20 bg-och-midnight/50 hover:border-och-steel/40 hover:bg-och-midnight/70'
+                                ? 'border-och-mint bg-och-mint/10 shadow-lg shadow-och-mint/20 scale-[1.02]'
+                                : 'border-och-steel/20 bg-och-midnight/50 hover:border-och-mint/50 hover:bg-och-midnight/70 hover:shadow-lg hover:scale-[1.01]'
                             }`}
                           >
                             <div className="flex items-start justify-between mb-2">

@@ -2,6 +2,7 @@
 Director views for Missions MXP - CRUD operations for Program Directors.
 """
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -315,7 +316,7 @@ class MissionViewSet(viewsets.ModelViewSet):
         from programs.models import Enrollment, MentorAssignment
         
         mission = self.get_object()
-        submissions = MissionSubmission.objects.filter(mission=mission).select_related('user', 'ai_feedback_detail').order_by('-submitted_at')
+        submissions = MissionSubmission.objects.filter(mission=mission).select_related('user').order_by('-submitted_at')
         
         # Serialize submissions with enriched data
         submission_data = []
@@ -360,3 +361,93 @@ class MissionViewSet(viewsets.ModelViewSet):
             'submissions': submission_data,
             'count': len(submission_data)
         })
+
+    @action(detail=True, methods=['post'], url_path='publish-to-cohorts')
+    def publish_to_cohorts(self, request, pk=None):
+        """
+        Publish a mission to specific cohorts.
+        POST /api/v1/missions/{id}/publish-to-cohorts/
+        Body: {"cohort_ids": ["uuid1", "uuid2", ...]}
+        """
+        # Check if user is admin or program_director
+        if not request.user.is_staff:
+            director_role = Role.objects.filter(name='program_director').first()
+            if director_role:
+                is_director = UserRole.objects.filter(
+                    user=request.user,
+                    role=director_role,
+                    is_active=True
+                ).exists()
+                if not is_director:
+                    return Response(
+                        {'detail': 'Only program directors and administrators can publish missions'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            else:
+                return Response(
+                    {'detail': 'Only program directors and administrators can publish missions'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        mission = self.get_object()
+        cohort_ids = request.data.get('cohort_ids', [])
+        
+        if not cohort_ids or not isinstance(cohort_ids, list):
+            return Response(
+                {'detail': 'cohort_ids must be a non-empty list'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate cohorts exist
+        try:
+            from programs.models import Cohort
+            cohorts = Cohort.objects.filter(id__in=cohort_ids)
+            found_ids = {str(c.id) for c in cohorts}
+            requested_ids = set(cohort_ids)
+            
+            if found_ids != requested_ids:
+                missing = requested_ids - found_ids
+                return Response(
+                    {'detail': f'Some cohorts not found: {list(missing)}'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        except ImportError:
+            return Response(
+                {'detail': 'Cohort model not available'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Update mission status to published
+        requirements = mission.requirements or {}
+        requirements['status'] = 'published'
+        
+        # Store published cohorts in requirements
+        requirements['published_cohorts'] = cohort_ids
+        requirements['published_at'] = timezone.now().isoformat()
+        requirements['published_by'] = str(request.user.id)
+        
+        mission.requirements = requirements
+        mission.save()
+
+        # Log audit event
+        log_audit_event(
+            request=request,
+            user=request.user,
+            action='publish_to_cohorts',
+            resource_type='mission',
+            resource_id=str(mission.id),
+            metadata={
+                'mission_code': mission.code,
+                'mission_title': mission.title,
+                'cohort_ids': cohort_ids,
+                'cohort_count': len(cohort_ids),
+            },
+        )
+
+        return Response({
+            'detail': f'Mission published to {len(cohort_ids)} cohort(s) successfully',
+            'mission_id': str(mission.id),
+            'mission_code': mission.code,
+            'cohort_ids': cohort_ids,
+            'cohort_count': len(cohort_ids),
+        }, status=status.HTTP_200_OK)

@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Set pip timeout environment variable (in seconds - 6000 = 100 minutes)
+ENV PIP_DEFAULT_TIMEOUT=6000
+
 # Copy requirements and install Python dependencies
 COPY backend/django_app/requirements.txt .
 
@@ -18,14 +21,14 @@ COPY backend/django_app/requirements.txt .
 RUN pip install --no-cache-dir --user --upgrade pip
 
 # Install critical packages first
-RUN pip install --no-cache-dir --user --timeout=1000 \
+RUN pip install --no-cache-dir --user --timeout=6000 \
     "Django>=5.0,<6.0" \
     "psycopg2-binary>=2.9.9" \
     "djangorestframework>=3.14.0" \
     "django-environ>=0.10.0"
 
 # Then install remaining packages
-RUN pip install --no-cache-dir --user --timeout=1000 -r requirements.txt
+RUN pip install --no-cache-dir --user --timeout=6000 -r requirements.txt
 
 # Stage 2: Production runtime
 FROM python:3.11-slim

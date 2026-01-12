@@ -31,32 +31,68 @@ export default function AIProfilerWelcome({ onStart }: AIProfilerWelcomeProps) {
           </p>
         </motion.div>
 
-        {/* Track Preview */}
+        {/* OCH Tracks Preview */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="grid md:grid-cols-5 gap-4 mb-12"
+          className="mb-12"
         >
-          {[
-            { name: 'Builders', icon: '⚡', desc: 'Technical Construction' },
-            { name: 'Leaders', icon: '👑', desc: 'Team Management' },
-            { name: 'Entrepreneurs', icon: '🚀', desc: 'Business Value' },
-            { name: 'Researchers', icon: '🔬', desc: 'Deep Investigation' },
-            { name: 'Educators', icon: '📚', desc: 'Knowledge Transfer' }
-          ].map((track, index) => (
-            <motion.div
-              key={track.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.6 + index * 0.1 }}
-              className="bg-white/10 backdrop-blur-sm rounded-lg p-4 hover:bg-white/20 transition-colors"
-            >
-              <div className="text-2xl mb-2">{track.icon}</div>
-              <div className="text-white font-semibold text-sm">{track.name}</div>
-              <div className="text-gray-400 text-xs">{track.desc}</div>
-            </motion.div>
-          ))}
+          <h2 className="text-2xl font-bold text-white mb-6">OCH Career Tracks</h2>
+          <p className="text-gray-300 mb-6 text-center">
+            You'll be matched to one of these specialized cybersecurity tracks based on your assessment
+          </p>
+          <div className="grid md:grid-cols-5 gap-4">
+            {[
+              { 
+                key: 'defender', 
+                name: 'Defender', 
+                icon: '🛡️', 
+                desc: 'Protect systems and networks from cyber threats',
+                color: 'defender-blue'
+              },
+              { 
+                key: 'offensive', 
+                name: 'Offensive', 
+                icon: '⚔️', 
+                desc: 'Ethical hacking and penetration testing',
+                color: 'crimson'
+              },
+              { 
+                key: 'innovation', 
+                name: 'Innovation', 
+                icon: '🔬', 
+                desc: 'Develop cutting-edge security technologies',
+                color: 'mint'
+              },
+              { 
+                key: 'leadership', 
+                name: 'Leadership', 
+                icon: '👑', 
+                desc: 'Lead security teams and strategy',
+                color: 'sahara-gold'
+              },
+              { 
+                key: 'grc', 
+                name: 'GRC', 
+                icon: '📋', 
+                desc: 'Governance, Risk & Compliance',
+                color: 'steel'
+              }
+            ].map((track, index) => (
+              <motion.div
+                key={track.key}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.6 + index * 0.1 }}
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-5 hover:bg-white/20 transition-all border border-white/10 hover:border-white/30 hover:shadow-lg"
+              >
+                <div className="text-3xl mb-3 text-center">{track.icon}</div>
+                <div className="text-white font-bold text-base mb-2 text-center">{track.name}</div>
+                <div className="text-gray-400 text-xs text-center leading-relaxed">{track.desc}</div>
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
 
         {/* How it works */}
@@ -112,6 +148,12 @@ export default function AIProfilerWelcome({ onStart }: AIProfilerWelcomeProps) {
     </div>
   )
 }
+
+
+
+
+
+
 
 
 

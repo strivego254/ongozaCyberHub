@@ -33,7 +33,7 @@ import { RecipeSidebarEnhanced } from './RecipeSidebarEnhanced'
 import { MissionRecipeRecommendations } from '@/components/recipes/MissionRecipeRecommendations'
 import { useMissionProgress } from '../hooks/useMissionProgress'
 import { apiGateway } from '@/services/apiGateway'
-import { useMissionStore } from '../lib/store/missionStore'
+import { useMissionStore } from '@/lib/stores/missionStore'
 import type { Mission } from '../types'
 import clsx from 'clsx'
 

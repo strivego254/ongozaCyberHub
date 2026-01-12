@@ -16,6 +16,7 @@ from .views.auth_views import (
     MeView,
     ProfileView,
     ConsentView,
+    SessionsView,
 )
 from .views.password_reset_views import (
     PasswordResetRequestView,
@@ -59,6 +60,10 @@ urlpatterns = [
     path('settings/', user_settings, name='user-settings-slash'),
     path('auth/consents', ConsentView.as_view(), name='consents'),
     path('auth/consents/', ConsentView.as_view(), name='consents-slash'),
+    path('auth/sessions', SessionsView.as_view(), name='sessions'),
+    path('auth/sessions/', SessionsView.as_view(), name='sessions-slash'),
+    path('auth/sessions/<uuid:session_id>', SessionsView.as_view(), name='session-detail'),
+    path('auth/sessions/<uuid:session_id>/', SessionsView.as_view(), name='session-detail-slash'),
     path('auth/password/reset/request', PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('auth/password/reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request-slash'),
     path('auth/password/reset/confirm', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),

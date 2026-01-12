@@ -8,8 +8,9 @@ import time
 
 from schemas.profiling import (
     ProfilingSession, ProfilingResult, ProfilingProgress,
-    TrackRecommendation, OCH_TRACKS, SubmitResponseRequest
+    TrackRecommendation, SubmitResponseRequest
 )
+from schemas.profiling_tracks import OCH_TRACKS
 from schemas.profiling_questions import ALL_PROFILING_QUESTIONS
 from services.profiling_service import profiling_service
 from utils.auth import verify_token
@@ -270,7 +271,12 @@ async def get_profiling_results(
     # Reconstruct result from session data
     recommendations = profiling_service.generate_recommendations(session.scores)
     primary_track = OCH_TRACKS[session.recommended_track]
-    assessment_summary = profiling_service._generate_assessment_summary(recommendations)
+    
+    # Generate deep insights from session data
+    deep_insights = profiling_service._generate_deep_insights(session, session.scores, recommendations)
+    
+    # Generate assessment summary with recommendations and deep insights
+    assessment_summary = profiling_service._generate_assessment_summary(recommendations, deep_insights)
 
     result = ProfilingResult(
         user_id=session.user_id,
@@ -278,6 +284,7 @@ async def get_profiling_results(
         recommendations=recommendations,
         primary_track=primary_track,
         assessment_summary=assessment_summary,
+        deep_insights=deep_insights,
         completed_at=session.completed_at
     )
 
