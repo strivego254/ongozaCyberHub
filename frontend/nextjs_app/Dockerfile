@@ -64,16 +64,21 @@ ENV NEXT_BUILD_VERBOSE=1
 RUN mv .eslintrc.json .eslintrc.json.bak 2>/dev/null || true && \
     mv eslint.config.mjs eslint.config.mjs.bak 2>/dev/null || true && \
     echo "=== Starting Next.js build ===" && \
-    npm run build 2>&1 | tee /tmp/build-output.log || { \
-      echo "=== BUILD FAILED - Showing last 100 lines ===" && \
-      tail -100 /tmp/build-output.log && \
-      echo "=== Full build log saved to /tmp/build-output.log ===" && \
+    npm run build || { \
+      echo "=== BUILD FAILED ===" && \
       exit 1; \
     } && \
     echo "=== BUILD SUCCEEDED ===" && \
-    ls -la /app/.next/ 2>&1 | head -20 && \
-    echo "=== Checking standalone ===" && \
-    (ls -la /app/.next/standalone/ 2>&1 | head -20 || echo "Standalone directory not found") && \
+    echo "=== Verifying build output ===" && \
+    ls -la /app/.next/ 2>&1 && \
+    if [ ! -d /app/.next/standalone ]; then \
+      echo "ERROR: Standalone directory not found after build!" && \
+      echo "Build output contents:" && \
+      ls -la /app/.next/ 2>&1 && \
+      exit 1; \
+    fi && \
+    echo "=== Standalone directory exists ===" && \
+    ls -la /app/.next/standalone/ 2>&1 | head -20 && \
     echo "=== Checking static ===" && \
     if [ -d /app/.next/static ]; then \
       echo "Static directory exists"; \
@@ -100,6 +105,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 
 # Copy standalone build output (includes server and most files)
+# This will fail if the build didn't complete - that's intentional
 COPY --from=builder /app/.next/standalone ./
 
 # Copy static files (directory is guaranteed to exist from builder stage)
