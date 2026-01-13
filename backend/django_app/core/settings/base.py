@@ -199,18 +199,39 @@ REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
 REDIS_PORT = os.environ.get('REDIS_PORT', '6379')
 REDIS_PASSWORD = os.environ.get('REDIS_PASSWORD', None)
 
-# Cache Configuration (using Redis)
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-        "KEY_PREFIX": "och",
-        "TIMEOUT": 300,  # 5 minutes default timeout
+# Cache Configuration (using Redis if available, fallback to dummy cache)
+# Use environment variable to control cache backend
+USE_REDIS_CACHE = os.environ.get('USE_REDIS_CACHE', 'false').lower() == 'true'
+
+if USE_REDIS_CACHE:
+    try:
+        from django_redis.cache import RedisCache
+        CACHES = {
+            "default": {
+                "BACKEND": "django_redis.cache.RedisCache",
+                "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
+                "OPTIONS": {
+                    "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                },
+                "KEY_PREFIX": "och",
+                "TIMEOUT": 300,  # 5 minutes default timeout
+            }
+        }
+    except (ImportError, ModuleNotFoundError):
+        # Fallback to dummy cache if django_redis is not available
+        print("⚠️ django_redis not available, using dummy cache backend")
+        CACHES = {
+            "default": {
+                "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+            }
+        }
+else:
+    # Use dummy cache for local development (no Redis required)
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
     }
-}
 
 # Celery Configuration (if using Celery)
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', f'redis://{REDIS_HOST}:{REDIS_PORT}/0')

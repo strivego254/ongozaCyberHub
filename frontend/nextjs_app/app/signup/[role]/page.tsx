@@ -68,13 +68,6 @@ export default function RoleSignupPage() {
         return;
       }
 
-      // Ensure password is provided if not passwordless
-      if (!formData.password?.trim() && !formData.passwordless) {
-        setError('Password is required');
-        setIsLoading(false);
-        return;
-      }
-
       // Validate password strength if provided (Django requires: min 8 chars, not too common, etc.)
       if (formData.password?.trim() && formData.password.trim().length < 8) {
         setError('Password must be at least 8 characters long');
@@ -91,9 +84,13 @@ export default function RoleSignupPage() {
         language: formData.language || 'en',
       };
 
-      // Add password if provided
+      // Add password if provided, otherwise set passwordless flag
       if (formData.password?.trim()) {
         signupData.password = formData.password.trim();
+        signupData.passwordless = false;
+      } else {
+        // No password provided - use passwordless signup
+        signupData.passwordless = true;
       }
       
       // Add optional fields only if they have values
@@ -104,33 +101,53 @@ export default function RoleSignupPage() {
           signupData.country = countryCode;
         }
       }
-      
-      if (formData.passwordless) {
-        signupData.passwordless = formData.passwordless;
-      }
 
+      // Log signup data for debugging
+      console.log('Signup data being sent:', { ...signupData, password: signupData.password ? '***' : undefined });
+      
       const response = await djangoClient.auth.signup(signupData);
       if (response?.detail || response?.user_id) {
         router.push(`/login/${role}?registered=true`);
       }
     } catch (err: any) {
+      console.error('Signup error:', err);
       let errorMessage = 'Signup failed. Please try again.';
+      
+      // Check for validation errors in response
       if (err?.data?.detail) {
         errorMessage = err.data.detail;
       } else if (err?.data) {
-        // Handle field-specific errors
+        // Handle field-specific errors (Django returns object with field names as keys)
         const fieldErrors = Object.entries(err.data)
           .map(([field, messages]: [string, any]) => {
-            const msg = Array.isArray(messages) ? messages[0] : messages;
-            return `${field}: ${msg}`;
+            const msg = Array.isArray(messages) ? messages.join(', ') : String(messages);
+            // Capitalize field name and format error
+            const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return `${fieldName}: ${msg}`;
           })
-          .join(', ');
+          .join('\n');
         errorMessage = fieldErrors || errorMessage;
+      } else if (err?.response?.data) {
+        // Handle axios-style error responses
+        const responseData = err.response.data;
+        if (responseData.detail) {
+          errorMessage = responseData.detail;
+        } else if (typeof responseData === 'object') {
+          const fieldErrors = Object.entries(responseData)
+            .map(([field, messages]: [string, any]) => {
+              const msg = Array.isArray(messages) ? messages.join(', ') : String(messages);
+              const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              return `${fieldName}: ${msg}`;
+            })
+            .join('\n');
+          errorMessage = fieldErrors || errorMessage;
+        }
       } else if (err?.detail) {
         errorMessage = err.detail;
       } else if (err?.message) {
         errorMessage = err.message;
       }
+      
       setError(errorMessage);
     } finally {
       setIsLoading(false);
