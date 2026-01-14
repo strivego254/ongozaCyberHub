@@ -79,7 +79,7 @@ export default function EnrollmentOverridesPage() {
         const enrollmentsWithCohort = enrollmentsData.map((e: Enrollment) => ({
           ...e,
           cohort_name: cohort?.name,
-          track_name: cohort?.track_name || cohort?.track,
+          track_name: cohort?.track_name,
         }))
         setEnrollments(enrollmentsWithCohort)
       } catch (err: any) {
@@ -154,7 +154,7 @@ export default function EnrollmentOverridesPage() {
       const enrollmentsWithCohort = enrollmentsData.map((e: Enrollment) => ({
         ...e,
         cohort_name: cohort?.name,
-        track_name: cohort?.track_name || cohort?.track,
+        track_name: cohort?.track_name,
       }))
       setEnrollments(enrollmentsWithCohort)
     } catch (err: any) {
@@ -183,7 +183,7 @@ export default function EnrollmentOverridesPage() {
       const enrollmentsWithCohort = enrollmentsData.map((e: Enrollment) => ({
         ...e,
         cohort_name: cohort?.name,
-        track_name: cohort?.track_name || cohort?.track,
+        track_name: cohort?.track_name,
       }))
       setEnrollments(enrollmentsWithCohort)
     } catch (err: any) {
@@ -211,7 +211,7 @@ export default function EnrollmentOverridesPage() {
       const enrollmentsWithCohort = enrollmentsData.map((e: Enrollment) => ({
         ...e,
         cohort_name: cohort?.name,
-        track_name: cohort?.track_name || cohort?.track,
+        track_name: cohort?.track_name,
       }))
       setEnrollments(enrollmentsWithCohort)
       setSelectedEnrollments(new Set())
@@ -300,7 +300,7 @@ export default function EnrollmentOverridesPage() {
                           const enrollmentsWithCohort = enrollmentsData.map((e: Enrollment) => ({
                             ...e,
                             cohort_name: cohort?.name,
-                            track_name: cohort?.track_name || cohort?.track,
+                            track_name: cohort?.track_name,
                           }))
                           setEnrollments(enrollmentsWithCohort)
                         }

@@ -265,9 +265,16 @@ export default function JobPostingsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {formData.required_skills.map((skill) => (
-                    <Badge key={skill} variant="gold" className="cursor-pointer" onClick={() => removeSkill(skill)}>
-                      {skill} ×
-                    </Badge>
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => removeSkill(skill)}
+                      className="cursor-pointer"
+                    >
+                      <Badge variant="gold">
+                        {skill} ×
+                      </Badge>
+                    </button>
                   ))}
                 </div>
               </div>

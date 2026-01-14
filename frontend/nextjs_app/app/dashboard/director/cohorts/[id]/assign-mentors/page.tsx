@@ -20,22 +20,31 @@ export default function AssignMentorsPage() {
   const { cohort, isLoading: loadingCohort } = useCohort(cohortId)
   const { programs, isLoading: loadingPrograms } = usePrograms()
 
-  const { tracks, isLoading: loadingTracks } = useTracks(cohort?.track?.program || undefined)
+  // Load all tracks first, then we'll find the program from the track
+  const { tracks: allTracks, isLoading: loadingTracks } = useTracks(undefined)
+  
+  // Find the track object from the track ID (cohort.track is a string ID)
+  const trackObj = useMemo(() => {
+    if (!cohort?.track) return null
+    return allTracks.find(t => t.id === cohort.track || t.key === cohort.track) || null
+  }, [cohort?.track, allTracks])
+  
+  // Get tracks for the program if we found the track
+  const { tracks } = useTracks(trackObj?.program || undefined)
   
   // Fetch only users with mentor role directly from the API
   const { users: mentorsFromApi, isLoading: loadingUsers } = useUsers({ page: 1, page_size: 200, role: 'mentor' })
   
   // Get program and track info from cohort
   const selectedProgram = useMemo(() => {
-
-    if (!cohort?.track?.program) return null
-    return programs.find(p => p.id === cohort.track.program)
-  }, [cohort, programs])
+    if (!trackObj?.program) return null
+    return programs.find(p => p.id === trackObj.program) || null
+  }, [trackObj, programs])
   
   const selectedTrack = useMemo(() => {
     if (!cohort?.track) return null
-    return tracks.find(t => t.id === cohort.track) || cohort.track
-  }, [cohort, tracks])
+    return trackObj || null
+  }, [cohort?.track, trackObj])
   
   const [mentorAssignments, setMentorAssignments] = useState<MentorAssignment[]>([])
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true)

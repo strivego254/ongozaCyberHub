@@ -167,14 +167,16 @@ export default function TalentBrowsePage() {
               <label className="text-sm text-och-steel mb-2 block">Skills</label>
               <div className="flex flex-wrap gap-2">
                 {commonSkills.map((skill) => (
-                  <Badge
+                  <button
                     key={skill}
-                    variant={selectedSkills.includes(skill) ? 'gold' : 'defender'}
-                    className="cursor-pointer"
+                    type="button"
                     onClick={() => toggleSkill(skill)}
+                    className="cursor-pointer"
                   >
-                    {skill}
-                  </Badge>
+                    <Badge variant={selectedSkills.includes(skill) ? 'gold' : 'defender'}>
+                      {skill}
+                    </Badge>
+                  </button>
                 ))}
               </div>
             </div>

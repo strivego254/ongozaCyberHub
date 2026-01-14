@@ -16,6 +16,10 @@ import type { User } from '@/services/types'
 interface MentorWithAssignments extends User {
   assigned_cohorts?: MentorAssignment[]
   active_assignments_count?: number
+  mentor_capacity_weekly?: number
+  mentor_availability?: any
+  mentor_specialties?: string[]
+  is_mentor?: boolean
 }
 
 export default function MentorsPage() {
@@ -207,7 +211,7 @@ export default function MentorsPage() {
                 setSelectedCohort('')
                 setShowAssignModal(true)
               }}
-              variant="primary"
+              variant="gold"
             >
               Assign Cohort to Mentor
             </Button>
@@ -460,7 +464,7 @@ export default function MentorsPage() {
                     Cancel
                   </Button>
                   <Button
-                    variant="primary"
+                    variant="gold"
                     onClick={handleAssignCohort}
                     disabled={isAssigning || !selectedMentor || !selectedCohort}
                   >

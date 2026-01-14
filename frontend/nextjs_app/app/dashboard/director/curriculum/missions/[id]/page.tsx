@@ -113,7 +113,7 @@ export default function MissionDetailPage() {
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const [selectedCohorts, setSelectedCohorts] = useState<string[]>([])
   const [isPublishing, setIsPublishing] = useState(false)
-  const { cohorts, isLoading: cohortsLoading } = useCohorts({ viewAll: true })
+  const { cohorts, isLoading: cohortsLoading } = useCohorts({ pageSize: 1000 })
 
   // Track linking (Programs → Tracks)
   const { programs } = usePrograms()

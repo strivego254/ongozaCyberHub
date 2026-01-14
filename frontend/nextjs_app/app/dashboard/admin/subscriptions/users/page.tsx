@@ -86,11 +86,11 @@ export default function UserSubscriptionsPage() {
       setError(null)
       
       // Load subscriptions
-      const subsResponse = await apiGateway.get('/admin/subscriptions/')
+      const subsResponse = await apiGateway.get('/admin/subscriptions/') as UserSubscription[] | { results: UserSubscription[] }
       setSubscriptions(Array.isArray(subsResponse) ? subsResponse : (subsResponse.results || []))
       
       // Load plans
-      const plansResponse = await apiGateway.get('/admin/plans/')
+      const plansResponse = await apiGateway.get('/admin/plans/') as SubscriptionPlan[] | { results: SubscriptionPlan[] }
       setPlans(Array.isArray(plansResponse) ? plansResponse : (plansResponse.results || []))
     } catch (err: any) {
       console.error('Error loading subscriptions:', err)
@@ -103,7 +103,7 @@ export default function UserSubscriptionsPage() {
   const loadTransactions = async (userId: string) => {
     try {
       setLoadingTransactions(true)
-      const response = await apiGateway.get(`/admin/transactions/?user=${userId}`)
+      const response = await apiGateway.get(`/admin/transactions/?user=${userId}`) as PaymentTransaction[] | { results: PaymentTransaction[] }
       setTransactions(Array.isArray(response) ? response : (response.results || []))
     } catch (err: any) {
       console.error('Error loading transactions:', err)
@@ -207,11 +207,11 @@ export default function UserSubscriptionsPage() {
     })
   }
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeVariant = (status: string): 'defender' | 'mint' | 'gold' | 'orange' | 'steel' | 'outline' => {
     switch (status) {
       case 'active': return 'mint'
       case 'past_due': return 'orange'
-      case 'canceled': return 'red'
+      case 'canceled': return 'steel'
       case 'trial': return 'defender'
       default: return 'steel'
     }

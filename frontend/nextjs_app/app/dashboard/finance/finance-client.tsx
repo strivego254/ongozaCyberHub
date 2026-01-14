@@ -124,11 +124,11 @@ export default function FinanceDashboardClient() {
                   Centralized billing, revenue operations, and financial oversight
                 </p>
                 {user?.mfa_enabled ? (
-                  <Badge variant="success" className="mt-2">
+                  <Badge variant="mint" className="mt-2">
                     MFA Enabled
                   </Badge>
                 ) : (
-                  <Badge variant="warning" className="mt-2">
+                  <Badge variant="orange" className="mt-2">
                     MFA Required
                   </Badge>
                 )}

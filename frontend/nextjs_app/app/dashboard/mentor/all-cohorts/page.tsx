@@ -326,9 +326,7 @@ export default function AllCohortsPage() {
                             <div className="text-sm text-och-steel text-center py-2">No mentors assigned</div>
                           ) : (
                             mentors.map((assignment: MentorAssignment) => {
-                              const mentorName = typeof assignment.mentor === 'object' 
-                                ? assignment.mentor?.name || assignment.mentor?.email || 'Unknown'
-                                : 'Unknown'
+                              const mentorName = assignment.mentor_name || assignment.mentor_email || assignment.mentor || 'Unknown'
                               return (
                                 <div
                                   key={assignment.id}

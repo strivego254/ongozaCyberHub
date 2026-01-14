@@ -405,7 +405,7 @@ export default function TracksPage() {
                       <div>
                         <span className="text-och-steel">Status:</span>
                         <Badge 
-                          variant={selectedProgram.status === 'active' ? 'defender' : selectedProgram.status === 'archived' ? 'secondary' : 'outline'}
+                          variant={selectedProgram.status === 'active' ? 'defender' : selectedProgram.status === 'archived' ? 'steel' : 'outline'}
                           className="ml-2"
                         >
                           {selectedProgram.status || 'N/A'}

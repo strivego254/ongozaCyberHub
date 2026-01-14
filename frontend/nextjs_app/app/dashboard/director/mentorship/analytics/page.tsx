@@ -194,7 +194,7 @@ export default function MentorPerformanceAnalyticsPage() {
 
   if (loading) {
     return (
-      <RouteGuard requireRole="program_director">
+      <RouteGuard requiredRoles={['program_director']}>
         <DirectorLayout>
           <div className="p-6">
             <div className="flex items-center justify-center h-64">
@@ -208,13 +208,13 @@ export default function MentorPerformanceAnalyticsPage() {
 
   if (error) {
     return (
-      <RouteGuard requireRole="program_director">
+      <RouteGuard requiredRoles={['program_director']}>
         <DirectorLayout>
           <div className="p-6">
             <Card className="p-6">
               <div className="text-center">
                 <p className="text-red-600 mb-4">{error}</p>
-                <Button onClick={fetchAnalytics} variant="primary">
+                <Button onClick={fetchAnalytics} variant="gold">
                   Try Again
                 </Button>
               </div>
@@ -226,7 +226,7 @@ export default function MentorPerformanceAnalyticsPage() {
   }
 
   return (
-    <RouteGuard requireRole="program_director">
+    <RouteGuard requiredRoles={['program_director']}>
       <DirectorLayout>
         <div className="p-6 space-y-6">
           {/* Header */}
@@ -239,7 +239,7 @@ export default function MentorPerformanceAnalyticsPage() {
               <Button onClick={fetchAnalytics} variant="outline">
                 🔄 Refresh
               </Button>
-              <Button onClick={exportToCSV} variant="primary">
+              <Button onClick={exportToCSV} variant="gold">
                 📊 Export CSV
               </Button>
             </div>

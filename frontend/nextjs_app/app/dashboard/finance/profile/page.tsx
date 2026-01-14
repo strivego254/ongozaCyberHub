@@ -63,7 +63,7 @@ export default function ProfilePage() {
                       {user?.first_name} {user?.last_name}
                     </h2>
                     <p className="body-m text-och-steel mt-1">{user?.email}</p>
-                    <Badge variant="default" className="mt-3">
+                    <Badge variant="outline" className="mt-3">
                       {userRole}
                     </Badge>
                   </div>
@@ -72,22 +72,22 @@ export default function ProfilePage() {
                   <div className="space-y-4 pt-6 border-t border-och-steel/20">
                     <div className="flex items-center justify-between">
                       <span className="body-m text-och-steel">Account Status</span>
-                      <Badge variant="success">Active</Badge>
+                      <Badge variant="mint">Active</Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="body-m text-och-steel">Email Verified</span>
                       {user?.email_verified ? (
-                        <Badge variant="success">Verified</Badge>
+                        <Badge variant="mint">Verified</Badge>
                       ) : (
-                        <Badge variant="warning">Unverified</Badge>
+                        <Badge variant="orange">Unverified</Badge>
                       )}
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="body-m text-och-steel">MFA Enabled</span>
                       {user?.mfa_enabled ? (
-                        <Badge variant="success">Enabled</Badge>
+                        <Badge variant="mint">Enabled</Badge>
                       ) : (
-                        <Badge variant="warning">Required</Badge>
+                        <Badge variant="orange">Required</Badge>
                       )}
                     </div>
                   </div>
@@ -202,7 +202,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
                       {user?.mfa_enabled ? (
-                        <Badge variant="success">Enabled</Badge>
+                        <Badge variant="mint">Enabled</Badge>
                       ) : (
                         <Button size="sm">Enable MFA</Button>
                       )}

@@ -175,22 +175,22 @@ export default function MentorTrackDetailPage() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h1 className="text-4xl font-bold mb-2 text-och-mint">{track.name}</h1>
-                <p className="text-och-steel text-lg">{track.description}</p>
+                <h1 className="text-4xl font-bold mb-2 text-och-mint">{track!.name}</h1>
+                <p className="text-och-steel text-lg">{track!.description}</p>
               </div>
               <Button variant="outline" onClick={() => router.back()}>
                 ← Back to Cohorts & Tracks
               </Button>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant={track.track_type === 'primary' ? 'defender' : 'gold'}>
-                {track.track_type === 'primary' ? 'Primary Track' : 'Cross-Track'}
+              <Badge variant={track!.track_type === 'primary' ? 'defender' : 'gold'}>
+                {track!.track_type === 'primary' ? 'Primary Track' : 'Cross-Track'}
               </Badge>
-              {track.key && (
-                <Badge variant="outline">{track.key}</Badge>
+              {track!.key && (
+                <Badge variant="outline">{track!.key}</Badge>
               )}
-              {track.program_name && (
-                <span className="text-sm text-och-steel">Program: {track.program_name}</span>
+              {track!.program_name && (
+                <span className="text-sm text-och-steel">Program: {track!.program_name}</span>
               )}
             </div>
           </div>

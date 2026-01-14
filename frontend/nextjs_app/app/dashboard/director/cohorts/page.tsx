@@ -447,7 +447,7 @@ export default function CohortsPage() {
                                   {cohort.created_at ? new Date(cohort.created_at).toLocaleDateString() : ''}
                                 </span>
                                 {/* Action Menu Button */}
-                                <div className="relative" ref={(el) => (menuRefs.current[cohort.id] = el)}>
+                                <div className="relative" ref={(el) => { menuRefs.current[cohort.id] = el }}>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()

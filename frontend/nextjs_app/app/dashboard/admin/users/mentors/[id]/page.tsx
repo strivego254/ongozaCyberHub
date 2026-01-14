@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { programsClient } from '@/services/programsClient'
 import { djangoClient } from '@/services/djangoClient'
+import type { User } from '@/services/types'
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts'
 
 interface Mentor {
@@ -95,8 +96,8 @@ const AwardIcon = () => (
   </svg>
 )
 
-const StarIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+const StarIcon = ({ className }: { className?: string }) => (
+  <svg className={className || "w-5 h-5"} fill="currentColor" viewBox="0 0 24 24">
     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
   </svg>
 )
@@ -139,11 +140,17 @@ export default function MentorDetailPage() {
   const loadMentorData = async () => {
     try {
       setIsLoading(true)
-      const user = await djangoClient.users.getUser(Number(mentorId))
+      const user = await djangoClient.users.getUser(Number(mentorId)) as User & {
+        is_mentor?: boolean
+        mentor_capacity_weekly?: number
+        mentor_availability?: any
+        mentor_specialties?: string[]
+        roles?: Array<{ id: number; role: string; role_id: number; scope: string; scope_ref?: string }>
+      }
       setMentor({
         id: user.id,
         email: user.email,
-        name: user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
         first_name: user.first_name,
         last_name: user.last_name,
         username: user.username,
@@ -151,7 +158,7 @@ export default function MentorDetailPage() {
         mentor_capacity_weekly: user.mentor_capacity_weekly,
         mentor_availability: user.mentor_availability,
         mentor_specialties: user.mentor_specialties,
-        roles: user.roles,
+        roles: user.roles as Array<{ id: number; role: string; role_id: number; scope: string; scope_ref?: string }> | undefined,
         account_status: user.account_status,
         is_active: user.is_active,
       })

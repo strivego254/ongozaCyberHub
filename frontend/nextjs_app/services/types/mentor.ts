@@ -97,6 +97,7 @@ export interface CapstoneProject {
   project_url?: string
   repository_url?: string
   documentation_url?: string
+  rubric_id?: string
 }
 
 export interface CapstoneScore {

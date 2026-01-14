@@ -47,7 +47,7 @@ export default function SecurityPage() {
                     <p className="body-s text-och-steel">MFA is mandatory for all Finance users</p>
                   </div>
                 </div>
-                <Badge variant="success">Enabled</Badge>
+                <Badge variant="mint">Enabled</Badge>
               </div>
             </Card>
 
@@ -133,21 +133,21 @@ export default function SecurityPage() {
                 <div className="p-4 bg-och-savanna-green/10 border border-och-savanna-green/30 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-medium text-white">Payment Gateway</p>
-                    <Badge variant="success">Operational</Badge>
+                    <Badge variant="mint">Operational</Badge>
                   </div>
                   <p className="body-s text-och-steel">All services running normally</p>
                 </div>
                 <div className="p-4 bg-och-savanna-green/10 border border-och-savanna-green/30 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-medium text-white">Billing System</p>
-                    <Badge variant="success">Operational</Badge>
+                    <Badge variant="mint">Operational</Badge>
                   </div>
                   <p className="body-s text-och-steel">All services running normally</p>
                 </div>
                 <div className="p-4 bg-och-savanna-green/10 border border-och-savanna-green/30 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-medium text-white">Notification Service</p>
-                    <Badge variant="success">Operational</Badge>
+                    <Badge variant="mint">Operational</Badge>
                   </div>
                   <p className="body-s text-och-steel">All services running normally</p>
                 </div>

@@ -98,6 +98,11 @@ export interface Cohort {
   seat_utilization?: number
   completion_rate?: number
   enrolled_count?: number
+  seat_pool?: {
+    paid?: number
+    scholarship?: number
+    sponsored?: number
+  }
   created_at: string
   updated_at: string
 }

@@ -31,12 +31,17 @@ export interface User {
   preferred_learning_style?: string;
   career_goals?: string;
   cyber_exposure_level?: string;
+  // Mentor-specific properties
+  mentor_capacity_weekly?: number;
+  mentor_specialties?: string[];
+  mentor_availability?: any;
 }
 
 export interface UserRole {
   role: string;
   scope: 'global' | 'org' | 'cohort' | 'track';
   scope_ref?: string;
+  role_display_name?: string;
 }
 
 export interface SignupRequest {

@@ -27,6 +27,23 @@ interface CohortSeatData {
   end_date?: string
 }
 
+// Helper function to map Cohort to CohortSeatData
+const mapCohortToSeatData = (cohort: any): CohortSeatData => ({
+  id: cohort.id,
+  name: cohort.name,
+  track_name: cohort.track_name,
+  status: cohort.status,
+  seat_cap: cohort.seat_cap,
+  enrolled_count: cohort.enrolled_count,
+  start_date: cohort.start_date,
+  end_date: cohort.end_date,
+  seat_pool: cohort.seat_pool ? {
+    paid: cohort.seat_pool.paid ?? 0,
+    scholarship: cohort.seat_pool.scholarship ?? 0,
+    sponsored: cohort.seat_pool.sponsored ?? 0,
+  } : undefined,
+})
+
 export default function SeatAllocationPage() {
   const [cohorts, setCohorts] = useState<CohortSeatData[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -51,7 +68,9 @@ export default function SeatAllocationPage() {
       try {
         const data = await programsClient.getCohorts({ page: 1, pageSize: 1000 })
         const cohortsList = Array.isArray(data) ? data : (data?.results || [])
-        setCohorts(cohortsList)
+        // Map to CohortSeatData format, ensuring seat_pool properties are numbers
+        const mappedCohorts: CohortSeatData[] = cohortsList.map(mapCohortToSeatData)
+        setCohorts(mappedCohorts)
       } catch (err: any) {
         console.error('Failed to load cohorts:', err)
         setError(err?.message || 'Failed to load cohorts')
@@ -137,7 +156,8 @@ export default function SeatAllocationPage() {
       // Reload cohorts to sync with backend
       const data = await programsClient.getCohorts({ page: 1, pageSize: 1000 })
       const cohortsList = Array.isArray(data) ? data : (data?.results || [])
-      setCohorts(cohortsList)
+      const mappedCohorts: CohortSeatData[] = cohortsList.map(mapCohortToSeatData)
+      setCohorts(mappedCohorts)
 
       // Close modal after 2 seconds
       setTimeout(() => {
@@ -192,7 +212,8 @@ export default function SeatAllocationPage() {
                     try {
                       const data = await programsClient.getCohorts({ page: 1, pageSize: 1000 })
                       const cohortsList = Array.isArray(data) ? data : (data?.results || [])
-                      setCohorts(cohortsList)
+                      const mappedCohorts: CohortSeatData[] = cohortsList.map(mapCohortToSeatData)
+                      setCohorts(mappedCohorts)
                     } catch (err: any) {
                       setError(err?.message || 'Failed to load cohorts')
                     } finally {

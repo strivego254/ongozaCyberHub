@@ -38,14 +38,14 @@ export default function MentorMessagesPage() {
 
     try {
       // Don't set loading state to prevent UI flicker
-      const assignments = await mentorClient.getMentorAssignments(user.id)
+      const assignments = await mentorClient.getMentorAssignments(user.id.toString())
       
       const menteesList = assignments.map(assignment => ({
         id: assignment.mentee_id,
         assignmentId: assignment.id,
         name: assignment.mentee_name,
         email: assignment.mentee_email,
-        lastMessageTime: assignment.last_message_time,
+        lastMessageTime: assignment.last_message_time || undefined,
         unreadCount: assignment.unread_count || 0,
       }))
       
@@ -66,14 +66,14 @@ export default function MentorMessagesPage() {
 
     try {
       // Get all assignments for this mentor
-      const assignments = await mentorClient.getMentorAssignments(user.id)
+      const assignments = await mentorClient.getMentorAssignments(user.id.toString())
       
       const menteesList = assignments.map(assignment => ({
         id: assignment.mentee_id,
         assignmentId: assignment.id,
         name: assignment.mentee_name,
         email: assignment.mentee_email,
-        lastMessageTime: assignment.last_message_time,
+        lastMessageTime: assignment.last_message_time || undefined,
         unreadCount: assignment.unread_count || 0,
       }))
       

@@ -518,7 +518,7 @@ export default function ProgramsPage() {
                           </div>
                           <div className="flex items-center gap-2 mb-2">
                             <Badge 
-                              variant={program.status === 'active' ? 'defender' : program.status === 'archived' ? 'secondary' : 'outline'}
+                              variant={program.status === 'active' ? 'defender' : program.status === 'archived' ? 'steel' : 'outline'}
                               className="text-xs"
                             >
                               {program.status || 'active'}

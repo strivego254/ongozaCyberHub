@@ -106,7 +106,7 @@ export default function CatalogPage() {
                     <Card className="p-6 bg-och-midnight border border-och-steel/20">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-h3 font-semibold text-white">One-Time Seats</h3>
-                        <Badge variant="default">0 products</Badge>
+                        <Badge variant="outline">0 products</Badge>
                       </div>
                       <p className="body-m text-och-steel mb-4">
                         Single purchase seats for programs
@@ -119,7 +119,7 @@ export default function CatalogPage() {
                     <Card className="p-6 bg-och-midnight border border-och-steel/20">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-h3 font-semibold text-white">Subscriptions</h3>
-                        <Badge variant="default">0 products</Badge>
+                        <Badge variant="outline">0 products</Badge>
                       </div>
                       <p className="body-m text-och-steel mb-4">
                         Recurring subscription plans
@@ -132,7 +132,7 @@ export default function CatalogPage() {
                     <Card className="p-6 bg-och-midnight border border-och-steel/20">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-h3 font-semibold text-white">Installment Bundles</h3>
-                        <Badge variant="default">0 products</Badge>
+                        <Badge variant="outline">0 products</Badge>
                       </div>
                       <p className="body-m text-och-steel mb-4">
                         Multi-payment installment plans
@@ -145,7 +145,7 @@ export default function CatalogPage() {
                     <Card className="p-6 bg-och-midnight border border-och-steel/20">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-h3 font-semibold text-white">Add-ons</h3>
-                        <Badge variant="default">0 products</Badge>
+                        <Badge variant="outline">0 products</Badge>
                       </div>
                       <p className="body-m text-och-steel mb-4">
                         Additional products and services
