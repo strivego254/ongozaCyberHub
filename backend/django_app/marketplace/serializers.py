@@ -85,6 +85,14 @@ class MarketplaceProfileDetailSerializer(MarketplaceProfileListSerializer):
             'employer_share_consent',
             'last_updated_at',
         ]
+        read_only_fields = [
+            'id',
+            'mentee_id',
+            'mentee_name',
+            'mentee_country',
+            'portfolio_depth',
+            'last_updated_at',
+        ]
 
 
 class JobPostingSerializer(serializers.ModelSerializer):

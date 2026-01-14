@@ -66,6 +66,18 @@ const navItems: NavItem[] = [
     href: '/dashboard/admin/recipes',
     icon: '🤖'
   },
+  {
+    label: 'Marketplace',
+    href: '/dashboard/admin/marketplace',
+    icon: '💼',
+    children: [
+      { label: 'Overview', href: '/dashboard/admin/marketplace', icon: '📊' },
+      { label: 'Employer Directory', href: '/dashboard/admin/marketplace/employers', icon: '🏢' },
+      { label: 'Audit View', href: '/dashboard/admin/marketplace/audit', icon: '📋' },
+      { label: 'Governance Console', href: '/dashboard/admin/marketplace/governance', icon: '⚙️' },
+      { label: 'Analytics & Insights', href: '/dashboard/admin/marketplace/analytics', icon: '📈' },
+    ]
+  },
   { label: 'Roles & Permissions', href: '/dashboard/admin/roles', icon: '🔐' },
   { label: 'Audit Logs', href: '/dashboard/admin/audit', icon: '📋' },
   { label: 'Platform Settings', href: '/dashboard/admin/settings', icon: '⚙️' },

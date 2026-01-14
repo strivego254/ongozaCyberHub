@@ -308,5 +308,307 @@ export const marketplaceClient = {
   }): Promise<JobApplication> {
     return apiGateway.patch(`/marketplace/applications/${applicationId}/employer`, data)
   },
+
+  // Admin marketplace management methods
+  /**
+   * Admin: List all employers
+   */
+  async adminListEmployers(params?: {
+    search?: string
+    country?: string
+    sector?: string
+    page?: number
+    page_size?: number
+  }): Promise<{
+    results: Employer[]
+    count: number
+  }> {
+    return apiGateway.get('/admin/marketplace/employers/', { params })
+  },
+
+  /**
+   * Admin: Get employer details
+   */
+  async adminGetEmployer(employerId: string): Promise<Employer> {
+    return apiGateway.get(`/admin/marketplace/employers/${employerId}/`)
+  },
+
+  /**
+   * Admin: Create employer (onboarding)
+   */
+  async adminCreateEmployer(data: {
+    user_email: string
+    company_name: string
+    website?: string
+    sector?: string
+    country?: string
+    logo_url?: string
+    description?: string
+  }): Promise<Employer> {
+    return apiGateway.post('/admin/marketplace/employers/', data)
+  },
+
+  /**
+   * Admin: Update employer
+   */
+  async adminUpdateEmployer(employerId: string, data: Partial<Employer>): Promise<Employer> {
+    return apiGateway.patch(`/admin/marketplace/employers/${employerId}/`, data)
+  },
+
+  /**
+   * Admin: Suspend employer account
+   */
+  async adminSuspendEmployer(employerId: string, reason?: string): Promise<{ detail: string; employer: Employer }> {
+    return apiGateway.post(`/admin/marketplace/employers/${employerId}/suspend/`, { reason })
+  },
+
+  /**
+   * Admin: Unsuspend employer account
+   */
+  async adminUnsuspendEmployer(employerId: string): Promise<{ detail: string; employer: Employer }> {
+    return apiGateway.post(`/admin/marketplace/employers/${employerId}/unsuspend/`)
+  },
+
+  /**
+   * Admin: Assign employer admin role to user
+   */
+  async adminAssignEmployerAdmin(employerId: string, userEmail: string): Promise<{
+    detail: string
+    user_role: {
+      id: number
+      user: string
+      role: string
+      scope: string
+      scope_ref: string
+    }
+  }> {
+    return apiGateway.post(`/admin/marketplace/employers/${employerId}/assign-admin/`, { user_email: userEmail })
+  },
+
+  /**
+   * Admin: List all marketplace profiles
+   */
+  async adminListProfiles(params?: {
+    status?: 'foundation_mode' | 'emerging_talent' | 'job_ready'
+    tier?: 'free' | 'starter' | 'professional'
+    is_visible?: boolean
+    search?: string
+    min_readiness?: number
+    page?: number
+    page_size?: number
+  }): Promise<{
+    results: MarketplaceProfile[]
+    count: number
+  }> {
+    return apiGateway.get('/admin/marketplace/profiles/', { params })
+  },
+
+  /**
+   * Admin: Get marketplace profile details
+   */
+  async adminGetProfile(profileId: string): Promise<MarketplaceProfile> {
+    return apiGateway.get(`/admin/marketplace/profiles/${profileId}/`)
+  },
+
+  /**
+   * Admin: Update marketplace profile (status, visibility, etc.)
+   */
+  async adminUpdateProfile(profileId: string, data: {
+    profile_status?: 'foundation_mode' | 'emerging_talent' | 'job_ready'
+    is_visible?: boolean
+  }): Promise<MarketplaceProfile> {
+    return apiGateway.patch(`/admin/marketplace/profiles/${profileId}/`, data)
+  },
+
+  /**
+   * Admin: List all job postings
+   */
+  async adminListJobs(params?: {
+    is_active?: boolean
+    employer_id?: string
+    search?: string
+    page?: number
+    page_size?: number
+  }): Promise<{
+    results: JobPosting[]
+    count: number
+  }> {
+    return apiGateway.get('/admin/marketplace/jobs/', { params })
+  },
+
+  /**
+   * Admin: Get job posting details
+   */
+  async adminGetJob(jobId: string): Promise<JobPosting> {
+    return apiGateway.get(`/admin/marketplace/jobs/${jobId}/`)
+  },
+
+  /**
+   * Admin: Update job posting (moderation)
+   */
+  async adminUpdateJob(jobId: string, data: Partial<JobPosting>): Promise<JobPosting> {
+    return apiGateway.patch(`/admin/marketplace/jobs/${jobId}/`, data)
+  },
+
+  /**
+   * Admin: Approve job posting
+   */
+  async adminApproveJob(jobId: string): Promise<{ detail: string; job: JobPosting }> {
+    return apiGateway.post(`/admin/marketplace/jobs/${jobId}/approve/`)
+  },
+
+  /**
+   * Admin: Reject job posting
+   */
+  async adminRejectJob(jobId: string, reason?: string): Promise<{ detail: string; job: JobPosting }> {
+    return apiGateway.post(`/admin/marketplace/jobs/${jobId}/reject/`, { reason })
+  },
+
+  /**
+   * Admin: Delete job posting
+   */
+  async adminDeleteJob(jobId: string): Promise<void> {
+    return apiGateway.delete(`/admin/marketplace/jobs/${jobId}/`)
+  },
+
+  /**
+   * Admin: List interest logs
+   */
+  async adminListInterestLogs(params?: {
+    action?: 'view' | 'favorite' | 'shortlist' | 'contact_request'
+    employer_id?: string
+    profile_id?: string
+    date_from?: string
+    date_to?: string
+    page?: number
+    page_size?: number
+  }): Promise<{
+    results: EmployerInterestLog[]
+    count: number
+  }> {
+    return apiGateway.get('/admin/marketplace/interest-logs/', { params })
+  },
+
+  /**
+   * Admin: Get interest log details
+   */
+  async adminGetInterestLog(logId: string): Promise<EmployerInterestLog> {
+    return apiGateway.get(`/admin/marketplace/interest-logs/${logId}/`)
+  },
+
+  /**
+   * Admin: Get interest log statistics
+   */
+  async adminGetInterestLogStats(params?: {
+    action?: string
+    employer_id?: string
+    profile_id?: string
+    date_from?: string
+    date_to?: string
+  }): Promise<{
+    action_counts: Array<{ action: string; count: number }>
+    daily_counts: Array<{ date: string; count: number }>
+    top_employers: Array<{ employer__company_name: string; count: number }>
+    top_profiles: Array<{ profile__mentee__email: string; count: number }>
+    total_logs: number
+  }> {
+    return apiGateway.get('/admin/marketplace/interest-logs/stats/', { params })
+  },
+
+  /**
+   * Admin: Get marketplace analytics
+   */
+  async adminGetAnalytics(): Promise<{
+    profiles: {
+      total: number
+      visible: number
+      by_status: Array<{ profile_status: string; count: number }>
+      by_tier: Array<{ tier: string; count: number }>
+      avg_readiness: number
+      job_ready_count: number
+    }
+    employers: {
+      total: number
+      active: number
+    }
+    jobs: {
+      total: number
+      active: number
+      by_type: Array<{ job_type: string; count: number }>
+    }
+    applications: {
+      total: number
+      by_status: Array<{ status: string; count: number }>
+    }
+    interest_logs: {
+      total: number
+      by_action: Array<{ action: string; count: number }>
+    }
+    recent_activity: {
+      profiles_created: number
+      jobs_posted: number
+      applications: number
+      interest_logs: number
+    }
+    time_series?: {
+      daily_activity: Array<{
+        date: string
+        profiles_created: number
+        jobs_posted: number
+        applications: number
+        interest_logs: number
+      }>
+    }
+    readiness_distribution?: Array<{
+      range: string
+      count: number
+    }>
+  }> {
+    return apiGateway.get('/admin/marketplace/analytics/')
+  },
+
+  /**
+   * Admin: Get marketplace settings
+   */
+  async adminGetSettings(): Promise<{
+    visibility_rules: {
+      free_tier_can_contact: boolean
+      starter_tier_can_contact: boolean
+      professional_tier_can_contact: boolean
+      min_readiness_for_visibility: number
+    }
+    profile_requirements: {
+      min_portfolio_items: number
+      min_readiness_for_job_ready: number
+    }
+    job_posting_rules: {
+      require_approval: boolean
+      auto_approve: boolean
+    }
+  }> {
+    return apiGateway.get('/admin/marketplace/settings/')
+  },
+
+  /**
+   * Admin: Update marketplace settings
+   */
+  async adminUpdateSettings(settings: {
+    visibility_rules?: {
+      free_tier_can_contact?: boolean
+      starter_tier_can_contact?: boolean
+      professional_tier_can_contact?: boolean
+      min_readiness_for_visibility?: number
+    }
+    profile_requirements?: {
+      min_portfolio_items?: number
+      min_readiness_for_job_ready?: number
+    }
+    job_posting_rules?: {
+      require_approval?: boolean
+      auto_approve?: boolean
+    }
+  }): Promise<{ detail: string; settings: any }> {
+    return apiGateway.patch('/admin/marketplace/settings/', settings)
+  },
 }
 

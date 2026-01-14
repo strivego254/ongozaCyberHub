@@ -88,6 +88,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/dashboard/admin/community', roles: ['admin'] },
   { path: '/dashboard/admin/curriculum', roles: ['admin'] },
   { path: '/dashboard/admin/integrations', roles: ['admin'] },
+  { path: '/dashboard/admin/marketplace', roles: ['admin'] },
+  { path: '/dashboard/admin/marketplace/employers', roles: ['admin'] },
+  { path: '/dashboard/admin/marketplace/audit', roles: ['admin'] },
+  { path: '/dashboard/admin/marketplace/governance', roles: ['admin'] },
+  { path: '/dashboard/admin/marketplace/analytics', roles: ['admin'] },
   
   // Analyst routes
   { path: '/dashboard/analyst', roles: ['analyst'] },

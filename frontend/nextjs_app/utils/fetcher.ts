@@ -87,7 +87,26 @@ export async function fetcher<T>(
     const isJson = contentType?.includes('application/json');
 
     if (!response.ok) {
-      const errorData = isJson ? await response.json().catch(() => null) : null;
+      let errorData = null;
+      try {
+        const text = await response.text();
+        if (text) {
+          errorData = isJson ? JSON.parse(text) : text;
+        }
+      } catch (e) {
+        // If parsing fails, errorData remains null
+      }
+      
+      // Log error for debugging
+      if (typeof window !== 'undefined') {
+        console.error('API Error:', {
+          url: urlObj.toString(),
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+      }
+      
       throw new ApiError(
         response.status,
         response.statusText,

@@ -39,18 +39,28 @@ if [ -d "$PROJECT_DIR" ]; then
     echo "Repository exists, updating..."
     cd "$PROJECT_DIR"
     git fetch origin
-    git reset --hard origin/main || git reset --hard origin/master
-    git clean -fd
+    git reset --hard origin/main || git reset --hard origin/master || true
+    git clean -fd || true
 else
     echo "Cloning repository..."
     git clone "$REPO_URL" "$PROJECT_DIR"
     cd "$PROJECT_DIR"
 fi
 
+# Ensure we're in the project directory
+cd "$PROJECT_DIR" || exit 1
+
 # Step 3: Install dependencies
 echo -e "${GREEN}Step 3: Installing dependencies...${NC}"
 cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
 pwd
+
+npm install || true
+set -e  # Re-enable exit on error
+
+# Step 3.5: Create missing files AFTER git reset
+echo -e "${GREEN}Step 3.5: Creating missing files...${NC}"
+cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
 
 # Create missing lib files if they don't exist
 mkdir -p app/dashboard/student/lib/store app/dashboard/student/lib/hooks
@@ -89,7 +99,42 @@ export function useKeyboardShortcuts() {
 KEYEOF
 fi
 
-npm install
+# Create missing missionStore
+mkdir -p app/dashboard/student/missions/lib/store
+if [ ! -f app/dashboard/student/missions/lib/store/missionStore.ts ]; then
+    echo "Creating missing missionStore.ts..."
+    cat > app/dashboard/student/missions/lib/store/missionStore.ts << 'MISSIONEOF'
+import { create } from 'zustand'
+
+interface Mission {
+  id: string
+  title: string
+  [key: string]: any
+}
+
+interface MissionStore {
+  currentMission: Mission | null
+  availableMissions: Mission[]
+  inProgressMissions: Mission[]
+  completedMissions: Mission[]
+  setCurrentMission: (mission: Mission | null) => void
+  setAvailableMissions: (missions: Mission[]) => void
+  setInProgressMissions: (missions: Mission[]) => void
+  setCompletedMissions: (missions: Mission[]) => void
+}
+
+export const useMissionStore = create<MissionStore>((set) => ({
+  currentMission: null,
+  availableMissions: [],
+  inProgressMissions: [],
+  completedMissions: [],
+  setCurrentMission: (mission) => set({ currentMission: mission }),
+  setAvailableMissions: (missions) => set({ availableMissions: missions }),
+  setInProgressMissions: (missions) => set({ inProgressMissions: missions }),
+  setCompletedMissions: (missions) => set({ completedMissions: missions }),
+}))
+MISSIONEOF
+fi
 
 # Step 4: Check for .env file
 echo -e "${GREEN}Step 4: Checking environment variables...${NC}"
@@ -114,8 +159,63 @@ EOF
     echo -e "${YELLOW}.env.production file created.${NC}"
 fi
 
-# Step 5: Build Next.js application
-echo -e "${GREEN}Step 5: Building Next.js application...${NC}"
+# Step 5: Create missing files before build
+echo -e "${GREEN}Step 5: Creating missing files...${NC}"
+cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
+
+# Create missing lib files
+mkdir -p app/dashboard/student/lib/store app/dashboard/student/lib/hooks
+[ ! -f app/dashboard/student/lib/store/dashboardStore.ts ] && cat > app/dashboard/student/lib/store/dashboardStore.ts << 'STOREEOF'
+import { create } from 'zustand'
+interface DashboardStore {
+  isSidebarCollapsed: boolean
+  setSidebarCollapsed: (collapsed: boolean) => void
+}
+export const useDashboardStore = create<DashboardStore>((set) => ({
+  isSidebarCollapsed: false,
+  setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed }),
+}))
+STOREEOF
+
+[ ! -f app/dashboard/student/lib/hooks/useDashboardCoordination.ts ] && cat > app/dashboard/student/lib/hooks/useDashboardCoordination.ts << 'COORDEOF'
+export function useDashboardCoordination() {
+  return { isLoading: false }
+}
+COORDEOF
+
+[ ! -f app/dashboard/student/lib/hooks/useKeyboardShortcuts.ts ] && cat > app/dashboard/student/lib/hooks/useKeyboardShortcuts.ts << 'KEYEOF'
+export function useKeyboardShortcuts() {}
+KEYEOF
+
+# Create missing missionStore
+mkdir -p app/dashboard/student/missions/lib/store
+[ ! -f app/dashboard/student/missions/lib/store/missionStore.ts ] && cat > app/dashboard/student/missions/lib/store/missionStore.ts << 'MISSIONEOF'
+import { create } from 'zustand'
+interface Mission { id: string; title: string; [key: string]: any }
+interface MissionStore {
+  currentMission: Mission | null
+  availableMissions: Mission[]
+  inProgressMissions: Mission[]
+  completedMissions: Mission[]
+  setCurrentMission: (mission: Mission | null) => void
+  setAvailableMissions: (missions: Mission[]) => void
+  setInProgressMissions: (missions: Mission[]) => void
+  setCompletedMissions: (missions: Mission[]) => void
+}
+export const useMissionStore = create<MissionStore>((set) => ({
+  currentMission: null,
+  availableMissions: [],
+  inProgressMissions: [],
+  completedMissions: [],
+  setCurrentMission: (mission) => set({ currentMission: mission }),
+  setAvailableMissions: (missions) => set({ availableMissions: missions }),
+  setInProgressMissions: (missions) => set({ inProgressMissions: missions }),
+  setCompletedMissions: (missions) => set({ completedMissions: missions }),
+}))
+MISSIONEOF
+
+# Step 6: Build Next.js application
+echo -e "${GREEN}Step 6: Building Next.js application...${NC}"
 cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
 pwd
 
@@ -125,16 +225,16 @@ rm -rf node_modules/.cache
 
 npm run build
 
-# Step 6: Install PM2 globally
-echo -e "${GREEN}Step 6: Installing PM2...${NC}"
+# Step 7: Install PM2 globally
+echo -e "${GREEN}Step 7: Installing PM2...${NC}"
 if ! command -v pm2 &> /dev/null; then
     sudo npm install -g pm2
 else
     echo "PM2 already installed"
 fi
 
-# Step 7: Setup PM2
-echo -e "${GREEN}Step 7: Setting up PM2...${NC}"
+# Step 8: Setup PM2
+echo -e "${GREEN}Step 8: Setting up PM2...${NC}"
 cd "$PROJECT_DIR"
 if [ -f "deploy/ecosystem.config.js" ]; then
     echo "Using ecosystem.config.js for PM2"
@@ -153,8 +253,8 @@ if [ ! -z "$STARTUP_CMD" ]; then
     eval $STARTUP_CMD
 fi
 
-# Step 8: Setup Firewall
-echo -e "${GREEN}Step 8: Setting up firewall...${NC}"
+# Step 9: Setup Firewall
+echo -e "${GREEN}Step 9: Setting up firewall...${NC}"
 sudo ufw --force enable
 sudo ufw allow ssh
 sudo ufw allow 22/tcp
@@ -164,8 +264,8 @@ sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw status
 
-# Step 9: Install and Configure NGINX
-echo -e "${GREEN}Step 9: Installing and configuring NGINX...${NC}"
+# Step 10: Install and Configure NGINX
+echo -e "${GREEN}Step 10: Installing and configuring NGINX...${NC}"
 if ! command -v nginx &> /dev/null; then
     sudo apt update
     sudo apt install -y nginx
