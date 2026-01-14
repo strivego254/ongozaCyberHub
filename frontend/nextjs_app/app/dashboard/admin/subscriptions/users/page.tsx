@@ -86,12 +86,12 @@ export default function UserSubscriptionsPage() {
       setError(null)
       
       // Load subscriptions
-      const subsResponse = await apiGateway.get('/admin/subscriptions/')
-      setSubscriptions(Array.isArray(subsResponse) ? subsResponse : (subsResponse.results || []))
+      const subsResponse = await apiGateway.get('/admin/subscriptions/') as any
+      setSubscriptions(Array.isArray(subsResponse) ? subsResponse : (subsResponse?.results || []))
       
       // Load plans
-      const plansResponse = await apiGateway.get('/admin/plans/')
-      setPlans(Array.isArray(plansResponse) ? plansResponse : (plansResponse.results || []))
+      const plansResponse = await apiGateway.get('/admin/plans/') as any
+      setPlans(Array.isArray(plansResponse) ? plansResponse : (plansResponse?.results || []))
     } catch (err: any) {
       console.error('Error loading subscriptions:', err)
       setError(err.message || 'Failed to load subscriptions')
