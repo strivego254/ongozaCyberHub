@@ -35,6 +35,13 @@ export interface User {
   mentor_capacity_weekly?: number;
   mentor_specialties?: string[];
   mentor_availability?: any;
+  // Profiling completion tracking (Tier 0)
+  profiling_complete?: boolean;
+  profiling_completed_at?: string;
+  profiling_session_id?: string;
+  // Foundations completion tracking (Tier 1)
+  foundations_complete?: boolean;
+  foundations_completed_at?: string;
 }
 
 export interface UserRole {

@@ -53,6 +53,7 @@ urlpatterns = [
     
     # Student Journey Modules
     path('', include('profiler.urls')),
+    path('foundations/', include('foundations.urls')),
     path('coaching/', include('coaching.urls')),
     path('', include('missions.urls')),
     path('', include('subscriptions.urls')),

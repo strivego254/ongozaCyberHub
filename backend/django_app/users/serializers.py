@@ -51,6 +51,13 @@ class UserSerializer(serializers.ModelSerializer):
             'preferred_learning_style',
             'career_goals',
             'cyber_exposure_level',
+            # Profiling completion tracking (Tier 0)
+            'profiling_complete',
+            'profiling_completed_at',
+            'profiling_session_id',
+            # Foundations completion tracking (Tier 1)
+            'foundations_complete',
+            'foundations_completed_at',
             # Mentor fields
             'is_mentor',
             'mentor_capacity_weekly',

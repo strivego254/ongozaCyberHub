@@ -31,6 +31,7 @@ export default function ProfilingResultsPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [results, setResults] = useState<any>(null)
+  const [blueprint, setBlueprint] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(true)
@@ -58,17 +59,44 @@ export default function ProfilingResultsPage() {
         if (fastapiStatus.session_id) {
           try {
             const fastapiResults = await fastapiClient.profiling.getResults(fastapiStatus.session_id)
+            // Fetch OCH Blueprint for deeper analysis
+            let bp: any | null = null
+            try {
+              bp = await fastapiClient.profiling.getBlueprint(fastapiStatus.session_id)
+              setBlueprint(bp)
+            } catch (bpError) {
+              console.warn('⚠️ Failed to fetch OCH Blueprint for dashboard profiling view:', bpError)
+            }
+
             setResults({
               recommendations: fastapiResults.recommendations,
               primary_track: fastapiResults.primary_track,
               assessment_summary: fastapiResults.assessment_summary,
               completed_at: fastapiResults.completed_at,
-              overall_score: fastapiResults.recommendations?.[0]?.score || 0,
+              overall_score:
+                bp?.personalized_insights?.career_alignment?.career_readiness_score ??
+                fastapiResults.recommendations?.[0]?.score ??
+                0,
               aptitude_score: fastapiResults.recommendations?.[0]?.score || 0,
               behavioral_score: fastapiResults.recommendations?.[0]?.score || 0,
-              strengths: fastapiResults.recommendations?.[0]?.reasoning || [],
-              areas_for_growth: fastapiResults.recommendations?.slice(1, 3).map(r => r.track_name) || [],
+              strengths:
+                bp?.learning_strategy?.strengths_to_leverage?.length
+                  ? bp.learning_strategy.strengths_to_leverage
+                  : fastapiResults.recommendations?.[0]?.reasoning || [],
+              areas_for_growth:
+                bp?.learning_strategy?.growth_opportunities?.length
+                  ? bp.learning_strategy.growth_opportunities
+                  : fastapiResults.recommendations?.slice(1, 3).map((r: any) => r.track_name) || [],
             })
+
+            // Load all tracks for overview section
+            try {
+              const tracksResp = await fastapiClient.profiling.getTracks()
+              setAllTracks(tracksResp.tracks || {})
+            } catch (tracksError) {
+              console.warn('⚠️ Failed to load OCH tracks for profiling dashboard:', tracksError)
+            }
+
             setLoading(false)
             setCheckingStatus(false)
             return
@@ -176,6 +204,11 @@ export default function ProfilingResultsPage() {
   const primaryTrack = results.primary_track || primaryRecommendation
   const strengths = results.strengths || primaryRecommendation?.reasoning || []
   const secondaryRecommendations = results.recommendations?.slice(1, 3) || []
+
+  const difficultyLevel = blueprint?.difficulty_level
+  const careerAlignment = blueprint?.personalized_insights?.career_alignment
+  const valueStatement = blueprint?.value_statement
+  const nextSteps = blueprint?.next_steps || []
 
   // Journey steps
   const journeySteps = [
@@ -291,7 +324,15 @@ export default function ProfilingResultsPage() {
                 </span>
               </h1>
               <p className="text-base sm:text-lg lg:text-xl text-och-steel/80 max-w-3xl mx-auto font-medium leading-relaxed">
-                Your personalized path to cybersecurity excellence is ready
+                Your personalized path to cybersecurity excellence is ready{difficultyLevel?.selected ? (
+                  <>
+                    {' '}at the{' '}
+                    <span className="text-och-gold font-bold uppercase">
+                      {difficultyLevel.selected.toUpperCase()}
+                    </span>{' '}
+                    level.
+                  </>
+                ) : null}
               </p>
             </motion.div>
           </motion.div>
@@ -345,6 +386,14 @@ export default function ProfilingResultsPage() {
                     {primaryTrack.description && (
                       <p className="text-sm sm:text-base lg:text-lg text-och-steel/90 max-w-2xl mx-auto leading-relaxed">
                         {primaryTrack.description}
+                      </p>
+                    )}
+                    {careerAlignment?.career_readiness_score && (
+                      <p className="mt-3 text-xs sm:text-sm text-och-steel/80 font-medium">
+                        Career readiness score:{' '}
+                        <span className="text-och-gold font-bold">
+                          {careerAlignment.career_readiness_score}%
+                        </span>
                       </p>
                     )}
                   </div>
@@ -422,107 +471,6 @@ export default function ProfilingResultsPage() {
           )}
         </div>
       </section>
-
-      {/* All OCH Tracks Overview - Full Width */}
-      {Object.keys(allTracks).length > 0 && (
-        <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-12 sm:py-16 lg:py-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1 }}
-            className="w-full"
-          >
-            <div className="text-center mb-6 sm:mb-8">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white mb-2 sm:mb-3 uppercase tracking-tight leading-tight">
-                All <span className="text-och-gold">OCH Career Tracks</span>
-              </h2>
-              <p className="text-xs sm:text-sm lg:text-base text-och-steel max-w-2xl mx-auto leading-relaxed px-4">
-                Explore all specialized cybersecurity tracks available in the OCH ecosystem
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-              {Object.entries(allTracks).map(([key, track]) => {
-                const isPrimary = primaryTrack?.key === key || primaryTrack?.track_key === key
-                const trackIcons: Record<string, string> = {
-                  defender: '🛡️',
-                  offensive: '⚔️',
-                  innovation: '🔬',
-                  leadership: '👑',
-                  grc: '📋'
-                }
-                
-                return (
-                  <motion.div
-                    key={key}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.2 + (Object.keys(allTracks).indexOf(key) * 0.1) }}
-                  >
-                    <Card className={`w-full h-full bg-gradient-to-br ${
-                      isPrimary 
-                        ? 'from-och-mint/30 via-och-midnight/80 to-och-midnight/80 border-2 border-och-mint/50 shadow-2xl shadow-och-mint/20' 
-                        : 'from-och-midnight/60 to-och-midnight/80 border border-och-steel/20'
-                    } rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 hover:border-och-gold/30 transition-all`}>
-                      <div className="text-center mb-3 sm:mb-4">
-                        <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl mb-3 ${
-                          isPrimary ? 'bg-och-mint/20 border-2 border-och-mint/40' : 'bg-och-steel/10 border border-och-steel/30'
-                        }`}>
-                          <span className="text-2xl sm:text-3xl">{trackIcons[key] || '🎯'}</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 mb-1.5">
-                          <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white uppercase tracking-tight">
-                            {track.name}
-                          </h3>
-                          {isPrimary && (
-                            <Badge variant="mint" className="text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5">
-                              Your Track
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs sm:text-sm text-och-steel leading-relaxed mb-3">
-                          {track.description}
-                        </p>
-                      </div>
-                      
-                      {track.focus_areas && track.focus_areas.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-och-gold" />
-                            Focus Areas
-                          </h4>
-                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                            {track.focus_areas.slice(0, 4).map((area: string, idx: number) => (
-                              <Badge key={idx} variant="steel" className="text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5">
-                                {area}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {track.career_paths && track.career_paths.length > 0 && (
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <Briefcase className="w-3 h-3 sm:w-4 sm:h-4 text-och-gold" />
-                            Career Paths
-                          </h4>
-                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                            {track.career_paths.slice(0, 3).map((path: string, idx: number) => (
-                              <Badge key={idx} variant="gold" className="text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5">
-                                {path}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  </motion.div>
-                )
-              })}
-            </div>
-          </motion.div>
-        </section>
-      )}
 
       {/* Your Journey Map - Full Width */}
       <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-10 lg:py-12">
@@ -726,9 +674,21 @@ export default function ProfilingResultsPage() {
                   </p>
                     </div>
                   </div>
-              <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-och-steel leading-relaxed">
-                {results.assessment_summary}
-              </p>
+              <div className="space-y-4 sm:space-y-6">
+                <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-och-steel leading-relaxed">
+                  {results.assessment_summary}
+                </p>
+                {valueStatement && (
+                  <div className="mt-4 border-t border-och-steel/20 pt-4 sm:pt-5">
+                    <h4 className="text-sm sm:text-base lg:text-lg font-black text-white uppercase tracking-widest mb-2">
+                      Your Value Statement
+                    </h4>
+                    <p className="text-sm sm:text-base lg:text-lg text-och-steel leading-relaxed">
+                      {valueStatement}
+                    </p>
+                  </div>
+                )}
+              </div>
             </Card>
               </motion.div>
         </section>
@@ -822,6 +782,21 @@ export default function ProfilingResultsPage() {
               <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-och-steel mb-6 sm:mb-8 lg:mb-10 leading-relaxed px-2">
                 Your personalized learning path is ready. Start your first mission and begin building the skills that will transform your career.
               </p>
+              {nextSteps.length > 0 && (
+                <div className="mb-6 sm:mb-8 lg:mb-10">
+                  <h4 className="text-xs sm:text-sm font-black text-white uppercase tracking-widest mb-3">
+                    Recommended Next Steps
+                  </h4>
+                  <ul className="text-xs sm:text-sm lg:text-base text-och-steel space-y-1.5 sm:space-y-2 text-left max-w-3xl mx-auto">
+                    {nextSteps.map((step: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 text-och-mint shrink-0" />
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center w-full">
         <Button
           onClick={() => router.push('/dashboard/student')}

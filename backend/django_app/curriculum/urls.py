@@ -38,5 +38,12 @@ urlpatterns = [
     path('mission-progress/', views.MissionProgressView.as_view(), name='mission-progress'),
     path('my-progress/', views.UserProgressView.as_view(), name='my-progress'),
     path('activities/', views.RecentActivityView.as_view(), name='activities'),
+    
+    # Tier 2 (Beginner Tracks) endpoints
+    path('tier2/tracks/<str:code>/status', views.Tier2TrackStatusView.as_view(), name='tier2-status'),
+    path('tier2/tracks/<str:code>/submit-quiz', views.Tier2SubmitQuizView.as_view(), name='tier2-submit-quiz'),
+    path('tier2/tracks/<str:code>/submit-reflection', views.Tier2SubmitReflectionView.as_view(), name='tier2-submit-reflection'),
+    path('tier2/tracks/<str:code>/submit-mini-mission', views.Tier2SubmitMiniMissionView.as_view(), name='tier2-submit-mini-mission'),
+    path('tier2/tracks/<str:code>/complete', views.Tier2CompleteView.as_view(), name='tier2-complete'),
 ]
 

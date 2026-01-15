@@ -129,3 +129,134 @@ Users can now:
 ##### The AI profiler acts like a "digital sorting hat" for high-performance cyber talent, intelligently matching users to their optimal OCH track based on technical aptitude, problem-solving style, work preferences, and scenario-based decision-making.
 
 - Ready to test the complete signup → profiling → dashboard flow!
+
+## Tier-0 OCH Profiler – Detailed Implementation
+
+This section documents the **current Tier-0 implementation** that maps learners into the 5 OCH cybersecurity tracks (`defender`, `offensive`, `innovation`, `leadership`, `grc`) using a multi‑module profiler and a shared Django/FastAPI architecture.
+
+### 1. Content & Question Architecture
+
+- **Modules implemented (Tier-0 spec)**:
+  - **Module 1 – Identity & Value** (`identity_value`): VIP-style questions that extract core motivations and values, later used to generate a **Value Statement**.
+  - **Module 2 – Cyber Aptitude** (`cyber_aptitude`): pattern recognition, logic, and reasoning in security situations.
+  - **Module 3 – Technical Exposure** (`technical_exposure`): self‑rated experience with SOC tools, pentest tools, programming, frameworks, leadership, and GRC.
+  - **Module 4 – Scenario Preferences** (`scenario_preference`): branching/decision questions in real‑world cyber incidents.
+  - **Module 5 – Work Style & Behavioral Profile** (`work_style`): stability vs exploration, risk tolerance, communication style.
+  - **Module 6 – Difficulty Self‑Selection** (`difficulty_selection`): Novice → Elite; AI verifies if this is realistic.
+  - **Module 7 – Role Fit Reflection**: free‑text “Why cyber?” and “What do you want to achieve?” (stored and reused as portfolio value statement).
+
+- **Implementation file**:  
+  - `backend/fastapi_app/schemas/profiling_questions_enhanced.py`  
+    - Defines all questions, grouped by module, with per‑option scores into the 5 OCH tracks.
+
+### 2. Scoring Model & Track Mapping
+
+- **Weighted categories (Tier-0)**:
+  - `cyber_aptitude`: **1.3x** – core technical reasoning.
+  - `technical_exposure`: **1.2x** – past experience & exposure.
+  - `scenario_preference`: **1.2x** – real‑world decision patterns.
+  - `work_style`: **1.1x** – behavioral preferences.
+  - `identity_value`: **1.0x** – baseline values & motivations.
+  - `difficulty_selection`: **0.8x** – self‑assessment sanity check.
+
+- **Core logic**:
+  - Each answer contributes scores to one or more of the 5 OCH tracks.
+  - Scores are **weighted by category** using `CATEGORY_WEIGHTS_ENHANCED`.
+  - Totals are **normalized to 0–100** per track.
+  - Tracks are ranked; primary and (optionally) secondary recommendations are selected.
+
+- **Implementation file**:  
+  - `backend/fastapi_app/services/profiling_service_enhanced.py`  
+    - `calculate_scores(...)`: applies category weights and normalizes scores.  
+    - `generate_recommendations(...)`: produces ranked track recommendations with confidence levels and reasoning.  
+    - `_generate_deep_insights(...)`: builds learning preferences, strengths, growth opportunities, etc.
+
+### 3. Difficulty Self‑Selection (Module 6)
+
+- User selects: `novice | beginner | intermediate | advanced | elite`.
+- Service:
+  - Computes a **technical exposure score** from `technical_exposure` answers.
+  - Compares it to target ranges per difficulty.
+  - Returns:
+    - `is_realistic` flag,
+    - `confidence`,
+    - `suggested_difficulty` if the user over‑ or under‑estimates.
+- Implementation:
+  - `EnhancedProfilingService.verify_difficulty_selection(...)` in `profiling_service_enhanced.py`.
+
+### 4. Value Statement & Portfolio Integration (Module 7)
+
+- Reflection answers are stored on the session:
+  - `why_cyber`
+  - `what_achieve`
+- `extract_value_statement(...)` combines:
+  - Identity/value response patterns, and
+  - Reflection free‑text,
+  - Into a **single narrative value statement** used as:
+  - The learner’s **first portfolio entry** (type `reflection`) via existing portfolio APIs.
+- Django portfolio model used:
+  - `backend/django_app/dashboard/models.py` → `PortfolioItem`
+  - `backend/django_app/dashboard/portfolio_views.py` → `create_portfolio_item`
+
+### 5. FastAPI Router & Endpoints
+
+- **Router file**: `backend/fastapi_app/routers/v1/profiling.py`
+- Core (existing) endpoints:
+  - `POST /profiling/session/start` – create/reuse in‑memory session.
+  - `GET /profiling/questions` – legacy flat question list.
+  - `POST /profiling/session/{id}/respond` – submit an answer.
+  - `POST /profiling/session/{id}/complete` – legacy completion.
+  - `GET /profiling/session/{id}/results` – legacy result reconstruction.
+- **New Tier-0 enhanced endpoints**:
+  - `GET /profiling/enhanced/questions`  
+    → returns all questions grouped by module.
+  - `GET /profiling/enhanced/module/{module_name}/questions`  
+    → module‑specific question list.
+  - `POST /profiling/enhanced/session/{session_id}/reflection`  
+    → stores Module 7 answers.
+  - `POST /profiling/enhanced/session/{session_id}/verify-difficulty`  
+    → returns difficulty verification object.
+  - `POST /profiling/enhanced/session/{session_id}/complete`  
+    → runs full Tier-0 scoring + deep insights.
+  - `GET /profiling/enhanced/session/{session_id}/blueprint`  
+    → returns the **Personalized OCH Blueprint** (track, difficulty, starting point, learning strategy, next steps).
+  - `GET /profiling/enhanced/session/{session_id}/value-statement`  
+    → returns the synthesized value statement ready for portfolio.
+
+### 6. Frontend Flow – `/onboarding/ai-profiler`
+
+- **Entry point**: `frontend/nextjs_app/app/onboarding/ai-profiler/page.tsx`
+  - Auth check via `useAuth`.
+  - Fetches profiling **status** from FastAPI (`/profiling/status`).
+  - Starts or resumes a session via `fastapiClient.profiling.startSession()`.
+
+- **Enhanced client methods** (`frontend/nextjs_app/services/fastapiClient.ts`):
+  - `getEnhancedQuestions()` – load all modules & questions.
+  - `getQuestionsByModule(moduleName)` – per‑module fetch.
+  - `submitResponse(...)` – record answers and update progress.
+  - `submitReflection(...)` – send Module 7 free‑text.
+  - `verifyDifficulty(...)` – run AI difficulty check.
+  - `completeEnhancedSession(...)` – finalize Tier-0 profiling.
+  - `getBlueprint(...)` – fetch OCH Blueprint for results UI.
+  - `getValueStatement(...)` – retrieve value statement for portfolio.
+
+- **UI Components**:
+  - `AIProfilerWelcome` – explains OCH tracks and journey.
+  - `AIProfilerInstructions` – sets expectations (time, modules, behavior).
+  - `AIProfilerAssessment` – renders each question with progress + category badges.
+  - `AIProfilerResults` – shows primary track, alternatives, and reasoning, and can be extended to display Blueprint summaries.
+
+### 7. Data & Telemetry (Tier-0 Hooks)
+
+- From the current implementation we can derive/track:
+  - Completion status & timestamps (`session.completed_at`).
+  - Time estimates per module (via `ProfilingProgress.estimated_time_remaining`).
+  - Per‑category scores and alignment per track.
+  - Difficulty selection vs verified suggestion.
+  - First portfolio value statement text.
+  - Attempt count (enforced as **single attempt** per user unless admin resets sessions).
+
+### 8. Full Deep-Dive Reference
+
+For a full, file‑by‑file breakdown (including example code snippets and usage patterns), see:  
+`docs1/profiler-tier-0-implementation.md` – **“OCH Tier-0 Profiler Implementation”**.

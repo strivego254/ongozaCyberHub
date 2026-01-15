@@ -122,6 +122,10 @@ class User(AbstractUser):
     profiling_completed_at = models.DateTimeField(null=True, blank=True)
     profiling_session_id = models.UUIDField(null=True, blank=True, help_text='Completed profiling session ID')
     
+    # Foundations completion tracking (mandatory Tier 1 gateway)
+    foundations_complete = models.BooleanField(default=False, db_index=True)
+    foundations_completed_at = models.DateTimeField(null=True, blank=True)
+    
     # Mentor fields
     is_mentor = models.BooleanField(default=False, db_index=True)
     mentor_capacity_weekly = models.IntegerField(default=10)

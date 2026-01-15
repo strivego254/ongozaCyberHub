@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Load environment variables from .env file
 # Priority: 1) Project root, 2) backend/django_app (legacy), 3) backend (legacy)
-PROJECT_ROOT = BASE_DIR.parent.parent  # /home/caleb/kiptoo/striveGo/och/ongozaCyberHub
+PROJECT_ROOT = BASE_DIR.parent.parent  # /home/caleb/kiptoo/och/ongozaCyberHub
 
 # Try loading from project root first (primary location)
 root_env = PROJECT_ROOT / '.env'
@@ -22,12 +22,12 @@ else:
     # Fallback to legacy locations for backward compatibility
     env_path = BASE_DIR / '.env'
     if env_path.exists():
-        load_dotenv(env_path)
+        load_dotenv(env_path, override=True)
         print(f"⚠️ Loaded .env from legacy location: {env_path}")
     else:
         parent_env = BASE_DIR.parent / '.env'
         if parent_env.exists():
-            load_dotenv(parent_env)
+            load_dotenv(parent_env, override=True)
             print(f"⚠️ Loaded .env from legacy location: {parent_env}")
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'student_dashboard',
     'mentorship',
     'profiler',
+    'foundations',
     'coaching',
     'curriculum',
     'recipes',
@@ -179,11 +180,24 @@ REST_FRAMEWORK = {
 }
 
 # JWT Settings
+# Use JWT_SECRET_KEY from environment, fallback to SECRET_KEY for backward compatibility
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
+JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
+
+# Log JWT configuration on startup (for debugging)
+if JWT_SECRET_KEY != SECRET_KEY:
+    print(f"✅ Using JWT_SECRET_KEY from environment (length: {len(JWT_SECRET_KEY)})")
+else:
+    print(f"⚠️ JWT_SECRET_KEY not set, using SECRET_KEY (length: {len(SECRET_KEY)})")
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+    'SIGNING_KEY': JWT_SECRET_KEY,  # Use dedicated JWT secret key (rest_framework_simplejwt will use this)
+    'ALGORITHM': JWT_ALGORITHM,
+    'VERIFYING_KEY': None,  # Use SIGNING_KEY for verification too
 }
 
 # CORS Settings

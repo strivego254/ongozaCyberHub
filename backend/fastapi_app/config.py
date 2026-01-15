@@ -8,9 +8,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from .env file (same as Django does)
-# Priority: 1) Project root, 2) backend/fastapi_app (legacy), 3) backend (legacy)
+# Priority: 1) Project root, 2) backend/django_app (for compatibility), 3) backend/fastapi_app (legacy), 4) backend (legacy)
 BASE_DIR = Path(__file__).resolve().parent.parent  # backend/fastapi_app
-PROJECT_ROOT = BASE_DIR.parent.parent  # /home/caleb/kiptoo/striveGo/och/ongozaCyberHub
+PROJECT_ROOT = BASE_DIR.parent.parent  # /home/caleb/kiptoo/och/ongozaCyberHub
 
 # Try loading from project root first (primary location - matches Django)
 root_env = PROJECT_ROOT / '.env'
@@ -18,16 +18,22 @@ if root_env.exists():
     load_dotenv(root_env, override=True)
     print(f"✅ Loaded .env from project root: {root_env}")
 else:
-    # Fallback to legacy locations for backward compatibility
-    env_path = BASE_DIR / '.env'
-    if env_path.exists():
-        load_dotenv(env_path)
-        print(f"⚠️ Loaded .env from legacy location: {env_path}")
+    # Fallback: Check Django's .env location for compatibility
+    django_env = PROJECT_ROOT / 'backend' / 'django_app' / '.env'
+    if django_env.exists():
+        load_dotenv(django_env, override=True)
+        print(f"⚠️ Loaded .env from Django location: {django_env}")
     else:
-        parent_env = BASE_DIR.parent / '.env'
-        if parent_env.exists():
-            load_dotenv(parent_env)
-            print(f"⚠️ Loaded .env from legacy location: {parent_env}")
+        # Fallback to legacy locations for backward compatibility
+        env_path = BASE_DIR / '.env'
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+            print(f"⚠️ Loaded .env from legacy location: {env_path}")
+        else:
+            parent_env = BASE_DIR.parent / '.env'
+            if parent_env.exists():
+                load_dotenv(parent_env, override=True)
+                print(f"⚠️ Loaded .env from legacy location: {parent_env}")
 
 
 class Settings(BaseSettings):
@@ -66,11 +72,11 @@ class Settings(BaseSettings):
     ]
     
     # JWT (shared with Django)
-    # rest_framework_simplejwt uses Django's SECRET_KEY for signing tokens
-    # We must use the same key - get it from DJANGO_SECRET_KEY env var
+    # Both Django and FastAPI use JWT_SECRET_KEY from environment
+    # If not set, fallback to DJANGO_SECRET_KEY for backward compatibility
     DJANGO_SECRET_KEY: str = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')
-    JWT_SECRET_KEY: str = ""  # Will be set to DJANGO_SECRET_KEY if not provided
-    JWT_ALGORITHM: str = "HS256"
+    JWT_SECRET_KEY: str = os.getenv('JWT_SECRET_KEY', '')  # Primary JWT secret key
+    JWT_ALGORITHM: str = os.getenv('JWT_ALGORITHM', 'HS256')
     
     class Config:
         # Pydantic will use this path as fallback, but we've already loaded via load_dotenv above
@@ -84,9 +90,16 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# If JWT_SECRET_KEY is not explicitly set, use DJANGO_SECRET_KEY
-# This is critical: Django's rest_framework_simplejwt signs tokens with SECRET_KEY
+# If JWT_SECRET_KEY is not explicitly set, use DJANGO_SECRET_KEY as fallback
+# This ensures backward compatibility if JWT_SECRET_KEY is not in .env
 if not settings.JWT_SECRET_KEY or settings.JWT_SECRET_KEY == "":
     settings.JWT_SECRET_KEY = settings.DJANGO_SECRET_KEY
+    print(f"⚠️ JWT_SECRET_KEY not set, using DJANGO_SECRET_KEY as fallback (length: {len(settings.JWT_SECRET_KEY)})")
+else:
+    print(f"✅ Using JWT_SECRET_KEY from environment (length: {len(settings.JWT_SECRET_KEY)})")
+
+# Debug: Print first 20 chars of key for verification (not full key for security)
+print(f"🔑 FastAPI JWT key starts with: {settings.JWT_SECRET_KEY[:20]}...")
+print(f"🔑 FastAPI JWT algorithm: {settings.JWT_ALGORITHM}")
 
 

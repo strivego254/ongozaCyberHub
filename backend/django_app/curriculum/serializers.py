@@ -178,7 +178,7 @@ class CurriculumTrackListSerializer(serializers.ModelSerializer):
     class Meta:
         model = CurriculumTrack
         fields = [
-            'id', 'code', 'name', 'description', 'level',
+            'id', 'code', 'name', 'description', 'level', 'tier',
             'icon', 'color', 'estimated_duration_weeks',
             'module_count', 'lesson_count', 'mission_count',
             'is_active', 'user_progress'
@@ -209,7 +209,7 @@ class CurriculumTrackDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = CurriculumTrack
         fields = [
-            'id', 'code', 'name', 'description', 'level',
+            'id', 'code', 'name', 'description', 'level', 'tier',
             'icon', 'color', 'program_track_id',
             'estimated_duration_weeks', 'module_count', 'lesson_count',
             'mission_count', 'is_active', 'modules',
@@ -327,7 +327,11 @@ class UserTrackProgressSerializer(serializers.ModelSerializer):
             'circle_level', 'phase', 'total_points',
             'current_streak_days', 'longest_streak_days', 'total_badges',
             'university_rank', 'global_rank',
-            'started_at', 'last_activity_at', 'completed_at'
+            'started_at', 'last_activity_at', 'completed_at',
+            # Tier 2 specific fields
+            'tier2_quizzes_passed', 'tier2_mini_missions_completed',
+            'tier2_reflections_submitted', 'tier2_mentor_approval',
+            'tier2_completion_requirements_met',
         ]
         read_only_fields = ['id', 'started_at', 'last_activity_at']
 
