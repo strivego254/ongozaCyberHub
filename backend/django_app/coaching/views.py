@@ -393,13 +393,32 @@ def ai_coach_message(request):
     )
     
     # Generate AI response (async)
-    from .tasks import generate_ai_coach_response
-    ai_response_task = generate_ai_coach_response.delay(
-        session_id=str(session.id),
-        user_message_id=str(user_msg.id),
-        context=context,
-        user_id=str(user.id)
-    )
+    try:
+        from .tasks import generate_ai_coach_response
+        ai_response_task = generate_ai_coach_response.delay(
+            session_id=str(session.id),
+            user_message_id=str(user_msg.id),
+            context=context,
+            user_id=str(user.id)
+        )
+    except Exception as e:
+        logger.error(f"Failed to queue AI response task: {e}")
+        # Create a mock task object for compatibility
+        class MockTask:
+            id = f"mock-{session.id}"
+        ai_response_task = MockTask()
+
+        # Create a fallback AI response immediately
+        try:
+            from .models import AICoachMessage
+            AICoachMessage.objects.create(
+                session=session,
+                role='assistant',
+                content="I'm currently experiencing some technical difficulties. Please try again in a moment, or contact support if the issue persists.",
+                context=context,
+            )
+        except Exception as fallback_error:
+            logger.error(f"Failed to create fallback response: {fallback_error}")
     
     # Increment prompt count
     session.prompt_count += 1
