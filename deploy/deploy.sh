@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# DigitalOcean Deployment Script for Ongoza CyberHub
-# This script automates the deployment process
+# DigitalOcean Deployment Script for Ongoza CyberHub (Next.js + Django)
+# Based on Node.js deployment guide adapted for dual-stack application
 
 set -e  # Exit on error
 
@@ -14,11 +14,11 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Check if running as root
-if [ "$EUID" -eq 0 ]; then 
+if [ "$EUID" -eq 0 ]; then
    echo -e "${YELLOW}Warning: Running as root. Consider creating a non-root user.${NC}"
 fi
 
-# Step 1: Install Node.js (using Node 20 LTS instead of 12)
+# Step 1: Install Node.js (using Node 20 LTS)
 echo -e "${GREEN}Step 1: Installing Node.js...${NC}"
 if ! command -v node &> /dev/null; then
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -30,8 +30,20 @@ fi
 node --version
 npm --version
 
-# Step 2: Clone or update repository
-echo -e "${GREEN}Step 2: Setting up repository...${NC}"
+# Step 1b: Install Python and pip
+echo -e "${GREEN}Step 1b: Installing Python and pip...${NC}"
+if ! command -v python3 &> /dev/null; then
+    sudo apt update
+    sudo apt install -y python3 python3-pip python3-venv
+else
+    echo "Python3 already installed: $(python3 --version)"
+fi
+
+python3 --version
+pip3 --version
+
+# Step 2: Clone your project from Github
+echo -e "${GREEN}Step 2: Cloning project from Github...${NC}"
 REPO_URL="https://github.com/strivego254/ongozacyberhub.git"
 PROJECT_DIR="$HOME/ongozacyberhub"
 
@@ -51,11 +63,19 @@ fi
 cd "$PROJECT_DIR" || exit 1
 
 # Step 3: Install dependencies
-echo -e "${GREEN}Step 3: Installing dependencies...${NC}"
+echo -e "${GREEN}Step 3: Installing Next.js dependencies...${NC}"
 cd "$PROJECT_DIR/frontend/nextjs_app" || exit 1
 pwd
 
 npm install || true
+set -e  # Re-enable exit on error
+
+# Step 3b: Install Django dependencies
+echo -e "${GREEN}Step 3b: Installing Django dependencies...${NC}"
+cd "$PROJECT_DIR/backend/django_app" || exit 1
+pwd
+
+pip3 install -r requirements.txt --break-system-packages || true
 set -e  # Re-enable exit on error
 
 # Step 3.5: Create missing files AFTER git reset
