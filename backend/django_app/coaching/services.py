@@ -134,12 +134,12 @@ def check_coaching_entitlement(user, feature):
     try:
         subscription = UserSubscription.objects.get(user=user, status='active')
         tier = subscription.plan.tier
+        # Check enhanced access
+        has_enhanced = subscription.enhanced_access_expires_at and \
+                       subscription.enhanced_access_expires_at > timezone.now() if hasattr(subscription, 'enhanced_access_expires_at') else False
     except UserSubscription.DoesNotExist:
         tier = 'free'
-    
-    # Check enhanced access
-    has_enhanced = subscription.enhanced_access_expires_at and \
-                   subscription.enhanced_access_expires_at > timezone.now() if hasattr(subscription, 'enhanced_access_expires_at') else False
+        has_enhanced = False
     
     entitlements = {
         'ai_coach_full': tier in ['premium'] or has_enhanced,
