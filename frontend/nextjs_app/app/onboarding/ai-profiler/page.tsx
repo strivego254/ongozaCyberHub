@@ -170,9 +170,11 @@ export default function AIProfilerPage() {
   const checkProfilingStatus = async () => {
     try {
       setLoading(true)
+      console.log('[AIProfiler] Checking profiling status...')
       
       // Check if profiling is already completed
       const status = await fastapiClient.profiling.checkStatus()
+      console.log('[AIProfiler] Profiling status:', status)
       
       if (status.completed) {
         // Already completed, redirect to dashboard
@@ -183,6 +185,7 @@ export default function AIProfilerPage() {
       
       // Check if there's an active session
       if (status.has_active_session && status.session_id) {
+        console.log('[AIProfiler] Resuming existing session:', status.session_id)
         // Resume existing session
         setSession({
           session_id: status.session_id,
@@ -218,8 +221,10 @@ export default function AIProfilerPage() {
       }
       
       // Start new profiling session
+      console.log('[AIProfiler] Starting new profiling session')
       initializeProfiling()
     } catch (err: any) {
+      console.error('[AIProfiler] Error checking profiling status:', err)
       setError(err.message || 'Failed to check profiling status')
       setLoading(false)
     }
