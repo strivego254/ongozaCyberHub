@@ -25,6 +25,8 @@ export function GoogleSignInButton({ role = 'student' }: GoogleSignInButtonProps
       setError(null)
 
       // Initiate Google OAuth flow
+      // Backend will return auth_url with prompt=select_account
+      // This allows users to choose from available Google accounts or add new one
       const response = await googleOAuthClient.initiate()
 
       // Redirect user to Google authorization page
@@ -81,6 +83,12 @@ export function GoogleSignInButton({ role = 'student' }: GoogleSignInButtonProps
           </>
         )}
       </button>
+      
+      {/* Helpful info text */}
+      <p className="text-xs text-och-steel/70 text-center">
+        Choose your Google account to sign in or create a new account
+      </p>
+      
       {error && (
         <p className="text-sm text-och-orange text-center">{error}</p>
       )}

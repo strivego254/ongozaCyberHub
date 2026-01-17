@@ -67,13 +67,15 @@ class GoogleOAuthInitiateView(APIView):
         request.session['oauth_state'] = secrets.token_urlsafe(32)
         
         # Build Google OAuth authorization URL
+        # Use select_account prompt to allow users to choose from available accounts
+        # or add a new account (supports both login and signup)
         params = {
             'client_id': sso_provider.client_id,
             'redirect_uri': redirect_uri,
             'response_type': 'code',
             'scope': ' '.join(sso_provider.scopes or ['openid', 'email', 'profile']),
             'access_type': 'offline',  # Request refresh token
-            'prompt': 'consent',  # Force consent screen for account activation
+            'prompt': 'select_account',  # Force account selection (allows choosing existing or adding new)
             'state': request.session['oauth_state'],
             'code_challenge': code_challenge,
             'code_challenge_method': 'S256',
