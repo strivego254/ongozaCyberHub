@@ -431,6 +431,19 @@ export const djangoClient = {
    */
   profiler: {
     /**
+     * Check Tier 0 completion (profiler + foundations)
+     */
+    async checkTier0Status(): Promise<{
+      tier0_complete: boolean;
+      profiler_complete: boolean;
+      profiler_completed_at?: string;
+      foundations_complete: boolean;
+      foundations_completed_at?: string;
+    }> {
+      return apiGateway.get('/profiler/tier0-status');
+    },
+
+    /**
      * Check if profiling is required
      */
     async checkRequired(): Promise<{

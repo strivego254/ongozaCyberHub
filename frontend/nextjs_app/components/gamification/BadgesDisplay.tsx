@@ -7,7 +7,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { gamificationClient } from '@/services/gamificationClient'
 import { useAuth } from '@/hooks/useAuth'
 import { useEffect } from 'react'
-import type { Badge as BadgeType } from '@/services/types/gamification'
+import type { GamificationBadge as BadgeType } from '@/services/types/gamification'
 
 export function BadgesDisplay() {
   const { user } = useAuth()

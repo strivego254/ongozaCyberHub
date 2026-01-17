@@ -164,6 +164,9 @@ services:
         NEXT_PUBLIC_DJANGO_API_URL: ${NEXT_PUBLIC_DJANGO_API_URL:-http://localhost:8000}
         NEXT_PUBLIC_FASTAPI_API_URL: ${NEXT_PUBLIC_FASTAPI_API_URL:-http://localhost:8001}
         NEXT_PUBLIC_FRONTEND_URL: ${NEXT_PUBLIC_FRONTEND_URL:-http://localhost:3000}
+        GROK_API_KEY: ${GROK_API_KEY}
+        GROK_API_KEY_RECIPE: ${GROK_API_KEY_RECIPE}
+        GROK_API_KEY_COACHING: ${GROK_API_KEY_COACHING}
     container_name: ongozacyberhub_nextjs
     environment:
       NODE_ENV: production

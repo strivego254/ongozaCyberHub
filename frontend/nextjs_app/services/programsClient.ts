@@ -619,7 +619,7 @@ class ProgramsClient {
     if (Array.isArray(response)) {
       if (mentorId) {
         return response.filter((a) => {
-          const aMentorId = typeof a.mentor === 'string' ? a.mentor : a.mentor?.toString()
+          const aMentorId = typeof a.mentor === 'string' ? a.mentor : (a.mentor as any)?.toString()
           return aMentorId === mentorId || aMentorId === mentorId.toString()
         })
       }
@@ -628,7 +628,7 @@ class ProgramsClient {
     const results = response.results || []
     if (mentorId) {
       return results.filter((a) => {
-        const aMentorId = typeof a.mentor === 'string' ? a.mentor : a.mentor?.toString()
+          const aMentorId = typeof a.mentor === 'string' ? a.mentor : (a.mentor as any)?.toString()
         return aMentorId === mentorId || aMentorId === mentorId.toString()
       })
     }

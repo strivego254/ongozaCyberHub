@@ -11,8 +11,8 @@ import type {
   CurriculumModuleDetail,
   Lesson,
   UserTrackProgress,
-  UserModuleProgress,
-  UserLessonProgress,
+  ModuleProgress,
+  LessonProgress,
   TrackEnrollResponse,
   MyProgressResponse,
 } from './types/curriculum'
@@ -95,7 +95,7 @@ export const curriculumClient = {
    * Start a module
    * POST /curriculum/modules/{id}/start/
    */
-  async startModule(moduleId: string): Promise<{ status: string; progress: UserModuleProgress }> {
+  async startModule(moduleId: string): Promise<{ status: string; progress: ModuleProgress }> {
     return apiGateway.post(`/curriculum/modules/${moduleId}/start/`)
   },
 
@@ -103,7 +103,7 @@ export const curriculumClient = {
    * Complete a module
    * POST /curriculum/modules/{id}/complete/
    */
-  async completeModule(moduleId: string): Promise<{ status: string; progress: UserModuleProgress }> {
+  async completeModule(moduleId: string): Promise<{ status: string; progress: ModuleProgress }> {
     return apiGateway.post(`/curriculum/modules/${moduleId}/complete/`)
   },
 
@@ -127,7 +127,7 @@ export const curriculumClient = {
       time_spent_minutes?: number
       quiz_score?: number
     }
-  ): Promise<{ status: string; progress: UserLessonProgress }> {
+  ): Promise<{ status: string; progress: LessonProgress }> {
     return apiGateway.post(`/curriculum/lessons/${lessonId}/progress/`, data)
   },
 

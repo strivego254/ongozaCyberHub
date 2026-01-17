@@ -1,4 +1,4 @@
-export interface Badge {
+export interface GamificationBadge {
   id: string
   name: string
   description: string
@@ -20,7 +20,7 @@ export interface Streak {
   last_activity: string
 }
 
-export interface LeaderboardEntry {
+export interface GamificationLeaderboardEntry {
   rank: number
   user_id: string
   user_name: string

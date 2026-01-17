@@ -97,6 +97,7 @@ export interface RecipeBookmark {
 export interface RecipeProgressUpdate {
   status?: RecipeStatus;
   rating?: number | null;
+  helpful_for?: string[];
   notes?: string;
   time_spent_minutes?: number | null;
 }

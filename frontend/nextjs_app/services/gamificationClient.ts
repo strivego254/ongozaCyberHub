@@ -5,9 +5,9 @@
 
 import { apiGateway } from './apiGateway'
 import type {
-  Badge,
+  GamificationBadge,
   Streak,
-  LeaderboardEntry,
+  GamificationLeaderboardEntry,
   Points,
 } from './types/gamification'
 
@@ -15,7 +15,7 @@ export const gamificationClient = {
   /**
    * Get earned badges for a mentee
    */
-  async getBadges(menteeId: string): Promise<Badge[]> {
+  async getBadges(menteeId: string): Promise<GamificationBadge[]> {
     return apiGateway.get(`/gamification/mentees/${menteeId}/badges`)
   },
 
@@ -29,7 +29,7 @@ export const gamificationClient = {
   /**
    * Get leaderboard
    */
-  async getLeaderboard(trackId?: string, category?: string): Promise<LeaderboardEntry[]> {
+  async getLeaderboard(trackId?: string, category?: string): Promise<GamificationLeaderboardEntry[]> {
     const params: any = {}
     if (trackId) params.track_id = trackId
     if (category) params.category = category

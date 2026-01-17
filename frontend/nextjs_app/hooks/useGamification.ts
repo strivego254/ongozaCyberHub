@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { gamificationClient } from '@/services/gamificationClient'
-import type { Badge, Streak, LeaderboardEntry, Points } from '@/services/types/gamification'
+import type { GamificationBadge, Streak, GamificationLeaderboardEntry, Points } from '@/services/types/gamification'
 
 export function useGamification(menteeId: string | undefined) {
-  const [badges, setBadges] = useState<Badge[]>([])
+  const [badges, setBadges] = useState<GamificationBadge[]>([])
   const [streaks, setStreaks] = useState<Streak[]>([])
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [leaderboard, setLeaderboard] = useState<GamificationLeaderboardEntry[]>([])
   const [points, setPoints] = useState<Points | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

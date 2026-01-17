@@ -4,7 +4,9 @@
  */
 'use client'
 
-import { useEffect, useState } from 'react'
+export const dynamic = 'force-dynamic'
+
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { googleOAuthClient } from '@/services/googleOAuthClient'
@@ -12,7 +14,7 @@ import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
-export default function GoogleOAuthCallbackPage() {
+function GoogleOAuthCallbackPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { login } = useAuth()
@@ -151,5 +153,13 @@ export default function GoogleOAuthCallbackPage() {
         </div>
       </Card>
     </div>
+  )
+}
+
+export default function GoogleOAuthCallbackPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
+      <GoogleOAuthCallbackPageInner />
+    </Suspense>
   )
 }

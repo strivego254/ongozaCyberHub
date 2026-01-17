@@ -109,7 +109,7 @@ export const mentorClient = {
     limit?: number
     offset?: number
   }): Promise<MissionSubmission[]> {
-    const response = await apiGateway.get(`/mentors/${mentorId}/missions/submissions`, { params })
+    const response = await apiGateway.get(`/mentors/${mentorId}/missions/submissions`, { params }) as any
     // Filter by mission_id on frontend if backend doesn't support it
     if (params?.mission_id && response.results) {
       return response.results.filter((sub: MissionSubmission) => sub.mission_id === params.mission_id)
@@ -431,7 +431,7 @@ export const mentorClient = {
    * Returns messages and optionally the correct assignment_id if it changed
    */
   async getMessages(assignmentId: string): Promise<MentorshipMessage[] | { messages: MentorshipMessage[], assignment_id: string, assignment_id_changed: boolean }> {
-    const response = await apiGateway.get(`/mentorship/assignments/${assignmentId}/messages`)
+    const response = await apiGateway.get(`/mentorship/assignments/${assignmentId}/messages`) as any
     // Handle both array response (old format) and object response (new format with assignment_id)
     if (Array.isArray(response)) {
       return response

@@ -77,6 +77,28 @@ def safe_uuid_conversion(value):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def check_tier0_completion(request):
+    """
+    GET /api/v1/profiler/tier0-status
+    Check if Tier 0 (profiler + foundations) is fully complete.
+    """
+    user = request.user
+    
+    profiler_complete = user.profiling_complete
+    foundations_complete = user.foundations_complete
+    tier0_complete = profiler_complete and foundations_complete
+    
+    return Response({
+        'tier0_complete': tier0_complete,
+        'profiler_complete': profiler_complete,
+        'profiler_completed_at': user.profiling_completed_at.isoformat() if user.profiling_completed_at else None,
+        'foundations_complete': foundations_complete,
+        'foundations_completed_at': user.foundations_completed_at.isoformat() if user.foundations_completed_at else None,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def check_profiling_required(request):
     """
     GET /api/v1/profiler/check-required
