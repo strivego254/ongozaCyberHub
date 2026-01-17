@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/Button'
 function GoogleOAuthCallbackPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { login } = useAuth()
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [message, setMessage] = useState('Processing Google authentication...')
   const [error, setError] = useState<string | null>(null)
@@ -66,19 +65,7 @@ function GoogleOAuthCallbackPageInner() {
           if (response.refresh_token) {
             localStorage.setItem('refresh_token', response.refresh_token)
           }
-        }
-
-        // For OAuth, tokens are already valid - no need to call login endpoint
-        // Just update auth state by loading the current user
-        if (login) {
-          // Load user to update auth state
-          // Don't call login() since that requires password validation
-          try {
-            // Longer delay to ensure tokens are available in all contexts
-            await new Promise(resolve => setTimeout(resolve, 1000))
-          } catch (e) {
-            // Ignore errors
-          }
+          console.log('[OAuth] Tokens stored, token length:', response.access_token.length)
         }
 
         setStatus('success')
@@ -88,31 +75,22 @@ function GoogleOAuthCallbackPageInner() {
             : 'Login successful!'
         )
 
-        // Redirect to appropriate dashboard
-        setTimeout(() => {
-          console.log('[OAuth Callback] User data:', response.user)
-          console.log('[OAuth Callback] User roles:', response.user?.roles)
-          
-          const userRoles = response.user?.roles || []
-          console.log('[OAuth Callback] Extracted roles:', userRoles)
-          
-          const isStudent = userRoles.some((r: any) => {
-            const roleName = typeof r === 'string' ? r : (r?.role || r?.name || '').toLowerCase()
-            console.log('[OAuth Callback] Checking role:', roleName)
-            return roleName === 'student' || roleName === 'mentee'
-          })
+        // Determine redirect path
+        const userRoles = response.user?.roles || []
+        console.log('[OAuth Callback] User roles:', userRoles)
+        
+        const isStudent = userRoles.some((r: any) => {
+          const roleName = typeof r === 'string' ? r : (r?.role || r?.name || '').toLowerCase()
+          console.log('[OAuth Callback] Checking role:', roleName)
+          return roleName === 'student' || roleName === 'mentee'
+        })
 
-          console.log('[OAuth Callback] Is student?:', isStudent)
-          console.log('[OAuth Callback] Token in localStorage:', !!localStorage.getItem('access_token'))
-          
-          if (isStudent) {
-            // Check if profiling is required
-            console.log('[OAuth Callback] Redirecting to profiler')
-            router.push('/onboarding/ai-profiler')
-          } else {
-            console.log('[OAuth Callback] Redirecting to dashboard')
-            router.push('/dashboard')
-          }
+        const redirectPath = isStudent ? '/onboarding/ai-profiler' : '/dashboard'
+        console.log('[OAuth Callback] Will redirect to:', redirectPath)
+
+        // Redirect with page reload to ensure token is available everywhere
+        setTimeout(() => {
+          window.location.href = redirectPath
         }, 2000)
 
       } catch (err: any) {
