@@ -4,14 +4,15 @@
  */
 
 import { create } from 'zustand'
-import type { 
-  Habit, 
-  HabitLog, 
-  Goal, 
-  Reflection, 
+import type {
+  Habit,
+  HabitLog,
+  Goal,
+  Reflection,
   AICoachMessage,
-  CoachingMetrics 
+  CoachingMetrics
 } from './types'
+import { habitsAPI, goalsAPI, reflectionsAPI, aiCoachAPI, metricsAPI } from './api'
 
 interface CoachingState {
   // State
@@ -29,26 +30,34 @@ interface CoachingState {
   addHabit: (habit: Habit) => void
   updateHabit: (id: string, updates: Partial<Habit>) => void
   deleteHabit: (id: string) => void
-  
+
   setHabitLogs: (logs: HabitLog[]) => void
   logHabit: (habitId: string, status: HabitLog['status'], notes?: string) => Promise<void>
-  
+
   setGoals: (goals: Goal[]) => void
   addGoal: (goal: Goal) => void
   updateGoal: (id: string, updates: Partial<Goal>) => void
   completeGoal: (id: string) => void
-  
+
   setReflections: (reflections: Reflection[]) => void
   addReflection: (reflection: Reflection) => void
-  
+
   setAIMessages: (messages: AICoachMessage[]) => void
   addAIMessage: (message: AICoachMessage) => void
-  
+
   setMetrics: (metrics: CoachingMetrics) => void
   updateAlignmentScore: (score: number) => void
-  
+
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
+
+  // Data loading actions
+  loadAllData: () => Promise<void>
+  loadHabits: () => Promise<void>
+  loadGoals: () => Promise<void>
+  loadReflections: () => Promise<void>
+  loadAIMessages: () => Promise<void>
+  loadMetrics: () => Promise<void>
   
   // Computed
   getTodayHabits: () => (Habit & { todayStatus: 'completed' | 'pending' | 'skipped' })[]
@@ -64,7 +73,7 @@ export const useCoachingStore = create<CoachingState>((set, get) => ({
   reflections: [],
   aiMessages: [],
   metrics: {
-    alignmentScore: 87,
+    alignmentScore: 0,
     totalStreakDays: 0,
     activeHabits: 0,
     completedGoals: 0,
@@ -200,7 +209,72 @@ export const useCoachingStore = create<CoachingState>((set, get) => ({
   // UI state
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
-  
+
+  // Data loading actions
+  loadAllData: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      await Promise.all([
+        get().loadHabits(),
+        get().loadGoals(),
+        get().loadReflections(),
+        get().loadAIMessages(),
+        get().loadMetrics(),
+      ])
+    } catch (error) {
+      console.error('Failed to load coaching data:', error)
+      set({ error: 'Failed to load coaching data' })
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  loadHabits: async () => {
+    try {
+      const habits = await habitsAPI.getAll()
+      set({ habits })
+    } catch (error) {
+      console.error('Failed to load habits:', error)
+    }
+  },
+
+  loadGoals: async () => {
+    try {
+      const goals = await goalsAPI.getAll()
+      set({ goals })
+    } catch (error) {
+      console.error('Failed to load goals:', error)
+    }
+  },
+
+  loadReflections: async () => {
+    try {
+      const reflections = await reflectionsAPI.getAll()
+      set({ reflections })
+    } catch (error) {
+      console.error('Failed to load reflections:', error)
+    }
+  },
+
+  loadAIMessages: async () => {
+    try {
+      const messages = await aiCoachAPI.getHistory()
+      set({ aiMessages: messages })
+    } catch (error) {
+      console.error('Failed to load AI messages:', error)
+    }
+  },
+
+  loadMetrics: async () => {
+    try {
+      const metrics = await metricsAPI.getMetrics()
+      set({ metrics })
+    } catch (error) {
+      console.error('Failed to load metrics:', error)
+      // Keep default metrics if API fails
+    }
+  },
+
   // Computed getters
   getTodayHabits: () => {
     const state = get()

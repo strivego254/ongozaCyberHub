@@ -327,3 +327,315 @@ class AICoachMessage(models.Model):
     
     def __str__(self):
         return f"Message: {self.role} - {self.session.user.email}"
+
+
+# Models to replace Supabase functionality for coaching system
+
+class StudentAnalytics(models.Model):
+    """Student analytics and performance metrics."""
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='student_analytics',
+        primary_key=True
+    )
+
+    # Performance metrics
+    total_missions_completed = models.IntegerField(default=0)
+    average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    total_time_spent_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+
+    # Track information
+    track_code = models.CharField(max_length=50, null=True, blank=True)
+    circle_level = models.IntegerField(default=1)
+
+    # Learning metrics
+    lessons_completed = models.IntegerField(default=0)
+    modules_completed = models.IntegerField(default=0)
+    recipes_completed = models.IntegerField(default=0)
+
+    # Community engagement
+    posts_count = models.IntegerField(default=0)
+    replies_count = models.IntegerField(default=0)
+    helpful_votes_received = models.IntegerField(default=0)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'coaching_student_analytics'
+        verbose_name_plural = 'Student Analytics'
+
+    def __str__(self):
+        return f"Analytics for {self.user.email}"
+
+
+class UserRecipeProgress(models.Model):
+    """Track user progress on recipes/micro-skills."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='coaching_recipe_progress',
+        db_index=True
+    )
+    recipe_id = models.CharField(max_length=100, db_index=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('not_started', 'Not Started'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+            ('mastered', 'Mastered')
+        ],
+        default='not_started'
+    )
+    rating = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
+    time_spent_minutes = models.IntegerField(default=0)
+    attempts_count = models.IntegerField(default=0)
+    last_attempted_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'coaching_user_recipe_progress'
+        unique_together = ['user', 'recipe_id']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['recipe_id', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.recipe_id}: {self.status}"
+
+
+class UserTrackProgress(models.Model):
+    """Track user progress through curriculum tracks."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='coaching_track_progress'
+    )
+
+    track_code = models.CharField(max_length=50, db_index=True)
+    circle_level = models.IntegerField(default=1)
+
+    # Progress metrics
+    progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    modules_completed = models.IntegerField(default=0)
+    lessons_completed = models.IntegerField(default=0)
+    missions_completed = models.IntegerField(default=0)
+
+    # Performance scores
+    average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    highest_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+
+    # Readiness metrics
+    readiness_score = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    skills_mastered = models.JSONField(default=dict)
+    weak_areas = models.JSONField(default=list)
+
+    # Timestamps
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_activity_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'coaching_user_track_progress'
+
+    def __str__(self):
+        return f"{self.user.email} - {self.track_code} (Circle {self.circle_level})"
+
+
+class UserMissionProgress(models.Model):
+    """Track user progress on missions."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='coaching_mission_progress',
+        db_index=True
+    )
+    mission_id = models.UUIDField(db_index=True)
+
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('not_started', 'Not Started'),
+            ('in_progress', 'In Progress'),
+            ('submitted', 'Submitted'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed')
+        ],
+        default='not_started',
+        db_index=True
+    )
+
+    # Performance data
+    score = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    max_score = models.IntegerField(default=100)
+    attempts_count = models.IntegerField(default=0)
+    time_spent_minutes = models.IntegerField(default=0)
+
+    # Mission metadata
+    level = models.CharField(max_length=20, db_index=True)
+    skills_tagged = models.JSONField(default=list)
+
+    # Feedback and notes
+    instructor_feedback = models.TextField(blank=True)
+    user_notes = models.TextField(blank=True)
+
+    # Timestamps
+    started_at = models.DateTimeField(null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'coaching_user_mission_progress'
+        unique_together = ['user', 'mission_id']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['mission_id', 'status']),
+            models.Index(fields=['level', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - Mission {self.mission_id}: {self.status}"
+
+
+class CommunityActivitySummary(models.Model):
+    """Summary of user community activity."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='community_activity'
+    )
+
+    # Activity counts
+    total_posts = models.IntegerField(default=0)
+    total_replies = models.IntegerField(default=0)
+    helpful_votes_given = models.IntegerField(default=0)
+    helpful_votes_received = models.IntegerField(default=0)
+
+    # Recent activity (last 30 days)
+    posts_last_30_days = models.IntegerField(default=0)
+    replies_last_30_days = models.IntegerField(default=0)
+
+    # Engagement metrics
+    engagement_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    activity_streak_days = models.IntegerField(default=0)
+
+    # Community roles/achievements
+    badges_earned = models.JSONField(default=list)
+    communities_joined = models.JSONField(default=list)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'coaching_community_activity_summary'
+
+    def __str__(self):
+        return f"Community activity for {self.user.email}"
+
+
+class MentorshipSession(models.Model):
+    """Mentorship session records."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Participants
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='coaching_mentorship_sessions',
+        db_index=True
+    )
+    mentor_id = models.UUIDField(null=True, blank=True)
+
+    # Session details
+    topic = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('scheduled', 'Scheduled'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+            ('cancelled', 'Cancelled'),
+            ('no_show', 'No Show')
+        ],
+        default='scheduled',
+        db_index=True
+    )
+
+    # Scheduling
+    scheduled_at = models.DateTimeField()
+    duration_minutes = models.IntegerField(default=60)
+    actual_duration_minutes = models.IntegerField(null=True, blank=True)
+
+    # Feedback and notes
+    user_feedback = models.TextField(blank=True)
+    mentor_feedback = models.TextField(blank=True)
+    session_notes = models.TextField(blank=True)
+
+    # Ratings
+    user_rating = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
+    mentor_rating = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'coaching_mentorship_sessions'
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['scheduled_at']),
+            models.Index(fields=['mentor_id', 'status']),
+        ]
+
+    def __str__(self):
+        return f"Mentorship: {self.user.email} - {self.topic} ({self.status})"
+
+
+class CoachingSession(models.Model):
+    """AI coaching session records."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='coaching_sessions',
+        db_index=True
+    )
+
+    # Session metadata
+    trigger = models.CharField(max_length=50, db_index=True)  # 'daily', 'manual', etc.
+    context = models.CharField(max_length=100, db_index=True)
+    model_used = models.CharField(max_length=50, default='groq-llama')
+
+    # AI interaction data
+    advice = models.JSONField()  # The full coaching response
+    complexity_score = models.DecimalField(max_digits=3, decimal_places=2, default=0.50)
+
+    # User feedback
+    user_rating = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
+    user_feedback = models.TextField(blank=True)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'coaching_coaching_sessions'
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['trigger', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"Coaching session for {self.user.email} ({self.trigger})"

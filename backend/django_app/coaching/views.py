@@ -12,10 +12,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from users.models import User
-from .models import Habit, HabitLog, Goal, Reflection, AICoachSession, AICoachMessage
+from .models import (
+    Habit, HabitLog, Goal, Reflection, AICoachSession, AICoachMessage,
+    StudentAnalytics, UserRecipeProgress, UserTrackProgress, UserMissionProgress,
+    CommunityActivitySummary, MentorshipSession, CoachingSession
+)
 from .serializers import (
     HabitSerializer, HabitLogSerializer, GoalSerializer,
-    ReflectionSerializer, AICoachSessionSerializer, AICoachMessageSerializer
+    ReflectionSerializer, AICoachSessionSerializer, AICoachMessageSerializer,
+    StudentAnalyticsSerializer, UserRecipeProgressSerializer, UserTrackProgressSerializer,
+    UserMissionProgressSerializer, CommunityActivitySummarySerializer,
+    MentorshipSessionSerializer, CoachingSessionSerializer
 )
 from .services import (
     update_habit_streak, calculate_coaching_metrics,
@@ -410,7 +417,6 @@ def ai_coach_message(request):
 
         # Create a fallback AI response immediately
         try:
-            from .models import AICoachMessage
             AICoachMessage.objects.create(
                 session=session,
                 role='assistant',
@@ -463,3 +469,232 @@ def coaching_metrics(request):
     user = request.user
     metrics = calculate_coaching_metrics(user)
     return Response(metrics, status=status.HTTP_200_OK)
+
+
+# ==================== STUDENT ANALYTICS API ====================
+
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([IsAuthenticated])
+def student_analytics(request):
+    """
+    GET /api/v1/coaching/student-analytics
+    POST /api/v1/coaching/student-analytics (create)
+    PUT /api/v1/coaching/student-analytics (update)
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        try:
+            analytics = StudentAnalytics.objects.get(user=user)
+            serializer = StudentAnalyticsSerializer(analytics)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except StudentAnalytics.DoesNotExist:
+            return Response({'message': 'Student analytics not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    elif request.method in ['POST', 'PUT']:
+        analytics, created = StudentAnalytics.objects.get_or_create(user=user)
+        serializer = StudentAnalyticsSerializer(analytics, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==================== RECIPE PROGRESS API ====================
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def user_recipe_progress(request):
+    """
+    GET /api/v1/coaching/recipe-progress
+    POST /api/v1/coaching/recipe-progress (bulk create/update)
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        progress = UserRecipeProgress.objects.filter(user=user)
+        serializer = UserRecipeProgressSerializer(progress, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        data = request.data
+        if isinstance(data, list):
+            # Bulk create/update
+            created_items = []
+            for item_data in data:
+                item_data['user_id'] = str(user.id)
+                progress, created = UserRecipeProgress.objects.get_or_create(
+                    user=user,
+                    recipe_id=item_data['recipe_id'],
+                    defaults=item_data
+                )
+                if not created:
+                    for key, value in item_data.items():
+                        setattr(progress, key, value)
+                    progress.save()
+                serializer = UserRecipeProgressSerializer(progress)
+                created_items.append(serializer.data)
+            return Response(created_items, status=status.HTTP_201_CREATED)
+        else:
+            # Single item
+            data['user_id'] = str(user.id)
+            serializer = UserRecipeProgressSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save(user=user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==================== TRACK PROGRESS API ====================
+
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([IsAuthenticated])
+def user_track_progress(request):
+    """
+    GET /api/v1/coaching/track-progress
+    POST /api/v1/coaching/track-progress (create)
+    PUT /api/v1/coaching/track-progress (update)
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        try:
+            progress = UserTrackProgress.objects.get(user=user)
+            serializer = UserTrackProgressSerializer(progress)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except UserTrackProgress.DoesNotExist:
+            return Response({'message': 'Track progress not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    elif request.method in ['POST', 'PUT']:
+        progress, created = UserTrackProgress.objects.get_or_create(user=user)
+        serializer = UserTrackProgressSerializer(progress, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==================== MISSION PROGRESS API ====================
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def user_mission_progress(request):
+    """
+    GET /api/v1/coaching/mission-progress
+    POST /api/v1/coaching/mission-progress (bulk create/update)
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        progress = UserMissionProgress.objects.filter(user=user)
+        serializer = UserMissionProgressSerializer(progress, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        data = request.data
+        if isinstance(data, list):
+            # Bulk create/update
+            created_items = []
+            for item_data in data:
+                item_data['user_id'] = str(user.id)
+                progress, created = UserMissionProgress.objects.get_or_create(
+                    user=user,
+                    mission_id=item_data['mission_id'],
+                    defaults=item_data
+                )
+                if not created:
+                    for key, value in item_data.items():
+                        setattr(progress, key, value)
+                    progress.save()
+                serializer = UserMissionProgressSerializer(progress)
+                created_items.append(serializer.data)
+            return Response(created_items, status=status.HTTP_201_CREATED)
+        else:
+            # Single item
+            data['user_id'] = str(user.id)
+            serializer = UserMissionProgressSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save(user=user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==================== COMMUNITY ACTIVITY API ====================
+
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([IsAuthenticated])
+def community_activity(request):
+    """
+    GET /api/v1/coaching/community-activity
+    POST /api/v1/coaching/community-activity (create)
+    PUT /api/v1/coaching/community-activity (update)
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        try:
+            activity = CommunityActivitySummary.objects.get(user=user)
+            serializer = CommunityActivitySummarySerializer(activity)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except CommunityActivitySummary.DoesNotExist:
+            return Response({'message': 'Community activity not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    elif request.method in ['POST', 'PUT']:
+        activity, created = CommunityActivitySummary.objects.get_or_create(user=user)
+        serializer = CommunityActivitySummarySerializer(activity, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==================== MENTORSHIP SESSIONS API ====================
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def mentorship_sessions(request):
+    """
+    GET /api/v1/coaching/mentorship-sessions
+    POST /api/v1/coaching/mentorship-sessions (create)
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        sessions = MentorshipSession.objects.filter(user=user).order_by('-scheduled_at')
+        serializer = MentorshipSessionSerializer(sessions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        data = request.data.copy()
+        data['user_id'] = str(user.id)
+        serializer = MentorshipSessionSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save(user=user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==================== COACHING SESSIONS API ====================
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def coaching_sessions_api(request):
+    """
+    GET /api/v1/coaching/sessions
+    POST /api/v1/coaching/sessions (create)
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        sessions = CoachingSession.objects.filter(user=user).order_by('-created_at')
+        serializer = CoachingSessionSerializer(sessions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        data = request.data.copy()
+        data['user_id'] = str(user.id)
+        serializer = CoachingSessionSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save(user=user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

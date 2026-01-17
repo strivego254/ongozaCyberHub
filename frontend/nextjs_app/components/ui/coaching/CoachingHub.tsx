@@ -5,7 +5,7 @@
  */
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HabitTracker } from './HabitTracker'
 import { GoalsDashboard } from './GoalsDashboard'
@@ -39,8 +39,50 @@ interface CoachingHubProps {
 }
 
 export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProps) {
-  const { metrics } = useCoachingStore()
+  const { metrics, habits, goals, reflections, loadAllData, isLoading, error } = useCoachingStore()
   const [reflectionModalOpen, setReflectionModalOpen] = useState(false)
+
+  // Load coaching data on component mount
+  useEffect(() => {
+    loadAllData()
+  }, [loadAllData])
+
+  // Check if user has no data (new user)
+  const isNewUser = metrics && metrics.alignmentScore === 0 &&
+                    (!habits || habits.length === 0) &&
+                    (!goals || goals.length === 0) &&
+                    (!reflections || reflections.length === 0)
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-och-midnight p-4 lg:p-8 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 border-4 border-och-defender border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-och-steel">Loading your Coaching OS...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state only for actual API errors, not empty data
+  if (error && !metrics) {
+    return (
+      <div className="min-h-screen bg-och-midnight p-4 lg:p-8 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-red-400 text-xl">⚠️</div>
+          <p className="text-white">Failed to load coaching data</p>
+          <p className="text-och-steel text-sm">{error}</p>
+          <button
+            onClick={loadAllData}
+            className="px-4 py-2 bg-och-defender text-white rounded-lg hover:bg-white hover:text-och-midnight transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
   
   const navItems = [
     { id: 'overview', label: 'Mission Control', icon: Brain, color: 'text-indigo-400' },
@@ -89,59 +131,161 @@ export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProp
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-8"
               >
-                {/* Hero Header */}
+                {/* Hero Header - Different for new vs existing users */}
                 <header className="relative p-8 rounded-3xl bg-gradient-to-br from-och-defender/20 via-transparent to-och-mint/5 border border-och-defender/30 overflow-hidden shadow-2xl shadow-och-defender/5">
                   <div className="absolute top-0 right-0 p-8 opacity-5">
                     <Brain className="w-48 h-48 text-och-defender" />
                   </div>
-                  
+
                   <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
-                    <RadialAlignment score={metrics?.alignmentScore || 78} size="lg" />
+                    <RadialAlignment score={metrics?.alignmentScore || 0} size="lg" />
                     <div className="text-center md:text-left">
                       <div className="flex items-center gap-2 mb-2 justify-center md:justify-start">
                         <Sparkles className="w-5 h-5 text-och-defender animate-glow-pulse" />
-                        <span className="text-xs font-black text-och-defender uppercase tracking-[0.2em]">Strategy Active</span>
+                        <span className="text-xs font-black text-och-defender uppercase tracking-[0.2em]">
+                          {isNewUser ? 'Welcome Aboard' : 'Strategy Active'}
+                        </span>
                       </div>
                       <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tighter mb-4 leading-tight">
                         Coaching <span className="text-och-defender italic">OS</span>
         </h1>
                       <p className="text-och-steel text-lg mb-6 max-w-md leading-relaxed">
-                        Your Future-You alignment is at <span className="text-och-mint font-bold">{metrics?.alignmentScore || 78}%</span>. 
-                        Maintaining your <span className="text-och-orange font-bold">14-day streak</span> is today's priority.
+                        {isNewUser ? (
+                          <>Welcome to your Defender track! Your journey starts here. Let's build the habits and skills that will make you unstoppable in cybersecurity.</>
+                        ) : (
+                          <>Your Future-You alignment is at <span className="text-och-mint font-bold">{metrics?.alignmentScore || 0}%</span>.
+                          Maintaining your <span className="text-och-orange font-bold">{metrics?.totalStreakDays || 0}-day streak</span> is today's priority.</>
+                        )}
                       </p>
                       <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-                        <button 
-                          onClick={() => setActiveSection('habits')}
-                          className="px-6 py-2.5 bg-och-defender text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-white hover:text-och-midnight transition-all shadow-lg shadow-och-defender/20"
-                        >
-                          Execute Habits
-                        </button>
-                        <button 
-                          onClick={() => setReflectionModalOpen(true)}
-                          className="px-6 py-2.5 bg-och-steel/10 text-och-steel text-xs font-black uppercase tracking-widest rounded-xl border border-och-steel/20 hover:border-och-gold hover:text-och-gold transition-all"
-                        >
-                          Reflect Lab
-                        </button>
+                        {isNewUser ? (
+                          <>
+                            <button
+                              onClick={() => setActiveSection('habits')}
+                              className="px-6 py-2.5 bg-och-defender text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-white hover:text-och-midnight transition-all shadow-lg shadow-och-defender/20"
+                            >
+                              Start with Habits
+                            </button>
+                            <button
+                              onClick={() => setActiveSection('goals')}
+                              className="px-6 py-2.5 bg-och-mint text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-white hover:text-och-midnight transition-all shadow-lg shadow-och-mint/20"
+                            >
+                              Set Your Goals
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => setActiveSection('habits')}
+                              className="px-6 py-2.5 bg-och-defender text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-white hover:text-och-midnight transition-all shadow-lg shadow-och-defender/20"
+                            >
+                              Execute Habits
+                            </button>
+                            <button
+                              onClick={() => setReflectionModalOpen(true)}
+                              className="px-6 py-2.5 bg-och-steel/10 text-och-steel text-xs font-black uppercase tracking-widest rounded-xl border border-och-steel/20 hover:border-och-gold hover:text-och-gold transition-all"
+                            >
+                              Reflect Lab
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
                 </header>
 
-                {/* Top Metrics Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Active Streak', value: `${metrics?.habits_streak || 14}d`, icon: Flame, color: 'text-och-orange' },
-                    { label: 'Goals Meta', value: `${metrics?.goals_completed || 3}`, icon: Target, color: 'text-och-mint' },
-                    { label: 'Reflections', value: `${metrics?.reflections_count || 12}`, icon: BookOpen, color: 'text-och-gold' },
-                    { label: 'Circle Rank', value: 'Elite', icon: Sparkles, color: 'text-och-defender' },
-                  ].map((stat, i) => (
-                    <Card key={i} className="p-4 border-och-steel/10 bg-och-midnight/40 flex flex-col items-center text-center gap-2 group hover:border-och-defender/30 transition-all">
-                      <stat.icon className={clsx("w-5 h-5", stat.color)} />
-                      <div className="text-xl font-black text-white">{stat.value}</div>
-                      <div className="text-[9px] text-och-steel uppercase font-bold tracking-widest">{stat.label}</div>
+                {/* Content based on user status */}
+                {isNewUser ? (
+                  /* Onboarding Guidance for New Users */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Next Actions Card */}
+                    <Card className="p-6 border-och-defender/30 bg-och-midnight/60 group relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
+                        <Target className="w-16 h-16 text-och-defender" />
+                      </div>
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-och-defender/20 flex items-center justify-center border border-och-defender/30">
+                          <Target className="w-6 h-6 text-och-defender" />
+                        </div>
+                        <h3 className="text-lg font-black text-white uppercase tracking-wider">Your Next Actions</h3>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 rounded-lg bg-och-orange/20 flex items-center justify-center border border-och-orange/30 mt-0.5">
+                            <span className="text-xs font-black text-och-orange">1</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-white">Build Core Habits</p>
+                            <p className="text-xs text-och-steel">Start with daily learning and practice habits that align with your Defender track.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 rounded-lg bg-och-mint/20 flex items-center justify-center border border-och-mint/30 mt-0.5">
+                            <span className="text-xs font-black text-och-mint">2</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-white">Set Clear Goals</p>
+                            <p className="text-xs text-och-steel">Define specific cybersecurity milestones like completing your first CTF or certification.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 rounded-lg bg-och-gold/20 flex items-center justify-center border border-och-gold/30 mt-0.5">
+                            <span className="text-xs font-black text-och-gold">3</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-white">Reflect Daily</p>
+                            <p className="text-xs text-och-steel">End each day with insights about what worked and what to improve.</p>
+                          </div>
+                        </div>
+                      </div>
                     </Card>
-                  ))}
-                </div>
+
+                    {/* Defender Track Overview */}
+                    <Card className="p-6 border-och-defender/30 bg-och-midnight/60 group relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
+                        <Sparkles className="w-16 h-16 text-och-defender" />
+                      </div>
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-och-defender/20 flex items-center justify-center border border-och-defender/30">
+                          <Sparkles className="w-6 h-6 text-och-defender" />
+                        </div>
+                        <h3 className="text-lg font-black text-white uppercase tracking-wider">Defender Track</h3>
+                      </div>
+                      <div className="space-y-3">
+                        <p className="text-sm text-och-steel leading-relaxed">
+                          As a Defender, you'll master cybersecurity defense, threat detection, and incident response.
+                          Your path includes practical skills in monitoring, forensics, and security operations.
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 bg-och-steel/5 rounded-lg border border-och-steel/10">
+                            <p className="text-xs font-black text-och-orange uppercase tracking-widest">Priority Skills</p>
+                            <p className="text-xs text-och-steel mt-1">SIEM, Log Analysis, Threat Hunting</p>
+                          </div>
+                          <div className="p-3 bg-och-steel/5 rounded-lg border border-och-steel/10">
+                            <p className="text-xs font-black text-och-mint uppercase tracking-widest">Key Habits</p>
+                            <p className="text-xs text-och-steel mt-1">Daily Practice, CTF Challenges</p>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                ) : (
+                  /* Regular Metrics Row for Existing Users */
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Active Streak', value: `${metrics?.totalStreakDays || 0}d`, icon: Flame, color: 'text-och-orange' },
+                      { label: 'Goals Meta', value: `${metrics?.completedGoals || 0}`, icon: Target, color: 'text-och-mint' },
+                      { label: 'Reflections', value: `${metrics?.reflectionCount || 0}`, icon: BookOpen, color: 'text-och-gold' },
+                      { label: 'Active Habits', value: `${metrics?.activeHabits || 0}`, icon: Sparkles, color: 'text-och-defender' },
+                    ].map((stat, i) => (
+                      <Card key={i} className="p-4 border-och-steel/10 bg-och-midnight/40 flex flex-col items-center text-center gap-2 group hover:border-och-defender/30 transition-all">
+                        <stat.icon className={clsx("w-5 h-5", stat.color)} />
+                        <div className="text-xl font-black text-white">{stat.value}</div>
+                        <div className="text-[9px] text-och-steel uppercase font-bold tracking-widest">{stat.label}</div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Habits Preview */}
@@ -288,7 +432,7 @@ export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProp
         </div>
 
         {/* Right/Side Column - 4 cols (AI Coach Presence) */}
-        <div className="lg:col-span-4 space-y-8 sticky top-24">
+        <div className="lg:col-span-4 space-y-6 sticky top-24">
           
           {/* AI Coach Persona Card */}
           <Card className="border-och-defender/30 bg-och-midnight/60 backdrop-blur-xl overflow-hidden shadow-2xl shadow-och-defender/5 ring-1 ring-white/5">
@@ -314,9 +458,9 @@ export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProp
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-4">
               {/* Contextual Nudge */}
-              <div className="p-5 rounded-2xl bg-och-steel/5 border border-och-steel/10 relative overflow-hidden group">
+              <div className="p-3 rounded-2xl bg-och-steel/5 border border-och-steel/10 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-20 transition-opacity">
                   <Zap className="w-12 h-12 text-och-gold" />
                 </div>
@@ -364,12 +508,12 @@ export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProp
               </div>
 
               {/* Chat Interface (Inline instead of floating) */}
-              <div className="pt-6 border-t border-och-steel/10">
-                <div className="flex items-center gap-2 mb-4">
+              <div className="pt-4 border-t border-och-steel/10">
+                <div className="flex items-center gap-2 mb-3">
                   <MessageSquare className="w-3 h-3 text-och-steel" />
                   <span className="text-[9px] font-black text-och-steel uppercase tracking-widest">Interactive Feed</span>
                 </div>
-                <AICoachChat isInline className="!w-full !h-[380px] !shadow-none !border-0 !bg-transparent" />
+                <AICoachChat isInline className="!w-full !h-[320px] !shadow-none !border-0 !bg-transparent" />
               </div>
           </div>
         </Card>

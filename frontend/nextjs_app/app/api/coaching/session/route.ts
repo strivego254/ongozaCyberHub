@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+// Removed Supabase import - now using Django PostgreSQL APIs
 
 // Custom Grok client (using direct API)
 class GrokClient {
@@ -71,9 +71,47 @@ class ClaudeClient {
   }
 }
 
+// Groq client
+class GroqClient {
+  private apiKey: string;
+  private baseUrl = 'https://api.groq.com/openai/v1';
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  async chatCompletion(messages: any[], options: any = {}) {
+    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: options.model || 'llama-3.1-8b-instant',
+        messages,
+        max_tokens: options.max_tokens || 2000,
+        temperature: options.temperature || 0.3,
+        ...options
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Groq API error: ${response.status} ${error}`);
+    }
+
+    return await response.json();
+  }
+}
+
+// Secondary Groq client removed - most secondary models are decommissioned
+// Will re-enable when new secondary models become available
+
 // Initialize clients
 const grok = process.env.GROK_API_KEY ? new GrokClient(process.env.GROK_API_KEY) : null;
 const claude = process.env.ANTHROPIC_API_KEY ? new ClaudeClient(process.env.ANTHROPIC_API_KEY) : null;
+const groqPrimary = process.env.GROQ_API_KEY ? new GroqClient(process.env.GROQ_API_KEY) : null;
 
 interface StudentState {
   analytics?: any;
@@ -88,29 +126,63 @@ interface StudentState {
 }
 
 async function getStudentState(userId: string): Promise<StudentState> {
-  const supabase = createClient();
-
   try {
+    // Fetch data from Django PostgreSQL APIs instead of Supabase
+    const djangoApiUrl = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://localhost:8000';
+
     const [
-      analytics,
-      recipeProgress,
-      curriculum,
-      missions,
-      community,
-      mentorship
+      analyticsResponse,
+      recipeProgressResponse,
+      trackProgressResponse,
+      missionProgressResponse,
+      communityResponse,
+      mentorshipResponse
     ] = await Promise.all([
-      supabase.from('student_analytics').select('*').eq('user_id', userId).maybeSingle(),
-      supabase.from('user_recipe_progress').select('recipe_id, status, rating').eq('user_id', userId),
-      supabase.from('user_track_progress').select('*').eq('user_id', userId).maybeSingle(),
-      supabase.from('user_mission_progress').select('*').eq('user_id', userId),
-      supabase.from('community_activity_summary').select('*').eq('user_id', userId).maybeSingle(),
-      supabase.from('mentorship_sessions').select('status, topic, scheduled_at').eq('user_id', userId).limit(5)
+      fetch(`${djangoApiUrl}/api/v1/coaching/student-analytics`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.DJANGO_API_KEY || ''}`,
+          'Content-Type': 'application/json'
+        }
+      }),
+      fetch(`${djangoApiUrl}/api/v1/coaching/recipe-progress`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.DJANGO_API_KEY || ''}`,
+          'Content-Type': 'application/json'
+        }
+      }),
+      fetch(`${djangoApiUrl}/api/v1/coaching/track-progress`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.DJANGO_API_KEY || ''}`,
+          'Content-Type': 'application/json'
+        }
+      }),
+      fetch(`${djangoApiUrl}/api/v1/coaching/mission-progress`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.DJANGO_API_KEY || ''}`,
+          'Content-Type': 'application/json'
+        }
+      }),
+      fetch(`${djangoApiUrl}/api/v1/coaching/community-activity`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.DJANGO_API_KEY || ''}`,
+          'Content-Type': 'application/json'
+        }
+      }),
+      fetch(`${djangoApiUrl}/api/v1/coaching/mentorship-sessions`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.DJANGO_API_KEY || ''}`,
+          'Content-Type': 'application/json'
+        }
+      })
     ]);
 
-    const analyticsData = analytics.data || {};
-    const recipeData = recipeProgress.data || [];
-    const trackData = curriculum.data || {};
-    const missionData = missions.data || [];
+    // Parse responses (handle 404s gracefully)
+    const analyticsData = analyticsResponse.ok ? await analyticsResponse.json() : null;
+    const recipeData = recipeProgressResponse.ok ? await recipeProgressResponse.json() : [];
+    const trackData = trackProgressResponse.ok ? await trackProgressResponse.json() : null;
+    const missionData = missionProgressResponse.ok ? await missionProgressResponse.json() : [];
+    const communityData = communityResponse.ok ? await communityResponse.json() : null;
+    const mentorshipData = mentorshipResponse.ok ? await mentorshipResponse.json() : [];
 
     // Calculate recipe coverage
     const completedRecipes = recipeData.filter((r: any) => r.status === 'completed').length;
@@ -132,14 +204,23 @@ async function getStudentState(userId: string): Promise<StudentState> {
     );
 
     return {
-      analytics: analyticsData,
+      analytics: analyticsData || {
+        total_missions_completed: completedMissions,
+        average_score: missionData.length > 0 ? missionData.reduce((sum: number, m: any) => sum + (m.score || 0), 0) / missionData.length : 0,
+        track_code: trackData?.track_code || 'SOCDEFENSE',
+        circle_level: trackData?.circle_level || 1
+      },
       recipe_coverage: {
         percentage: recipeCoverage,
         completed: completedRecipes,
         total: totalRecipes,
         recipes: recipeData
       },
-      track_progress: trackData,
+      track_progress: trackData || {
+        track_code: 'SOCDEFENSE',
+        circle_level: 1,
+        progress_percentage: 0
+      },
       mission_stats: {
         completed: completedMissions,
         failed: failedMissions,
@@ -147,15 +228,50 @@ async function getStudentState(userId: string): Promise<StudentState> {
         completion_rate: missionCompletionRate,
         missions: missionData
       },
-      community_activity: community.data || {},
-      mentorship_status: mentorship.data || [],
-      track_code: trackData.track_code || analyticsData.track_code || 'SOCDEFENSE',
-      circle_level: trackData.circle_level || analyticsData.circle_level || 1,
-      complexity
+      community_activity: communityData || {
+        posts_count: 0,
+        replies_count: 0,
+        helpful_votes_received: 0
+      },
+      mentorship_status: mentorshipData || [],
+      track_code: trackData?.track_code || 'SOCDEFENSE',
+      circle_level: trackData?.circle_level || 1,
+      complexity: complexity
     };
   } catch (error) {
-    console.error('Error fetching student state:', error);
+    console.error('Error fetching student state from Django:', error);
+    // Return mock data as fallback
     return {
+      analytics: {
+        total_missions_completed: 0,
+        average_score: 0,
+        track_code: 'SOCDEFENSE',
+        circle_level: 1
+      },
+      recipe_coverage: {
+        percentage: 0,
+        completed: 0,
+        total: 0,
+        recipes: []
+      },
+      track_progress: {
+        track_code: 'SOCDEFENSE',
+        circle_level: 1,
+        progress_percentage: 0
+      },
+      mission_stats: {
+        completed: 0,
+        failed: 0,
+        total: 0,
+        completion_rate: 0,
+        missions: []
+      },
+      community_activity: {
+        posts_count: 0,
+        replies_count: 0,
+        helpful_votes_received: 0
+      },
+      mentorship_status: [],
       track_code: 'SOCDEFENSE',
       circle_level: 1,
       complexity: 0.5
@@ -164,12 +280,16 @@ async function getStudentState(userId: string): Promise<StudentState> {
 }
 
 function selectModel(trigger: string, complexity: number) {
-  // Use Grok for daily nudges and simple cases (70% usage)
-  if (trigger === 'daily' || complexity < 0.7) {
-    return { name: 'grok3', client: grok };
-  }
-  // Use Claude for complex reasoning (25% usage)
-  return { name: 'claude-sonnet', client: claude };
+  // Priority: Speed > Cost > Reliability
+
+  // Use Groq for all cases (fastest inference - primary choice)
+  if (groqPrimary) return { name: 'groq-llama', client: groqPrimary };
+
+  // Fallback chain: Grok > Claude
+  if (grok) return { name: 'grok3', client: grok };
+  if (claude) return { name: 'claude-sonnet', client: claude };
+
+  throw new Error('No AI models configured');
 }
 
 async function grokCoachingPrompt(studentState: StudentState, context: string) {
@@ -289,10 +409,74 @@ Output JSON:
   return response;
 }
 
+async function groqCoachingPrompt(studentState: StudentState, context: string, useSecondary: boolean = false) {
+  const groqClient = useSecondary ? groqSecondary : groqPrimary;
+  if (!groqClient) throw new Error('Groq API not configured');
+
+  const prompt = `Coach student (${studentState.track_code} Circle ${studentState.circle_level}):
+
+ANALYTICS: ${JSON.stringify(studentState.analytics || {}, null, 2)}
+
+MISSION STATS: ${studentState.mission_stats?.completed || 0}/${studentState.mission_stats?.total || 0} complete, ${studentState.mission_stats?.failed || 0} failed
+Completion rate: ${studentState.mission_stats?.completion_rate?.toFixed(1) || 0}%
+
+RECIPE COVERAGE: ${studentState.recipe_coverage?.percentage?.toFixed(1) || 0}%
+
+Context: ${context}
+
+Generate coaching session with priorities and actions.`;
+
+  const response = await groqClient.chatCompletion([
+    {
+      role: "system",
+      content: `You are OCH Coaching OS - AI Mentor for cybersecurity students.
+
+CRITICAL RULES:
+1. ALWAYS be encouraging, specific, actionable
+2. Reference exact missions/recipes/modules
+3. Suggest 1-2 next actions MAX
+4. Tie advice to Future-You alignment score
+5. Be concise (max 150 tokens)
+
+SCHEMA:
+{
+  "greeting": "Warm, personal opener",
+  "diagnosis": "Current state summary (1-2 sentences)",
+  "priorities": [
+    {
+      "priority": "high/medium/low",
+      "action": "Complete Mission X",
+      "reason": "Failed twice, unlocks Module 2",
+      "recipes": ["sigma-basics"],
+      "deadline": "2026-01-05"
+    }
+  ],
+  "encouragement": "Motivational close",
+  "actions": [
+    {
+      "type": "send_nudge",
+      "target": "mission_card",
+      "payload": {}
+    }
+  ]
+}`
+    },
+    {
+      role: "user",
+      content: prompt
+    }
+  ], {
+    temperature: 0.3,
+    max_tokens: 1000  // Smaller for faster inference
+  });
+
+  return response;
+}
+
 function parseCoachingResponse(response: any, modelName: string) {
   try {
     let content = '';
-    if (modelName === 'grok3') {
+    if (modelName === 'grok3' || modelName === 'groq-llama' || modelName === 'groq-mixtral') {
       content = response.choices?.[0]?.message?.content || '';
     } else if (modelName === 'claude-sonnet') {
       content = response.content?.[0]?.text || '';
@@ -351,8 +535,13 @@ export async function POST(request: NextRequest) {
     let coachingResponse;
     if (model.name === 'grok3') {
       coachingResponse = await grokCoachingPrompt(studentState, context);
-    } else {
+    } else if (model.name === 'groq-llama' || model.name === 'groq-mixtral') {
+      const useSecondary = model.name === 'groq-mixtral';
+      coachingResponse = await groqCoachingPrompt(studentState, context, useSecondary);
+    } else if (model.name === 'claude-sonnet') {
       coachingResponse = await claudeCoachingPrompt(studentState, context);
+    } else {
+      throw new Error(`Unsupported model: ${model.name}`);
     }
 
     // 4. Parse & validate response
@@ -363,19 +552,26 @@ export async function POST(request: NextRequest) {
       await executeCoachingActions(parsedAdvice.actions, user_id);
     }
 
-    // 6. Save session to Supabase (if table exists)
-    const supabase = createClient();
+    // 6. Save session to Django PostgreSQL (always try)
     try {
-      await supabase.from('coaching_sessions').insert({
-        user_id,
-        trigger,
-        context,
-        advice: parsedAdvice,
-        model_used: model.name,
-        created_at: new Date().toISOString()
+      const djangoApiUrl = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://localhost:8000';
+      await fetch(`${djangoApiUrl}/api/v1/coaching/sessions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.DJANGO_API_KEY || ''}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id,
+          trigger,
+          context,
+          advice: parsedAdvice,
+          model_used: model.name,
+          complexity_score: studentState.complexity
+        })
       });
     } catch (error) {
-      console.warn('Failed to save coaching session (table may not exist):', error);
+      console.warn('Failed to save coaching session to Django:', error);
     }
 
     return NextResponse.json({ 

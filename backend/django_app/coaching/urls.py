@@ -8,6 +8,9 @@ from .views import (
     reflections_list, reflection_detail,
     ai_coach_message, ai_coach_history,
     coaching_metrics,
+    student_analytics, user_recipe_progress, user_track_progress,
+    user_mission_progress, community_activity, mentorship_sessions,
+    coaching_sessions_api,
 )
 
 urlpatterns = [
@@ -31,4 +34,25 @@ urlpatterns = [
     
     # Metrics
     path('metrics', coaching_metrics, name='coaching-metrics'),
+
+    # Student Analytics (PostgreSQL replacement for Supabase)
+    path('student-analytics', student_analytics, name='coaching-student-analytics'),
+
+    # Recipe Progress
+    path('recipe-progress', user_recipe_progress, name='coaching-recipe-progress'),
+
+    # Track Progress
+    path('track-progress', user_track_progress, name='coaching-track-progress'),
+
+    # Mission Progress
+    path('mission-progress', user_mission_progress, name='coaching-mission-progress'),
+
+    # Community Activity
+    path('community-activity', community_activity, name='coaching-community-activity'),
+
+    # Mentorship Sessions
+    path('mentorship-sessions', mentorship_sessions, name='coaching-mentorship-sessions'),
+
+    # Coaching Sessions
+    path('sessions', coaching_sessions_api, name='coaching-sessions'),
 ]

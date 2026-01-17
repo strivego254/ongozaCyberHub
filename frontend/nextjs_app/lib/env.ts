@@ -8,7 +8,9 @@ export function validateAIEnvironment() {
 
   const optional = [
     'LLAMA_ENDPOINT',
-    'ANTHROPIC_API_KEY'
+    'ANTHROPIC_API_KEY',
+    'GROQ_API_KEY',
+    'GROQ_API_KEY_SECONDARY'
   ];
 
   const missing = required.filter(key => !process.env[key]);
@@ -26,7 +28,9 @@ export function validateAIEnvironment() {
   return {
     hasGrok: !!process.env.GROK_API_KEY,
     hasClaude: !!process.env.ANTHROPIC_API_KEY,
+    hasGroq: !!process.env.GROQ_API_KEY,
+    hasGroqSecondary: false, // Secondary models currently decommissioned
     hasLlama: !!process.env.LLAMA_ENDPOINT,
-    supabaseConfigured: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY)
+    supabaseConfigured: false // Converted to PostgreSQL
   };
 }
