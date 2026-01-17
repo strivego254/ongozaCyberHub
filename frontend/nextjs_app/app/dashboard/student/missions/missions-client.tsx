@@ -1,34 +1,29 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
+import { motion } from 'framer-motion'
 import { apiGateway } from '@/services/apiGateway'
-import { missionsClient, type MissionTemplate } from '@/services/missionsClient'
+import { useAuth } from '@/hooks/useAuth'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { motion } from 'framer-motion'
 import {
-  Loader2,
-  Target,
-  Shield,
-  Zap,
-  Award,
   Search,
-  Filter,
-  Clock,
-  BookOpen,
-  Briefcase,
-  ChevronRight,
-  Sparkles,
+  Lock,
+  Play,
   AlertTriangle,
-  Rocket,
+  Clock,
+  Target,
   CheckCircle2,
-  FileCode,
-  Map
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Zap,
+  TrendingUp,
+  Award,
+  Flame,
 } from 'lucide-react'
-import { MissionsTableView } from './components/MissionsTableView'
+import { MissionsGridView } from './components/MissionsGridView'
 
 interface Mission {
   id: string
@@ -36,21 +31,15 @@ interface Mission {
   title: string
   description: string
   difficulty: 'beginner' | 'intermediate' | 'advanced' | 'capstone'
-  type?: string
-  estimated_time_minutes?: number
+  estimated_duration_minutes?: number
   competency_tags?: string[]
   track_key?: string
   status?: string
   progress_percent?: number
+  is_locked?: boolean
+  lock_reason?: string | null
+  type?: string
   ai_score?: number
-  submission_id?: string
-  artifacts_uploaded?: number
-  artifacts_required?: number
-  ai_feedback?: {
-    score: number
-    strengths: string[]
-    gaps: string[]
-  }
 }
 
 interface MissionsResponse {
@@ -63,73 +52,94 @@ interface MissionsResponse {
   has_previous: boolean
 }
 
+interface StudentProfile {
+  tier?: number
+  current_track?: string
+  skill_level?: string
+  total_missions_completed?: number
+  current_streak?: number
+}
+
 export default function MissionsClient() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+
+  // State management
   const [missions, setMissions] = useState<Mission[]>([])
-  const [directorMissions, setDirectorMissions] = useState<MissionTemplate[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadingDirectorMissions, setLoadingDirectorMissions] = useState(true)
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [studentTrack, setStudentTrack] = useState<string | undefined>()
-  const [studentDifficulty, setStudentDifficulty] = useState<string>('beginner')
+  
+  // Filters
   const [filters, setFilters] = useState({
     status: 'all',
     difficulty: 'all',
     track: 'all',
     search: '',
   })
+
+  // Pagination
   const [pagination, setPagination] = useState({
     page: 1,
-    page_size: 20,
+    pageSize: 20,
     total: 0,
-    has_next: false,
-    has_previous: false,
+    hasNext: false,
+    hasPrevious: false,
   })
 
+  // Check authentication
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/login/student')
-      return
     }
+  }, [isAuthenticated, authLoading, router])
 
-    if (authLoading || !isAuthenticated) return
+  // Load student profile
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) return
+    
+    const loadProfile = async () => {
+      setProfileLoading(true)
+      try {
+        const response = await apiGateway.get('/student/profile')
+        setStudentProfile(response)
+      } catch (err) {
+        console.error('Failed to load student profile:', err)
+        setStudentProfile(null)
+      } finally {
+        setProfileLoading(false)
+      }
+    }
+    
+    loadProfile()
+  }, [isAuthenticated, authLoading])
 
-    loadStudentInfo()
+  // Load missions when filters change (reset to page 1)
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) return
+    
+    // Reset to page 1 when filters change
+    setPagination(prev => ({ ...prev, page: 1 }))
+  }, [filters.status, filters.difficulty, filters.track, filters.search])
+
+  // Load missions when page or filters change
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) return
     loadMissions()
-    loadDirectorMissions()
-  }, [isAuthenticated, authLoading, pagination.page, filters.status, filters.difficulty, filters.track, filters.search])
-
-  const loadStudentInfo = async () => {
-    try {
-      // Get student's enrollment to determine track
-      const profileResponse = await apiGateway.get('/student/profile')
-      if (profileResponse?.enrollment?.track_key) {
-        setStudentTrack(profileResponse.enrollment.track_key)
-      }
-      
-      // Get student's current difficulty level
-      const progressResponse = await apiGateway.get('/student/curriculum/progress')
-      if (progressResponse?.current_difficulty) {
-        setStudentDifficulty(progressResponse.current_difficulty)
-      }
-    } catch (err) {
-      console.error('Failed to load student info:', err)
-      // Default to beginner if we can't fetch
-      setStudentDifficulty('beginner')
-    }
-  }
+  }, [pagination.page, filters, isAuthenticated, authLoading])
 
   const loadMissions = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page: pagination.page,
-        page_size: pagination.page_size,
+        page_size: pagination.pageSize,
       }
 
+      // Add filters to params
       if (filters.status !== 'all') {
         params.status = filters.status
       }
@@ -143,375 +153,421 @@ export default function MissionsClient() {
         params.search = filters.search
       }
 
-      const response = await apiGateway.get<MissionsResponse>('/student/missions', { params })
+      console.log('[MissionsClient] Loading missions with params:', params)
 
-      setMissions(response.results || [])
-      setPagination({
-        page: response.page || 1,
-        page_size: response.page_size || 20,
-        total: response.total || response.count || 0,
-        has_next: response.has_next || false,
-        has_previous: response.has_previous || false,
-      })
+      // Call the API
+      const response = await apiGateway.get<MissionsResponse>(
+        '/student/missions/',
+        { params }
+      )
+
+      // Check if response has results array
+      if (response && Array.isArray(response.results)) {
+        console.log('[MissionsClient] ✅ Got results array with', response.results.length, 'missions')
+        setMissions(response.results)
+        setPagination({
+          page: response.page || 1,
+          pageSize: response.page_size || 20,
+          total: response.total || 0,
+          hasNext: response.has_next || false,
+          hasPrevious: response.has_previous || false,
+        })
+      } else if (Array.isArray(response)) {
+        console.log('[MissionsClient] ⚠️ Response is direct array')
+        setMissions(response)
+        setPagination({
+          page: 1,
+          pageSize: 20,
+          total: response.length,
+          hasNext: false,
+          hasPrevious: false,
+        })
+      } else {
+        console.warn('[MissionsClient] ❌ Unexpected response format:', response)
+        setError('Unexpected response format from server')
+        setMissions([])
+      }
     } catch (err: any) {
-      console.error('Failed to load missions:', err)
-      setError(err?.message || 'Failed to load missions. Please try again.')
+      console.error('[MissionsClient] Error loading missions:', err)
+      
+      // Handle specific error types
+      if (err?.response?.status === 401) {
+        setError('Authentication failed. Please log in again.')
+        router.push('/login/student')
+      } else if (err?.response?.status === 403) {
+        setError('You do not have permission to access missions.')
+      } else if (err?.response?.status === 404) {
+        setError('Missions endpoint not found on the server.')
+      } else {
+        setError(`Failed to load missions: ${err?.message || 'Unknown error'}`)
+      }
+      
+      setMissions([])
     } finally {
       setLoading(false)
     }
   }
 
-  const loadDirectorMissions = async () => {
-    setLoadingDirectorMissions(true)
-    try {
-      // Fetch director-defined missions that are published/approved
-      const params: any = {
-        status: 'published', // Only show published missions to students
-        page_size: 1000, // Get all published missions
-      }
-
-      // Apply filters if they match director mission fields
-      if (filters.difficulty !== 'all') {
-        params.difficulty = filters.difficulty
-      }
-      if (filters.track !== 'all') {
-        params.track_key = filters.track
-      }
-      if (filters.search) {
-        params.search = filters.search
-      }
-
-      const response = await missionsClient.getAllMissions(params)
-      
-      // Convert MissionTemplate to Mission format for consistency
-      const convertedMissions: Mission[] = (response.results || []).map((template: MissionTemplate) => ({
-        id: template.id || '',
-        code: template.code,
-        title: template.title,
-        description: template.description || '',
-        difficulty: template.difficulty,
-        type: template.type,
-        track_key: template.track_key || template.track_id || '',
-        estimated_time_minutes: template.estimated_time_minutes || (template.est_hours ? (template.est_hours * 60) : undefined),
-        competency_tags: template.competencies || [],
-        status: 'not_started', // Director missions are always "not_started" for students until they begin
-        progress_percent: 0,
-      }))
-
-      setDirectorMissions(convertedMissions)
-    } catch (err: any) {
-      console.error('Failed to load director missions:', err)
-      // Don't set error state - just log it, as student missions might still work
-      setDirectorMissions([])
-    } finally {
-      setLoadingDirectorMissions(false)
-    }
-  }
-
-  const getStatusBadge = (status?: string) => {
-    if (!status || status === 'not_started') {
-      return <Badge variant="steel">Not Started</Badge>
-    }
-
-    switch (status) {
-      case 'approved':
-      case 'completed':
-        return <Badge variant="mint">Approved</Badge>
-      case 'in_ai_review':
-        return <Badge variant="defender">AI Review</Badge>
-      case 'in_mentor_review':
-        return <Badge variant="orange">Mentor Review</Badge>
-      case 'submitted':
-        return <Badge variant="steel">Submitted</Badge>
-      case 'in_progress':
-      case 'draft':
-        return <Badge variant="defender">In Progress</Badge>
-      case 'changes_requested':
-      case 'failed':
-        return <Badge variant="orange">Changes Requested</Badge>
-      default:
-        return <Badge variant="steel">{status}</Badge>
-    }
-  }
-
-  const getDifficultyConfig = (difficulty: string) => {
-    switch (difficulty) {
-      case 'beginner':
-        return { 
-          color: 'och-mint', 
-          colorClass: 'text-och-mint', 
-          bgClass: 'bg-och-mint/20', 
-          borderClass: 'border-och-mint/40',
-          icon: Shield, 
-          label: 'Beginner' 
-        }
-      case 'intermediate':
-        return { 
-          color: 'och-defender', 
-          colorClass: 'text-och-defender', 
-          bgClass: 'bg-och-defender/20', 
-          borderClass: 'border-och-defender/40',
-          icon: Target, 
-          label: 'Intermediate' 
-        }
-      case 'advanced':
-        return { 
-          color: 'och-orange', 
-          colorClass: 'text-och-orange', 
-          bgClass: 'bg-och-orange/20', 
-          borderClass: 'border-och-orange/40',
-          icon: Zap, 
-          label: 'Advanced' 
-        }
-      case 'capstone':
-        return { 
-          color: 'och-gold', 
-          colorClass: 'text-och-gold', 
-          bgClass: 'bg-och-gold/20', 
-          borderClass: 'border-och-gold/40',
-          icon: Award, 
-          label: 'Capstone' 
-        }
-      default:
-        return { 
-          color: 'och-steel', 
-          colorClass: 'text-och-steel', 
-          bgClass: 'bg-och-steel/20', 
-          borderClass: 'border-och-steel/40',
-          icon: Shield, 
-          label: difficulty 
-        }
-    }
-  }
-
-  const formatTime = (minutes?: number) => {
-    if (!minutes) return null
-    if (minutes < 60) return `${minutes} min`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-
-  // Merge student missions and director missions
-  const allMissions = useMemo(() => {
-    // Combine both mission sources
-    const combined = [...missions, ...directorMissions]
-    
-    // Remove duplicates based on mission ID or code
-    const uniqueMissions = combined.filter((mission, index, self) =>
-      index === self.findIndex((m) => m.id === mission.id || (m.code && m.code === mission.code))
-    )
-    
-    // Apply status filter if needed (director missions are always 'not_started')
-    if (filters.status !== 'all') {
-      return uniqueMissions.filter(m => {
-        if (filters.status === 'not_started') {
-          return m.status === 'not_started' || !m.status
-        }
-        return m.status === filters.status
-      })
-    }
-    
-    return uniqueMissions
-  }, [missions, directorMissions, filters.status])
-
   const handleMissionClick = (missionId: string) => {
     router.push(`/dashboard/student/missions/${missionId}`)
   }
 
-  if (loading && missions.length === 0) {
+  const handleFilterChange = (newFilters: Partial<typeof filters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }))
+    setPagination(prev => ({ ...prev, page: 1 }))
+  }
+
+  const handleResetFilters = () => {
+    setFilters({
+      status: 'all',
+      difficulty: 'all',
+      track: 'all',
+      search: '',
+    })
+    setPagination(prev => ({ ...prev, page: 1 }))
+  }
+
+  // Loading state
+  if (!isAuthenticated || authLoading) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-och-midnight to-slate-950 flex items-center justify-center p-4">
-        <Card className="p-12 bg-och-midnight/90 border border-och-gold/30 rounded-3xl max-w-md w-full">
-          <div className="text-center space-y-6">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="mx-auto"
-            >
-              <Target className="w-16 h-16 text-och-gold" />
-            </motion.div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-                Loading Missions
-              </h2>
-              <p className="text-sm text-och-steel font-medium">
-                Fetching available missions from the backend
-              </p>
-            </div>
-          </div>
-        </Card>
+      <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+        >
+          <Loader2 className="w-12 h-12 text-och-gold" />
+        </motion.div>
       </div>
     )
   }
 
-  if (error) {
+  // Error state
+  if (error && missions.length === 0) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-och-midnight to-slate-950 flex items-center justify-center p-4">
-        <Card className="p-12 bg-och-midnight/90 border border-och-defender/40 rounded-3xl max-w-2xl w-full">
-          <div className="text-center space-y-8">
-            <div className="w-24 h-24 rounded-full bg-och-defender/10 flex items-center justify-center mx-auto border-2 border-och-defender/30">
-              <AlertTriangle className="w-12 h-12 text-och-defender" />
-            </div>
-            <div className="space-y-3">
-              <h1 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Failed to Load Missions</h1>
-              <p className="text-base text-och-steel leading-relaxed">{error}</p>
+      <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 sm:p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto">
+          <Card className="p-8 bg-och-midnight/90 border border-och-defender/40">
+            <div className="flex items-center gap-4 mb-4">
+              <AlertTriangle className="w-8 h-8 text-och-defender flex-shrink-0" />
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-white">Failed to Load Missions</h2>
+                <p className="text-och-steel mt-1">{error}</p>
+              </div>
             </div>
             <Button
               onClick={loadMissions}
               variant="defender"
-              className="font-black uppercase tracking-widest text-sm"
-              glow
+              className="mt-4"
             >
-              <Rocket className="w-4 h-4 mr-2" />
-              Retry
+              Try Again
             </Button>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-och-midnight to-slate-950">
-      {/* Hero Section - Full Width */}
-      <section className="w-full relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-och-gold/10 via-och-mint/10 to-och-defender/10" />
-        <div className="relative w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-12 sm:py-16 lg:py-20 xl:py-24">
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      {/* TIER 7: Enhanced Hero Section with Student Profile */}
+      <section className="w-full border-b border-och-steel/10 bg-gradient-to-r from-och-gold/10 via-och-defender/10 to-och-mint/10">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-10 sm:mb-12 lg:mb-16"
+            transition={{ duration: 0.3 }}
+            className="space-y-6"
           >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-och-defender to-och-orange mb-6 sm:mb-8 shadow-2xl shadow-och-defender/30"
-            >
-              <Target className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white" />
-            </motion.div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-3 sm:mb-4 lg:mb-6 uppercase tracking-tighter leading-tight">
-              Mission <span className="text-och-gold">Control</span>
-            </h1>
-            <p className="text-base sm:text-lg lg:text-xl xl:text-2xl text-och-steel max-w-4xl mx-auto font-medium leading-relaxed px-4">
-              The operational heart of OCH. Structured, scenario-based practical challenges that transform learners from conceptual understanding to industry-ready competence.
-            </p>
+            {/* Main Title Row */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-och-defender to-och-orange shadow-lg">
+                  <Target className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-white">
+                    Mission <span className="text-och-gold">Control</span>
+                  </h1>
+                  <p className="text-och-steel text-sm mt-1">
+                    Tier 7 Mission Engine • Track-Based Learning Paths
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold text-och-gold">{pagination.total}</p>
+                <p className="text-och-steel text-sm">Missions</p>
+              </div>
+            </div>
+
+            {/* Student Progress Summary */}
+            {!profileLoading && studentProfile && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+              >
+                <div className="px-4 py-3 rounded-lg bg-och-midnight/60 border border-och-steel/20">
+                  <p className="text-xs text-och-steel mb-1">Current Tier</p>
+                  <p className="text-2xl font-bold text-och-gold">
+                    {studentProfile.tier || 'N/A'}
+                  </p>
+                </div>
+                <div className="px-4 py-3 rounded-lg bg-och-midnight/60 border border-och-steel/20">
+                  <p className="text-xs text-och-steel mb-1">Track</p>
+                  <p className="text-lg font-bold text-och-mint truncate">
+                    {studentProfile.current_track || 'Unassigned'}
+                  </p>
+                </div>
+                <div className="px-4 py-3 rounded-lg bg-och-midnight/60 border border-och-steel/20">
+                  <p className="text-xs text-och-steel mb-1">Completed</p>
+                  <p className="text-2xl font-bold text-och-defender">
+                    {studentProfile.total_missions_completed || 0}
+                  </p>
+                </div>
+                <div className="px-4 py-3 rounded-lg bg-och-midnight/60 border border-och-steel/20">
+                  <p className="text-xs text-och-steel mb-1">Streak</p>
+                  <div className="flex items-center gap-1">
+                    <Flame className="w-5 h-5 text-och-orange" />
+                    <p className="text-2xl font-bold text-och-orange">
+                      {studentProfile.current_streak || 0}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </section>
 
-      {/* Filters Section - Full Width */}
-      <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pb-8 sm:pb-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="w-full bg-och-midnight/60 border border-och-steel/20 rounded-2xl sm:rounded-3xl p-6 sm:p-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
-              {/* Status Filter */}
+      {/* TIER 7: Advanced Stats Bar */}
+      <section className="w-full bg-och-midnight/40 border-b border-och-steel/10">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-wrap gap-4">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30"
+            >
+              <Play className="w-5 h-5 text-blue-400" />
               <div>
-                <label className="block text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 sm:mb-3">
-                  Status
-                </label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => {
-                    setFilters({ ...filters, status: e.target.value })
-                    setPagination({ ...pagination, page: 1 })
-                  }}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-och-midnight border border-och-steel/20 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
-                >
-                  <option value="all">All Status</option>
-                  <option value="not_started">Not Started</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="in_ai_review">In AI Review</option>
-                  <option value="in_mentor_review">In Mentor Review</option>
-                  <option value="approved">Approved</option>
-                  <option value="changes_requested">Changes Requested</option>
-                </select>
+                <p className="text-xs text-blue-300">Available</p>
+                <p className="text-lg font-bold text-blue-400">{missions.filter(m => !m.is_locked).length}</p>
               </div>
+            </motion.div>
 
-              {/* Difficulty Filter */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.05 }}
+              className="flex items-center gap-3 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/30"
+            >
+              <CheckCircle2 className="w-5 h-5 text-green-400" />
               <div>
-                <label className="block text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 sm:mb-3">
-                  Difficulty
-                </label>
-                <select
-                  value={filters.difficulty}
-                  onChange={(e) => {
-                    setFilters({ ...filters, difficulty: e.target.value })
-                    setPagination({ ...pagination, page: 1 })
-                  }}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-och-midnight border border-och-steel/20 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
-                >
-                  <option value="all">All Difficulties</option>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                  <option value="capstone">Capstone</option>
-                </select>
+                <p className="text-xs text-green-300">Completed</p>
+                <p className="text-lg font-bold text-green-400">{missions.filter(m => m.status === 'approved').length}</p>
               </div>
+            </motion.div>
 
-              {/* Track Filter */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="flex items-center gap-3 px-4 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30"
+            >
+              <Zap className="w-5 h-5 text-yellow-400" />
               <div>
-                <label className="block text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 sm:mb-3">
-                  Track
-                </label>
-                <select
-                  value={filters.track}
-                  onChange={(e) => {
-                    setFilters({ ...filters, track: e.target.value })
-                    setPagination({ ...pagination, page: 1 })
-                  }}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-och-midnight border border-och-steel/20 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-och-defender"
-                >
-                  <option value="all">All Tracks</option>
-                  <option value="defender">Defender</option>
-                  <option value="offensive">Offensive</option>
-                  <option value="grc">GRC</option>
-                  <option value="innovation">Innovation</option>
-                  <option value="leadership">Leadership</option>
-                </select>
+                <p className="text-xs text-yellow-300">In Progress</p>
+                <p className="text-lg font-bold text-yellow-400">{missions.filter(m => m.status === 'in_progress').length}</p>
               </div>
+            </motion.div>
 
-              {/* Search */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 }}
+              className="flex items-center gap-3 px-4 py-2 rounded-lg bg-purple-500/10 border border-purple-500/30"
+            >
+              <Award className="w-5 h-5 text-purple-400" />
               <div>
-                <label className="block text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 sm:mb-3">
-                  Search
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-och-steel" />
-                  <input
-                    type="text"
-                    value={filters.search}
-                    onChange={(e) => {
-                      setFilters({ ...filters, search: e.target.value })
-                      setPagination({ ...pagination, page: 1 })
-                    }}
-                    placeholder="Search missions..."
-                    className="w-full pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-och-midnight border border-och-steel/20 rounded-xl text-white text-sm placeholder-och-steel focus:outline-none focus:ring-2 focus:ring-och-defender"
-                  />
-                </div>
+                <p className="text-xs text-purple-300">Locked</p>
+                <p className="text-lg font-bold text-purple-400">{missions.filter(m => m.is_locked).length}</p>
               </div>
-            </div>
-          </Card>
-        </motion.div>
+            </motion.div>
+          </div>
+        </div>
       </section>
 
-      {/* Missions Table View */}
-      <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-12 lg:py-16">
-        <MissionsTableView
-          missions={allMissions}
-          loading={loading || loadingDirectorMissions}
-          pagination={pagination}
-          onPageChange={(page) => setPagination({ ...pagination, page })}
-          studentTrack={studentTrack}
-          studentDifficulty={studentDifficulty}
-        />
+      {/* TIER 7: Advanced Filters Section */}
+      <section className="w-full border-b border-och-steel/10 bg-och-midnight/20">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex flex-wrap gap-3"
+          >
+            {/* Search */}
+            <div className="flex-1 min-w-[200px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-och-steel" />
+                <input
+                  type="text"
+                  placeholder="Search missions..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange({ search: e.target.value })}
+                  className="w-full pl-10 pr-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white placeholder-och-steel focus:outline-none focus:ring-2 focus:ring-och-defender"
+                />
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <select
+              value={filters.status}
+              onChange={(e) => handleFilterChange({ status: e.target.value })}
+              className="px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+            >
+              <option value="all">All Status</option>
+              <option value="not_started">Not Started</option>
+              <option value="in_progress">In Progress</option>
+              <option value="submitted">Submitted</option>
+              <option value="approved">Completed</option>
+            </select>
+
+            {/* Difficulty Filter */}
+            <select
+              value={filters.difficulty}
+              onChange={(e) => handleFilterChange({ difficulty: e.target.value })}
+              className="px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+            >
+              <option value="all">All Levels</option>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="capstone">Capstone</option>
+            </select>
+
+            {/* Track Filter */}
+            <select
+              value={filters.track}
+              onChange={(e) => handleFilterChange({ track: e.target.value })}
+              className="px-4 py-2 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-defender"
+            >
+              <option value="all">All Tracks</option>
+              <option value="defender">🛡️ Defender</option>
+              <option value="offensive">⚔️ Offensive</option>
+              <option value="grc">📋 GRC</option>
+              <option value="innovation">💡 Innovation</option>
+              <option value="leadership">👥 Leadership</option>
+            </select>
+
+            {/* Reset Button */}
+            {(filters.status !== 'all' || filters.difficulty !== 'all' || filters.track !== 'all' || filters.search) && (
+              <button
+                onClick={handleResetFilters}
+                className="px-4 py-2 text-och-gold hover:text-och-gold/80 font-semibold transition-colors"
+              >
+                Reset
+              </button>
+            )}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Main Content */}
+      <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          <div className="flex items-center justify-center min-h-96">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+            >
+              <Loader2 className="w-12 h-12 text-och-gold" />
+            </motion.div>
+          </div>
+        ) : missions.length === 0 ? (
+          <Card className="p-12 bg-och-midnight/60 border border-och-steel/20 text-center">
+            <Target className="w-16 h-16 text-och-steel/30 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">No Missions Found</h3>
+            <p className="text-och-steel">Try adjusting your filters or check back later</p>
+          </Card>
+        ) : (
+          <>
+            <MissionsGridView
+              missions={missions}
+              onMissionClick={handleMissionClick}
+              loading={loading}
+            />
+
+            {/* TIER 7: Advanced Pagination */}
+            {pagination.total > pagination.pageSize && (
+              <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-6">
+                <p className="text-sm text-och-steel">
+                  Showing {(pagination.page - 1) * pagination.pageSize + 1} to{' '}
+                  {Math.min(pagination.page * pagination.pageSize, pagination.total)} of{' '}
+                  {pagination.total} missions
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    disabled={!pagination.hasPrevious || loading}
+                    onClick={() =>
+                      setPagination(prev => ({ ...prev, page: prev.page - 1 }))
+                    }
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {[...Array(Math.ceil(pagination.total / pagination.pageSize))]
+                      .slice(
+                        Math.max(0, pagination.page - 3),
+                        Math.min(
+                          Math.ceil(pagination.total / pagination.pageSize),
+                          pagination.page + 2
+                        )
+                      )
+                      .map((_, idx) => {
+                        const pageNum = idx + Math.max(1, pagination.page - 2)
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() =>
+                              setPagination(prev => ({ ...prev, page: pageNum }))
+                            }
+                            className={`px-3 py-1 rounded text-sm font-medium transition-all ${
+                              pageNum === pagination.page
+                                ? 'bg-och-defender text-white'
+                                : 'bg-och-midnight border border-och-steel/20 text-och-steel hover:text-white'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        )
+                      })}
+                  </div>
+
+                  <Button
+                    disabled={!pagination.hasNext || loading}
+                    onClick={() =>
+                      setPagination(prev => ({ ...prev, page: prev.page + 1 }))
+                    }
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </section>
     </div>
   )

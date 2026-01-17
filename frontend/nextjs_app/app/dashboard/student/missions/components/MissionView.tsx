@@ -124,7 +124,7 @@ export function MissionView({ missionId }: MissionViewProps) {
 
         {/* Progress Tracker */}
         {started && currentProgress && (
-          <MissionProgressTracker progress={currentProgress} />
+          <MissionProgressTracker progress={currentProgress as any} />
         )}
 
         {/* Subtask View */}

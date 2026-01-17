@@ -125,8 +125,9 @@ export default function StudentClient() {
     checkProfiling();
   }, [isAuthenticated, authLoading]);
 
-  // Show loading while checking profiling or foundations
-  if ((checkingProfiling || checkingFoundations) && isAuthenticated) {
+  // Show loading only briefly, then show dashboard immediately
+  // This prevents flash of old dashboard
+  if ((checkingProfiling || checkingFoundations) && isAuthenticated && !hasCheckedRef.current) {
     return (
       <div className="min-h-screen bg-och-midnight flex items-center justify-center">
         <Card className="p-8">
@@ -141,6 +142,7 @@ export default function StudentClient() {
     );
   }
 
+  // Always show the new dashboard - redirects happen in background
   return (
     <ErrorBoundary>
       <StudentDashboardHub />

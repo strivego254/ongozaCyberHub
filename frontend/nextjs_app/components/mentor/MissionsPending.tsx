@@ -216,7 +216,7 @@ export function MissionsPending({ onReviewClick }: MissionsPendingProps) {
                       </Badge>
                   <Badge 
                     variant={
-                      m.status === 'submitted' ? 'steel' :
+                      m.status === 'pending_review' ? 'steel' :
                           m.status === 'in_review' ? 'defender' :
                           m.status === 'approved' ? 'mint' :
                           m.status === 'needs_revision' ? 'orange' : 'steel'

@@ -47,9 +47,9 @@ export function CommunityFeed() {
               <div className="text-xs text-och-steel line-clamp-2 mb-1">
                 {post.content}
               </div>
-              {post.group_name && (
+              {post.university?.name && (
                 <div className="text-[11px] text-och-steel">
-                  Group: {post.group_name}
+                  University: {post.university.name}
                 </div>
               )}
             </div>

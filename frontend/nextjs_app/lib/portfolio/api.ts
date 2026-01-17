@@ -11,6 +11,7 @@ import type {
   CreatePortfolioItemInput,
   UpdatePortfolioItemInput,
   CreateReviewInput,
+  EvidenceFile,
   PortfolioHealthMetrics,
 } from './types';
 

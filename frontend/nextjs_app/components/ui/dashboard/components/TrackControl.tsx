@@ -87,7 +87,7 @@ export function TrackControl() {
             <Info className="w-3.5 h-3.5 text-och-gold" />
             <p className="text-[9px] text-och-gold font-black uppercase tracking-widest">System Recommended: Foundations Review</p>
          </div>
-         <Button variant="link" className="text-och-steel hover:text-white text-[10px] font-black uppercase tracking-widest group">
+         <Button variant="outline" className="text-och-steel hover:text-white text-[10px] font-black uppercase tracking-widest group">
             Full Curriculum View
             <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
          </Button>

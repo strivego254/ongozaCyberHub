@@ -64,13 +64,13 @@ function GoalProgress({ goal }: GoalProgressProps) {
       
       <div className="flex items-center justify-between text-xs text-slate-500">
         <span>{goal.current} / {goal.target}</span>
-        {(goal.dueDate || goal.due_date) && (
-          <span>Due: {new Date(goal.dueDate || goal.due_date || '').toLocaleDateString()}</span>
+        {((goal as any).dueDate || (goal as any).due_date) && (
+          <span>Due: {new Date((goal as any).dueDate || (goal as any).due_date || '').toLocaleDateString()}</span>
         )}
       </div>
       
       {/* Mentor Feedback (7-tier only) */}
-      {(goal.mentorFeedback || goal.mentor_feedback) && (
+      {((goal as any).mentorFeedback || (goal as any).mentor_feedback) && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -80,7 +80,7 @@ function GoalProgress({ goal }: GoalProgressProps) {
             <MessageSquare className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-xs font-medium text-indigo-300 mb-1">Mentor Feedback</p>
-              <p className="text-xs text-indigo-200/80">{goal.mentorFeedback || goal.mentor_feedback}</p>
+              <p className="text-xs text-indigo-200/80">{(goal as any).mentorFeedback || (goal as any).mentor_feedback}</p>
             </div>
           </div>
         </motion.div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
+import { Card } from "@/components/ui/Card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
@@ -68,7 +68,7 @@ export function ChannelCard({ channel, onJoin, onLeave, highlighted = false }: C
         </div>
       )}
 
-      <CardHeader className="pb-4 pt-6">
+      <div className="pb-4 pt-6">
         <div className="flex items-start gap-3">
           {/* Channel Icon */}
           <div 
@@ -101,9 +101,9 @@ export function ChannelCard({ channel, onJoin, onLeave, highlighted = false }: C
             {description}
           </p>
         )}
-      </CardHeader>
+      </div>
 
-      <CardContent className="pb-4 space-y-4">
+      <div className="pb-4 space-y-4">
         {/* Stats */}
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-1 text-slate-400">
@@ -146,9 +146,9 @@ export function ChannelCard({ channel, onJoin, onLeave, highlighted = false }: C
             </div>
           </motion.div>
         )}
-      </CardContent>
+      </div>
 
-      <CardFooter className="pt-0 pb-6">
+      <div className="pt-0 pb-6">
         <Button
           className={cn(
             "w-full h-12 font-semibold text-sm shadow-lg transition-all duration-300",
@@ -179,7 +179,7 @@ export function ChannelCard({ channel, onJoin, onLeave, highlighted = false }: C
             </>
           )}
         </Button>
-      </CardFooter>
+      </div>
 
       {/* Hover Glow Effect */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">

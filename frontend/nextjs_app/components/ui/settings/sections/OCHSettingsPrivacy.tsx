@@ -46,9 +46,9 @@ export function OCHSettingsPrivacy() {
     setError(null);
     
     try {
-      const data = await apiGateway.get('/auth/me');
-      setProfile(data);
-      setConsentScopes(data.consent_scopes || []);
+      const data = await apiGateway.get<any>('/auth/me');
+      setProfile(data as any);
+      setConsentScopes((data as any).consent_scopes || []);
     } catch (err: any) {
       console.error('Failed to load profile:', err);
       setError(err?.message || 'Failed to load privacy settings');
@@ -89,10 +89,10 @@ export function OCHSettingsPrivacy() {
     setSaveStatus(null);
     
     try {
-      const response = await apiGateway.post('/auth/data-export/', { format });
+      const response = await apiGateway.post<any>('/auth/data-export/', { format });
       setSaveStatus('success');
       setShowExportModal(false);
-      alert(`Data export requested. You will be notified when it's ready. Export ID: ${response.id}`);
+      alert(`Data export requested. You will be notified when it's ready. Export ID: ${(response as any).id}`);
     } catch (err: any) {
       console.error('Error requesting data export:', err);
       setSaveStatus('error');

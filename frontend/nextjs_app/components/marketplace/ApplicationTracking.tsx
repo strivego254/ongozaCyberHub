@@ -2,13 +2,13 @@
 
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { useMarketplace } from '@/hooks/useMarketplace'
+import { useJobApplications } from '@/hooks/useMarketplace'
 import { useAuth } from '@/hooks/useAuth'
 
 export function ApplicationTracking() {
   const { user } = useAuth()
   const menteeId = user?.id?.toString()
-  const { applications, employerInterest, isLoading } = useMarketplace(menteeId)
+  const { applications, isLoading } = useJobApplications()
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -74,8 +74,8 @@ export function ApplicationTracking() {
                     <div>
                       <div className="font-semibold text-white">Application #{app.id.slice(0, 8)}</div>
                       <div className="text-xs text-och-steel">
-                        {app.submitted_at
-                          ? `Submitted: ${new Date(app.submitted_at).toLocaleDateString()}`
+                        {app.applied_at
+                          ? `Submitted: ${new Date(app.applied_at).toLocaleDateString()}`
                           : 'Draft'}
                       </div>
                     </div>
@@ -84,45 +84,11 @@ export function ApplicationTracking() {
                     {app.status.replace('_', ' ')}
                   </Badge>
                 </div>
-                {app.portfolio_items_used.length > 0 && (
-                  <div className="text-xs text-och-steel mt-2">
-                    Portfolio items: {app.portfolio_items_used.length}
-                  </div>
-                )}
               </div>
             ))}
           </div>
         )}
       </Card>
-
-      {employerInterest.length > 0 && (
-        <Card>
-          <h3 className="text-xl font-bold mb-4 text-white">Employer Interest</h3>
-          <div className="space-y-3">
-            {employerInterest.map((interest) => (
-              <div
-                key={interest.id}
-                className="p-4 bg-och-midnight/50 rounded-lg"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="font-semibold text-white">{interest.employer_name}</div>
-                    <div className="text-xs text-och-steel">
-                      {new Date(interest.timestamp).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <Badge variant="mint" className="capitalize text-xs">
-                    {interest.status}
-                  </Badge>
-                </div>
-                {interest.message && (
-                  <p className="text-sm text-och-steel mt-2">{interest.message}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
     </div>
   )
 }

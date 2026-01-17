@@ -39,7 +39,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       setIsLoading(true)
       // Fetch real notifications from API
       try {
-        const response = await apiGateway.get('/notifications', {
+        const response = await apiGateway.get<any>('/notifications', {
           params: { user_id: userId }
         })
         const fetchedNotifications = Array.isArray(response) ? response : (response?.results || [])

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from django.db.models import Q, Count, Avg, F
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
@@ -174,8 +175,8 @@ def list_student_missions(request):
     recommended = request.query_params.get('recommended', 'false').lower() == 'true'
     urgent = request.query_params.get('urgent', 'false').lower() == 'true'
     
-    # Base queryset
-    missions = Mission.objects.all()
+    # Base queryset - only active missions
+    missions = Mission.objects.filter(is_active=True)
     
     # Apply filters
     if difficulty_filter != 'all':
@@ -197,6 +198,16 @@ def list_student_missions(request):
         for sub in MissionSubmission.objects.filter(user=user).select_related('mission', 'ai_feedback_detail')
     }
     
+    # Filter by status if needed (before pagination)
+    if status_filter != 'all':
+        mission_ids_by_status = []
+        for mission in missions:
+            submission = user_submissions.get(str(mission.id))
+            mission_status = submission.status if submission else 'not_started'
+            if mission_status == status_filter:
+                mission_ids_by_status.append(mission.id)
+        missions = missions.filter(id__in=mission_ids_by_status)
+    
     # Pagination
     page = int(request.query_params.get('page', 1))
     page_size = int(request.query_params.get('page_size', 20))
@@ -205,34 +216,23 @@ def list_student_missions(request):
     total_count = missions.count()
     missions_page = missions[offset:offset + page_size]
     
-    # Get student's track and difficulty level
+    # Get student's track (simplified)
     from programs.models import Enrollment
-    enrollment = Enrollment.objects.filter(user=user, status='active').select_related('cohort__track').first()
-    student_track = enrollment.track_key if enrollment and enrollment.track_key else None
-    
-    # Get student's current difficulty level (default to beginner for new users)
-    from django.contrib.sessions.models import Session
-    student_difficulty = getattr(user, 'mission_difficulty_level', None) or 'beginner'
-    
-    # Track progression requirements (missions needed to progress)
-    PROGRESSION_REQUIREMENTS = {
-        'defender': {'beginner': 3, 'intermediate': 5, 'advanced': 3},
-        'offensive': {'beginner': 3, 'intermediate': 5, 'advanced': 3},
-        'grc': {'beginner': 4, 'intermediate': 6, 'advanced': 4},
-        'innovation': {'beginner': 3, 'intermediate': 5, 'advanced': 3},
-        'leadership': {'beginner': 4, 'intermediate': 6, 'advanced': 4},
-    }
+    try:
+        enrollment = Enrollment.objects.filter(user=user, status='active').select_related('cohort').first()
+        student_track = enrollment.cohort.track_key if enrollment and hasattr(enrollment.cohort, 'track_key') else None
+    except Exception:
+        student_track = None
     
     # Build response with submission status
     results = []
     for mission in missions_page:
         submission = user_submissions.get(str(mission.id))
         
-        # Determine if mission is locked
+        # Simplified locking: just lock if track doesn't match
         is_locked = False
         lock_reason = None
         
-        # Lock if mission track doesn't match student track
         if student_track and mission.track_key and mission.track_key != student_track:
             is_locked = True
             track_names = {
@@ -242,17 +242,7 @@ def list_student_missions(request):
                 'innovation': 'Innovation',
                 'leadership': 'Leadership',
             }
-            lock_reason = f"This mission is for {track_names.get(mission.track_key, mission.track_key)} track. Your track is {track_names.get(student_track, student_track)}."
-        
-        # Lock if difficulty is higher than student's current level
-        difficulty_levels = ['beginner', 'intermediate', 'advanced', 'capstone']
-        if not is_locked:
-            mission_diff_index = difficulty_levels.index(mission.difficulty) if mission.difficulty in difficulty_levels else 0
-            student_diff_index = difficulty_levels.index(student_difficulty) if student_difficulty in difficulty_levels else 0
-            
-            if mission_diff_index > student_diff_index:
-                is_locked = True
-                lock_reason = f"Complete more {student_difficulty} missions to unlock {mission.difficulty} level missions."
+            lock_reason = f"This mission is for {track_names.get(mission.track_key, mission.track_key)} track."
         
         mission_data = {
             'id': str(mission.id),
@@ -261,7 +251,7 @@ def list_student_missions(request):
             'description': mission.description,
             'difficulty': mission.difficulty,
             'type': mission.type,
-            'estimated_time_minutes': mission.estimated_time_minutes or (mission.est_hours * 60 if mission.est_hours else None),
+            'estimated_time_minutes': mission.estimated_duration_minutes or (mission.est_hours * 60 if mission.est_hours else None),
             'competency_tags': mission.competencies or [],
             'track_key': mission.track_key,
             'requirements': mission.requirements or {},
@@ -271,30 +261,30 @@ def list_student_missions(request):
         
         if submission:
             mission_data['status'] = submission.status
-            mission_data['progress_percent'] = 0  # Calculate based on artifacts
+            mission_data['progress_percent'] = 0
             mission_data['ai_score'] = float(submission.ai_score) if submission.ai_score else None
             mission_data['submission_id'] = str(submission.id)
             
             # Count artifacts
+            from missions.models import MissionArtifact
             artifacts = MissionArtifact.objects.filter(submission=submission)
             mission_data['artifacts_uploaded'] = artifacts.count()
             mission_data['artifacts_required'] = len(mission.requirements.get('required_artifacts', []))
             
-            # AI feedback summary
-            if submission.ai_feedback_detail:
+            # AI feedback summary (safe access for optional relationship)
+            try:
+                ai_feedback = submission.ai_feedback_detail
                 mission_data['ai_feedback'] = {
-                    'score': float(submission.ai_feedback_detail.score),
-                    'strengths': submission.ai_feedback_detail.strengths[:3],
-                    'gaps': submission.ai_feedback_detail.gaps[:3],
+                    'score': float(ai_feedback.score),
+                    'strengths': ai_feedback.strengths[:3],
+                    'gaps': ai_feedback.gaps[:3],
                 }
+            except (AttributeError, ObjectDoesNotExist):
+                # ai_feedback_detail relationship doesn't exist for this submission
+                pass
         else:
             mission_data['status'] = 'not_started'
             mission_data['progress_percent'] = 0
-        
-        # Apply status filter
-        if status_filter != 'all':
-            if mission_data['status'] != status_filter:
-                continue
         
         results.append(mission_data)
     
@@ -335,16 +325,20 @@ def get_mission_detail(request, mission_id):
     
     # Get AI feedback
     ai_feedback = None
-    if submission.ai_feedback_detail:
-        ai_feedback = {
-            'score': float(submission.ai_feedback_detail.score),
-            'strengths': submission.ai_feedback_detail.strengths,
-            'gaps': submission.ai_feedback_detail.gaps,
-            'suggestions': submission.ai_feedback_detail.suggestions,
-            'full_feedback': submission.ai_feedback_detail.full_feedback,
-            'competencies_detected': submission.ai_feedback_detail.competencies_detected,
-            'feedback_date': submission.ai_feedback_detail.created_at.isoformat(),
-        }
+    try:
+        if submission.ai_feedback_detail:
+            ai_feedback = {
+                'score': float(submission.ai_feedback_detail.score),
+                'strengths': submission.ai_feedback_detail.strengths,
+                'gaps': submission.ai_feedback_detail.gaps,
+                'suggestions': submission.ai_feedback_detail.suggestions,
+                'full_feedback': submission.ai_feedback_detail.full_feedback,
+                'competencies_detected': submission.ai_feedback_detail.competencies_detected,
+                'feedback_date': submission.ai_feedback_detail.created_at.isoformat(),
+            }
+    except (AttributeError, ObjectDoesNotExist):
+        # ai_feedback_detail doesn't exist for this submission
+        pass
     
     # Get mentor review (if exists)
     mentor_review = None
@@ -366,7 +360,7 @@ def get_mission_detail(request, mission_id):
         'objectives': mission.requirements.get('objectives', []),
         'difficulty': mission.difficulty,
         'type': mission.type,
-        'estimated_time_minutes': mission.estimated_time_minutes or (mission.est_hours * 60 if mission.est_hours else None),
+        'estimated_time_minutes': mission.estimated_duration_minutes or (mission.est_hours * 60 if mission.est_hours else None),
         'competency_tags': mission.competencies or [],
         'track_key': mission.track_key,
         'requirements': mission.requirements or {},
@@ -693,3 +687,216 @@ def submit_for_mentor_review(request, submission_id):
     
     serializer = MissionSubmissionSerializer(submission)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def start_mission_student(request, mission_id):
+    """
+    POST /api/v1/student/missions/{id}/start
+    Start a mission for the authenticated student.
+    """
+    from .models_mxp import MissionProgress
+    
+    user = request.user
+    
+    try:
+        mission = Mission.objects.get(id=mission_id, is_active=True)
+    except Mission.DoesNotExist:
+        return Response({'error': 'Mission not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Check if mission already in progress
+    existing_progress = MissionProgress.objects.filter(
+        user=user,
+        mission=mission,
+        status__in=['in_progress', 'submitted', 'ai_reviewed', 'mentor_review']
+    ).first()
+    
+    if existing_progress:
+        return Response({
+            'progress_id': str(existing_progress.id),
+            'status': existing_progress.status,
+            'current_subtask': existing_progress.current_subtask,
+            'message': 'Mission already started'
+        }, status=status.HTTP_200_OK)
+    
+    # Create new progress entry
+    with transaction.atomic():
+        progress = MissionProgress.objects.create(
+            user=user,
+            mission=mission,
+            status='in_progress',
+            current_subtask=1,
+            subtasks_progress={},
+            started_at=timezone.now()
+        )
+        
+        # Initialize subtasks progress
+        if mission.subtasks:
+            for idx, subtask in enumerate(mission.subtasks, start=1):
+                progress.subtasks_progress[str(idx)] = {
+                    'completed': False,
+                    'evidence': [],
+                    'notes': '',
+                }
+            progress.save()
+        
+        return Response({
+            'progress_id': str(progress.id),
+            'status': progress.status,
+            'current_subtask': progress.current_subtask,
+            'message': 'Mission started successfully'
+        }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def get_mission_progress(request, mission_id):
+    """
+    GET/PATCH /api/v1/student/missions/{id}/progress
+    Get or update mission progress for execution interface.
+    """
+    from .models_mxp import MissionProgress
+    
+    user = request.user
+    
+    try:
+        progress = MissionProgress.objects.select_related('mission').get(
+            user=user,
+            mission_id=mission_id
+        )
+    except MissionProgress.DoesNotExist:
+        return Response(
+            {'error': 'Mission progress not found. Please start the mission first.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    if request.method == 'GET':
+        # Return progress with mission details
+        return Response({
+            'id': str(progress.id),
+            'mission': {
+                'id': str(progress.mission.id),
+                'code': progress.mission.code,
+                'title': progress.mission.title,
+                'description': progress.mission.description,
+                'difficulty': progress.mission.difficulty,
+                'track_key': progress.mission.track_key,
+                'estimated_duration_minutes': progress.mission.estimated_duration_minutes,
+                'objectives': progress.mission.objectives or [],
+                'subtasks': progress.mission.subtasks or [],
+            },
+            'status': progress.status,
+            'progress_percent': calculate_progress_percent(progress),
+            'current_subtask_index': progress.current_subtask - 1,  # Convert to 0-indexed
+            'time_spent_minutes': calculate_time_spent(progress),
+            'started_at': progress.started_at.isoformat() if progress.started_at else None,
+        }, status=status.HTTP_200_OK)
+    
+    elif request.method == 'PATCH':
+        # Update progress
+        data = request.data
+        
+        if 'current_subtask_index' in data:
+            progress.current_subtask = data['current_subtask_index'] + 1  # Convert to 1-indexed
+        
+        if 'notes' in data:
+            # Store notes in subtasks_progress
+            subtask_key = str(progress.current_subtask)
+            if subtask_key not in progress.subtasks_progress:
+                progress.subtasks_progress[subtask_key] = {}
+            progress.subtasks_progress[subtask_key]['notes'] = data['notes']
+        
+        if 'status' in data and data['status'] in ['in_progress', 'paused']:
+            progress.status = data['status']
+        
+        progress.save()
+        
+        return Response({'success': True}, status=status.HTTP_200_OK)
+
+
+def calculate_progress_percent(progress):
+    """Calculate progress percentage based on completed subtasks."""
+    if not progress.mission.subtasks:
+        return 0
+    
+    total = len(progress.mission.subtasks)
+    completed = sum(
+        1 for key, val in progress.subtasks_progress.items()
+        if isinstance(val, dict) and val.get('completed', False)
+    )
+    
+    return int((completed / total) * 100) if total > 0 else 0
+
+
+def calculate_time_spent(progress):
+    """Calculate time spent on mission in minutes."""
+    if not progress.started_at:
+        return 0
+    
+    if progress.submitted_at:
+        delta = progress.submitted_at - progress.started_at
+    else:
+        delta = timezone.now() - progress.started_at
+    
+    return int(delta.total_seconds() / 60)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_subtask(request, mission_id, subtask_index):
+    """
+    POST /api/v1/student/missions/{id}/subtasks/{index}/complete
+    Mark a subtask as complete and move to next.
+    """
+    from .models_mxp import MissionProgress
+    
+    user = request.user
+    
+    try:
+        progress = MissionProgress.objects.select_related('mission').get(
+            user=user,
+            mission_id=mission_id
+        )
+    except MissionProgress.DoesNotExist:
+        return Response(
+            {'error': 'Mission progress not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Validate subtask index
+    subtasks = progress.mission.subtasks or []
+    if subtask_index >= len(subtasks):
+        return Response(
+            {'error': 'Invalid subtask index'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Mark subtask as complete
+    subtask_key = str(subtask_index + 1)  # Convert to 1-indexed
+    if subtask_key not in progress.subtasks_progress:
+        progress.subtasks_progress[subtask_key] = {}
+    
+    progress.subtasks_progress[subtask_key]['completed'] = True
+    progress.subtasks_progress[subtask_key]['completed_at'] = timezone.now().isoformat()
+    
+    if 'notes' in request.data:
+        progress.subtasks_progress[subtask_key]['notes'] = request.data['notes']
+    
+    # Move to next subtask or mark as ready for submission
+    if subtask_index < len(subtasks) - 1:
+        progress.current_subtask = subtask_index + 2  # Move to next (1-indexed)
+        progress.save()
+        return Response({
+            'success': True,
+            'next_subtask_index': subtask_index + 1
+        }, status=status.HTTP_200_OK)
+    else:
+        # All subtasks complete
+        progress.current_subtask = len(subtasks)
+        progress.save()
+        return Response({
+            'success': True,
+            'all_complete': True,
+            'message': 'All subtasks completed! Ready to submit mission.'
+        }, status=status.HTTP_200_OK)

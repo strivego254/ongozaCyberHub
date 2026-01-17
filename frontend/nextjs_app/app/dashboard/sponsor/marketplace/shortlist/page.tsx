@@ -81,9 +81,17 @@ export default function ShortlistPage() {
 
       // Update favorites/shortlists sets
       if (action === 'favorite') {
-        setFavoritedProfiles(prev => new Set([...prev, profileId]))
+        setFavoritedProfiles(prev => {
+          const next = new Set(prev)
+          next.add(profileId)
+          return next
+        })
       } else if (action === 'shortlist') {
-        setShortlistedProfiles(prev => new Set([...prev, profileId]))
+        setShortlistedProfiles(prev => {
+          const next = new Set(prev)
+          next.add(profileId)
+          return next
+        })
       }
 
       // Reload the shortlist to get updated data

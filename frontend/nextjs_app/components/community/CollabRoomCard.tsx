@@ -2,11 +2,11 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
+import { Card } from "@/components/ui/Card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
-import { Progress } from "@/components/ui/progress"
+import { ProgressBar } from "@/components/ui/ProgressBar"
 import { 
   Users, Trophy, Calendar, Clock, Swords, 
   CheckCircle2, Loader2, MapPin, Globe, Lock
@@ -97,7 +97,7 @@ export function CollabRoomCard({ room, onJoin, onViewDetails, compact = false }:
         className="group cursor-pointer bg-slate-900/70 border-slate-800/50 hover:border-indigo-500/50 transition-all"
         onClick={() => onViewDetails?.(room.id)}
       >
-        <CardContent className="p-4 flex items-center gap-4">
+        <div className="p-4 flex items-center gap-4">
           <div className={cn(
             "w-12 h-12 rounded-xl flex items-center justify-center text-xl",
             `bg-gradient-to-br ${typeConfig.color} shadow-lg`
@@ -117,7 +117,7 @@ export function CollabRoomCard({ room, onJoin, onViewDetails, compact = false }:
           <Badge className={status.color}>
             {status.label}
           </Badge>
-        </CardContent>
+        </div>
       </Card>
     )
   }
@@ -146,7 +146,7 @@ export function CollabRoomCard({ room, onJoin, onViewDetails, compact = false }:
         </Badge>
       </div>
 
-      <CardHeader className="pb-4 pt-6 relative">
+      <div className="pb-4 pt-6 relative">
         <div className="flex items-start gap-4">
           {/* Room Icon */}
           <div className={cn(
@@ -171,9 +171,9 @@ export function CollabRoomCard({ room, onJoin, onViewDetails, compact = false }:
             {(room as CollabRoom).description}
           </p>
         )}
-      </CardHeader>
+      </div>
 
-      <CardContent className="pb-4 space-y-4 relative">
+      <div className="pb-4 space-y-4 relative">
         {/* Participating Universities */}
         {universities.length > 0 && (
           <div>
@@ -246,9 +246,9 @@ export function CollabRoomCard({ room, onJoin, onViewDetails, compact = false }:
             </div>
           </div>
         )}
-      </CardContent>
+      </div>
 
-      <CardFooter className="pt-0 pb-6 relative">
+      <div className="pt-0 pb-6 relative">
         <div className="flex gap-3 w-full">
           <Button
             onClick={handleJoin}
@@ -295,7 +295,7 @@ export function CollabRoomCard({ room, onJoin, onViewDetails, compact = false }:
             </Button>
           )}
         </div>
-      </CardFooter>
+      </div>
 
       {/* Hover Glow */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">

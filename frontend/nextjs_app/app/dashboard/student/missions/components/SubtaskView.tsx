@@ -71,7 +71,7 @@ export function SubtaskView({ missionId, subtaskNumber }: SubtaskViewProps) {
 
   useEffect(() => {
     if (saveProgressMutation.isSuccess) {
-      updateSubtaskProgress(subtaskNumber, {
+      updateSubtaskProgress(String(subtaskNumber), {
         completed: true,
         evidence: progress?.evidence || [],
         notes,
@@ -86,7 +86,7 @@ export function SubtaskView({ missionId, subtaskNumber }: SubtaskViewProps) {
     setUploading(true)
     try {
       const result = await uploadFileMutation.mutateAsync(file)
-      updateSubtaskProgress(subtaskNumber, {
+      updateSubtaskProgress(String(subtaskNumber), {
         completed: progress?.completed || false,
         evidence: [...(progress?.evidence || []), result.file_url],
         notes: progress?.notes || '',
@@ -104,7 +104,7 @@ export function SubtaskView({ missionId, subtaskNumber }: SubtaskViewProps) {
   }
 
   const handleComplete = () => {
-    updateSubtaskProgress(subtaskNumber, {
+    updateSubtaskProgress(String(subtaskNumber), {
       completed: true,
       evidence: progress?.evidence || [],
       notes,

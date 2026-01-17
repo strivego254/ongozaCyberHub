@@ -2,11 +2,11 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
+import { Card } from "@/components/ui/Card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
-import { Progress } from "@/components/ui/progress"
+import { ProgressBar } from "@/components/ui/ProgressBar"
 import { 
   Users, Target, Trophy, Flame, 
   CheckCircle2, Loader2, Crown, Zap, Lock
@@ -70,7 +70,7 @@ export function SquadCard({ squad, onJoin, onLeave, highlighted = false }: Squad
         )}
       </div>
 
-      <CardHeader className="pb-4 pt-6">
+      <div className="pb-4 pt-6">
         <div className="flex items-start gap-3">
           {/* Squad Icon */}
           <div 
@@ -117,9 +117,9 @@ export function SquadCard({ squad, onJoin, onLeave, highlighted = false }: Squad
             </p>
           </div>
         )}
-      </CardHeader>
+      </div>
 
-      <CardContent className="pb-4 space-y-4">
+      <div className="pb-4 space-y-4">
         {/* Stats Row */}
         <div className="grid grid-cols-3 gap-3">
           <div className="text-center p-2 bg-slate-800/30 rounded-xl">
@@ -153,12 +153,11 @@ export function SquadCard({ squad, onJoin, onLeave, highlighted = false }: Squad
               {squad.member_count}/{squad.max_members}
             </span>
           </div>
-          <Progress 
+          <ProgressBar 
             value={memberProgress} 
-            className="h-2 bg-slate-800/50"
-            indicatorClassName={cn(
-              isFull ? "bg-orange-500" : "bg-gradient-to-r from-purple-500 to-pink-500"
-            )}
+            variant={isFull ? 'orange' : 'mint'}
+            showLabel={false}
+            className="h-2"
           />
         </div>
 
@@ -198,9 +197,9 @@ export function SquadCard({ squad, onJoin, onLeave, highlighted = false }: Squad
             )}
           </div>
         )}
-      </CardContent>
+      </div>
 
-      <CardFooter className="pt-0 pb-6">
+      <div className="pt-0 pb-6">
         <Button
           className={cn(
             "w-full h-12 font-semibold text-sm shadow-lg transition-all duration-300",
@@ -241,7 +240,7 @@ export function SquadCard({ squad, onJoin, onLeave, highlighted = false }: Squad
             </>
           )}
         </Button>
-      </CardFooter>
+      </div>
 
       {/* Hover Glow Effect */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">

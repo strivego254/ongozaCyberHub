@@ -19,7 +19,7 @@ export function ExternalImport() {
   const [error, setError] = useState<string | null>(null);
   
   const { user } = useAuth();
-  const userId = user?.id;
+  const userId = user?.id?.toString();
   const { refetch } = usePortfolio(userId);
 
   const handleGitHubConnect = async () => {

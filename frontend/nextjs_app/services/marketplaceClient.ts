@@ -71,10 +71,19 @@ export interface JobApplication {
   status_changed_at: string | null
 }
 
+type PaginatedResult<T> = {
+  results: T[]
+  count?: number
+  page?: number
+  page_size?: number
+}
+
 export interface EmployerInterestLog {
   id: string
   employer_id: string
+  employer?: Employer | null
   profile_id: string
+  profile: MarketplaceProfile
   action: 'view' | 'favorite' | 'shortlist' | 'contact_request'
   metadata: Record<string, any>
   message?: string
@@ -148,7 +157,7 @@ export const marketplaceClient = {
   /**
    * Get employer's interest logs (favorites, shortlists, contact requests)
    */
-  async getInterestLogs(action?: 'favorite' | 'shortlist' | 'contact_request'): Promise<EmployerInterestLog[]> {
+  async getInterestLogs(action?: 'favorite' | 'shortlist' | 'contact_request'): Promise<EmployerInterestLog[] | PaginatedResult<EmployerInterestLog>> {
     const params = action ? { action } : {}
     return apiGateway.get('/marketplace/interest/list', { params })
   },
@@ -156,14 +165,14 @@ export const marketplaceClient = {
   /**
    * Get contact requests received by student
    */
-  async getContactRequests(): Promise<EmployerInterestLog[]> {
+  async getContactRequests(): Promise<EmployerInterestLog[] | PaginatedResult<EmployerInterestLog>> {
     return apiGateway.get('/marketplace/contacts')
   },
 
   /**
    * Get job postings for current employer
    */
-  async getJobPostings(): Promise<JobPosting[]> {
+  async getJobPostings(): Promise<JobPosting[] | PaginatedResult<JobPosting>> {
     return apiGateway.get('/marketplace/jobs')
   },
 
@@ -271,7 +280,7 @@ export const marketplaceClient = {
   /**
    * Get applications for a specific job (employer only)
    */
-  async getJobApplications(jobId: string): Promise<JobApplication[]> {
+  async getJobApplications(jobId: string): Promise<JobApplication[] | PaginatedResult<JobApplication>> {
     return apiGateway.get(`/marketplace/jobs/${jobId}/applications`)
   },
 

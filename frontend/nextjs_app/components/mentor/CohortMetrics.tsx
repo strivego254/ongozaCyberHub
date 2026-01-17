@@ -69,7 +69,7 @@ export function CohortMetrics({ mentees, mentorId }: CohortMetricsProps) {
           low: cohortMentees.filter((m) => (m.risk_level || 'low') === 'low').length,
           medium: cohortMentees.filter((m) => m.risk_level === 'medium').length,
           high: cohortMentees.filter((m) => m.risk_level === 'high').length,
-          critical: cohortMentees.filter((m) => m.risk_level === 'critical').length,
+          critical: 0,
         }
 
         const totalMissions = cohortMentees.reduce((sum, m) => sum + (m.missions_completed || 0), 0)
@@ -411,7 +411,7 @@ export function CohortMetrics({ mentees, mentorId }: CohortMetricsProps) {
                     <div className="flex items-center gap-2 mt-2">
                       <Badge
                         variant={
-                          mentee.risk_level === 'high' || mentee.risk_level === 'critical'
+                          mentee.risk_level === 'high'
                             ? 'orange'
                             : mentee.risk_level === 'medium'
                             ? 'gold'

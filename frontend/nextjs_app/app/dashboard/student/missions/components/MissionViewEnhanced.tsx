@@ -59,8 +59,9 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
     if (missionData) {
       setCurrentMission(missionData)
       // If the mission has subtasks, load them into the store
-      if (missionData.subtasks && missionData.subtasks.length > 0) {
-        setSubtasks(missionData.subtasks)
+      const missionSubtasks = (missionData as any).subtasks
+      if (missionSubtasks && missionSubtasks.length > 0) {
+        setSubtasks(missionSubtasks)
       } else {
         // Create mock subtasks if none exist for demo/compatibility
         setSubtasks([

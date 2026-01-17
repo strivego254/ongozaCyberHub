@@ -67,21 +67,22 @@ export function useMentorship(userId?: string) {
         // Fetch assigned mentor from backend
         const response = await apiGateway.get(`/mentorship/mentees/${userId}/mentor`);
         console.log('Mentor API response:', response);
-        if (response && response.id) {
+        const resp = response as any;
+        if (resp && resp.id) {
           const mentor: Mentor = {
-            id: response.id,
-            name: response.name || 'Mentor',
-            avatar: response.avatar || undefined,
-            expertise: Array.isArray(response.expertise) ? response.expertise : [],
-            track: response.track || 'Mentor',
-            bio: response.bio || '',
-            timezone: response.timezone || 'Africa/Nairobi',
-            readiness_impact: typeof response.readiness_impact === 'number' ? response.readiness_impact : 85.0,
-            cohort_id: response.cohort_id || undefined,
-            cohort_name: response.cohort_name || undefined,
-            assigned_at: response.assigned_at || undefined,
-            mentor_role: response.mentor_role || undefined,
-            assignment_type: response.assignment_type || undefined
+            id: resp.id,
+            name: resp.name || 'Mentor',
+            avatar: resp.avatar || undefined,
+            expertise: Array.isArray(resp.expertise) ? resp.expertise : [],
+            track: resp.track || 'Mentor',
+            bio: resp.bio || '',
+            timezone: resp.timezone || 'Africa/Nairobi',
+            readiness_impact: typeof resp.readiness_impact === 'number' ? resp.readiness_impact : 85.0,
+            cohort_id: resp.cohort_id || undefined,
+            cohort_name: resp.cohort_name || undefined,
+            assigned_at: resp.assigned_at || undefined,
+            mentor_role: resp.mentor_role || undefined,
+            assignment_type: resp.assignment_type || undefined
           };
           console.log('Processed mentor data:', mentor);
           return mentor;
@@ -108,7 +109,7 @@ export function useMentorship(userId?: string) {
       try {
         // Fetch sessions from backend
         const response = await apiGateway.get(`/mentorship/sessions?mentee_id=${userId}`);
-        const backendSessions = Array.isArray(response) ? response : (response?.results || []);
+        const backendSessions = Array.isArray(response) ? response : (((response as any)?.results) || []);
         
         return backendSessions.map((session: any) => ({
           id: session.id,
@@ -134,8 +135,8 @@ export function useMentorship(userId?: string) {
     queryKey: ['mentorship', 'goals', userId],
     queryFn: async () => {
       try {
-        const response = await apiGateway.get('/coaching/goals');
-        const backendGoals = response || [];
+        const response = await apiGateway.get<any>('/coaching/goals');
+        const backendGoals = (response as any) || [];
         
         // Map backend Goal model to frontend SmartGoal interface
         return backendGoals.map((goal: any) => {

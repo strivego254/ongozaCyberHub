@@ -180,7 +180,7 @@ export function AdminNavigation() {
         }
         return null
       })
-      .filter((item): item is NavItem => item !== null)
+      .filter(Boolean) as NavItem[]
   }, [searchQuery])
 
   // Expand all function

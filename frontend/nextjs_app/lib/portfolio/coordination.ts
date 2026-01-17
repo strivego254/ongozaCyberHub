@@ -133,7 +133,7 @@ export async function getPortfolioForCoaching(userId: string): Promise<{
   }, {} as Record<string, number>);
 
   const topSkills = Object.entries(skillCounts)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([, a], [, b]) => (b as number) - (a as number))
     .slice(0, 5)
     .map(([skill]) => skill);
 

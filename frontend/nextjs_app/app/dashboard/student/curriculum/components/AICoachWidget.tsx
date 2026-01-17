@@ -25,7 +25,7 @@ interface Message {
   id: string;
   role: 'assistant' | 'user';
   content: string;
-  type?: 'alignment' | 'suggestion' | 'celebration';
+  type?: 'alignment' | 'suggestion' | 'celebration' | 'error';
 }
 
 interface AICoachWidgetProps {
@@ -67,7 +67,7 @@ export function AICoachWidget({ currentActivity, alignmentScore }: AICoachWidget
 
     // Call real AI Coach API
     try {
-      const response = await apiGateway.post('/coaching/ai-coach/message', {
+      const response = await apiGateway.post<any>('/coaching/ai-coach/message', {
         message: inputValue,
         context: {
           alignment_score: alignmentScore,
@@ -78,7 +78,7 @@ export function AICoachWidget({ currentActivity, alignmentScore }: AICoachWidget
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.content || response.message || 'I received your message. Processing...',
+        content: response?.content || response?.message || 'I received your message. Processing...',
         type: 'suggestion'
       }]);
     } catch (error) {

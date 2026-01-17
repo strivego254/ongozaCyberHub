@@ -276,8 +276,8 @@ export function FrontendStatusSection() {
                 <h3 className="text-sm font-medium text-slate-300 mb-3">Performance</h3>
                 <div className="p-3 bg-slate-900/70 border border-slate-800/70 rounded-lg" style={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(30, 41, 59, 0.9)' }}>
                   <div className="text-xs text-slate-500 mb-2" style={{ color: '#94a3b8' }}>
-                    Memory Usage: {performance.memory 
-                      ? `${Math.round(performance.memory.usedJSHeapSize / 1048576)}MB / ${Math.round(performance.memory.totalJSHeapSize / 1048576)}MB`
+                    Memory Usage: {'memory' in performance
+                      ? `${Math.round((performance as any).memory.usedJSHeapSize / 1048576)}MB / ${Math.round((performance as any).memory.totalJSHeapSize / 1048576)}MB`
                       : 'N/A'}
                   </div>
                   <div className="text-xs text-slate-500" style={{ color: '#94a3b8' }}>

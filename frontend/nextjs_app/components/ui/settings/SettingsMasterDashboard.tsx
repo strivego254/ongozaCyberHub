@@ -47,7 +47,7 @@ export function SettingsMasterDashboard() {
   const initialTab = (searchParams.get('tab') as SettingsTab) || 'profile';
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
 
-  const userId = user?.id;
+  const userId = user?.id?.toString();
 
   const {
     settings,
@@ -276,7 +276,7 @@ export function SettingsMasterDashboard() {
                     <CreditCard className="w-6 h-6 text-och-gold" />
                     Subscription Tier
                   </h2>
-                  <SubscriptionControlPanel entitlements={displayEntitlements} settings={displaySettings} />
+                  <SubscriptionControlPanel entitlements={displayEntitlements as any} settings={displaySettings} />
                 </div>
               )}
 
@@ -287,8 +287,8 @@ export function SettingsMasterDashboard() {
                     Data & Visibility
                   </h2>
                   <PrivacyMasterSwitch 
-                    settings={displaySettings} 
-                    entitlements={displayEntitlements} 
+                    settings={displaySettings as any} 
+                    entitlements={displayEntitlements as any} 
                     updateSettings={updateSettings} 
                     userId={userId} 
                   />
@@ -301,7 +301,7 @@ export function SettingsMasterDashboard() {
                     <Bell className="w-6 h-6 text-och-gold" />
                     Alert Protocols
                   </h2>
-                  <NotificationEngine settings={displaySettings} updateSettings={updateSettings} />
+                  <NotificationEngine settings={displaySettings as any} updateSettings={updateSettings} />
                 </div>
               )}
 

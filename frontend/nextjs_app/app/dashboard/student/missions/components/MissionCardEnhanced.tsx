@@ -60,7 +60,7 @@ export function MissionCardEnhanced({
   }
   
   const isLocked = mission.status === 'locked'
-  const isCompleted = mission.status === 'approved' || mission.status === 'completed'
+  const isCompleted = mission.status === 'approved'
   const isInProgress = mission.status === 'in_progress'
 
   const getDifficultyTheme = () => {
@@ -71,7 +71,6 @@ export function MissionCardEnhanced({
         return { color: 'text-och-orange', border: 'border-och-orange/20', bg: 'bg-och-orange/5', icon: Target }
       case 'advanced':
         return { color: 'text-och-defender', border: 'border-och-defender/20', bg: 'bg-och-defender/5', icon: Zap }
-      case 'mastery':
       case 'capstone':
         return { color: 'text-och-gold', border: 'border-och-gold/20', bg: 'bg-och-gold/5', icon: Award }
       default:

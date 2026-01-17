@@ -770,3 +770,213 @@ class CurriculumActivity(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.activity_type} @ {self.created_at}"
 
+
+# ============================================================================
+# TIER 6 - CROSS-TRACK PROGRAMS MODELS
+# ============================================================================
+
+class CrossTrackSubmission(models.Model):
+    """
+    Submissions for Tier 6 Cross-Track Programs.
+    Handles reflections, scenario-based decisions, document uploads, and portfolio items.
+    """
+    SUBMISSION_TYPE_CHOICES = [
+        ('reflection', 'Reflection'),
+        ('scenario', 'Scenario Decision'),
+        ('document', 'Document Upload'),
+        ('portfolio', 'Portfolio Item'),
+        ('quiz', 'Quiz Submission'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('reviewed', 'Reviewed'),
+        ('approved', 'Approved'),
+        ('needs_revision', 'Needs Revision'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='cross_track_submissions',
+        db_index=True
+    )
+    track = models.ForeignKey(
+        CurriculumTrack,
+        on_delete=models.CASCADE,
+        related_name='submissions',
+        db_index=True,
+        help_text='Cross-track program (tier=6)'
+    )
+    module = models.ForeignKey(
+        CurriculumModule,
+        on_delete=models.CASCADE,
+        related_name='cross_track_submissions',
+        null=True,
+        blank=True,
+        db_index=True
+    )
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name='cross_track_submissions',
+        null=True,
+        blank=True,
+        db_index=True
+    )
+    
+    submission_type = models.CharField(
+        max_length=20,
+        choices=SUBMISSION_TYPE_CHOICES,
+        db_index=True
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft',
+        db_index=True
+    )
+    
+    # Content
+    content = models.TextField(blank=True, help_text='Text content for reflections, scenario responses')
+    document_url = models.URLField(blank=True, help_text='URL to uploaded document (CV, portfolio item, etc.)')
+    document_filename = models.CharField(max_length=255, blank=True)
+    
+    # Scenario-specific
+    scenario_choice = models.CharField(max_length=100, blank=True, help_text='Selected choice in scenario')
+    scenario_reasoning = models.TextField(blank=True, help_text='Reasoning for scenario choice')
+    scenario_metadata = models.JSONField(default=dict, blank=True, help_text='Additional scenario data')
+    
+    # Quiz-specific
+    quiz_answers = models.JSONField(default=dict, blank=True, help_text='Quiz answers')
+    quiz_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    
+    # Mentor feedback
+    mentor_feedback = models.TextField(blank=True)
+    mentor_rating = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text='Mentor rating (1-5)'
+    )
+    mentor_reviewed_at = models.DateTimeField(null=True, blank=True)
+    mentor_reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_cross_track_submissions',
+        help_text='Mentor who reviewed this submission'
+    )
+    
+    # Metadata
+    metadata = models.JSONField(default=dict, blank=True, help_text='Additional submission metadata')
+    
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'cross_track_submissions'
+        verbose_name = 'Cross-Track Submission'
+        verbose_name_plural = 'Cross-Track Submissions'
+        indexes = [
+            models.Index(fields=['user', 'track', '-created_at']),
+            models.Index(fields=['track', 'submission_type', 'status']),
+            models.Index(fields=['module', 'submission_type']),
+            models.Index(fields=['status', '-submitted_at']),
+        ]
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.track.name} - {self.submission_type} ({self.status})"
+
+
+class CrossTrackProgramProgress(models.Model):
+    """
+    Progress tracking for Tier 6 Cross-Track Programs.
+    Tracks completion status for each of the 5 cross-track programs.
+    """
+    PROGRAM_CATEGORIES = [
+        ('entrepreneurship', 'Cyber Entrepreneurship'),
+        ('soft_skills', 'Soft Skills for Cyber Careers'),
+        ('career_acceleration', 'Career Acceleration'),
+        ('ethics', 'Cyber Ethics & Integrity'),
+        ('leadership', 'Mission Leadership'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='cross_track_progress',
+        db_index=True
+    )
+    track = models.ForeignKey(
+        CurriculumTrack,
+        on_delete=models.CASCADE,
+        related_name='cross_track_progress',
+        db_index=True,
+        help_text='Cross-track program (tier=6)'
+    )
+    
+    # Progress stats
+    completion_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    modules_completed = models.IntegerField(default=0)
+    lessons_completed = models.IntegerField(default=0)
+    submissions_completed = models.IntegerField(default=0, help_text='Reflections, scenarios, documents submitted')
+    
+    # Completion flags
+    all_modules_completed = models.BooleanField(default=False)
+    all_reflections_submitted = models.BooleanField(default=False)
+    all_quizzes_passed = models.BooleanField(default=False)
+    final_summary_submitted = models.BooleanField(default=False, help_text='Final summary activity submitted')
+    is_complete = models.BooleanField(default=False, db_index=True)
+    
+    # Time tracking
+    total_time_spent_minutes = models.IntegerField(default=0)
+    
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_activity_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'cross_track_program_progress'
+        verbose_name = 'Cross-Track Program Progress'
+        verbose_name_plural = 'Cross-Track Program Progress'
+        unique_together = [['user', 'track']]
+        indexes = [
+            models.Index(fields=['user', 'track']),
+            models.Index(fields=['user', 'is_complete']),
+            models.Index(fields=['track', '-completion_percentage']),
+        ]
+    
+    def check_completion(self):
+        """
+        Check if all completion requirements are met for this cross-track program.
+        """
+        if self.all_modules_completed and self.all_reflections_submitted and \
+           self.all_quizzes_passed and self.final_summary_submitted:
+            if not self.is_complete:
+                self.is_complete = True
+                self.completed_at = timezone.now()
+                self.save(update_fields=['is_complete', 'completed_at'])
+            return True
+        return False
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.track.name} ({self.completion_percentage}%)"
+

@@ -71,8 +71,8 @@ export const missionsClient = {
     page_size?: number
   }): Promise<{ results: MissionTemplate[]; count: number; next?: string | null; previous?: string | null }> {
     try {
-      console.log('📡 Fetching missions from /api/v1/missions/', params)
-      const data = await apiGateway.get<any>('/missions/', { params })
+      console.log('📡 Fetching missions from /api/v1/student/missions/', params)
+      const data = await apiGateway.get<any>('/student/missions/', { params })
       console.log('📡 Missions API Response:', {
         type: typeof data,
         isArray: Array.isArray(data),

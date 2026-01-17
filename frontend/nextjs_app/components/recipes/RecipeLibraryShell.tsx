@@ -18,7 +18,7 @@ import type { RecipeFilters as RecipeFiltersType } from '@/services/types/recipe
 export function RecipeLibraryShell() {
   const [filters, setFilters] = useState<RecipeFiltersType>({
     track: '',
-    difficulty: '',
+    difficulty: undefined,
     max_time: undefined,
     context: undefined,
     sort: 'relevance',

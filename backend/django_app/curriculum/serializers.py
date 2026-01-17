@@ -6,7 +6,8 @@ from django.db.models import Count, Avg
 from .models import (
     CurriculumTrack, CurriculumModule, Lesson, ModuleMission,
     RecipeRecommendation, UserTrackProgress, UserModuleProgress,
-    UserLessonProgress, UserMissionProgress, CurriculumActivity
+    UserLessonProgress, UserMissionProgress, CurriculumActivity,
+    CrossTrackSubmission, CrossTrackProgramProgress
 )
 
 
@@ -420,4 +421,68 @@ class MissionProgressUpdateSerializer(serializers.Serializer):
 class TrackEnrollmentSerializer(serializers.Serializer):
     """Serializer for enrolling in a track."""
     track_id = serializers.UUIDField()
+
+
+# ==================== TIER 6 - CROSS-TRACK PROGRAMS SERIALIZERS ====================
+
+class CrossTrackSubmissionSerializer(serializers.ModelSerializer):
+    """Serializer for cross-track program submissions."""
+    track_name = serializers.CharField(source='track.name', read_only=True)
+    module_title = serializers.CharField(source='module.title', read_only=True, allow_null=True)
+    lesson_title = serializers.CharField(source='lesson.title', read_only=True, allow_null=True)
+    mentor_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CrossTrackSubmission
+        fields = [
+            'id', 'track', 'track_name', 'module', 'module_title',
+            'lesson', 'lesson_title', 'submission_type', 'status',
+            'content', 'document_url', 'document_filename',
+            'scenario_choice', 'scenario_reasoning', 'scenario_metadata',
+            'quiz_answers', 'quiz_score',
+            'mentor_feedback', 'mentor_rating', 'mentor_reviewed_at',
+            'mentor_reviewed_by', 'mentor_name',
+            'metadata', 'created_at', 'updated_at', 'submitted_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'submitted_at', 'mentor_reviewed_at']
+    
+    def get_mentor_name(self, obj):
+        if obj.mentor_reviewed_by:
+            return f"{obj.mentor_reviewed_by.first_name} {obj.mentor_reviewed_by.last_name}".strip() or obj.mentor_reviewed_by.email
+        return None
+
+
+class CrossTrackSubmissionCreateSerializer(serializers.Serializer):
+    """Serializer for creating cross-track submissions."""
+    track_id = serializers.UUIDField()
+    module_id = serializers.UUIDField(required=False, allow_null=True)
+    lesson_id = serializers.UUIDField(required=False, allow_null=True)
+    submission_type = serializers.ChoiceField(choices=CrossTrackSubmission.SUBMISSION_TYPE_CHOICES)
+    content = serializers.CharField(required=False, allow_blank=True)
+    document_url = serializers.URLField(required=False, allow_blank=True)
+    document_filename = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    scenario_choice = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    scenario_reasoning = serializers.CharField(required=False, allow_blank=True)
+    scenario_metadata = serializers.JSONField(required=False, default=dict)
+    quiz_answers = serializers.JSONField(required=False, default=dict)
+    metadata = serializers.JSONField(required=False, default=dict)
+
+
+class CrossTrackProgramProgressSerializer(serializers.ModelSerializer):
+    """Serializer for cross-track program progress."""
+    track_name = serializers.CharField(source='track.name', read_only=True)
+    track_code = serializers.CharField(source='track.code', read_only=True)
+    
+    class Meta:
+        model = CrossTrackProgramProgress
+        fields = [
+            'id', 'track', 'track_name', 'track_code',
+            'completion_percentage', 'modules_completed',
+            'lessons_completed', 'submissions_completed',
+            'all_modules_completed', 'all_reflections_submitted',
+            'all_quizzes_passed', 'final_summary_submitted',
+            'is_complete', 'total_time_spent_minutes',
+            'started_at', 'last_activity_at', 'completed_at'
+        ]
+        read_only_fields = ['id', 'started_at', 'last_activity_at', 'completed_at']
 

@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/Card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
-import { Progress } from "@/components/ui/progress"
+import { ProgressBar } from "@/components/ui/ProgressBar"
 import { 
   Flame, Crown, Users, MessageCircle, Award, 
   X, TrendingUp, Target, Zap, Trophy, Star,
@@ -136,7 +136,7 @@ export function ReputationProfile({ userId, onClose, onFollow, onMessage }: Repu
             <div className="absolute bottom-0 right-0 w-32 h-32 bg-purple-500 rounded-full blur-3xl" />
           </div>
 
-          <CardContent className="relative p-8 space-y-6">
+          <div className="relative p-8 space-y-6">
             {/* Avatar & Level */}
             <div className="text-center space-y-4">
               <div className="relative mx-auto w-24 h-24">
@@ -191,10 +191,11 @@ export function ReputationProfile({ userId, onClose, onFollow, onMessage }: Repu
                 </div>
                 
                 <div className="w-full max-w-xs mx-auto space-y-1">
-                  <Progress 
+                  <ProgressBar 
                     value={levelProgress} 
-                    className="h-2 bg-slate-800/50"
-                    indicatorClassName={cn("bg-gradient-to-r", levelGradient)}
+                    variant="defender"
+                    showLabel={false}
+                    className="h-2"
                   />
                   <div className="flex justify-between text-xs text-slate-500">
                     <span>Level {profile.level}</span>
@@ -255,7 +256,7 @@ export function ReputationProfile({ userId, onClose, onFollow, onMessage }: Repu
                         transition={{ delay: i * 0.1 }}
                       >
                         <Badge 
-                          variant="secondary" 
+                          variant="outline" 
                           className={cn(
                             "px-3 py-1.5 text-xs font-medium",
                             "bg-gradient-to-r border-0 text-white shadow-lg",
@@ -320,9 +321,9 @@ export function ReputationProfile({ userId, onClose, onFollow, onMessage }: Repu
               </Button>
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
+                className="p-2 w-12 h-12 hover:bg-slate-800/50"
                 onClick={handleShare}
-                className="w-12 h-12 hover:bg-slate-800/50"
               >
                 {copied ? (
                   <Check className="w-5 h-5 text-emerald-400" />
@@ -331,7 +332,7 @@ export function ReputationProfile({ userId, onClose, onFollow, onMessage }: Repu
                 )}
               </Button>
             </div>
-          </CardContent>
+          </div>
         </Card>
       </motion.div>
     </motion.div>

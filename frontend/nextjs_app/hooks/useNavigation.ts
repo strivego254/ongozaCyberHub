@@ -20,7 +20,7 @@ export function useNavigation(options: UseNavigationOptions = {}) {
       try {
         const saved = localStorage.getItem(storageKey)
         if (saved) {
-          const savedSet = new Set(JSON.parse(saved))
+          const savedSet = new Set(JSON.parse(saved) as string[])
           setExpandedItems(savedSet)
         }
       } catch (err) {

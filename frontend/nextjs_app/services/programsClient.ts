@@ -494,7 +494,9 @@ class ProgramsClient {
   }
 
   async updateCohortDirector(id: string, data: Partial<Cohort>): Promise<Cohort> {
-    return apiGateway.patch(`/director/cohorts/${id}/`, data)
+    // Director cohort updates use the same endpoint as regular cohort updates
+    // The DirectorCohortViewSet only has custom actions (manage_seat_pool, etc.)
+    return apiGateway.patch(`/cohorts/${id}/`, data)
   }
 
   async manageSeatPool(cohortId: string, seatPool: { paid: number; scholarship: number; sponsored: number }): Promise<Cohort> {

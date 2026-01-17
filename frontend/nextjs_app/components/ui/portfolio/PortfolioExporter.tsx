@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { X, Download, FileText, Code, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { useAuth } from '@/hooks/useAuth';
 import type { PortfolioItem } from '@/lib/portfolio/types';
 
 interface PortfolioExporterProps {
@@ -19,6 +20,8 @@ interface PortfolioExporterProps {
 
 export function PortfolioExporter({ items, isOpen, onClose }: PortfolioExporterProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const { user } = useAuth();
+  const userId = user?.id?.toString();
 
   const exportToJSON = () => {
     setIsExporting(true);

@@ -118,9 +118,17 @@ export default function TalentBrowsePage() {
 
       // Update favorites/shortlists sets
       if (action === 'favorite') {
-        setFavoritedProfiles(prev => new Set([...prev, profileId]))
+        setFavoritedProfiles(prev => {
+          const next = new Set(prev)
+          next.add(profileId)
+          return next
+        })
       } else if (action === 'shortlist') {
-        setShortlistedProfiles(prev => new Set([...prev, profileId]))
+        setShortlistedProfiles(prev => {
+          const next = new Set(prev)
+          next.add(profileId)
+          return next
+        })
       }
 
       // Show success message based on action
@@ -254,14 +262,17 @@ export default function TalentBrowsePage() {
               <label className="text-sm text-och-steel mb-2 block">Skills</label>
               <div className="flex flex-wrap gap-2">
                 {commonSkills.map((skill) => (
-                  <Badge
+                  <div
                     key={skill}
-                    variant={selectedSkills.includes(skill) ? 'gold' : 'defender'}
-                    className="cursor-pointer"
+                    className={`px-3 py-1 rounded cursor-pointer transition-colors ${
+                      selectedSkills.includes(skill)
+                        ? 'bg-och-gold/20 border border-och-gold/50 text-white hover:bg-och-gold/30'
+                        : 'bg-och-defender/20 border border-och-defender/50 text-och-steel hover:bg-och-defender/30'
+                    }`}
                     onClick={() => toggleSkill(skill)}
                   >
                     {skill}
-                  </Badge>
+                  </div>
                 ))}
               </div>
             </div>

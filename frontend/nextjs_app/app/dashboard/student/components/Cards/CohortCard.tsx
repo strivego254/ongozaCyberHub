@@ -18,13 +18,13 @@ export function CohortCard() {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-och-steel">Cohort</h3>
           <span className="text-[10px] text-och-steel">
-            {trackOverview?.progress || 0}%
+            {trackOverview?.completedMilestones || 0}/{trackOverview?.totalMilestones || 0}
           </span>
         </div>
 
         <div className="mb-2">
           <ProgressBar
-            value={trackOverview?.progress || 0}
+            value={trackOverview?.totalMilestones ? (trackOverview.completedMilestones / trackOverview.totalMilestones) * 100 : 0}
             max={100}
             variant="mint"
             showLabel
@@ -35,7 +35,7 @@ export function CohortCard() {
         <div className="space-y-1 text-[10px]">
           <div className="flex justify-between">
             <span className="text-och-steel">Track:</span>
-            <span className="text-white font-medium">{trackOverview?.name || 'None'}</span>
+            <span className="text-white font-medium">{trackOverview?.trackName || 'None'}</span>
           </div>
         </div>
       </Card>

@@ -21,7 +21,9 @@ from .serializers import (
     UserTrackProgressSerializer, UserModuleProgressSerializer,
     UserLessonProgressSerializer, UserMissionProgressSerializer,
     CurriculumActivitySerializer, LessonProgressUpdateSerializer,
-    MissionProgressUpdateSerializer, TrackEnrollmentSerializer
+    MissionProgressUpdateSerializer, TrackEnrollmentSerializer,
+    CrossTrackSubmissionSerializer, CrossTrackSubmissionCreateSerializer,
+    CrossTrackProgramProgressSerializer
 )
 
 
@@ -77,6 +79,11 @@ class CurriculumTrackViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = super().get_queryset()
+        
+        # Order by tier and code for consistent API responses
+        # This ensures all tier 2-5 tracks appear in the API list
+        if self.action == 'list':
+            queryset = queryset.order_by('tier', 'code')
         
         if self.action == 'retrieve':
             # Prefetch modules with lessons and missions
@@ -1027,3 +1034,211 @@ class Tier2CompleteView(APIView):
             'tier3_unlocked': True,
         })
 
+
+
+# ============================================================================
+# TIER 6 - CROSS-TRACK PROGRAMS VIEWS
+# ============================================================================
+
+class CrossTrackProgramsView(APIView):
+    """
+    List all Tier 6 Cross-Track Programs.
+    GET /curriculum/cross-track/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get all cross-track programs (tier=6) with user progress."""
+        from .models import CrossTrackProgramProgress
+        
+        programs = CurriculumTrack.objects.filter(tier=6, is_active=True).order_by('name')
+        
+        result = []
+        for program in programs:
+            progress = CrossTrackProgramProgress.objects.filter(
+                user=request.user,
+                track=program
+            ).first()
+            
+            program_data = {
+                'id': str(program.id),
+                'code': program.code,
+                'name': program.name,
+                'description': program.description,
+                'icon': program.icon,
+                'color': program.color,
+                'module_count': program.module_count,
+                'lesson_count': program.lesson_count,
+                'progress': CrossTrackProgramProgressSerializer(progress).data if progress else None,
+            }
+            result.append(program_data)
+        
+        return Response({
+            'programs': result,
+            'total': len(result)
+        })
+
+
+class CrossTrackProgramDetailView(APIView):
+    """
+    Get details of a specific cross-track program.
+    GET /curriculum/cross-track/{code}/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, code):
+        """Get program details with modules, lessons, and progress."""
+        from .models import CrossTrackProgramProgress
+        
+        try:
+            program = CurriculumTrack.objects.get(code=code, tier=6, is_active=True)
+        except CurriculumTrack.DoesNotExist:
+            return Response({'error': 'Program not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get or create progress
+        progress, _ = CrossTrackProgramProgress.objects.get_or_create(
+            user=request.user,
+            track=program
+        )
+        
+        # Get modules with lessons
+        modules = program.modules.filter(is_active=True).order_by('order_index')
+        modules_data = []
+        for module in modules:
+            lessons = module.lessons.all().order_by('order_index')
+            modules_data.append({
+                'id': str(module.id),
+                'title': module.title,
+                'description': module.description,
+                'order_index': module.order_index,
+                'estimated_time_minutes': module.estimated_time_minutes,
+                'lesson_count': module.lesson_count,
+                'lessons': [
+                    {
+                        'id': str(lesson.id),
+                        'title': lesson.title,
+                        'description': lesson.description,
+                        'lesson_type': lesson.lesson_type,
+                        'content_url': lesson.content_url,
+                        'duration_minutes': lesson.duration_minutes,
+                        'order_index': lesson.order_index,
+                    }
+                    for lesson in lessons
+                ]
+            })
+        
+        return Response({
+            'program': CurriculumTrackDetailSerializer(program, context={'request': request}).data,
+            'modules': modules_data,
+            'progress': CrossTrackProgramProgressSerializer(progress).data,
+        })
+
+
+class CrossTrackSubmissionView(APIView):
+    """
+    Create or update cross-track program submissions.
+    POST /curriculum/cross-track/submit/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        """Create a new submission (reflection, scenario, document, quiz)."""
+        from .models import CrossTrackSubmission, CrossTrackProgramProgress
+        
+        serializer = CrossTrackSubmissionCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        data = serializer.validated_data
+        
+        # Get track
+        try:
+            track = CurriculumTrack.objects.get(id=data['track_id'], tier=6)
+        except CurriculumTrack.DoesNotExist:
+            return Response({'error': 'Cross-track program not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get module and lesson if provided
+        module = None
+        lesson = None
+        if data.get('module_id'):
+            try:
+                module = CurriculumModule.objects.get(id=data['module_id'], track=track)
+            except CurriculumModule.DoesNotExist:
+                pass
+        
+        if data.get('lesson_id'):
+            try:
+                lesson = Lesson.objects.get(id=data['lesson_id'], module=module) if module else None
+            except Lesson.DoesNotExist:
+                pass
+        
+        # Create submission
+        submission = CrossTrackSubmission.objects.create(
+            user=request.user,
+            track=track,
+            module=module,
+            lesson=lesson,
+            submission_type=data['submission_type'],
+            content=data.get('content', ''),
+            document_url=data.get('document_url', ''),
+            document_filename=data.get('document_filename', ''),
+            scenario_choice=data.get('scenario_choice', ''),
+            scenario_reasoning=data.get('scenario_reasoning', ''),
+            scenario_metadata=data.get('scenario_metadata', {}),
+            quiz_answers=data.get('quiz_answers', {}),
+            metadata=data.get('metadata', {}),
+            status='submitted',
+            submitted_at=timezone.now()
+        )
+        
+        # Update progress
+        progress, _ = CrossTrackProgramProgress.objects.get_or_create(
+            user=request.user,
+            track=track
+        )
+        progress.submissions_completed = CrossTrackSubmission.objects.filter(
+            user=request.user,
+            track=track,
+            status__in=['submitted', 'reviewed', 'approved']
+        ).count()
+        progress.last_activity_at = timezone.now()
+        progress.save()
+        
+        # Check completion
+        progress.check_completion()
+        
+        return Response({
+            'success': True,
+            'submission': CrossTrackSubmissionSerializer(submission).data,
+            'message': 'Submission created successfully'
+        }, status=status.HTTP_201_CREATED)
+
+
+class CrossTrackProgressView(APIView):
+    """
+    Get user's progress across all cross-track programs.
+    GET /curriculum/cross-track/progress/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get overall cross-track progress."""
+        from .models import CrossTrackProgramProgress
+        
+        all_progress = CrossTrackProgramProgress.objects.filter(
+            user=request.user
+        ).select_related('track')
+        
+        programs_completed = all_progress.filter(is_complete=True).count()
+        total_programs = CurriculumTrack.objects.filter(tier=6, is_active=True).count()
+        
+        return Response({
+            'total_programs': total_programs,
+            'programs_completed': programs_completed,
+            'completion_percentage': round((programs_completed / total_programs * 100) if total_programs > 0 else 0, 2),
+            'programs': [
+                CrossTrackProgramProgressSerializer(progress).data
+                for progress in all_progress
+            ],
+            'marketplace_ready': programs_completed == total_programs and total_programs > 0,
+        })

@@ -8,10 +8,12 @@ import {
   getPortfolioReviews,
   createPortfolioReview,
   approveReview,
-  type CreateReviewInput,
 } from '@/lib/portfolio/api';
 import { calculateWeightedScore, getRubricForType } from '@/lib/portfolio/rubrics';
 import type { PortfolioItem } from '@/lib/portfolio/types';
+
+// Local fallback type; upstream API does not export CreateReviewInput
+type CreateReviewInput = any;
 
 export function useMentorReview(itemId: string) {
   const queryClient = useQueryClient();

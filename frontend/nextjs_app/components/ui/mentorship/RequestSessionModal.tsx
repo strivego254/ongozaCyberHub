@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { apiGateway } from '@/services/apiGateway';
 import { useMentorship } from '@/hooks/useMentorship';
 import { useAuth } from '@/hooks/useAuth';
-import { Calendar, Clock, MessageSquare, X } from 'lucide-react';
+import { Calendar, Clock, MessageSquare, X, AlertCircle } from 'lucide-react';
 
 interface RequestSessionModalProps {
   open: boolean;
@@ -21,7 +21,7 @@ interface RequestSessionModalProps {
 
 export function RequestSessionModal({ open, onOpenChange, onSuccess }: RequestSessionModalProps) {
   const { user } = useAuth();
-  const { scheduleSession, refetchAll } = useMentorship(user?.id);
+  const { scheduleSession, refetchAll } = useMentorship(user?.id?.toString());
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -31,10 +31,42 @@ export function RequestSessionModal({ open, onOpenChange, onSuccess }: RequestSe
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hoveredTime, setHoveredTime] = useState<string | null>(null);
+
+  // Generate time slots (9 AM - 5 PM in 30-minute intervals)
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 9; hour <= 17; hour++) {
+      for (let minute of [0, 30]) {
+        if (hour === 17 && minute === 30) break; // Stop at 5:00 PM
+        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push(time);
+      }
+    }
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!formData.title.trim()) {
+      setError('Please enter a session title');
+      return;
+    }
+
+    if (!formData.preferred_date) {
+      setError('Please select a date');
+      return;
+    }
+
+    if (!formData.preferred_time) {
+      setError('Please select a time');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -43,8 +75,8 @@ export function RequestSessionModal({ open, onOpenChange, onSuccess }: RequestSe
       const preferredDateTime = new Date(dateTimeString).toISOString();
 
       const payload = {
-        title: formData.title,
-        description: formData.description,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
         preferred_date: preferredDateTime,
         duration_minutes: formData.duration_minutes,
         type: 'one_on_one',
@@ -77,120 +109,175 @@ export function RequestSessionModal({ open, onOpenChange, onSuccess }: RequestSe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-och-midnight border-och-steel/20 max-w-2xl">
+      <DialogContent className="bg-och-midnight border border-slate-700 max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-och-gold" />
-            Request New Session
+          <DialogTitle className="text-white text-2xl font-bold flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-och-gold/10 border border-och-gold/30 flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-och-gold" />
+            </div>
+            Request Mentorship Session
           </DialogTitle>
-          <DialogDescription className="text-och-steel">
-            Submit a session request to your mentor. They will review and confirm the time.
+          <DialogDescription className="text-slate-400 text-sm">
+            Submit your preferred time and your mentor will review and confirm availability.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           {error && (
-            <div className="bg-signal-orange/25 border border-signal-orange text-white px-4 py-3 rounded-md text-sm">
-              {error}
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                Session Title *
+              <label className="block text-sm font-semibold text-white mb-2">
+                Session Title <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-gold"
-                placeholder="e.g., Career Path Discussion"
+                className="w-full px-4 py-3 bg-och-midnight/60 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-och-gold/50 focus:border-och-gold/50 transition-all"
+                placeholder="e.g., Career Path Discussion, Portfolio Review"
                 required
                 disabled={isSubmitting}
+                maxLength={100}
               />
+              <p className="text-xs text-slate-500 mt-1.5">What would you like to focus on in this session?</p>
             </div>
 
+            {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                Description
+              <label className="block text-sm font-semibold text-white mb-2">
+                Session Description
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-3 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-gold min-h-[100px]"
-                placeholder="What would you like to discuss in this session?"
+                className="w-full px-4 py-3 bg-och-midnight/60 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-och-gold/50 focus:border-och-gold/50 transition-all resize-none"
+                placeholder="Provide more details about what you'd like to discuss..."
+                rows={4}
+                disabled={isSubmitting}
+                maxLength={500}
+              />
+              <p className="text-xs text-slate-500 mt-1.5">
+                {formData.description.length}/500 characters
+              </p>
+            </div>
+
+            {/* Date Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Preferred Date <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="date"
+                value={formData.preferred_date}
+                onChange={(e) => setFormData({ ...formData, preferred_date: e.target.value })}
+                min={today}
+                className="w-full px-4 py-3 bg-och-midnight/60 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-och-gold/50 focus:border-och-gold/50 transition-all"
+                required
                 disabled={isSubmitting}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Preferred Date *
-                </label>
-                <input
-                  type="date"
-                  value={formData.preferred_date}
-                  onChange={(e) => setFormData({ ...formData, preferred_date: e.target.value })}
-                  min={today}
-                  className="w-full px-4 py-3 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-gold"
-                  required
-                  disabled={isSubmitting}
-                />
+            {/* Time Selection with Hover */}
+            <div>
+              <label className="block text-sm font-semibold text-white mb-3">
+                Preferred Time <span className="text-red-400">*</span>
+              </label>
+              <div className="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto p-3 bg-slate-800/30 rounded-xl border border-slate-700">
+                {timeSlots.map((time) => {
+                  const isSelected = formData.preferred_time === time;
+                  const isHovered = hoveredTime === time;
+                  
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, preferred_time: time })}
+                      onMouseEnter={() => setHoveredTime(time)}
+                      onMouseLeave={() => setHoveredTime(null)}
+                      disabled={isSubmitting}
+                      className={`
+                        px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                        ${isSelected 
+                          ? 'bg-och-gold text-black border-2 border-och-gold shadow-lg' 
+                          : isHovered
+                            ? 'bg-och-gold/20 text-och-gold border-2 border-och-gold/50'
+                            : 'bg-och-midnight/60 text-slate-300 border-2 border-slate-700 hover:border-slate-600'
+                        }
+                        ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                      `}
+                    >
+                      {time}
+                    </button>
+                  );
+                })}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Preferred Time *
-                </label>
-                <input
-                  type="time"
-                  value={formData.preferred_time}
-                  onChange={(e) => setFormData({ ...formData, preferred_time: e.target.value })}
-                  className="w-full px-4 py-3 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-gold"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
+              <p className="text-xs text-slate-500 mt-2">Hover to preview, click to select a time slot (EAT timezone)</p>
             </div>
 
+            {/* Duration */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                Duration (minutes) *
+              <label className="block text-sm font-semibold text-white mb-2">
+                Session Duration <span className="text-red-400">*</span>
               </label>
-              <select
-                value={formData.duration_minutes}
-                onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 bg-och-midnight border border-och-steel/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-och-gold"
-                required
-                disabled={isSubmitting}
-              >
-                <option value={30}>30 minutes</option>
-                <option value={45}>45 minutes</option>
-                <option value={60}>60 minutes</option>
-                <option value={90}>90 minutes</option>
-              </select>
+              <div className="grid grid-cols-4 gap-3">
+                {[30, 45, 60, 90].map((duration) => {
+                  const isSelected = formData.duration_minutes === duration;
+                  return (
+                    <button
+                      key={duration}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, duration_minutes: duration })}
+                      disabled={isSubmitting}
+                      className={`
+                        px-4 py-3 rounded-xl text-sm font-medium transition-all border-2
+                        ${isSelected
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                          : 'bg-och-midnight/60 text-slate-300 border-slate-700 hover:border-slate-600'
+                        }
+                      `}
+                    >
+                      {duration} min
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
-              className="border-och-steel/20 text-och-steel hover:text-white"
+              className="h-11 px-6 border-slate-700 text-slate-300 hover:border-slate-600 hover:bg-slate-800/50"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               variant="defender"
-              disabled={isSubmitting}
-              className="bg-och-gold text-black hover:bg-white font-black uppercase tracking-widest"
+              disabled={isSubmitting || !formData.title.trim() || !formData.preferred_date || !formData.preferred_time}
+              className="h-11 px-8 bg-gradient-to-r from-och-gold to-och-gold/80 hover:from-och-gold/90 hover:to-och-gold/70 text-black font-bold"
             >
-              {isSubmitting ? 'Submitting...' : 'Request Session'}
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin mr-2" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Request Session
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

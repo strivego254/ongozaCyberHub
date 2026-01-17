@@ -162,7 +162,7 @@ export function IntegrationHub({ settings, updateSettings, userId }: Integration
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium text-slate-200">{integration.name}</span>
                             {isConnected ? (
-                              <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">
+                              <Badge variant="steel" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">
                                 <CheckCircle className="w-3 h-3 mr-1" />
                                 Connected
                               </Badge>
@@ -173,7 +173,7 @@ export function IntegrationHub({ settings, updateSettings, userId }: Integration
                               </Badge>
                             )}
                             {isConnected && syncData?.webhookEnabled && (
-                              <Badge variant="secondary" className="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-[10px]">
+                              <Badge variant="steel" className="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-[10px]">
                                 <Zap className="w-3 h-3 mr-1" />
                                 Webhook
                               </Badge>
@@ -308,7 +308,7 @@ export function IntegrationHub({ settings, updateSettings, userId }: Integration
                             </div>
                             <div className="flex items-center gap-2">
                               {syncData.webhookEnabled ? (
-                                <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
+                                <Badge variant="steel" className="bg-emerald-500/20 text-emerald-400">
                                   Active
                                 </Badge>
                               ) : (

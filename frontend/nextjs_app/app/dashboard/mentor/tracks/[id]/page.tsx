@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type SVGProps } from 'react'
 import { RouteGuard } from '@/components/auth/RouteGuard'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -11,14 +11,26 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 // Layout is provided by app/dashboard/mentor/layout.tsx
 
-const ChevronDownIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+const ChevronDownIcon = ({ className, ...props }: SVGProps<SVGSVGElement>) => (
+  <svg
+    className={['w-5 h-5', className].filter(Boolean).join(' ')}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    {...props}
+  >
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
   </svg>
 )
 
-const ChevronRightIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+const ChevronRightIcon = ({ className, ...props }: SVGProps<SVGSVGElement>) => (
+  <svg
+    className={['w-5 h-5', className].filter(Boolean).join(' ')}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    {...props}
+  >
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
   </svg>
 )

@@ -173,20 +173,20 @@ export function useCompetitionsIntegration(userId: string | null) {
  * Convert a CommunityEvent to CompetitionDetails for display
  */
 export function eventToCompetition(event: CommunityEvent): CompetitionDetails | null {
-  if (!event.is_competition) return null
+  if (!(event as any).is_competition) return null
 
   return {
     id: event.id,
     title: event.title,
     description: event.description || '',
     type: (event.event_type as CompetitionDetails['type']) || 'challenge',
-    startTime: event.start_time,
-    endTime: event.end_time || event.start_time,
-    maxParticipants: event.max_participants || undefined,
-    currentParticipants: event.participant_count,
-    isGlobal: event.is_global,
-    registrationUrl: event.registration_url || undefined,
-    hostUniversity: event.university_name || undefined,
+    startTime: (event as any).start_time,
+    endTime: (event as any).end_time || (event as any).start_time,
+    maxParticipants: (event as any).max_participants || undefined,
+    currentParticipants: (event as any).participant_count,
+    isGlobal: (event as any).is_global,
+    registrationUrl: (event as any).registration_url || undefined,
+    hostUniversity: (event as any).university_name || undefined,
   }
 }
 

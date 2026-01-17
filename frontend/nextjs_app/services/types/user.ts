@@ -39,9 +39,13 @@ export interface User {
   profiling_complete?: boolean;
   profiling_completed_at?: string;
   profiling_session_id?: string;
+  recommended_track?: string; // Track key from profiler (e.g., 'defender', 'offensive', 'grc', 'innovation', 'leadership')
   // Foundations completion tracking (Tier 1)
   foundations_complete?: boolean;
   foundations_completed_at?: string;
+  // University/Community profile
+  university_id?: number | null;
+  university_name?: string | null;
 }
 
 export interface UserRole {

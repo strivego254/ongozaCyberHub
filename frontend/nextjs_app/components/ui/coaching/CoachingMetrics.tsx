@@ -25,7 +25,7 @@ export function CoachingMetrics() {
     {
       icon: Calendar,
       label: 'Total Streak',
-      value: `${metrics?.totalStreakDays ?? metrics?.habits_streak ?? 0} days`,
+      value: `${metrics?.totalStreakDays ?? (metrics as any)?.habits_streak ?? 0} days`,
       color: 'text-orange-400',
       bgColor: 'bg-orange-500/10',
       borderColor: 'border-orange-500/30',
@@ -41,7 +41,7 @@ export function CoachingMetrics() {
     {
       icon: Award,
       label: 'Completed Goals',
-      value: metrics?.goals_completed ?? 0,
+      value: (metrics as any)?.goals_completed ?? 0,
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
       borderColor: 'border-purple-500/30',

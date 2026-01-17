@@ -137,13 +137,13 @@ export function MentorshipCommunityCard() {
                 <div className="font-semibold text-white mb-1 line-clamp-1">{post.title}</div>
                 <div className="text-sm text-och-steel line-clamp-2 mb-2">{post.content}</div>
                 <div className="flex items-center gap-2 text-xs text-och-steel">
-                  <span>{post.author_name}</span>
+                  <span>{post.author?.first_name} {post.author?.last_name}</span>
                   <span>•</span>
-                  <span>{post.reply_count} replies</span>
-                  {post.group_name && (
+                  <span>{post.comment_count} replies</span>
+                  {post.university?.name && (
                     <>
                       <span>•</span>
-                      <Badge variant="steel" className="text-xs">{post.group_name}</Badge>
+                      <Badge variant="steel" className="text-xs">{post.university?.name}</Badge>
                     </>
                   )}
                 </div>

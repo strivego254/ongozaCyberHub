@@ -20,6 +20,7 @@ import {
   Shield, 
   Award, 
   FileCode, 
+  FileText,
   Zap, 
   LayoutGrid, 
   List, 
@@ -59,7 +60,7 @@ export function PortfolioDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const userId = user?.id;
+  const userId = user?.id?.toString();
   
   const {
     items = [],
@@ -119,54 +120,70 @@ export function PortfolioDashboard() {
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         
         {/* 1. PORTFOLIO ENGINE HEADER */}
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 mb-12">
-          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 rounded-2xl bg-och-gold/10 border border-och-gold/20 flex items-center justify-center relative overflow-hidden group">
-              <div className="absolute inset-0 bg-och-gold/5 animate-pulse group-hover:bg-och-gold/10 transition-colors" />
-              <Briefcase className="w-8 h-8 text-och-gold relative z-10" />
-            </div>
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Portfolio Engine</h1>
-                <Badge variant={isProfessional ? "gold" : "steel"} className="text-[10px] font-black tracking-widest px-2 py-0.5">
-                  {isProfessional ? "PROFESSIONAL TIER" : "STARTER TIER"}
-                </Badge>
+        <div className="mb-10">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-och-gold/20 to-och-gold/5 border border-och-gold/30 flex items-center justify-center relative overflow-hidden group shadow-lg shadow-och-gold/10">
+                <div className="absolute inset-0 bg-och-gold/5 animate-pulse" />
+                <Briefcase className="w-7 h-7 text-och-gold relative z-10 group-hover:scale-110 transition-transform" />
               </div>
-              <div className="flex items-center gap-4">
-                <p className="text-och-steel text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-och-mint" />
-                  Verified Outcomes Repository
-                </p>
-                <div className="h-4 w-px bg-och-steel/20" />
-                <p className="text-och-steel text-xs font-black uppercase tracking-[0.2em]">
-                  {items.length} Registered Items
-                </p>
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight">Portfolio</h1>
+                  <Badge variant={isProfessional ? "gold" : "steel"} className="text-[9px] font-bold tracking-wider px-2.5 py-1">
+                    {isProfessional ? "Pro" : "Starter"}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-slate-400">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-och-mint animate-pulse" />
+                    <span className="font-medium">{items.length} Items</span>
+                  </div>
+                  <div className="w-1 h-1 rounded-full bg-slate-600" />
+                  <span className="font-medium">{approvedItems.length} Verified</span>
+                </div>
               </div>
             </div>
+            
+            <Button 
+              variant="defender" 
+              onClick={() => setIsFormOpen(true)}
+              className="h-12 px-8 rounded-xl bg-gradient-to-r from-och-gold to-och-gold/80 hover:from-och-gold/90 hover:to-och-gold/70 text-black font-bold tracking-wide shadow-lg shadow-och-gold/20 hover:shadow-xl hover:shadow-och-gold/30 transition-all"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Item
+            </Button>
           </div>
 
-          {/* TALENTSCOPE TELEMETRY BAR */}
-          <div className="flex flex-wrap gap-4 w-full xl:w-auto">
+          {/* METRICS OVERVIEW */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { label: 'Readiness Score', value: readinessScore, trend: '+14', icon: TrendingUp, color: 'text-och-mint' },
-              { label: 'Portfolio Health', value: `${healthScore}%`, icon: Shield, color: 'text-och-defender' },
-              { label: 'Verified Evidence', value: approvedItems.length, icon: CheckCircle, color: 'text-och-gold' },
+              { label: 'Readiness Score', value: readinessScore, trend: '+14', icon: TrendingUp, color: 'och-mint', bgGradient: 'from-emerald-500/10 to-emerald-500/5' },
+              { label: 'Portfolio Health', value: `${healthScore}%`, icon: Shield, color: 'och-defender', bgGradient: 'from-red-500/10 to-red-500/5' },
+              { label: 'Verified Items', value: approvedItems.length, icon: CheckCircle, color: 'och-gold', bgGradient: 'from-och-gold/10 to-och-gold/5' },
             ].map((stat, i) => (
-              <div key={i} className="flex-1 min-w-[200px] xl:min-w-[240px] px-6 py-4 rounded-2xl bg-och-steel/5 border border-och-steel/10 flex items-center gap-4 hover:border-och-steel/20 transition-all group">
-                <div className={clsx("p-2.5 rounded-xl bg-current/10 transition-transform group-hover:scale-110", stat.color)}>
-                  <stat.icon className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-och-steel font-black uppercase tracking-widest leading-none mb-1.5">{stat.label}</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-white leading-none">{stat.value}</span>
-                    {stat.trend && (
-                      <span className="text-[10px] text-och-mint font-bold flex items-center gap-0.5">
-                        <ArrowUpRight className="w-2 h-2" />
-                        {stat.trend}
-                      </span>
-                    )}
+              <div key={i} className={clsx(
+                "px-6 py-5 rounded-2xl border bg-gradient-to-br transition-all group cursor-default",
+                stat.bgGradient,
+                "border-" + stat.color + "/20 hover:border-" + stat.color + "/40"
+              )}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-400 tracking-wide">{stat.label}</span>
+                  <div className={clsx(
+                    "p-2 rounded-lg bg-" + stat.color + "/10 border border-" + stat.color + "/20 transition-transform group-hover:scale-110",
+                    "text-" + stat.color
+                  )}>
+                    <stat.icon className="w-4 h-4" />
                   </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-white">{stat.value}</span>
+                  {stat.trend && (
+                    <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                      <ArrowUpRight className="w-3 h-3" />
+                      {stat.trend}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -175,65 +192,65 @@ export function PortfolioDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* 2. ANALYTICS & IDENTITY SIDEBAR */}
-          <aside className="lg:col-span-3 space-y-8 sticky top-24">
-            {/* PUBLIC IDENTITY CARD */}
-            <div className="p-6 rounded-[2rem] bg-gradient-to-br from-och-gold/20 to-transparent border border-och-gold/20 relative overflow-hidden group">
-              <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
+          {/* 2. ANALYTICS & PROFILE SIDEBAR */}
+          <aside className="lg:col-span-3 space-y-6 sticky top-24">
+            
+            {/* PROFILE CARD */}
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-och-gold/10 to-och-gold/5 border border-och-gold/20 relative overflow-hidden group">
+              <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform">
                 <Globe className="w-32 h-32 text-och-gold" />
               </div>
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4">
-                  <Badge variant="gold" className="text-[8px] px-2 py-0.5 font-black tracking-widest uppercase">Public Identity</Badge>
-                  <div className="flex-1 h-px bg-och-gold/20" />
+                  <Badge variant="gold" className="text-[8px] px-2 py-1 font-bold tracking-wider">Public Profile</Badge>
                 </div>
-                <h4 className="text-sm font-black text-white mb-2 uppercase tracking-tight">Public Profile</h4>
-                <div className="p-3 rounded-xl bg-och-midnight/80 border border-och-steel/10 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-och-gold/20 flex items-center justify-center">
-                      <User className="w-4 h-4 text-och-gold" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-white font-bold truncate">
-                        {user?.first_name && user?.last_name 
-                          ? `${user.first_name} ${user.last_name}`
-                          : user?.first_name || user?.name || 'Student'}
-                      </p>
-                      <p className="text-[10px] text-och-steel font-medium truncate mt-0.5">
-                        {user?.email || 'No email'}
-                      </p>
-                    </div>
+                
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-och-gold/20 border border-och-gold/30 flex items-center justify-center shrink-0">
+                    <User className="w-6 h-6 text-och-gold" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-white font-semibold truncate">
+                      {user?.first_name && user?.last_name 
+                        ? `${user.first_name} ${user.last_name}`
+                        : user?.first_name || 'Student'}
+                    </p>
+                    <p className="text-xs text-slate-400 truncate">
+                      {user?.email || 'No email'}
+                    </p>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed mb-6 italic">
-                  "{settings?.bio || 'No custom bio established. Curate your professional identity to showcase your best work.'}"
+                
+                <p className="text-xs text-slate-300 leading-relaxed mb-4 line-clamp-3">
+                  {settings?.bio || 'Set up your professional bio to showcase your expertise and journey in cybersecurity.'}
                 </p>
+                
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="w-full text-[10px] font-black uppercase tracking-widest border-och-gold/30 text-och-gold hover:bg-och-gold hover:text-black transition-all"
+                  className="w-full text-xs font-medium border-och-gold/30 text-och-gold hover:bg-och-gold hover:text-black transition-all"
                   onClick={() => router.push('/dashboard/student/settings?tab=profile')}
                 >
-                  Configure Identity
-                  <Settings className="w-3 h-3 ml-2" />
+                  Edit Profile
+                  <Settings className="w-3.5 h-3.5 ml-2" />
                 </Button>
               </div>
             </div>
 
-            {/* TALENTSCOPE HEALTH RADAR */}
-            <div className="space-y-4">
+            {/* SKILLS RADAR */}
+            <div className="space-y-3">
                <div className="flex items-center gap-2 px-2">
                  <BarChart3 className="w-4 h-4 text-och-mint" />
-                 <span className="text-[10px] font-black text-och-steel uppercase tracking-widest">TalentScope Radar</span>
+                 <span className="text-xs font-semibold text-slate-300">Skills Overview</span>
                </div>
                <PortfolioSkillsRadar skills={topSkills} />
             </div>
 
-            {/* RECENT REPOSITORY ACTIVITY */}
-            <div className="space-y-4">
+            {/* RECENT ACTIVITY */}
+            <div className="space-y-3">
                <div className="flex items-center gap-2 px-2">
-                 <Clock className="w-4 h-4 text-och-defender" />
-                 <span className="text-[10px] font-black text-och-steel uppercase tracking-widest">Repository Activity</span>
+                 <Clock className="w-4 h-4 text-blue-400" />
+                 <span className="text-xs font-semibold text-slate-300">Recent Activity</span>
                </div>
                <PortfolioTimeline data={timelineData} />
             </div>
@@ -242,94 +259,88 @@ export function PortfolioDashboard() {
           {/* 3. REPOSITORY TERMINAL */}
           <main className="lg:col-span-9 space-y-8">
             
-            {/* TERMINAL BAR (Filters & Search) */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-och-midnight/50 p-4 rounded-3xl border border-och-steel/10 backdrop-blur-md shadow-2xl">
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-och-steel" />
+            {/* SEARCH & FILTERS BAR */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input 
                   type="text" 
-                  placeholder="SEARCH REPOSITORY, TAGS, OR EVIDENCE..."
+                  placeholder="Search by title, tags, or description..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-och-midnight/80 border border-och-steel/20 rounded-2xl py-3 pl-12 pr-4 text-xs font-bold text-white placeholder:text-och-steel/50 focus:border-och-gold/50 outline-none transition-all shadow-inner uppercase tracking-wider"
+                  className="w-full h-12 bg-och-midnight/60 border border-slate-700 rounded-xl pl-12 pr-4 text-sm font-medium text-white placeholder:text-slate-500 focus:border-och-gold/50 focus:bg-och-midnight/80 outline-none transition-all"
                 />
               </div>
-              <div className="flex items-center gap-3">
+              
+              <div className="flex items-center gap-3 flex-wrap">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as PortfolioItemStatus | 'all')}
-                  className="bg-och-midnight/80 border border-och-steel/20 rounded-2xl py-2.5 px-4 text-[10px] font-black text-white uppercase tracking-widest focus:border-och-gold/50 outline-none transition-all cursor-pointer shadow-inner"
+                  className="h-12 px-4 bg-och-midnight/60 border border-slate-700 rounded-xl text-sm font-medium text-white focus:border-och-gold/50 outline-none transition-all cursor-pointer"
                 >
-                  <option value="all">ALL STATUS</option>
-                  <option value="draft">DRAFT</option>
-                  <option value="submitted">SUBMITTED</option>
-                  <option value="in_review">MENTOR REVIEW</option>
-                  <option value="approved">APPROVED</option>
-                  <option value="published">PUBLISHED</option>
+                  <option value="all">All Status</option>
+                  <option value="draft">Draft</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="in_review">In Review</option>
+                  <option value="approved">Approved</option>
+                  <option value="published">Published</option>
                 </select>
                 
-                <div className="flex bg-och-midnight/80 rounded-2xl border border-och-steel/20 p-1 shadow-inner">
+                <div className="flex bg-och-midnight/60 rounded-xl border border-slate-700 p-1">
                   <button 
                     onClick={() => setViewMode('grid')}
                     className={clsx(
-                      "p-2.5 rounded-xl transition-all", 
-                      viewMode === 'grid' ? "bg-och-steel/20 text-white shadow-lg" : "text-och-steel hover:text-white"
+                      "p-2 rounded-lg transition-all", 
+                      viewMode === 'grid' ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
                     )}
                   >
-                    <LayoutGrid className="w-4 h-4" />
+                    <LayoutGrid className="w-5 h-5" />
                   </button>
                   <button 
                     onClick={() => setViewMode('list')}
                     className={clsx(
-                      "p-2.5 rounded-xl transition-all", 
-                      viewMode === 'list' ? "bg-och-steel/20 text-white shadow-lg" : "text-och-steel hover:text-white"
+                      "p-2 rounded-lg transition-all", 
+                      viewMode === 'list' ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
                     )}
                   >
-                    <List className="w-4 h-4" />
+                    <List className="w-5 h-5" />
                   </button>
                 </div>
 
-                {/* PEER PORTFOLIOS */}
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => router.push('/dashboard/student/portfolio/cohort')}
-                    className="h-[46px] px-6 rounded-2xl border-och-steel/20 text-och-steel hover:border-white transition-all font-black uppercase tracking-widest text-[10px]"
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Peer Portfolios
-                  </Button>
-                </div>
-
                 <Button 
-                  variant="defender" 
-                  onClick={() => setIsFormOpen(true)}
-                  className="h-[46px] px-6 rounded-2xl bg-och-gold text-black hover:bg-white transition-all shadow-lg shadow-och-gold/20 font-black uppercase tracking-widest text-[10px]"
+                  variant="outline" 
+                  onClick={() => router.push('/dashboard/student/portfolio/cohort')}
+                  className="h-12 px-5 rounded-xl border-slate-700 text-slate-300 hover:border-slate-600 hover:bg-slate-800/50 font-medium transition-all"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Outcome
+                  <Users className="w-4 h-4 mr-2" />
+                  Peers
                 </Button>
               </div>
             </div>
 
-            {/* STATUS LIFECYCLE INDICATOR */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* STATUS OVERVIEW */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                {[
-                 { label: 'Drafts', status: 'draft' as PortfolioItemStatus, count: items.filter(i => i.status === 'draft').length, color: 'text-och-steel' },
-                 { label: 'Submitted', status: 'submitted' as PortfolioItemStatus, count: items.filter(i => i.status === 'submitted').length, color: 'text-och-defender' },
-                 { label: 'In Review', status: 'in_review' as PortfolioItemStatus, count: pendingReviews.length, color: 'text-och-gold' },
-                 { label: 'Approved', status: 'approved' as PortfolioItemStatus, count: approvedItems.length, color: 'text-och-mint' },
+                 { label: 'Drafts', status: 'draft' as PortfolioItemStatus, count: items.filter(i => i.status === 'draft').length, color: 'slate-400', icon: FileText },
+                 { label: 'Submitted', status: 'submitted' as PortfolioItemStatus, count: items.filter(i => i.status === 'submitted').length, color: 'blue-400', icon: ArrowUpRight },
+                 { label: 'In Review', status: 'in_review' as PortfolioItemStatus, count: pendingReviews.length, color: 'amber-400', icon: Clock },
+                 { label: 'Approved', status: 'approved' as PortfolioItemStatus, count: approvedItems.length, color: 'emerald-400', icon: CheckCircle },
                ].map((phase, i) => (
                  <button
                    key={i}
                    onClick={() => setStatusFilter(phase.status)}
                    className={clsx(
-                     "p-4 rounded-2xl bg-white/5 border flex items-center justify-between group hover:border-white/20 transition-all cursor-pointer",
-                     statusFilter === phase.status ? "border-och-gold/50 bg-och-gold/10" : "border-och-steel/10"
+                     "p-4 rounded-xl border transition-all group text-left",
+                     statusFilter === phase.status 
+                       ? "bg-och-gold/10 border-och-gold/40 shadow-lg shadow-och-gold/10" 
+                       : "bg-och-midnight/40 border-slate-700 hover:border-slate-600 hover:bg-och-midnight/60"
                    )}
                  >
-                    <span className="text-[9px] font-black text-och-steel uppercase tracking-widest">{phase.label}</span>
-                    <span className={clsx("text-lg font-black", phase.color)}>{phase.count}</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-slate-400">{phase.label}</span>
+                      <phase.icon className={clsx("w-4 h-4", `text-${phase.color}`)} />
+                    </div>
+                    <span className={clsx("text-2xl font-bold", `text-${phase.color}`)}>{phase.count}</span>
                  </button>
                ))}
             </div>
@@ -360,17 +371,17 @@ export function PortfolioDashboard() {
                 </AnimatePresence>
               </div>
             ) : searchQuery || statusFilter !== 'all' || typeFilter !== 'all' ? (
-              <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-och-steel/10 rounded-[3rem]">
-                <div className="w-24 h-24 rounded-full bg-och-steel/5 flex items-center justify-center mb-8">
-                  <Briefcase className="w-12 h-12 text-och-steel/30" />
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-20 h-20 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center mb-6">
+                  <Search className="w-10 h-10 text-slate-500" />
                 </div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3">No Items Found</h3>
-                <p className="text-och-steel text-sm max-w-md italic font-medium mb-6">
-                  No portfolio items match your current filters. Try adjusting your search or status filter.
+                <h3 className="text-xl font-bold text-white mb-2">No items found</h3>
+                <p className="text-slate-400 text-sm max-w-md mb-6 leading-relaxed">
+                  No portfolio items match your current filters. Try adjusting your search or clear filters to see all items.
                 </p>
                 <Button 
                   variant="outline" 
-                  className="h-12 px-8 rounded-xl border-och-gold/30 text-och-gold font-black uppercase tracking-widest hover:bg-och-gold hover:text-black transition-all"
+                  className="h-11 px-6 rounded-xl border-slate-700 text-slate-300 hover:border-slate-600 hover:bg-slate-800/50 font-medium transition-all"
                   onClick={() => {
                     setSearchQuery('');
                     setStatusFilter('all');
@@ -381,39 +392,44 @@ export function PortfolioDashboard() {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-och-steel/10 rounded-[3rem]">
-                <div className="w-24 h-24 rounded-full bg-och-steel/5 flex items-center justify-center mb-8 relative">
-                  <div className="absolute inset-0 rounded-full border border-och-steel/10 animate-ping" />
-                  <Briefcase className="w-12 h-12 text-och-steel/30" />
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-och-gold/20 to-och-gold/5 border border-och-gold/30 flex items-center justify-center mb-6 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-och-gold/5 animate-pulse" />
+                  <Briefcase className="w-10 h-10 text-och-gold relative z-10" />
                 </div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-3">Repository Empty</h3>
-                <p className="text-och-steel text-sm max-w-md italic font-medium mb-6">
-                  "Your professional stat sheet is awaiting data. Complete missions or import certifications to build your verified highlight reel."
+                <h3 className="text-xl font-bold text-white mb-2">Start building your portfolio</h3>
+                <p className="text-slate-400 text-sm max-w-md mb-6 leading-relaxed">
+                  Showcase your skills and achievements. Complete missions, upload certifications, or document your projects.
                 </p>
                 <Button 
                   variant="outline" 
-                  className="h-12 px-8 rounded-xl border-och-gold/30 text-och-gold font-black uppercase tracking-widest hover:bg-och-gold hover:text-black transition-all"
+                  className="h-11 px-6 rounded-xl border-och-gold/40 text-och-gold hover:bg-och-gold hover:text-black font-medium transition-all"
                   onClick={() => setIsFormOpen(true)}
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Create First Outcome
+                  Create Your First Item
                 </Button>
               </div>
             )}
 
             {/* UPGRADE CALLOUT (If applicable) */}
             {filteredItems.length > maxItemsView && !isProfessional && (
-              <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-och-gold/20 to-och-defender/10 border border-och-gold/30 flex flex-col md:flex-row items-center justify-between gap-6">
-                 <div>
-                   <h4 className="text-lg font-black text-white uppercase tracking-tight mb-2">Expansion Required</h4>
-                   <p className="text-xs text-slate-300 font-medium italic">"Starter tier handles 5 items. Professional tier unlocks unlimited repository depth."</p>
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-och-gold/10 to-amber-500/5 border border-och-gold/30 flex flex-col md:flex-row items-center justify-between gap-6">
+                 <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 rounded-xl bg-och-gold/20 border border-och-gold/30 flex items-center justify-center shrink-0">
+                     <Shield className="w-6 h-6 text-och-gold" />
+                   </div>
+                   <div>
+                     <h4 className="text-base font-bold text-white mb-1">Unlock Unlimited Portfolio</h4>
+                     <p className="text-sm text-slate-400">Upgrade to Professional for unlimited items, mentor reviews, and verification badges.</p>
+                   </div>
                  </div>
                  <Button 
                    variant="defender" 
-                   className="h-12 px-8 rounded-xl bg-och-gold text-black hover:bg-white transition-all font-black uppercase tracking-widest text-[10px]"
+                   className="h-11 px-6 rounded-xl bg-och-gold text-black hover:bg-och-gold/90 font-bold transition-all whitespace-nowrap"
                    onClick={() => router.push('/dashboard/student/settings?tab=subscription')}
                  >
-                   Upgrade to Professional
+                   Upgrade Now
                  </Button>
               </div>
             )}

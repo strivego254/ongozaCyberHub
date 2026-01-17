@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { Radar, Shield, Zap, TrendingUp, Info } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import clsx from 'clsx';
 
 export function TalentScopeRadar() {
   const metrics = [

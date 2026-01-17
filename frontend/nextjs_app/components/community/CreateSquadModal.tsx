@@ -2,12 +2,9 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/Input"
 import { 
   X, Users, Target, Loader2, Lock
 } from "lucide-react"
@@ -85,7 +82,7 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
         className="w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto"
       >
         <Card className="bg-gradient-to-br from-slate-900 via-purple-900/30 to-pink-900/30 border-slate-800/50 shadow-2xl">
-          <CardContent className="p-0">
+          <div className="p-0">
             {/* Header */}
             <div className="sticky top-0 z-10 p-6 border-b border-slate-800/50 bg-slate-900/90 backdrop-blur-xl flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -97,7 +94,7 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
                   <p className="text-sm text-slate-400">Build your micro-cohort</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose}>
+              <Button variant="ghost" size="sm" className="p-2" onClick={onClose}>
                 <X className="w-5 h-5 text-slate-400" />
               </Button>
             </div>
@@ -106,7 +103,7 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               {/* Name */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-slate-300">Squad Name *</Label>
+                <label htmlFor="name" className="text-slate-300">Squad Name *</label>
                 <Input
                   id="name"
                   placeholder="e.g., Circle 3 DFIR Warriors"
@@ -119,34 +116,34 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
 
               {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-slate-300">Description</Label>
-                <Textarea
+                <label htmlFor="description" className="text-slate-300">Description</label>
+                <textarea
                   id="description"
                   placeholder="What brings your squad together?"
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="bg-slate-800/50 border-slate-700/50 min-h-[60px]"
+                  className="w-full bg-slate-800/50 border border-slate-700/50 rounded-md text-slate-100 placeholder-slate-400 min-h-[60px] p-2"
                 />
               </div>
 
               {/* Goal */}
               <div className="space-y-2">
-                <Label htmlFor="goal" className="text-slate-300">
+                <label htmlFor="goal" className="text-slate-300">
                   <Target className="w-4 h-4 inline mr-1" />
                   Current Goal
-                </Label>
-                <Textarea
+                </label>
+                <textarea
                   id="goal"
                   placeholder="e.g., Complete 5 missions this week"
                   value={formData.goal}
                   onChange={(e) => setFormData(prev => ({ ...prev, goal: e.target.value }))}
-                  className="bg-slate-800/50 border-slate-700/50 min-h-[60px]"
+                  className="w-full bg-slate-800/50 border border-slate-700/50 rounded-md text-slate-100 placeholder-slate-400 min-h-[60px] p-2"
                 />
               </div>
 
               {/* Circle Level */}
               <div className="space-y-2">
-                <Label className="text-slate-300">Circle Focus (Optional)</Label>
+                <label className="text-slate-300">Circle Focus (Optional)</label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -181,7 +178,7 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
               {/* Icon & Color */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Icon</Label>
+                  <label className="text-slate-300">Icon</label>
                   <div className="flex flex-wrap gap-2">
                     {iconOptions.map((icon) => (
                       <button
@@ -202,7 +199,7 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Color</Label>
+                  <label className="text-slate-300">Color</label>
                   <div className="flex flex-wrap gap-2">
                     {colorOptions.map((color) => (
                       <button
@@ -223,7 +220,7 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
               {/* Member Limits */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="min_members" className="text-slate-300">Min Members</Label>
+                  <label htmlFor="min_members" className="text-slate-300">Min Members</label>
                   <Input
                     id="min_members"
                     type="number"
@@ -235,7 +232,7 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="max_members" className="text-slate-300">Max Members</Label>
+                  <label htmlFor="max_members" className="text-slate-300">Max Members</label>
                   <Input
                     id="max_members"
                     type="number"
@@ -258,9 +255,12 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
                       <div className="text-xs text-slate-500">Allow anyone to join your squad</div>
                     </div>
                   </div>
-                  <Switch
+                  <input
+                    type="checkbox"
+                    aria-label="Open for Joining"
                     checked={formData.is_open}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_open: checked }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, is_open: e.target.checked }))}
+                    className="w-5 h-5 accent-indigo-500"
                   />
                 </div>
               </div>
@@ -339,7 +339,7 @@ export function CreateSquadModal({ onClose, onCreate }: CreateSquadModalProps) {
                 </Button>
               </div>
             </form>
-          </CardContent>
+          </div>
         </Card>
       </motion.div>
     </motion.div>

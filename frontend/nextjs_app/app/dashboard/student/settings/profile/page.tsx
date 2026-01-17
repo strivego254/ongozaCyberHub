@@ -87,10 +87,10 @@ export default function ProfileSettingsPage() {
 
   const loadUniversities = async () => {
     try {
-      const response = await apiGateway.get('/community/universities/', {
+      const response = await apiGateway.get<any>('/community/universities/', {
         params: { page_size: 100 }
       })
-      setUniversities(Array.isArray(response.results) ? response.results : response)
+      setUniversities(Array.isArray(response?.results) ? response.results : Array.isArray(response) ? response : [])
     } catch (err) {
       console.error('Error loading universities:', err)
     }

@@ -82,7 +82,11 @@ export function MissionDashboard({ track = 'defender', tier = 'beginner' }: Miss
 
   useEffect(() => {
     if (data) {
-      setAvailableMissions(data.available_missions)
+      setAvailableMissions(data.available_missions.map((m) => ({
+        ...m,
+        status: (m as any).status ?? 'available',
+        progress_percent: (m as any).progress_percent ?? 0,
+      })))
       setInProgressMissions(
         data.in_progress_missions.map((p) => ({
           id: p.id,

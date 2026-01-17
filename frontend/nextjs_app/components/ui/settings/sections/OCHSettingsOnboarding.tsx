@@ -100,7 +100,7 @@ export function OCHSettingsOnboarding() {
   const loadProfile = async () => {
     try {
       const profileData = await djangoClient.users.getProfile();
-      setProfile(profileData);
+      setProfile(profileData as any);
     } catch (err: any) {
       console.error('Error loading profile:', err);
       setError(err.message || 'Failed to load profile');
@@ -110,12 +110,12 @@ export function OCHSettingsOnboarding() {
   const loadProfilerStatus = async () => {
     try {
       if (!user?.id) return;
-      const data = await profilerClient.getStatus(user.id);
+      const data = await profilerClient.getStatus(user.id.toString());
       setProfilerStatus({
-        completed: data.completed || false,
-        status: data.status || 'not_started',
-        sections_completed: data.sections_completed || [],
-        future_you_completed: data.future_you_completed || false,
+        completed: (data as any).completed || false,
+        status: (data as any).status || 'not_started',
+        sections_completed: (data as any).sections_completed || [],
+        future_you_completed: (data as any).future_you_completed || false,
       });
     } catch (err) {
       console.error('Failed to load profiler status:', err);
@@ -127,7 +127,7 @@ export function OCHSettingsOnboarding() {
       const response = await apiGateway.get('/community/universities/', {
         params: { page_size: 100 }
       });
-      setUniversities(Array.isArray(response.results) ? response.results : response);
+      setUniversities(Array.isArray((response as any).results) ? (response as any).results : response);
     } catch (err) {
       console.error('Error loading universities:', err);
     }
@@ -139,7 +139,7 @@ export function OCHSettingsOnboarding() {
     setSaving(true);
     setSaveStatus(null);
     try {
-      await djangoClient.users.updateProfile(updates);
+      await djangoClient.users.updateProfile(updates as any);
       await reloadUser();
       await loadProfile();
       setSaveStatus('success');

@@ -169,7 +169,7 @@ export function OCHSettingsOverview() {
   const loadProfile = async () => {
     try {
       const data = await apiGateway.get('/auth/me');
-      setProfile(data);
+      setProfile(data as any);
     } catch (err) {
       console.error('Failed to load profile:', err);
     }
@@ -177,16 +177,16 @@ export function OCHSettingsOverview() {
 
   const loadSubscription = async () => {
     try {
-      const data = await apiGateway.get('/subscription/status');
+      const data = await apiGateway.get<any>('/subscription/status');
       setSubscription({
-        tier: data.tier || 'free',
-        status: data.status || 'inactive',
-        enhanced_access_until: data.enhanced_access_until,
-        days_enhanced_left: data.days_enhanced_left,
-        next_payment: data.next_payment,
-        grace_period_until: data.grace_period_until,
-        can_upgrade: data.can_upgrade !== false,
-        features: data.features || [],
+        tier: (data as any).tier || 'free',
+        status: (data as any).status || 'inactive',
+        enhanced_access_until: (data as any).enhanced_access_until,
+        days_enhanced_left: (data as any).days_enhanced_left,
+        next_payment: (data as any).next_payment,
+        grace_period_until: (data as any).grace_period_until,
+        can_upgrade: (data as any).can_upgrade !== false,
+        features: (data as any).features || [],
       });
     } catch (err) {
       console.error('Failed to load subscription:', err);
@@ -202,10 +202,10 @@ export function OCHSettingsOverview() {
   const loadProfilerStatus = async () => {
     try {
       if (!user?.id) return;
-      const data = await profilerClient.getStatus(user.id);
+      const data = await profilerClient.getStatus(user.id.toString());
       setProfilerStatus({
-        completed: data.completed || false,
-        status: data.status || 'not_started',
+        completed: (data as any).completed || false,
+        status: (data as any).status || 'not_started',
       });
     } catch (err) {
       console.error('Failed to load profiler status:', err);
@@ -340,27 +340,27 @@ export function OCHSettingsOverview() {
   const loadProfilerResults = async () => {
     try {
       if (!user?.id) return;
-      const data = await profilerClient.getResults(user.id);
-      setProfilerResults(data);
+      const data = await profilerClient.getResults(user.id.toString());
+      setProfilerResults(data as any);
       
       // Load track recommendations
-      if (data.completed && data.result?.recommended_tracks && data.result.recommended_tracks.length > 0) {
-        await loadTrackRecommendations(data.result.recommended_tracks);
+      if ((data as any).completed && (data as any).result?.recommended_tracks && (data as any).result.recommended_tracks.length > 0) {
+        await loadTrackRecommendations((data as any).result.recommended_tracks);
       } else {
         // Fallback: check profilerStatus for track_recommendation
         // We need to reload status to get the latest data
-        const statusData = await profilerClient.getStatus(user.id);
-        if (statusData.track_recommendation?.track_id) {
-          await loadTrackFromRecommendation(statusData.track_recommendation);
+        const statusData = await profilerClient.getStatus(user.id.toString());
+        if ((statusData as any).track_recommendation?.track_id) {
+          await loadTrackFromRecommendation((statusData as any).track_recommendation);
         }
       }
     } catch (err) {
       console.error('Failed to load profiler results:', err);
       // If results fail, try to get track from status
       try {
-        const statusData = await profilerClient.getStatus(user.id);
-        if (statusData.track_recommendation?.track_id) {
-          await loadTrackFromRecommendation(statusData.track_recommendation);
+        const statusData = await profilerClient.getStatus(user.id.toString());
+        if ((statusData as any).track_recommendation?.track_id) {
+          await loadTrackFromRecommendation((statusData as any).track_recommendation);
         }
       } catch (statusErr) {
         console.error('Failed to load track from status:', statusErr);
@@ -451,9 +451,9 @@ export function OCHSettingsOverview() {
   const loadUniversity = async () => {
     try {
       // Try to get university membership
-      const memberships = await apiGateway.get('/community/university-memberships/');
-      if (memberships && memberships.length > 0) {
-        const membership = memberships[0];
+      const memberships = await apiGateway.get<any>('/community/university-memberships/');
+      if (memberships && (memberships as any[]).length > 0) {
+        const membership = (memberships as any[])[0];
         setUniversity({
           id: membership.university?.id,
           name: membership.university?.name,
@@ -469,8 +469,8 @@ export function OCHSettingsOverview() {
   const loadRetakeRequestStatus = async () => {
     try {
       // Check if user has a pending retake request
-      const response = await apiGateway.get('/profiling/retake-request/status');
-      setRetakeRequestStatus(response.status || 'idle');
+      const response = await apiGateway.get<any>('/profiling/retake-request/status');
+      setRetakeRequestStatus((response as any).status || 'idle');
     } catch (err: any) {
       // If endpoint doesn't exist, that's fine - user hasn't made a request yet
       if (err.status !== 404) {

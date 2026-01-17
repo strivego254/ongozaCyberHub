@@ -13,7 +13,7 @@ interface SubmissionQueueProps {
   onSubmissionClick: (submission: MissionSubmission) => void
 }
 
-type StatusFilter = 'all' | 'pending_review' | 'in_review' | 'reviewed'
+type StatusFilter = 'all' | 'pending_review' | 'in_review'
 
 export function SubmissionQueue({ mentorId, onSubmissionClick }: SubmissionQueueProps) {
   const [submissions, setSubmissions] = useState<MissionSubmission[]>([])
@@ -83,7 +83,7 @@ export function SubmissionQueue({ mentorId, onSubmissionClick }: SubmissionQueue
       <Card className="glass-card p-4">
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
-            {(['all', 'pending_review', 'in_review', 'reviewed'] as StatusFilter[]).map((filter) => (
+            {(['all', 'pending_review', 'in_review'] as StatusFilter[]).map((filter) => (
               <button
                 key={filter}
                 onClick={() => setStatusFilter(filter)}
@@ -93,7 +93,7 @@ export function SubmissionQueue({ mentorId, onSubmissionClick }: SubmissionQueue
                     : 'bg-och-midnight/50 text-och-steel hover:text-white'
                 }`}
               >
-                {filter === 'all' ? 'All' : filter === 'pending_review' ? 'Pending Review' : filter === 'in_review' ? 'In Review' : 'Reviewed'}
+                {filter === 'all' ? 'All' : filter === 'pending_review' ? 'Pending Review' : 'In Review'}
               </button>
             ))}
           </div>
@@ -147,12 +147,12 @@ export function SubmissionQueue({ mentorId, onSubmissionClick }: SubmissionQueue
 
                   {/* Quick Actions */}
                   <div className="flex gap-2 mt-3">
-                    {submission.status === 'submitted' || submission.status === 'ai_reviewed' ? (
+                    {submission.status === 'pending_review' ? (
                       <>
                         <Button
                           size="sm"
                           variant="defender"
-                          onClick={() => handleStatusUpdate(submission.id, 'in_mentor_review')}
+                          onClick={() => handleStatusUpdate(submission.id, 'in_review')}
                           disabled={updatingStatus === submission.id}
                         >
                           {updatingStatus === submission.id ? 'Updating...' : 'Start Review'}
@@ -160,17 +160,17 @@ export function SubmissionQueue({ mentorId, onSubmissionClick }: SubmissionQueue
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleStatusUpdate(submission.id, 'scheduled')}
+                          onClick={() => handleStatusUpdate(submission.id, 'in_review')}
                           disabled={updatingStatus === submission.id}
                         >
                           Schedule Review
                         </Button>
                       </>
-                    ) : submission.status === 'in_mentor_review' ? (
+                    ) : submission.status === 'in_review' ? (
                       <Button
                         size="sm"
                         variant="gold"
-                        onClick={() => handleStatusUpdate(submission.id, 'reviewed')}
+                        onClick={() => handleStatusUpdate(submission.id, 'approved')}
                         disabled={updatingStatus === submission.id}
                       >
                         {updatingStatus === submission.id ? 'Updating...' : 'Mark as Reviewed'}

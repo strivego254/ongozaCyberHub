@@ -41,10 +41,15 @@ interface PortfolioHealthMetrics {
   topSkills: string[];
 }
 
+interface PortfolioResponse {
+  items?: PortfolioItem[];
+  [key: string]: any;
+}
+
 // Stub portfolio API functions - replace with actual Django backend calls
 const getPortfolioItems = async (userId: string): Promise<PortfolioItem[]> => {
   try {
-    const response = await apiGateway.get(`/student/dashboard/portfolio/${userId}`);
+    const response = await apiGateway.get(`/student/dashboard/portfolio/${userId}`) as PortfolioResponse;
     return response.items || [];
   } catch (error) {
     console.error('Error fetching portfolio items:', error);

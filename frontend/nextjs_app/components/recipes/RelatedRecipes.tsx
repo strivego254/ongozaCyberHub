@@ -7,7 +7,7 @@
 
 import { Card } from '@/components/ui/Card';
 import { RecipeCard } from './RecipeCard';
-import { Link } from 'next/link';
+import Link from 'next/link';
 import { recipesClient } from '@/services/recipesClient';
 import { useEffect, useState } from 'react';
 import type { Recipe } from '@/services/types/recipes';

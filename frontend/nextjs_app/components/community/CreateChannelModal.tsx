@@ -2,12 +2,9 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/Input"
 import { 
   X, Hash, Target, Users, Star, Briefcase, 
   Loader2, Lock, Globe
@@ -83,7 +80,7 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
         className="w-full max-w-lg mx-auto"
       >
         <Card className="bg-gradient-to-br from-slate-900 via-indigo-900/30 to-purple-900/30 border-slate-800/50 shadow-2xl">
-          <CardContent className="p-0">
+          <div className="p-0">
             {/* Header */}
             <div className="p-6 border-b border-slate-800/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -95,7 +92,7 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
                   <p className="text-sm text-slate-400">Start a new topic channel</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose}>
+              <Button variant="ghost" size="sm" className="p-2" onClick={onClose}>
                 <X className="w-5 h-5 text-slate-400" />
               </Button>
             </div>
@@ -104,7 +101,7 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               {/* Channel Type */}
               <div className="space-y-2">
-                <Label className="text-slate-300">Channel Type</Label>
+                <label className="text-slate-300">Channel Type</label>
                 <div className="grid grid-cols-2 gap-2">
                   {channelTypes.map(({ type, label, icon: Icon, description }) => (
                     <button
@@ -131,7 +128,7 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
 
               {/* Name */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-slate-300">Channel Name</Label>
+                <label htmlFor="name" className="text-slate-300">Channel Name</label>
                 <Input
                   id="name"
                   placeholder="e.g., DFIR Squad, Cloud Security"
@@ -144,20 +141,20 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
 
               {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-slate-300">Description</Label>
-                <Textarea
+                <label htmlFor="description" className="text-slate-300">Description</label>
+                <textarea
                   id="description"
                   placeholder="What's this channel about?"
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="bg-slate-800/50 border-slate-700/50 min-h-[80px]"
+                  className="w-full bg-slate-800/50 border border-slate-700/50 rounded-md text-slate-100 placeholder-slate-400 min-h-[80px] p-2"
                 />
               </div>
 
               {/* Icon & Color */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Icon</Label>
+                  <label className="text-slate-300">Icon</label>
                   <div className="flex flex-wrap gap-2">
                     {iconOptions.map((icon) => (
                       <button
@@ -178,7 +175,7 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Color</Label>
+                  <label className="text-slate-300">Color</label>
                   <div className="flex flex-wrap gap-2">
                     {colorOptions.map((color) => (
                       <button
@@ -198,7 +195,7 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
 
               {/* Member Limit */}
               <div className="space-y-2">
-                <Label htmlFor="member_limit" className="text-slate-300">Member Limit</Label>
+                <label htmlFor="member_limit" className="text-slate-300">Member Limit</label>
                 <Input
                   id="member_limit"
                   type="number"
@@ -220,9 +217,12 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
                       <div className="text-xs text-slate-500">Only visible to members</div>
                     </div>
                   </div>
-                  <Switch
+                  <input
+                    type="checkbox"
+                    aria-label="Private Channel"
                     checked={formData.is_private}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_private: checked }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, is_private: e.target.checked }))}
+                    className="w-5 h-5 accent-indigo-500"
                   />
                 </div>
 
@@ -234,9 +234,12 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
                       <div className="text-xs text-slate-500">Review join requests</div>
                     </div>
                   </div>
-                  <Switch
+                  <input
+                    type="checkbox"
+                    aria-label="Require Approval"
                     checked={formData.requires_approval}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, requires_approval: checked }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, requires_approval: e.target.checked }))}
+                    className="w-5 h-5 accent-indigo-500"
                   />
                 </div>
               </div>
@@ -291,7 +294,7 @@ export function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProp
                 </Button>
               </div>
             </form>
-          </CardContent>
+          </div>
         </Card>
       </motion.div>
     </motion.div>

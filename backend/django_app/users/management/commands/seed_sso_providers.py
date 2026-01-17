@@ -1,7 +1,10 @@
 """
 Management command to seed SSO providers (Google, Microsoft, Apple, Okta).
+Uses environment variables for credentials when available.
 """
+import os
 from django.core.management.base import BaseCommand
+from django.conf import settings
 from users.auth_models import SSOProvider
 
 
@@ -14,8 +17,8 @@ class Command(BaseCommand):
                 'name': 'google',
                 'provider_type': 'oidc',
                 'is_active': True,
-                'client_id': 'PLACEHOLDER_GOOGLE_CLIENT_ID',
-                'client_secret': 'PLACEHOLDER_GOOGLE_CLIENT_SECRET',
+                'client_id': os.environ.get('GOOGLE_OAUTH_CLIENT_ID', 'PLACEHOLDER_GOOGLE_CLIENT_ID'),
+                'client_secret': os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', 'PLACEHOLDER_GOOGLE_CLIENT_SECRET'),
                 'authorization_endpoint': 'https://accounts.google.com/o/oauth2/v2/auth',
                 'token_endpoint': 'https://oauth2.googleapis.com/token',
                 'userinfo_endpoint': 'https://openidconnect.googleapis.com/v1/userinfo',

@@ -61,6 +61,8 @@ export async function fetcher<T>(
     });
   }
 
+  console.log('[fetcher] Final URL with params:', urlObj.toString());
+
   // Set headers - don't set Content-Type for FormData (browser will set it with boundary)
   const isFormData = fetchOptions.body instanceof FormData;
   const headers: Record<string, string> = {
@@ -72,7 +74,10 @@ export async function fetcher<T>(
   if (!skipAuth) {
     const token = getAuthToken();
     if (token) {
+      console.log('[fetcher] Adding Authorization header with token (length:', token.length, ')');
       headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.log('[fetcher] ⚠️ NO TOKEN FOUND - Request will be unauthenticated!');
     }
   }
 
@@ -120,7 +125,13 @@ export async function fetcher<T>(
       return null as T;
     }
 
-    return isJson ? (await response.json() as T) : (await response.text() as T);
+    // Get the raw response text first for debugging
+    const responseText = await response.text();
+    console.log('[fetcher] Raw response text:', responseText.substring(0, 500));
+    
+    const result = isJson ? (JSON.parse(responseText) as T) : (responseText as T);
+    console.log('[fetcher] Parsed response:', result);
+    return result;
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;

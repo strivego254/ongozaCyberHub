@@ -400,6 +400,7 @@ export default function AIProfilerPage() {
 
   const currentQuestion = questions[currentQuestionIndex]
   const progress = session?.progress || {
+    session_id: session?.session_id || '',
     current_question: currentQuestionIndex + 1,
     total_questions: questions.length,
     progress_percentage: questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0,

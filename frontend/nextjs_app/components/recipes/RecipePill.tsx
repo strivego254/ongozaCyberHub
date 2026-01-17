@@ -81,7 +81,7 @@ export function RecipePill({ recipe, compact = false }: RecipePillProps) {
             <div className="flex items-center gap-3">
               {/* Difficulty */}
               <Badge
-                variant="secondary"
+                variant="steel"
                 className={clsx(
                   "text-xs font-medium capitalize",
                   getDifficultyColor(recipe.difficulty)

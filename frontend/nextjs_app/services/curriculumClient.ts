@@ -215,4 +215,112 @@ export const curriculumClient = {
   }> {
     return apiGateway.post(`/curriculum/tier2/tracks/${trackCode}/complete`)
   },
+
+  // ==================== TIER 6 - CROSS-TRACK PROGRAMS ====================
+
+  /**
+   * Get all cross-track programs
+   * GET /curriculum/cross-track/
+   */
+  async getCrossTrackPrograms(): Promise<{
+    programs: Array<{
+      id: string;
+      code: string;
+      name: string;
+      description: string;
+      icon: string;
+      color: string;
+      module_count: number;
+      lesson_count: number;
+      progress: {
+        completion_percentage: number;
+        modules_completed: number;
+        lessons_completed: number;
+        submissions_completed: number;
+        is_complete: boolean;
+      } | null;
+    }>;
+    total: number;
+  }> {
+    return apiGateway.get('/curriculum/cross-track/')
+  },
+
+  /**
+   * Get cross-track program details
+   * GET /curriculum/cross-track/{code}/
+   */
+  async getCrossTrackProgram(code: string): Promise<{
+    program: CurriculumTrackDetail;
+    modules: Array<{
+      id: string;
+      title: string;
+      description: string;
+      order_index: number;
+      estimated_time_minutes: number;
+      lesson_count: number;
+      lessons: Array<{
+        id: string;
+        title: string;
+        description: string;
+        lesson_type: string;
+        content_url: string;
+        duration_minutes: number;
+        order_index: number;
+      }>;
+    }>;
+    progress: {
+      completion_percentage: number;
+      modules_completed: number;
+      lessons_completed: number;
+      submissions_completed: number;
+      is_complete: boolean;
+    };
+  }> {
+    return apiGateway.get(`/curriculum/cross-track/${code}/`)
+  },
+
+  /**
+   * Submit cross-track assignment (reflection, scenario, document, quiz)
+   * POST /curriculum/cross-track/submit/
+   */
+  async submitCrossTrack(data: {
+    track_id: string;
+    module_id?: string;
+    lesson_id?: string;
+    submission_type: 'reflection' | 'scenario' | 'document' | 'portfolio' | 'quiz';
+    content?: string;
+    document_url?: string;
+    document_filename?: string;
+    scenario_choice?: string;
+    scenario_reasoning?: string;
+    scenario_metadata?: Record<string, any>;
+    quiz_answers?: Record<string, any>;
+    metadata?: Record<string, any>;
+  }): Promise<{
+    success: boolean;
+    submission: any;
+    message: string;
+  }> {
+    return apiGateway.post('/curriculum/cross-track/submit/', data)
+  },
+
+  /**
+   * Get cross-track progress overview
+   * GET /curriculum/cross-track/progress/
+   */
+  async getCrossTrackProgress(): Promise<{
+    total_programs: number;
+    programs_completed: number;
+    completion_percentage: number;
+    programs: Array<{
+      completion_percentage: number;
+      modules_completed: number;
+      lessons_completed: number;
+      submissions_completed: number;
+      is_complete: boolean;
+    }>;
+    marketplace_ready: boolean;
+  }> {
+    return apiGateway.get('/curriculum/cross-track/progress/')
+  },
 }

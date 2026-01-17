@@ -45,5 +45,11 @@ urlpatterns = [
     path('tier2/tracks/<str:code>/submit-reflection', views.Tier2SubmitReflectionView.as_view(), name='tier2-submit-reflection'),
     path('tier2/tracks/<str:code>/submit-mini-mission', views.Tier2SubmitMiniMissionView.as_view(), name='tier2-submit-mini-mission'),
     path('tier2/tracks/<str:code>/complete', views.Tier2CompleteView.as_view(), name='tier2-complete'),
+    
+    # Tier 6 (Cross-Track Programs) endpoints
+    path('cross-track/', views.CrossTrackProgramsView.as_view(), name='cross-track-programs'),
+    path('cross-track/<str:code>/', views.CrossTrackProgramDetailView.as_view(), name='cross-track-program-detail'),
+    path('cross-track/submit/', views.CrossTrackSubmissionView.as_view(), name='cross-track-submit'),
+    path('cross-track/progress/', views.CrossTrackProgressView.as_view(), name='cross-track-progress'),
 ]
 

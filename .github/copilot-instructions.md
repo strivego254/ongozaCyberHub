@@ -20,3 +20,4 @@
 - Frontend expectations: New APIs should follow `/api/v1/<resource>` naming so the API gateway can route without changes; prefer returning pagination-compatible payloads (see Django REST pagination defaults) when listing resources.
 - Deployment: Nginx proxy routes `/api/` to Django, `/ai/` to FastAPI, everything else to Next.js — see [docker/nginx/nginx.conf](docker/nginx/nginx.conf).
 - Troubleshooting: If local DB auth fails, ensure `DB_PASSWORD` is set in root `.env`; if ports 8000/8001 are busy, stop Docker stack or set `PORT` before running `start_server.sh`.
+- All documentations should be clearly defined in `/home/caleb/kiptoo/och/ongozaCyberHub/docs1` with proper structure for easy navigation

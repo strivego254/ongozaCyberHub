@@ -359,7 +359,7 @@ export function SecurityControlPanel({ settings, updateSettings, userId }: Secur
                             {login.success ? 'Successful login' : 'Failed login attempt'}
                           </div>
                           <Badge
-                            variant={login.success ? 'default' : 'secondary'}
+                            variant={login.success ? 'mint' : 'steel'}
                             className={login.success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}
                           >
                             {login.success ? 'Success' : 'Failed'}
@@ -443,7 +443,7 @@ export function SecurityControlPanel({ settings, updateSettings, userId }: Secur
                       </div>
                     </div>
                     {alert.resolved ? (
-                      <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
+                      <Badge variant="steel" className="bg-emerald-500/20 text-emerald-400">
                         Resolved
                       </Badge>
                     ) : (

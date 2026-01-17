@@ -30,7 +30,7 @@ export function useMenteeFlags(mentorId: string | undefined, params?: {
     setIsLoading(true)
     setError(null)
     try {
-      const data = await mentorClient.getMenteeFlags(mentorId, { status, severity })
+      const data = await mentorClient.getMenteeFlags(mentorId, { status: status as any, severity })
       setFlags(data)
     } catch (err: unknown) {
       setError(getErrorMessage(err) || 'Failed to load flags')

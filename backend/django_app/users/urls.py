@@ -29,6 +29,12 @@ from .views.sso_views import (
     apple_sso_login,
     okta_sso_login,
 )
+from .views.google_oauth_views import (
+    GoogleOAuthInitiateView,
+    GoogleOAuthCallbackView,
+    google_oauth_initiate,
+    google_oauth_callback,
+)
 from .views.settings_views import user_settings
 
 router = DefaultRouter()
@@ -85,6 +91,12 @@ urlpatterns = [
     path('auth/sso/microsoft', microsoft_sso_login, name='sso-microsoft'),
     path('auth/sso/apple', apple_sso_login, name='sso-apple'),
     path('auth/sso/okta', okta_sso_login, name='sso-okta'),
+    
+    # Google OAuth 2.0 flow (for account activation/signup)
+    path('auth/google/initiate', google_oauth_initiate, name='google-oauth-initiate'),
+    path('auth/google/initiate/', google_oauth_initiate, name='google-oauth-initiate-slash'),
+    path('auth/google/callback', google_oauth_callback, name='google-oauth-callback'),
+    path('auth/google/callback/', google_oauth_callback, name='google-oauth-callback-slash'),
 
     # User management endpoints
     path('', include(router.urls)),

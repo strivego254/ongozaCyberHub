@@ -31,7 +31,7 @@ export default function TrackPage() {
     error,
     enrollInTrack,
     startModule,
-  } = useCurriculumProgress(user?.id || '', { trackCode });
+  } = useCurriculumProgress(String(user?.id || ''), { trackCode });
 
   // Redirect to Tier 2 page if this is a Tier 2 track
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function TrackPage() {
       recentActivities={recentActivities}
       onModuleSelect={handleModuleSelect}
       onEnroll={enrollInTrack}
-      userId={user.id}
+      userId={String(user.id)}
     />
   );
 }

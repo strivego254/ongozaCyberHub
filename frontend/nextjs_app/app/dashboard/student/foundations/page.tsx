@@ -78,9 +78,7 @@ export default function FoundationsPage() {
       const foundationsStatus = await foundationsClient.getStatus()
       
       if (!foundationsStatus.foundations_available) {
-        setError(foundationsStatus.reason === 'profiling_incomplete' 
-          ? 'Please complete the AI profiler first'
-          : 'Foundations not available')
+        setError('Please complete the AI profiler first or Foundations is not available')
         hasLoadedRef.current = false
         setLoading(false)
         return

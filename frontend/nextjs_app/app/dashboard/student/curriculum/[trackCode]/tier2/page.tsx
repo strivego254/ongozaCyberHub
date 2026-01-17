@@ -66,7 +66,7 @@ export default function Tier2TrackPage() {
     error: trackError,
     enrollInTrack,
     refetch,
-  } = useCurriculumProgress(user?.id || '', { trackCode })
+  } = useCurriculumProgress(String(user?.id || ''), { trackCode })
 
   useEffect(() => {
     if (!authLoading && user && trackCode) {
