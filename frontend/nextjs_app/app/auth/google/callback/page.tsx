@@ -74,7 +74,8 @@ function GoogleOAuthCallbackPageInner() {
           // Load user to update auth state
           // Don't call login() since that requires password validation
           try {
-            await new Promise(resolve => setTimeout(resolve, 500)) // Brief delay for token propagation
+            // Longer delay to ensure tokens are available in all contexts
+            await new Promise(resolve => setTimeout(resolve, 1000))
           } catch (e) {
             // Ignore errors
           }
@@ -102,6 +103,7 @@ function GoogleOAuthCallbackPageInner() {
           })
 
           console.log('[OAuth Callback] Is student?:', isStudent)
+          console.log('[OAuth Callback] Token in localStorage:', !!localStorage.getItem('access_token'))
           
           if (isStudent) {
             // Check if profiling is required

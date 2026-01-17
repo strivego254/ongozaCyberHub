@@ -134,13 +134,20 @@ export default function AIProfilerPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log('[AIProfiler] Auth state:', { isAuthenticated, isLoading, user: user?.email })
+    
     if (!isLoading && !isAuthenticated) {
+      console.log('[AIProfiler] Not authenticated, redirecting to login')
       router.push('/login/student')
       return
     }
 
-    if (isLoading || !isAuthenticated) return
+    if (isLoading || !isAuthenticated) {
+      console.log('[AIProfiler] Still loading or not authenticated, waiting...')
+      return
+    }
 
+    console.log('[AIProfiler] Authenticated, checking profiling status')
     // Check profiling status first
     checkProfilingStatus()
   }, [isAuthenticated, isLoading, router])
