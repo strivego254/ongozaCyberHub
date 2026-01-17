@@ -105,7 +105,7 @@ function GoogleOAuthCallbackPageInner() {
     }
 
     handleCallback()
-  }, [searchParams, router, login])
+  }, [searchParams, router])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-och-midnight via-och-space to-och-crimson flex items-center justify-center px-4">
