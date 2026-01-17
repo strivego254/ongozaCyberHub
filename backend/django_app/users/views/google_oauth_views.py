@@ -16,6 +16,8 @@ from django.utils import timezone
 from django.conf import settings
 from django.shortcuts import redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from users.models import Role, UserRole
 from users.auth_models import SSOProvider, SSOConnection
 from users.views.auth_views import (
@@ -96,6 +98,10 @@ class GoogleOAuthCallbackView(APIView):
     Creates/activates account and returns tokens.
     """
     permission_classes = [AllowAny]
+    
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def post(self, request):
         """Handle Google OAuth callback."""

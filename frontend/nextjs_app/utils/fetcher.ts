@@ -85,6 +85,7 @@ export async function fetcher<T>(
     const response = await fetch(urlObj.toString(), {
       ...fetchOptions,
       headers,
+      credentials: 'include', // Send cookies cross-origin for OAuth session
     });
 
     // Handle non-JSON responses
