@@ -27,7 +27,8 @@ import {
   Zap,
   TrendingUp,
   Layout,
-  MessageSquare
+  MessageSquare,
+  type LucideIcon
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -84,12 +85,12 @@ export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProp
     )
   }
   
-  const navItems = [
+  const navItems: Array<{ id: ActiveSection; label: string; icon: LucideIcon; color: string }> = [
     { id: 'overview', label: 'Mission Control', icon: Brain, color: 'text-indigo-400' },
     { id: 'habits', label: 'Habit Engine', icon: Flame, color: 'text-och-orange' },
     { id: 'goals', label: 'Goal Tracker', icon: Target, color: 'text-och-mint' },
     { id: 'reflect', label: 'Insight Lab', icon: BookOpen, color: 'text-och-gold' },
-  ] as const
+  ]
   
   return (
     <div className="min-h-screen bg-och-midnight p-4 lg:p-8 flex flex-col gap-8 overflow-x-hidden">
@@ -124,10 +125,10 @@ export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProp
           
           <AnimatePresence mode="wait">
             {activeSection === 'overview' && (
-      <motion.div
+              <motion.div
                 key="overview"
                 initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-8"
               >
@@ -148,7 +149,7 @@ export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProp
                       </div>
                       <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tighter mb-4 leading-tight">
                         Coaching <span className="text-och-defender italic">OS</span>
-        </h1>
+                      </h1>
                       <p className="text-och-steel text-lg mb-6 max-w-md leading-relaxed">
                         {isNewUser ? (
                           <>Welcome to your Defender track! Your journey starts here. Let's build the habits and skills that will make you unstoppable in cybersecurity.</>
@@ -195,6 +196,7 @@ export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProp
                 </header>
 
                 {/* Top Metrics Row */}
+                {isNewUser ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { label: 'Active Streak', value: `${(metrics as any)?.habits_streak || 14}d`, icon: Flame, color: 'text-och-orange' },
@@ -207,9 +209,10 @@ export function CoachingHub({ activeSection, setActiveSection }: CoachingHubProp
                       <div className="text-xl font-black text-white">{stat.value}</div>
                       <div className="text-[9px] text-och-steel uppercase font-bold tracking-widest">{stat.label}</div>
                     </Card>
+                  ))}
 
-                    {/* Defender Track Overview */}
-                    <Card className="p-6 border-och-defender/30 bg-och-midnight/60 group relative overflow-hidden">
+                  {/* Defender Track Overview */}
+                  <Card className="p-6 border-och-defender/30 bg-och-midnight/60 group relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
                         <Sparkles className="w-16 h-16 text-och-defender" />
                       </div>

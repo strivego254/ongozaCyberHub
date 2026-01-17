@@ -59,13 +59,27 @@ function GoogleOAuthCallbackPageInner() {
           device_name: deviceName,
         })
 
-        // Store tokens
+        // Store tokens in localStorage
         if (response.access_token) {
           localStorage.setItem('access_token', response.access_token)
+          localStorage.setItem('auth_token', response.access_token)
           if (response.refresh_token) {
             localStorage.setItem('refresh_token', response.refresh_token)
           }
-          console.log('[OAuth] Tokens stored, token length:', response.access_token.length)
+          // Also set HttpOnly cookies via Next.js API for SSR consistency
+          try {
+            await fetch('/api/auth/ssologin', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                access_token: response.access_token,
+                refresh_token: response.refresh_token,
+                user: response.user,
+              }),
+            })
+          } catch (e) {
+            console.error('[OAuth] Failed to set cookies via ssologin route', e)
+          }
         }
 
         setStatus('success')
@@ -88,10 +102,10 @@ function GoogleOAuthCallbackPageInner() {
         const redirectPath = isStudent ? '/onboarding/ai-profiler' : '/dashboard'
         console.log('[OAuth Callback] Will redirect to:', redirectPath)
 
-        // Redirect with page reload to ensure token is available everywhere
+        // Redirect with page reload to ensure token/cookies are available everywhere
         setTimeout(() => {
           window.location.href = redirectPath
-        }, 2000)
+        }, 1500)
 
       } catch (err: any) {
         console.error('Google OAuth callback error:', err)
