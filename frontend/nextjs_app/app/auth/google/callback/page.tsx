@@ -89,16 +89,26 @@ function GoogleOAuthCallbackPageInner() {
 
         // Redirect to appropriate dashboard
         setTimeout(() => {
+          console.log('[OAuth Callback] User data:', response.user)
+          console.log('[OAuth Callback] User roles:', response.user?.roles)
+          
           const userRoles = response.user?.roles || []
+          console.log('[OAuth Callback] Extracted roles:', userRoles)
+          
           const isStudent = userRoles.some((r: any) => {
             const roleName = typeof r === 'string' ? r : (r?.role || r?.name || '').toLowerCase()
+            console.log('[OAuth Callback] Checking role:', roleName)
             return roleName === 'student' || roleName === 'mentee'
           })
 
+          console.log('[OAuth Callback] Is student?:', isStudent)
+          
           if (isStudent) {
             // Check if profiling is required
+            console.log('[OAuth Callback] Redirecting to profiler')
             router.push('/onboarding/ai-profiler')
           } else {
+            console.log('[OAuth Callback] Redirecting to dashboard')
             router.push('/dashboard')
           }
         }, 2000)

@@ -319,6 +319,9 @@ class GoogleOAuthCallbackView(APIView):
         request.session.pop('oauth_code_verifier', None)
         request.session.pop('oauth_state', None)
 
+        # Refresh user from database to get all related data (roles, etc.)
+        user.refresh_from_db()
+
         return Response({
             'access_token': access_token_jwt,
             'refresh_token': refresh_token,
