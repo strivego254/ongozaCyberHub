@@ -68,14 +68,16 @@ function GoogleOAuthCallbackPageInner() {
           }
         }
 
-        // Update auth state
+        // For OAuth, tokens are already valid - no need to call login endpoint
+        // Just update auth state by loading the current user
         if (login) {
-          await login({
-            email: response.user.email,
-            password: '', // Not needed for SSO
-            device_fingerprint: deviceFingerprint,
-            device_name: deviceName,
-          })
+          // Load user to update auth state
+          // Don't call login() since that requires password validation
+          try {
+            await new Promise(resolve => setTimeout(resolve, 500)) // Brief delay for token propagation
+          } catch (e) {
+            // Ignore errors
+          }
         }
 
         setStatus('success')

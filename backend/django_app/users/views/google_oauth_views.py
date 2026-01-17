@@ -127,7 +127,7 @@ class GoogleOAuthCallbackView(APIView):
         
         # Log state for debugging
         session_state = request.session.get('oauth_state')
-        if DEBUG and session_state != state:
+        if settings.DEBUG and session_state != state:
             print(f"[OAuth Debug] Session state mismatch (dev mode allows this)")
             print(f"  Session state: {session_state}")
             print(f"  Request state: {state}")
