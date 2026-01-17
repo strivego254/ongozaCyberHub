@@ -179,7 +179,7 @@ export default function AIProfilerPage() {
       if (status.completed) {
         // Already completed, redirect to dashboard
         console.log('✅ Profiling already completed')
-        router.push('/dashboard/student')
+        window.location.href = '/dashboard/student'
         return
       }
       
@@ -402,11 +402,11 @@ export default function AIProfilerPage() {
     // Small delay to ensure state is updated
     await new Promise(resolve => setTimeout(resolve, 300))
     
-    // Redirect to dashboard with track recommendation
+    // Redirect to dashboard with track recommendation (full page reload to ensure token is available)
     if (result?.primary_track) {
-      router.push(`/dashboard/student?track=${result.primary_track.key}&welcome=true`)
+      window.location.href = `/dashboard/student?track=${result.primary_track.key}&welcome=true`
     } else {
-      router.push('/dashboard/student')
+      window.location.href = '/dashboard/student'
     }
   }
 
