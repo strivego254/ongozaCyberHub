@@ -128,7 +128,7 @@ interface StudentState {
 async function getStudentState(userId: string): Promise<StudentState> {
   try {
     // Fetch data from Django PostgreSQL APIs instead of Supabase
-    const djangoApiUrl = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://localhost:8000';
+    const djangoApiUrl = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://django:8000';
 
     const [
       analyticsResponse,
@@ -554,7 +554,7 @@ export async function POST(request: NextRequest) {
 
     // 6. Save session to Django PostgreSQL (always try)
     try {
-      const djangoApiUrl = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://localhost:8000';
+      const djangoApiUrl = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://django:8000';
       await fetch(`${djangoApiUrl}/api/v1/coaching/sessions`, {
         method: 'POST',
         headers: {

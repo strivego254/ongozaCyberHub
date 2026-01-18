@@ -3,7 +3,7 @@
  */
 import axios from 'axios';
 
-const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://localhost:8000';
+const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || '';
 
 const djangoApiClient = axios.create({
   baseURL: `${DJANGO_API_URL}/api/v1`,

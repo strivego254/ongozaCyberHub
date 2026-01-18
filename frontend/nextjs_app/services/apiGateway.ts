@@ -13,8 +13,8 @@ import type {
   RefreshTokenResponse,
 } from './types';
 
-const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://localhost:8000';
-const FASTAPI_API_URL = process.env.NEXT_PUBLIC_FASTAPI_API_URL || 'http://localhost:8001';
+const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || '';
+const FASTAPI_API_URL = process.env.NEXT_PUBLIC_FASTAPI_API_URL || '';
 
 /**
  * Determine if a path should go to Django or FastAPI
