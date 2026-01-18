@@ -42,6 +42,12 @@ interface MissionStore {
   error: string | null
   setError: (error: string | null) => void
 
+  // User tier management
+  userTier: string
+  setUserTier: (tier: string) => void
+  tierLock: boolean
+  setTierLock: (locked: boolean) => void
+
   // Actions
   clearCurrentMission: () => void
   resetStore: () => void
@@ -106,6 +112,12 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   error: null,
   setError: (error) => set({ error }),
 
+  // User tier management
+  userTier: 'free',
+  setUserTier: (tier) => set({ userTier: tier }),
+  tierLock: false,
+  setTierLock: (locked) => set({ tierLock: locked }),
+
   // Actions
   clearCurrentMission: () => set({
     currentMission: null,
@@ -121,6 +133,8 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     completedMissions: [],
     missionProgress: {},
     isLoading: false,
-    error: null
+    error: null,
+    userTier: 'free',
+    tierLock: false
   })
 }))
