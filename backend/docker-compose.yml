@@ -92,6 +92,7 @@ services:
       DB_HOST: postgres-relational
       DB_PORT: "5432"
       FASTAPI_BASE_URL: http://fastapi:8001
+      ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,nginx,django,159.223.224.136"
       # Redis configuration (use service name in Docker)
       REDIS_HOST: redis
       REDIS_PORT: "6379"
