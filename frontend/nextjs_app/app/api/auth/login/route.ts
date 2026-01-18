@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
     const body: LoginRequest = await request.json();
 
     // Call Django API directly (bypass apiGateway to avoid cookie dependency)
-    const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || '';
+    // Server-side: use Docker service name; Client-side would use relative path
+    const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://django:8000';
     const loginUrl = `${DJANGO_API_URL}/api/v1/auth/login`;
     
     console.log('Login API route: Calling Django login endpoint:', loginUrl);
