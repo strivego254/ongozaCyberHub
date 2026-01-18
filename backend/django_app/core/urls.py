@@ -5,7 +5,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import HttpResponse
+from django.http import JsonResponse
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -20,15 +21,32 @@ from users.views.oidc_views import (
     oauth_introspect,
 )
 from core.settings.metrics import metrics_view
+import datetime
 
 
+@api_view(['GET'])
+@authentication_classes([])  # No auth required
+@permission_classes([])      # No permissions required
 def health_check(request):
-    """Simple health check endpoint for Docker."""
-    return HttpResponse("OK", status=200)
+    """Public health check endpoint for Docker healthchecks and monitoring.
+    
+    This endpoint is unauthenticated and bypasses all permission checks
+    to allow Docker healthchecks and load balancers to verify service status.
+    
+    Returns:
+        JSON response with service status and timestamp.
+    """
+    return JsonResponse({
+        "status": "healthy",
+        "service": "django",
+        "timestamp": str(datetime.datetime.now()),
+        "version": "1.0"
+    }, status=200)
 
 
 urlpatterns = [
     path('health/', health_check, name='health-check-root'),
+    path('api/v1/health/', health_check, name='health-check-api'),
     path('admin/', admin.site.urls),
     
     # OIDC Discovery Endpoints
