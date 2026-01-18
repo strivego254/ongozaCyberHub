@@ -272,4 +272,3 @@ The system will skip them and print a warning. They're idempotent.
 **Created**: January 18, 2026  
 **All test users password**: `testpass123`  
 **Questions?** See ENROLLMENT_SYSTEM.md or TEST_USERS_README.md
-
