@@ -3,6 +3,25 @@
 # Or set in your shell: export DOCKER_BUILDKIT=1
 
 services:
+  # Nginx Reverse Proxy (single entry point)
+  nginx:
+    image: nginx:stable-alpine
+    container_name: ongozacyberhub_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - django
+      - fastapi
+      - nextjs
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # PostgreSQL Relational Database (for Django)
   postgres-relational:
     build:
@@ -125,6 +144,30 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js Frontend Application
+  nextjs:
+    build:
+      context: ..
+      dockerfile: frontend/docker/nextjs.Dockerfile
+    container_name: ongozacyberhub_nextjs
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_DJANGO_API_URL: http://localhost:8000
+      NEXT_PUBLIC_FASTAPI_API_URL: http://localhost:8001
+      NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend/nextjs_app:/app
+    depends_on:
+      - django
+      - fastapi
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
