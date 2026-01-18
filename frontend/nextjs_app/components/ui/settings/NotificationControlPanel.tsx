@@ -129,7 +129,7 @@ export function NotificationControlPanel({ settings, onUpdate }: NotificationCon
                 <div className="flex items-center gap-2">
                   <div className="text-sm font-medium text-slate-200">{category.label}</div>
                   {(category.key === 'missions' || category.key === 'coaching') && (
-                    <Badge variant="secondary" className="text-[10px] bg-amber-500/20 text-amber-400 border-amber-500/30">
+                    <Badge variant="steel" className="text-[10px] bg-amber-500/20 text-amber-400 border-amber-500/30">
                       Recommended
                     </Badge>
                   )}

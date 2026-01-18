@@ -79,15 +79,15 @@ export function JobRecommendations() {
                     </Badge>
                   </div>
                   <div className="text-sm text-och-steel mb-2">
-                    {job.company} • {job.location}
+                    {job.employer?.company_name || 'Company'} • {job.location || 'Remote'}
                   </div>
                   <div className="flex items-center gap-2 mb-2">
-                    <Badge variant={getJobTypeColor(job.type) as any} className="text-xs">
-                      {job.type.replace('_', ' ')}
+                    <Badge variant={getJobTypeColor(job.job_type) as any} className="text-xs">
+                      {job.job_type.replace('_', ' ')}
                     </Badge>
-                    {job.salary_range && (
+                    {(job.salary_min && job.salary_max) && (
                       <span className="text-sm text-och-steel">
-                        {job.salary_range.currency} {job.salary_range.min.toLocaleString()} - {job.salary_range.max.toLocaleString()}
+                        {job.salary_currency} {job.salary_min.toLocaleString()} - {job.salary_max.toLocaleString()}
                       </span>
                     )}
                   </div>

@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { fastapiClient } from '@/services/fastapiClient'
+import { foundationsClient } from '@/services/foundationsClient'
+import { curriculumClient } from '@/services/curriculumClient'
+import { apiGateway } from '@/services/apiGateway'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -24,17 +27,90 @@ import {
   Briefcase,
   Star,
   Award,
-  Compass
+  Compass,
+  ChevronRight,
+  BookOpen,
+  PlayCircle,
+  Clock,
+  TrendingDown,
+  Lock
 } from 'lucide-react'
+
+// Track themes matching dashboard
+const trackThemes: Record<string, {
+  gradient: string;
+  border: string;
+  text: string;
+  bg: string;
+  icon: string;
+}> = {
+  defender: {
+    gradient: 'from-indigo-500/20 via-blue-500/10 to-indigo-500/20',
+    border: 'border-indigo-500/30',
+    text: 'text-indigo-400',
+    bg: 'bg-indigo-500/20',
+    icon: '🛡️',
+  },
+  offensive: {
+    gradient: 'from-red-500/20 via-orange-500/10 to-red-500/20',
+    border: 'border-red-500/30',
+    text: 'text-red-400',
+    bg: 'bg-red-500/20',
+    icon: '⚔️',
+  },
+  grc: {
+    gradient: 'from-emerald-500/20 via-teal-500/10 to-emerald-500/20',
+    border: 'border-emerald-500/30',
+    text: 'text-emerald-400',
+    bg: 'bg-emerald-500/20',
+    icon: '📋',
+  },
+  innovation: {
+    gradient: 'from-cyan-500/20 via-sky-500/10 to-cyan-500/20',
+    border: 'border-cyan-500/30',
+    text: 'text-cyan-400',
+    bg: 'bg-cyan-500/20',
+    icon: '🔬',
+  },
+  leadership: {
+    gradient: 'from-och-gold/20 via-amber-500/10 to-och-gold/20',
+    border: 'border-och-gold/30',
+    text: 'text-och-gold',
+    bg: 'bg-och-gold/20',
+    icon: '👑',
+  },
+}
+
+interface JourneyStage {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tier: number;
+  status: 'completed' | 'in_progress' | 'locked' | 'upcoming';
+  progress?: number;
+  stats?: {
+    label: string;
+    value: string | number;
+  }[];
+  route?: string;
+}
 
 export default function ProfilingResultsPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [results, setResults] = useState<any>(null)
+  const [blueprint, setBlueprint] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(true)
   const [allTracks, setAllTracks] = useState<Record<string, any>>({})
+  
+  // Journey progress data
+  const [foundationsStatus, setFoundationsStatus] = useState<any>(null)
+  const [curriculumProgress, setCurriculumProgress] = useState<any>(null)
+  const [missionsStats, setMissionsStats] = useState<any>(null)
+  const [loadingJourney, setLoadingJourney] = useState(true)
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -58,22 +134,47 @@ export default function ProfilingResultsPage() {
         if (fastapiStatus.session_id) {
           try {
             const fastapiResults = await fastapiClient.profiling.getResults(fastapiStatus.session_id)
+            let bp: any | null = null
+            try {
+              bp = await fastapiClient.profiling.getBlueprint(fastapiStatus.session_id)
+              setBlueprint(bp)
+            } catch (bpError) {
+              console.warn('Failed to fetch OCH Blueprint:', bpError)
+            }
+
             setResults({
               recommendations: fastapiResults.recommendations,
               primary_track: fastapiResults.primary_track,
               assessment_summary: fastapiResults.assessment_summary,
               completed_at: fastapiResults.completed_at,
-              overall_score: fastapiResults.recommendations?.[0]?.score || 0,
+              overall_score:
+                bp?.personalized_insights?.career_alignment?.career_readiness_score ??
+                fastapiResults.recommendations?.[0]?.score ??
+                0,
               aptitude_score: fastapiResults.recommendations?.[0]?.score || 0,
               behavioral_score: fastapiResults.recommendations?.[0]?.score || 0,
-              strengths: fastapiResults.recommendations?.[0]?.reasoning || [],
-              areas_for_growth: fastapiResults.recommendations?.slice(1, 3).map(r => r.track_name) || [],
+              strengths:
+                bp?.learning_strategy?.strengths_to_leverage?.length
+                  ? bp.learning_strategy.strengths_to_leverage
+                  : fastapiResults.recommendations?.[0]?.reasoning || [],
+              areas_for_growth:
+                bp?.learning_strategy?.growth_opportunities?.length
+                  ? bp.learning_strategy.growth_opportunities
+                  : fastapiResults.recommendations?.slice(1, 3).map((r: any) => r.track_name) || [],
             })
+
+            try {
+              const tracksResp = await fastapiClient.profiling.getTracks()
+              setAllTracks(tracksResp.tracks || {})
+            } catch (tracksError) {
+              console.warn('Failed to load OCH tracks:', tracksError)
+            }
+
             setLoading(false)
             setCheckingStatus(false)
             return
           } catch (resultsError: any) {
-            console.warn('⚠️ Failed to fetch FastAPI results:', resultsError)
+            console.warn('Failed to fetch FastAPI results:', resultsError)
           }
         }
 
@@ -102,24 +203,86 @@ export default function ProfilingResultsPage() {
     checkAndRedirect()
   }, [isAuthenticated, authLoading, router])
 
+  // Fetch journey progress data
+  useEffect(() => {
+    const fetchJourneyProgress = async () => {
+      if (!user?.id || !results) {
+        setLoadingJourney(false)
+        return
+      }
+
+      setLoadingJourney(true)
+      try {
+        // Fetch Foundations status
+        try {
+          const foundations = await foundationsClient.getStatus()
+          setFoundationsStatus(foundations)
+        } catch (err) {
+          console.error('Failed to fetch Foundations:', err)
+        }
+
+        // Fetch curriculum progress
+        try {
+          const primaryTrack = results.primary_track || results.recommendations?.[0]
+          if (primaryTrack?.key || primaryTrack?.track_key) {
+            const trackKey = (primaryTrack.key || primaryTrack.track_key).toUpperCase()
+            const trackCode = `${trackKey}_2` // Tier 2 (Beginner)
+            try {
+              const progress = await curriculumClient.getTrackProgress(trackCode)
+              setCurriculumProgress(progress)
+            } catch (err) {
+              // Track might not be enrolled yet
+              console.log('Track not enrolled yet:', err)
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch curriculum:', err)
+        }
+
+        // Fetch missions stats
+        try {
+          const missionsResponse = await apiGateway.get<any>('/student/missions', {
+            params: { page_size: 1 }
+          })
+          const missionsData = await apiGateway.get<any>('/student/missions/funnel')
+          setMissionsStats({
+            total: missionsResponse?.total ?? missionsResponse?.count ?? 0,
+            completed: missionsData?.funnel?.approved || 0,
+            in_progress: missionsData?.funnel?.pending || 0,
+          })
+        } catch (err) {
+          console.error('Failed to fetch missions:', err)
+        }
+      } catch (error) {
+        console.error('Failed to fetch journey progress:', error)
+      } finally {
+        setLoadingJourney(false)
+      }
+    }
+
+    if (results) {
+      fetchJourneyProgress()
+    }
+  }, [user?.id, results])
+
   if (checkingStatus || loading) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-och-midnight to-slate-950 flex items-center justify-center p-4">
-        <Card className="p-12 bg-och-midnight/90 border border-och-gold/30 rounded-3xl max-w-md w-full">
-          <div className="text-center space-y-6">
+      <div className="min-h-screen bg-och-midnight flex items-center justify-center p-4">
+        <Card className="p-8 bg-och-midnight/90 border border-och-gold/30 rounded-2xl max-w-md w-full">
+          <div className="text-center space-y-4">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               className="mx-auto"
             >
-              <Sparkles className="w-16 h-16 text-och-gold" />
+              <Sparkles className="w-12 h-12 text-och-gold" />
             </motion.div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">
                 {checkingStatus ? 'Analyzing Profile' : 'Loading Results'}
               </h2>
-              <p className="text-sm text-och-steel font-medium">
-                The AI engine is processing your assessment
+              <p className="text-sm text-och-steel">
+                Processing your assessment
               </p>
             </div>
           </div>
@@ -130,22 +293,21 @@ export default function ProfilingResultsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-och-midnight to-slate-950 flex items-center justify-center p-4">
-        <Card className="p-12 bg-och-midnight/90 border border-och-defender/40 rounded-3xl max-w-2xl w-full">
-          <div className="text-center space-y-8">
-            <div className="w-24 h-24 rounded-full bg-och-defender/10 flex items-center justify-center mx-auto border-2 border-och-defender/30">
-              <Brain className="w-12 h-12 text-och-defender" />
+      <div className="min-h-screen bg-och-midnight flex items-center justify-center p-4">
+        <Card className="p-8 bg-och-midnight/90 border border-och-defender/40 rounded-2xl max-w-2xl w-full">
+          <div className="text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-och-defender/10 flex items-center justify-center mx-auto border-2 border-och-defender/30">
+              <Brain className="w-8 h-8 text-och-defender" />
             </div>
-            <div className="space-y-3">
-              <h1 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Profiling Not Completed</h1>
-              <p className="text-base text-och-steel leading-relaxed">{error}</p>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Profiling Not Completed</h1>
+              <p className="text-sm text-och-steel leading-relaxed">{error}</p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button
                 onClick={() => router.push('/onboarding/ai-profiler')}
                 variant="defender"
-                className="flex-1 font-black uppercase tracking-widest text-sm"
-                glow
+                className="flex-1 font-bold uppercase tracking-wide text-xs"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 Start Assessment
@@ -153,7 +315,7 @@ export default function ProfilingResultsPage() {
               <Button
                 onClick={() => router.push('/dashboard/student')}
                 variant="outline"
-                className="flex-1 font-black uppercase tracking-widest text-sm"
+                className="flex-1 font-bold uppercase tracking-wide text-xs"
               >
                 Back to Dashboard
               </Button>
@@ -165,9 +327,6 @@ export default function ProfilingResultsPage() {
   }
 
   if (!results) {
-    useEffect(() => {
-      router.push('/onboarding/ai-profiler')
-    }, [router])
     return null
   }
 
@@ -177,676 +336,598 @@ export default function ProfilingResultsPage() {
   const strengths = results.strengths || primaryRecommendation?.reasoning || []
   const secondaryRecommendations = results.recommendations?.slice(1, 3) || []
 
-  // Journey steps
-  const journeySteps = [
-    { 
-      icon: Brain, 
-      title: 'AI Profiling', 
-      description: 'Assessment complete',
+  const difficultyLevel = blueprint?.difficulty_level
+  const careerAlignment = blueprint?.personalized_insights?.career_alignment
+  const valueStatement = blueprint?.value_statement
+  const nextSteps = blueprint?.next_steps || []
+
+  const trackKey = primaryTrack?.key || primaryTrack?.track_key || 'defender'
+  const trackTheme = trackThemes[trackKey.toLowerCase()] || trackThemes.defender
+
+  // Build dynamic journey stages based on actual progress
+  const journeyStages: JourneyStage[] = [
+    {
+      id: 'profiling',
+      title: 'AI Profiling',
+      description: 'Tier 0 - Assessment Complete',
+      icon: Brain,
+      tier: 0,
       status: 'completed',
-      color: 'och-gold'
+      progress: 100,
+      stats: [
+        { label: 'Match Score', value: `${Math.round(overallScore)}%` },
+        { label: 'Track', value: primaryTrack?.name || 'Selected' },
+      ],
     },
-    { 
-      icon: Target, 
-      title: 'Track Match', 
-      description: primaryTrack?.name || 'Track selected',
-      status: 'current',
-      color: 'och-mint'
+    {
+      id: 'foundations',
+      title: 'Foundations',
+      description: 'Tier 1 - Orientation & Preparation',
+      icon: GraduationCap,
+      tier: 1,
+      status: user?.foundations_complete 
+        ? 'completed' 
+        : foundationsStatus?.status === 'in_progress'
+        ? 'in_progress'
+        : 'upcoming',
+      progress: foundationsStatus?.completion_percentage || (user?.foundations_complete ? 100 : 0),
+      stats: foundationsStatus ? [
+        { label: 'Modules', value: `${foundationsStatus.modules?.filter((m: any) => m.completed).length || 0}/${foundationsStatus.modules?.length || 0}` },
+        { label: 'Progress', value: `${Math.round(foundationsStatus.completion_percentage)}%` },
+      ] : undefined,
+      route: '/dashboard/student/foundations',
     },
-    { 
-      icon: Compass, 
-      title: 'Curriculum GPS', 
-      description: 'Personalized learning path',
+    {
+      id: 'curriculum',
+      title: 'Curriculum',
+      description: 'Tier 2+ - Structured Learning',
+      icon: BookOpen,
+      tier: 2,
+      status: curriculumProgress 
+        ? (curriculumProgress.completion_percentage >= 100 ? 'completed' : 'in_progress')
+        : 'upcoming',
+      progress: curriculumProgress?.completion_percentage || 0,
+      stats: curriculumProgress ? [
+        { label: 'Modules', value: `${curriculumProgress.modules_completed}/${curriculumProgress.track?.module_count || 0}` },
+        { label: 'Lessons', value: curriculumProgress.lessons_completed },
+        { label: 'Progress', value: `${Math.round(curriculumProgress.completion_percentage)}%` },
+      ] : undefined,
+      route: '/dashboard/student/curriculum',
+    },
+    {
+      id: 'missions',
+      title: 'Missions',
+      description: 'Hands-On Practice & Real-World Challenges',
+      icon: Target,
+      tier: 2,
+      status: missionsStats?.total > 0
+        ? (missionsStats.completed > 0 ? 'in_progress' : 'in_progress')
+        : 'upcoming',
+      progress: missionsStats?.total > 0 
+        ? Math.round((missionsStats.completed / missionsStats.total) * 100)
+        : 0,
+      stats: missionsStats ? [
+        { label: 'Completed', value: missionsStats.completed },
+        { label: 'In Progress', value: missionsStats.in_progress },
+        { label: 'Total', value: missionsStats.total },
+      ] : undefined,
+      route: '/dashboard/student/missions',
+    },
+    {
+      id: 'career',
+      title: 'Career Ready',
+      description: 'Portfolio, Networking & Job Placement',
+      icon: Briefcase,
+      tier: 3,
       status: 'upcoming',
-      color: 'och-steel'
-    },
-    { 
-      icon: Rocket, 
-      title: 'Missions', 
-      description: 'Hands-on practice',
-      status: 'upcoming',
-      color: 'och-steel'
-    },
-    { 
-      icon: Briefcase, 
-      title: 'Career Ready', 
-      description: 'Industry-ready skills',
-      status: 'upcoming',
-      color: 'och-steel'
+      progress: careerAlignment?.career_readiness_score || 0,
+      stats: careerAlignment ? [
+        { label: 'Readiness', value: `${careerAlignment.career_readiness_score || 0}%` },
+      ] : undefined,
+      route: '/dashboard/student/portfolio',
     },
   ]
 
-  // Track icon mapping
-  const trackIcons: Record<string, string> = {
-    defender: '🛡️',
-    offensive: '⚔️',
-    innovation: '🔬',
-    leadership: '👑',
-    grc: '📋'
-  }
-  const primaryTrackIcon = primaryTrack?.key ? trackIcons[primaryTrack.key] : trackIcons[primaryTrack?.track_key || ''] || '🎯'
+  // Calculate overall journey progress
+  const completedStages = journeyStages.filter(s => s.status === 'completed').length
+  const totalStages = journeyStages.length
+  const overallJourneyProgress = Math.round((completedStages / totalStages) * 100)
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-och-midnight to-slate-950 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-      {/* Celebration Hero Section */}
-      <section className="w-full relative overflow-hidden">
-        {/* Animated Background Gradient */}
-        <div className="absolute inset-0">
-          <motion.div
-            animate={{
-              background: [
-                'radial-gradient(circle at 20% 50%, rgba(234, 179, 8, 0.15) 0%, transparent 50%)',
-                'radial-gradient(circle at 80% 50%, rgba(16, 185, 129, 0.15) 0%, transparent 50%)',
-                'radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%)',
-                'radial-gradient(circle at 20% 50%, rgba(234, 179, 8, 0.15) 0%, transparent 50%)',
-              ]
-            }}
-            transition={{ duration: 10, repeat: Infinity }}
-            className="absolute inset-0"
-          />
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-och-midnight via-och-midnight/95 to-slate-950">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
         
-        <div className="relative w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-12 lg:py-16 xl:py-20">
-          {/* Celebration Header */}
+        {/* Compact Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-4"
+        >
+          <Badge variant="gold" className="mb-3 text-xs font-bold uppercase tracking-wide px-3 py-1">
+            Assessment Complete
+          </Badge>
+          <h1 className="text-2xl sm:text-3xl font-black text-white mb-2 leading-tight">
+            Your <span className={`${trackTheme.text}`}>{primaryTrack?.name || primaryTrack?.track_name || 'Career Journey'}</span>
+          </h1>
+          <p className="text-sm text-och-steel max-w-2xl mx-auto">
+            Your personalized path to cybersecurity excellence{difficultyLevel?.selected ? ` at ${difficultyLevel.selected.toUpperCase()} level` : ''}
+          </p>
+        </motion.div>
+
+        {/* Primary Track Card - Compact */}
+        {primaryTrack && (
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-8 sm:mb-10 lg:mb-12"
+            transition={{ delay: 0.1 }}
           >
-            {/* Success Animation */}
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 150, damping: 12 }}
-              className="inline-flex items-center justify-center mb-8"
-            >
-              <div className="relative">
-                <motion.div
-                  animate={{ rotate: 360, scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-0 bg-gradient-to-br from-och-gold via-och-mint to-och-defender rounded-full blur-2xl opacity-50"
-                />
-                <div className="relative inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-2xl bg-gradient-to-br from-och-gold via-och-mint to-och-defender shadow-2xl shadow-och-gold/50 p-1">
-                  <div className="w-full h-full rounded-2xl bg-och-midnight/95 flex items-center justify-center">
-                    <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-och-gold" />
-                  </div>
+            <Card className={`p-6 bg-gradient-to-br ${trackTheme.gradient} border-2 ${trackTheme.border} rounded-xl`}>
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
+                <div className={`w-16 h-16 rounded-xl ${trackTheme.bg} ${trackTheme.border} border-2 flex items-center justify-center text-3xl shrink-0`}>
+                  {trackTheme.icon}
                 </div>
-              </div>
-            </motion.div>
-
-            {/* Headline */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Badge variant="gold" className="mb-4 text-xs font-black uppercase tracking-widest px-3 py-1.5">
-                Assessment Complete
-              </Badge>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-3 sm:mb-4 lg:mb-5 leading-tight">
-                <span className="block mb-1">Welcome to Your</span>
-                <span className="block bg-gradient-to-r from-och-gold via-och-mint to-och-defender bg-clip-text text-transparent">
-                  {primaryTrack?.name || primaryTrack?.track_name || 'Career Journey'}
-                </span>
-              </h1>
-              <p className="text-base sm:text-lg lg:text-xl text-och-steel/80 max-w-3xl mx-auto font-medium leading-relaxed">
-                Your personalized path to cybersecurity excellence is ready
-              </p>
-            </motion.div>
-          </motion.div>
-
-          {/* Primary Track Hero Card - Redesigned */}
-          {primaryTrack && (
-            <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: 0.6, duration: 0.8, type: "spring" }}
-              className="w-full max-w-6xl mx-auto"
-            >
-              <Card className="w-full relative overflow-hidden bg-gradient-to-br from-och-midnight/90 via-och-midnight/80 to-och-midnight/90 border-2 border-och-mint/50 rounded-2xl sm:rounded-3xl lg:rounded-[2rem] p-6 sm:p-8 lg:p-10 xl:p-12 shadow-2xl shadow-och-mint/30 backdrop-blur-xl">
-                {/* Decorative Background Elements */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-och-mint/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-och-gold/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-                
-                <div className="relative z-10">
-                  {/* Track Icon & Badge */}
-                  <div className="flex flex-col items-center mb-6 sm:mb-8">
-                    <motion.div
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                      className="inline-flex items-center justify-center w-16 h-16 sm:w-18 sm:h-18 lg:w-20 lg:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-och-mint/30 to-och-gold/30 border-2 border-och-mint/50 mb-4 shadow-xl shadow-och-mint/30 backdrop-blur-sm"
-                    >
-                      <span className="text-3xl sm:text-4xl lg:text-5xl">{primaryTrackIcon}</span>
-                    </motion.div>
-                    <Badge variant="mint" className="text-xs font-black uppercase mb-3 px-3 py-1.5 tracking-widest">
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                    <Badge className={`${trackTheme.bg} ${trackTheme.text} text-xs border-0`}>
                       Your Perfect Match
                     </Badge>
+                    <Badge variant="outline" className={`${trackTheme.border} ${trackTheme.text} text-xs`}>
+                      {Math.round(primaryRecommendation?.score || overallScore)}% Match
+                    </Badge>
                   </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white mb-2">
+                    {primaryTrack.name || primaryTrack.track_name}
+                  </h2>
+                  {primaryTrack.description && (
+                    <p className="text-sm text-och-steel mb-3">
+                      {primaryTrack.description}
+                    </p>
+                  )}
+                  {careerAlignment?.career_readiness_score && (
+                    <p className="text-xs text-och-steel">
+                      Career readiness: <span className={`font-bold ${trackTheme.text}`}>{careerAlignment.career_readiness_score}%</span>
+                    </p>
+                  )}
+                </div>
+              </div>
 
-                  {/* Track Name & Score */}
-                  <div className="text-center mb-6 sm:mb-8">
-                    <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 sm:mb-5 leading-tight">
-                      <span className="block mb-2">{primaryTrack.name || primaryTrack.track_name}</span>
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.8, type: "spring" }}
-                        className="inline-flex items-center justify-center gap-3 px-5 py-2 rounded-xl bg-och-mint/10 border border-och-mint/30 backdrop-blur-sm"
-                      >
-                        <span className="text-2xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-och-mint to-och-gold bg-clip-text text-transparent">
-                          {Math.round(primaryRecommendation?.score || overallScore)}%
-                        </span>
-                        <span className="text-xs sm:text-sm lg:text-base text-och-steel font-bold uppercase tracking-widest">
-                          Match
-                        </span>
-                      </motion.div>
-                    </h2>
-                    {primaryTrack.description && (
-                      <p className="text-sm sm:text-base lg:text-lg text-och-steel/90 max-w-2xl mx-auto leading-relaxed">
-                        {primaryTrack.description}
-                      </p>
-                    )}
-                  </div>
+              {/* Focus Areas & Career Paths - Compact */}
+              {(primaryTrack.focus_areas?.length > 0 || primaryTrack.career_paths?.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/10">
+                  {primaryTrack.focus_areas?.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className={`w-4 h-4 ${trackTheme.text}`} />
+                        <h3 className="text-xs font-black text-white uppercase tracking-wide">Focus Areas</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {primaryTrack.focus_areas.slice(0, 4).map((area: string, idx: number) => (
+                          <Badge key={idx} className={`${trackTheme.bg} ${trackTheme.text} text-xs border-0`}>
+                            {area}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {primaryTrack.career_paths?.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Briefcase className={`w-4 h-4 ${trackTheme.text}`} />
+                        <h3 className="text-xs font-black text-white uppercase tracking-wide">Career Paths</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {primaryTrack.career_paths.slice(0, 3).map((path: string, idx: number) => (
+                          <Badge key={idx} variant="gold" className="text-xs">
+                            {path}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          </motion.div>
+        )}
 
-                  {/* Focus Areas & Career Paths - Enhanced Grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-och-steel/20">
-                    {primaryTrack.focus_areas && primaryTrack.focus_areas.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.9 }}
-                        className="w-full"
-                      >
-                        <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                          <div className="p-2 rounded-xl bg-och-mint/20 border border-och-mint/40">
-                            <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-och-mint" />
-                          </div>
-                          <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-widest">
-                            Focus Areas
-                          </h3>
-                        </div>
-                        <div className="flex flex-wrap gap-3">
-                          {primaryTrack.focus_areas.map((area: string, idx: number) => (
-                            <motion.div
-                              key={idx}
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: 1 + idx * 0.05 }}
-                              whileHover={{ scale: 1.05 }}
-                            >
-                              <Badge variant="mint" className="text-xs sm:text-sm font-bold uppercase px-4 py-2 cursor-default">
-                                {area}
-                              </Badge>
-                            </motion.div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                    {primaryTrack.career_paths && primaryTrack.career_paths.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 1 }}
-                        className="w-full"
-                      >
-                        <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                          <div className="p-2 rounded-xl bg-och-gold/20 border border-och-gold/40">
-                            <Briefcase className="w-5 h-5 sm:w-6 sm:h-6 text-och-gold" />
-                          </div>
-                          <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-widest">
-                            Career Paths
-                          </h3>
-                        </div>
-                        <div className="flex flex-wrap gap-3">
-                          {primaryTrack.career_paths.map((path: string, idx: number) => (
-                            <motion.div
-                              key={idx}
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: 1.1 + idx * 0.05 }}
-                              whileHover={{ scale: 1.05 }}
-                            >
-                              <Badge variant="gold" className="text-xs sm:text-sm font-bold uppercase px-4 py-2 cursor-default">
-                                {path}
-                              </Badge>
-                            </motion.div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
+        {/* Dynamic Journey Blueprint - Creative Visualization */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className={`p-6 bg-gradient-to-br ${trackTheme.gradient} border-2 ${trackTheme.border} rounded-xl relative overflow-hidden`}>
+            {/* Blueprint Background Pattern */}
+            <div className="absolute inset-0 opacity-5">
+              <div className="absolute inset-0" style={{
+                backgroundImage: `
+                  linear-gradient(to right, currentColor 1px, transparent 1px),
+                  linear-gradient(to bottom, currentColor 1px, transparent 1px)
+                `,
+                backgroundSize: '20px 20px',
+              }} />
+            </div>
+
+            <div className="relative z-10">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Map className={`w-5 h-5 ${trackTheme.text}`} />
+                    <h3 className="text-lg font-black text-white uppercase tracking-wide">Your OCH Journey Blueprint</h3>
                   </div>
+                  <p className="text-xs text-och-steel">
+                    Dynamic progress tracking across your cybersecurity transformation
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className={`text-2xl font-black ${trackTheme.text}`}>
+                    {overallJourneyProgress}%
+                  </div>
+                  <div className="text-xs text-och-steel uppercase tracking-wide">Overall</div>
+                </div>
+              </div>
+
+              {/* Journey Path Visualization */}
+              <div className="relative">
+                {/* Progress Line */}
+                <div className="absolute left-0 top-1/2 w-full h-0.5 bg-och-steel/20 -translate-y-1/2 z-0">
+                  <motion.div
+                    className={`h-full ${trackTheme.bg} rounded-full`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${overallJourneyProgress}%` }}
+                    transition={{ duration: 1, delay: 0.5 }}
+                  />
+                </div>
+
+                {/* Journey Stages */}
+                <div className="relative grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {journeyStages.map((stage, idx) => {
+                    const StageIcon = stage.icon
+                    const isCompleted = stage.status === 'completed'
+                    const isInProgress = stage.status === 'in_progress'
+                    const isLocked = stage.status === 'locked'
+                    const isUpcoming = stage.status === 'upcoming'
+
+                    // Calculate position percentage for line connection
+                    const positionPercent = (idx / (journeyStages.length - 1)) * 100
+
+                    return (
+                      <motion.div
+                        key={stage.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 + idx * 0.1 }}
+                        className="relative"
+                      >
+                        {/* Connection Line (hidden on mobile) */}
+                        {idx < journeyStages.length - 1 && (
+                          <div className="hidden md:block absolute left-full top-1/2 w-full h-0.5 -translate-y-1/2 z-0">
+                            <div className="h-full bg-och-steel/20">
+                              <motion.div
+                                className={`h-full ${isCompleted || isInProgress ? trackTheme.bg : 'bg-och-steel/20'} rounded-full`}
+                                initial={{ width: 0 }}
+                                animate={{ width: isCompleted ? '100%' : isInProgress ? '50%' : '0%' }}
+                                transition={{ duration: 0.8, delay: 0.5 + idx * 0.1 }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Stage Card */}
+                        <button
+                          onClick={() => stage.route && !isLocked && router.push(stage.route)}
+                          disabled={isLocked}
+                          className={`w-full p-4 rounded-xl border-2 transition-all ${
+                            isCompleted
+                              ? `${trackTheme.bg} ${trackTheme.border} border-2 ${trackTheme.text} shadow-lg`
+                              : isInProgress
+                              ? `${trackTheme.bg} ${trackTheme.border} border-2 ${trackTheme.text} opacity-80`
+                              : isLocked
+                              ? 'bg-och-steel/10 border-och-steel/30 opacity-50 cursor-not-allowed'
+                              : 'bg-och-midnight/60 border-och-steel/20 hover:border-och-steel/40'
+                          }`}
+                        >
+                          {/* Status Indicator */}
+                          <div className="flex items-center justify-between mb-3">
+                            <Badge className={`text-[10px] ${
+                              isCompleted
+                                ? `${trackTheme.bg} ${trackTheme.text} border-0`
+                                : isInProgress
+                                ? `${trackTheme.bg} ${trackTheme.text} border-0`
+                                : 'bg-och-steel/20 text-och-steel border-0'
+                            }`}>
+                              Tier {stage.tier}
+                            </Badge>
+                            {isCompleted && (
+                              <CheckCircle2 className={`w-4 h-4 ${trackTheme.text}`} />
+                            )}
+                            {isInProgress && (
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                              >
+                                <Clock className={`w-4 h-4 ${trackTheme.text}`} />
+                              </motion.div>
+                            )}
+                            {isLocked && (
+                              <Lock className="w-4 h-4 text-och-steel" />
+                            )}
+                          </div>
+
+                          {/* Icon */}
+                          <div className={`w-12 h-12 rounded-lg ${
+                            isCompleted || isInProgress
+                              ? `${trackTheme.bg} ${trackTheme.border} border`
+                              : 'bg-och-steel/10 border-och-steel/20 border'
+                          } flex items-center justify-center mb-3 mx-auto`}>
+                            <StageIcon className={`w-6 h-6 ${
+                              isCompleted || isInProgress
+                                ? trackTheme.text
+                                : 'text-och-steel'
+                            }`} />
+                          </div>
+
+                          {/* Title */}
+                          <h4 className="text-sm font-black text-white mb-1 text-center">
+                            {stage.title}
+                          </h4>
+
+                          {/* Description */}
+                          <p className="text-[10px] text-och-steel mb-3 text-center leading-relaxed">
+                            {stage.description}
+                          </p>
+
+                          {/* Progress Bar */}
+                          {stage.progress !== undefined && (
+                            <div className="mb-3">
+                              <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                                <motion.div
+                                  className={`h-full ${
+                                    isCompleted || isInProgress
+                                      ? trackTheme.bg
+                                      : 'bg-och-steel/20'
+                                  } rounded-full`}
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${stage.progress}%` }}
+                                  transition={{ duration: 1, delay: 0.5 + idx * 0.1 }}
+                                />
+                              </div>
+                              <div className="text-[10px] text-och-steel text-center mt-1">
+                                {stage.progress}%
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Stats */}
+                          {stage.stats && stage.stats.length > 0 && (
+                            <div className="space-y-1">
+                              {stage.stats.slice(0, 2).map((stat, statIdx) => (
+                                <div key={statIdx} className="flex items-center justify-between text-[10px]">
+                                  <span className="text-och-steel">{stat.label}</span>
+                                  <span className={`font-bold ${
+                                    isCompleted || isInProgress
+                                      ? trackTheme.text
+                                      : 'text-och-steel'
+                                  }`}>
+                                    {stat.value}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Action Button */}
+                          {!isLocked && stage.route && (
+                            <div className="mt-3 pt-3 border-t border-white/10">
+                              <div className={`text-[10px] font-bold ${
+                                isCompleted || isInProgress
+                                  ? trackTheme.text
+                                  : 'text-och-steel'
+                              } text-center flex items-center justify-center gap-1`}>
+                                {isCompleted ? 'View' : isInProgress ? 'Continue' : 'Start'}
+                                <ChevronRight className="w-3 h-3" />
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Overall Progress Summary */}
+              <div className="mt-6 pt-4 border-t border-white/10">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-och-steel font-bold uppercase tracking-wide">
+                    Journey Completion
+                  </span>
+                  <span className={`font-black ${trackTheme.text}`}>
+                    {completedStages} of {totalStages} Stages Complete
+                  </span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden mt-2">
+                  <motion.div
+                    className={`h-full ${trackTheme.bg} rounded-full`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${overallJourneyProgress}%` }}
+                    transition={{ duration: 1, delay: 0.7 }}
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Two Column Layout - Compact */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Strengths */}
+          {strengths.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Card className="p-4 bg-gradient-to-br from-och-gold/10 to-och-midnight/60 border border-och-gold/20 rounded-xl h-full">
+                <div className="flex items-center gap-2 mb-3">
+                  <Star className="w-4 h-4 text-och-gold" />
+                  <h3 className="text-sm font-black text-white uppercase tracking-wide">Your Strengths</h3>
+                </div>
+                <div className="space-y-2">
+                  {strengths.slice(0, 4).map((strength: string, idx: number) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-och-gold shrink-0 mt-0.5" />
+                      <p className="text-xs text-och-steel leading-relaxed">{strength}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Alternative Tracks */}
+          {secondaryRecommendations.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card className="p-4 bg-gradient-to-br from-och-defender/10 to-och-midnight/60 border border-och-defender/20 rounded-xl h-full">
+                <div className="flex items-center gap-2 mb-3">
+                  <Compass className="w-4 h-4 text-och-defender" />
+                  <h3 className="text-sm font-black text-white uppercase tracking-wide">Alternative Paths</h3>
+                </div>
+                <div className="space-y-2">
+                  {secondaryRecommendations.map((rec: any, idx: number) => (
+                    <div key={idx} className="p-2 rounded-lg bg-white/5 border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-white">{rec.track_name}</h4>
+                        <Badge variant="defender" className="text-[10px] font-bold">
+                          {Math.round(rec.score)}%
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </Card>
             </motion.div>
           )}
         </div>
-      </section>
 
-      {/* All OCH Tracks Overview - Full Width */}
-      {Object.keys(allTracks).length > 0 && (
-        <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-12 sm:py-16 lg:py-20">
+        {/* Assessment Summary - Compact */}
+        {results.assessment_summary && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1 }}
-            className="w-full"
+            transition={{ delay: 0.6 }}
           >
-            <div className="text-center mb-6 sm:mb-8">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white mb-2 sm:mb-3 uppercase tracking-tight leading-tight">
-                All <span className="text-och-gold">OCH Career Tracks</span>
-              </h2>
-              <p className="text-xs sm:text-sm lg:text-base text-och-steel max-w-2xl mx-auto leading-relaxed px-4">
-                Explore all specialized cybersecurity tracks available in the OCH ecosystem
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-              {Object.entries(allTracks).map(([key, track]) => {
-                const isPrimary = primaryTrack?.key === key || primaryTrack?.track_key === key
-                const trackIcons: Record<string, string> = {
-                  defender: '🛡️',
-                  offensive: '⚔️',
-                  innovation: '🔬',
-                  leadership: '👑',
-                  grc: '📋'
-                }
-                
-                return (
-                  <motion.div
-                    key={key}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.2 + (Object.keys(allTracks).indexOf(key) * 0.1) }}
-                  >
-                    <Card className={`w-full h-full bg-gradient-to-br ${
-                      isPrimary 
-                        ? 'from-och-mint/30 via-och-midnight/80 to-och-midnight/80 border-2 border-och-mint/50 shadow-2xl shadow-och-mint/20' 
-                        : 'from-och-midnight/60 to-och-midnight/80 border border-och-steel/20'
-                    } rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 hover:border-och-gold/30 transition-all`}>
-                      <div className="text-center mb-3 sm:mb-4">
-                        <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl mb-3 ${
-                          isPrimary ? 'bg-och-mint/20 border-2 border-och-mint/40' : 'bg-och-steel/10 border border-och-steel/30'
-                        }`}>
-                          <span className="text-2xl sm:text-3xl">{trackIcons[key] || '🎯'}</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 mb-1.5">
-                          <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white uppercase tracking-tight">
-                            {track.name}
-                          </h3>
-                          {isPrimary && (
-                            <Badge variant="mint" className="text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5">
-                              Your Track
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs sm:text-sm text-och-steel leading-relaxed mb-3">
-                          {track.description}
-                        </p>
-                      </div>
-                      
-                      {track.focus_areas && track.focus_areas.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-och-gold" />
-                            Focus Areas
-                          </h4>
-                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                            {track.focus_areas.slice(0, 4).map((area: string, idx: number) => (
-                              <Badge key={idx} variant="steel" className="text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5">
-                                {area}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {track.career_paths && track.career_paths.length > 0 && (
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <Briefcase className="w-3 h-3 sm:w-4 sm:h-4 text-och-gold" />
-                            Career Paths
-                          </h4>
-                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                            {track.career_paths.slice(0, 3).map((path: string, idx: number) => (
-                              <Badge key={idx} variant="gold" className="text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5">
-                                {path}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  </motion.div>
-                )
-              })}
-            </div>
-          </motion.div>
-        </section>
-      )}
-
-      {/* Your Journey Map - Full Width */}
-      <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-10 lg:py-12">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="mb-6 sm:mb-8 text-center"
-        >
-          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white mb-2 sm:mb-3 uppercase tracking-tight leading-tight">
-            Your <span className="text-och-gold">OCH Journey</span>
-          </h2>
-          <p className="text-xs sm:text-sm lg:text-base text-och-steel max-w-2xl mx-auto leading-relaxed px-4">
-            From AI-powered profiling to career-ready expertise, here's your path to cybersecurity mastery
-          </p>
-        </motion.div>
-
-        <div className="relative w-full">
-          {/* Journey Timeline - Hidden on mobile, visible on desktop */}
-          <div className="hidden lg:block absolute left-1/2 transform -translate-x-1/2 h-full w-0.5 bg-gradient-to-b from-och-gold via-och-mint to-och-steel/30" />
-          
-          <div className="space-y-6 sm:space-y-8 lg:space-y-12 w-full">
-            {journeySteps.map((step, idx) => {
-              const StepIcon = step.icon
-              const isLeft = idx % 2 === 0
-              
-              return (
-              <motion.div
-                key={idx}
-                  initial={{ opacity: 0, x: isLeft ? -30 : 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.7 + idx * 0.1 }}
-                  className="w-full flex flex-col lg:flex-row items-center gap-4 sm:gap-6 lg:gap-8 xl:gap-12"
-                >
-                  <div className={`w-full lg:flex-1 ${isLeft ? 'lg:text-right lg:pr-8' : 'lg:text-left lg:pl-8 lg:order-2'} ${!isLeft ? 'lg:order-2' : ''}`}>
-                    <div className={`flex items-center gap-3 sm:gap-4 mb-2 sm:mb-3 ${isLeft ? 'lg:justify-end' : 'lg:justify-start'}`}>
-                      <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl flex items-center justify-center border-2 shrink-0 ${
-                        step.status === 'completed' 
-                          ? 'bg-och-gold/20 border-och-gold text-och-gold' 
-                          : step.status === 'current'
-                          ? 'bg-och-mint/20 border-och-mint text-och-mint'
-                          : 'bg-och-steel/10 border-och-steel/30 text-och-steel'
-                      }`}>
-                        {step.status === 'completed' ? (
-                          <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
-                        ) : (
-                          <StepIcon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white uppercase tracking-tight leading-tight">
-                          {step.title}
-                        </h3>
-                        <p className="text-xs sm:text-sm lg:text-base text-och-steel font-bold uppercase tracking-widest mt-1">
-                          {step.description}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Center Dot - Hidden on mobile */}
-                  <div className="hidden lg:flex items-center justify-center w-10 h-10 xl:w-12 xl:h-12 shrink-0 relative z-10">
-                    <div className={`w-4 h-4 xl:w-6 xl:h-6 rounded-full border-2 ${
-                      step.status === 'completed' 
-                        ? 'bg-och-gold border-och-gold' 
-                        : step.status === 'current'
-                        ? 'bg-och-mint border-och-mint animate-pulse'
-                        : 'bg-och-steel/30 border-och-steel/50'
-                    }`} />
-                  </div>
-                  
-                  <div className="hidden lg:block lg:flex-1" />
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* All OCH Tracks Overview - Full Width */}
-      {Object.keys(allTracks).length > 0 && (
-        <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-12 sm:py-16 lg:py-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1 }}
-            className="w-full"
-          >
-            <div className="text-center mb-6 sm:mb-8">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white mb-2 sm:mb-3 uppercase tracking-tight leading-tight">
-                All <span className="text-och-gold">OCH Career Tracks</span>
-              </h2>
-              <p className="text-xs sm:text-sm lg:text-base text-och-steel max-w-2xl mx-auto leading-relaxed px-4">
-                Explore all specialized cybersecurity tracks available in the OCH ecosystem
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-              {Object.entries(allTracks).map(([key, track]) => {
-                const isPrimary = primaryTrack?.key === key || primaryTrack?.track_key === key
-                const trackIcons: Record<string, string> = {
-                  defender: '🛡️',
-                  offensive: '⚔️',
-                  innovation: '🔬',
-                  leadership: '👑',
-                  grc: '📋'
-                }
-                
-                return (
-                  <motion.div
-                    key={key}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.2 + (Object.keys(allTracks).indexOf(key) * 0.1) }}
-                  >
-                    <Card className={`w-full h-full bg-gradient-to-br ${
-                      isPrimary 
-                        ? 'from-och-mint/30 via-och-midnight/80 to-och-midnight/80 border-2 border-och-mint/50 shadow-2xl shadow-och-mint/20' 
-                        : 'from-och-midnight/60 to-och-midnight/80 border border-och-steel/20'
-                    } rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 hover:border-och-gold/30 transition-all`}>
-                      <div className="text-center mb-3 sm:mb-4">
-                        <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl mb-3 ${
-                          isPrimary ? 'bg-och-mint/20 border-2 border-och-mint/40' : 'bg-och-steel/10 border border-och-steel/30'
-                        }`}>
-                          <span className="text-2xl sm:text-3xl">{trackIcons[key] || '🎯'}</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 mb-1.5">
-                          <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white uppercase tracking-tight">
-                            {track.name}
-                          </h3>
-                          {isPrimary && (
-                            <Badge variant="mint" className="text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5">
-                              Your Track
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs sm:text-sm text-och-steel leading-relaxed mb-3">
-                          {track.description}
-                        </p>
-                      </div>
-                      
-                      {track.focus_areas && track.focus_areas.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-och-gold" />
-                            Focus Areas
-                          </h4>
-                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                            {track.focus_areas.slice(0, 4).map((area: string, idx: number) => (
-                              <Badge key={idx} variant="steel" className="text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5">
-                                {area}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {track.career_paths && track.career_paths.length > 0 && (
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-black text-och-steel uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <Briefcase className="w-3 h-3 sm:w-4 sm:h-4 text-och-gold" />
-                            Career Paths
-                          </h4>
-                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                            {track.career_paths.slice(0, 3).map((path: string, idx: number) => (
-                              <Badge key={idx} variant="gold" className="text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5">
-                                {path}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  </motion.div>
-                )
-              })}
-            </div>
-          </motion.div>
-        </section>
-      )}
-
-      {/* Assessment Insights - Full Width */}
-      {results.assessment_summary && (
-        <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-10 lg:py-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.4 }}
-            className="w-full"
-          >
-            <Card className="w-full bg-och-midnight/60 border border-och-steel/10 rounded-2xl sm:rounded-3xl lg:rounded-[2.5rem] p-6 sm:p-8 lg:p-12 xl:p-16">
-              <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 lg:mb-8">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl bg-och-defender/10 border border-och-defender/30 flex items-center justify-center shrink-0">
-                  <Brain className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-och-defender" />
-                </div>
-                <div>
-                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-black text-white uppercase tracking-tight mb-1 leading-tight">
-                    AI Assessment Summary
-                  </h3>
-                  <p className="text-xs sm:text-sm lg:text-base text-och-steel font-bold uppercase tracking-widest">
-                    Your personalized analysis
-                  </p>
-                    </div>
-                  </div>
-              <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-och-steel leading-relaxed">
+            <Card className="p-4 bg-och-midnight/60 border border-och-steel/20 rounded-xl">
+              <div className="flex items-center gap-2 mb-3">
+                <Brain className="w-4 h-4 text-och-defender" />
+                <h3 className="text-sm font-black text-white uppercase tracking-wide">Assessment Summary</h3>
+              </div>
+              <p className="text-xs text-och-steel leading-relaxed mb-3">
                 {results.assessment_summary}
               </p>
+              {valueStatement && (
+                <div className="pt-3 border-t border-och-steel/20">
+                  <h4 className="text-xs font-black text-white uppercase tracking-wide mb-2">Your Value Statement</h4>
+                  <p className="text-xs text-och-steel leading-relaxed">
+                    {valueStatement}
+                  </p>
+                </div>
+              )}
             </Card>
-              </motion.div>
-        </section>
-      )}
+          </motion.div>
+        )}
 
-      {/* Strengths & Alternative Paths - Full Width Grid */}
-      <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-12 sm:py-16 lg:py-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 w-full">
-      {/* Strengths */}
-      {strengths.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1.3 }}
-              className="w-full"
-            >
-              <Card className="w-full h-full bg-gradient-to-br from-och-gold/10 to-och-midnight/60 border border-och-gold/20 rounded-2xl sm:rounded-3xl lg:rounded-[2.5rem] p-6 sm:p-8 lg:p-10">
-                <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-och-gold/20 border border-och-gold/40 flex items-center justify-center shrink-0">
-                    <Star className="w-5 h-5 sm:w-6 sm:h-6 text-och-gold" />
-                  </div>
-                  <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white uppercase tracking-tight leading-tight">
-                    Your Strengths
-          </h3>
-                </div>
-                <div className="space-y-2 sm:space-y-3">
-            {strengths.map((strength: string, idx: number) => (
-                    <div key={idx} className="flex items-start gap-2 sm:gap-3">
-                      <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-och-gold shrink-0 mt-0.5 sm:mt-1" />
-                      <p className="text-sm sm:text-base lg:text-lg text-och-steel leading-relaxed">{strength}</p>
-                    </div>
-            ))}
-          </div>
-        </Card>
-            </motion.div>
-      )}
-
-          {/* Alternative Tracks */}
-          {secondaryRecommendations.length > 0 && (
-              <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1.4 }}
-              className="w-full"
-            >
-              <Card className="w-full h-full bg-gradient-to-br from-och-defender/10 to-och-midnight/60 border border-och-defender/20 rounded-2xl sm:rounded-3xl lg:rounded-[2.5rem] p-6 sm:p-8 lg:p-10">
-                <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-och-defender/20 border border-och-defender/40 flex items-center justify-center shrink-0">
-                    <Compass className="w-5 h-5 sm:w-6 sm:h-6 text-och-defender" />
-                  </div>
-                  <h3 className="text-base sm:text-lg lg:text-xl font-black text-white uppercase tracking-tight leading-tight">
-                    Alternative Paths
-                  </h3>
-                </div>
-                <div className="space-y-2 sm:space-y-3">
-                  {secondaryRecommendations.map((rec: any, idx: number) => (
-                    <div key={idx} className="w-full p-3 sm:p-4 rounded-lg sm:rounded-xl bg-och-midnight/40 border border-och-steel/10">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <h4 className="text-sm sm:text-base lg:text-lg font-bold text-white leading-tight">{rec.track_name}</h4>
-                        <Badge variant="defender" className="text-[9px] sm:text-[10px] font-black uppercase shrink-0 ml-2 px-2 py-0.5">
-                          {Math.round(rec.score)}%
+        {/* All Tracks - Compact Grid */}
+        {Object.keys(allTracks).length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+          >
+            <Card className="p-4 bg-och-midnight/60 border border-och-steel/20 rounded-xl">
+              <h3 className="text-sm font-black text-white uppercase tracking-wide mb-3 text-center">
+                All OCH Career Tracks
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {Object.entries(allTracks).map(([key, track]) => {
+                  const isPrimary = primaryTrack?.key === key || primaryTrack?.track_key === key
+                  const theme = trackThemes[key.toLowerCase()] || trackThemes.defender
+                  
+                  return (
+                    <div
+                      key={key}
+                      className={`p-3 rounded-lg border-2 ${
+                        isPrimary 
+                          ? `${theme.border} ${theme.bg} bg-gradient-to-br` 
+                          : 'border-och-steel/20 bg-och-midnight/40'
+                      } text-center`}
+                    >
+                      <div className="text-2xl mb-1">{theme.icon}</div>
+                      <h4 className="text-xs font-bold text-white mb-1 truncate">
+                        {track.name}
+                      </h4>
+                      {isPrimary && (
+                        <Badge className={`${theme.bg} ${theme.text} text-[8px] border-0 mt-1`}>
+                          Your Track
                         </Badge>
-                      </div>
-                      {rec.confidence_level && (
-                        <p className="text-[9px] sm:text-[10px] text-och-steel uppercase tracking-widest font-bold">
-                          {rec.confidence_level} confidence
-                        </p>
                       )}
                     </div>
-                  ))}
-                </div>
-        </Card>
-            </motion.div>
-      )}
-        </div>
-      </section>
+                  )
+                })}
+              </div>
+            </Card>
+          </motion.div>
+        )}
 
-      {/* Call to Action - Full Width */}
-      <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-12 sm:py-16 lg:py-20">
+        {/* Next Steps & CTA - Compact */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.5 }}
-          className="text-center w-full"
+          transition={{ delay: 0.8 }}
         >
-          <Card className="w-full bg-gradient-to-r from-och-mint/20 via-och-gold/10 to-och-defender/20 border-2 border-och-mint/30 rounded-2xl sm:rounded-3xl lg:rounded-[2.5rem] p-8 sm:p-10 lg:p-12 xl:p-16">
-            <div className="max-w-4xl mx-auto w-full">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-3 sm:mb-4 lg:mb-6 uppercase tracking-tight leading-tight">
-                Ready to Begin Your <span className="text-och-gold">Journey</span>?
-              </h2>
-              <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-och-steel mb-6 sm:mb-8 lg:mb-10 leading-relaxed px-2">
-                Your personalized learning path is ready. Start your first mission and begin building the skills that will transform your career.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center w-full">
-        <Button
-          onClick={() => router.push('/dashboard/student')}
-                  variant="mint"
-                  size="lg"
-                  className="flex-1 sm:flex-none font-black uppercase tracking-widest text-sm sm:text-base px-6 sm:px-8"
-          glow
-        >
-                  <Rocket className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  Launch Dashboard
-        </Button>
-        <Button
-                  onClick={() => router.push('/dashboard/student/curriculum')}
-          variant="outline"
-                  size="lg"
-                  className="flex-1 sm:flex-none font-black uppercase tracking-widest text-sm sm:text-base px-6 sm:px-8 border-och-gold/50 text-och-gold hover:bg-och-gold/10"
-        >
-                  <Compass className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  View Curriculum
-        </Button>
-      </div>
+          <Card className={`p-4 bg-gradient-to-br ${trackTheme.gradient} border ${trackTheme.border} rounded-xl`}>
+            <h3 className="text-sm font-black text-white uppercase tracking-wide mb-3 text-center">
+              Ready to Begin Your Journey?
+            </h3>
+            {nextSteps.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs font-black text-white uppercase tracking-wide mb-2">Recommended Next Steps</h4>
+                <ul className="text-xs text-och-steel space-y-1 mb-4">
+                  {nextSteps.slice(0, 3).map((step: string, idx: number) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <CheckCircle2 className={`w-3 h-3 ${trackTheme.text} shrink-0 mt-0.5`} />
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => router.push('/dashboard/student')}
+                variant="defender"
+                className={`flex-1 ${trackTheme.bg} ${trackTheme.text} hover:opacity-90 font-bold uppercase tracking-wide text-xs`}
+              >
+                <Rocket className="w-3.5 h-3.5 mr-1.5" />
+                Launch Dashboard
+              </Button>
+              <Button
+                onClick={() => router.push('/dashboard/student/curriculum')}
+                variant="outline"
+                className={`flex-1 ${trackTheme.border} ${trackTheme.text} hover:${trackTheme.bg} border font-bold uppercase tracking-wide text-xs`}
+              >
+                <Compass className="w-3.5 h-3.5 mr-1.5" />
+                View Curriculum
+              </Button>
             </div>
           </Card>
         </motion.div>
-      </section>
+      </div>
     </div>
   )
 }

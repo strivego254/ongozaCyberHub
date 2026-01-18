@@ -74,18 +74,18 @@ export function EnhancedPostFeed() {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-och-defender flex items-center justify-center text-white font-semibold">
-                  {post.author_name[0]}
+                  {`${post.author.first_name?.[0] || ''}${post.author.last_name?.[0] || ''}`}
                 </div>
                 <div>
-                  <div className="font-semibold text-white">{post.author_name}</div>
+                  <div className="font-semibold text-white">{`${post.author.first_name} ${post.author.last_name}`}</div>
                   <div className="text-xs text-och-steel">
                     {new Date(post.created_at).toLocaleDateString()}
-                    {post.group_name && ` • ${post.group_name}`}
+                    {post.university?.name ? ` • ${post.university.name}` : ''}
                   </div>
                 </div>
               </div>
-              {post.pinned && <Badge variant="gold">📌 Pinned</Badge>}
-              {post.highlighted && <Badge variant="mint">⭐ Featured</Badge>}
+              {post.is_pinned && <Badge variant="gold">📌 Pinned</Badge>}
+              {post.is_featured && <Badge variant="mint">⭐ Featured</Badge>}
             </div>
 
             {/* Post Content */}
@@ -124,8 +124,8 @@ export function EnhancedPostFeed() {
 
             {/* Engagement Stats */}
             <div className="flex items-center gap-4 text-sm text-och-steel mb-3 pb-3 border-b border-och-steel/20">
-              <span>{post.reply_count} replies</span>
-              <span>{post.view_count} views</span>
+              <span>{post.comment_count} comments</span>
+              <span>{post.view_count ?? 0} views</span>
             </div>
 
             {/* Quick Reply */}

@@ -149,6 +149,18 @@ export const fastapiClient = {
     },
 
     /**
+     * Get per-module progress for a session
+     */
+    async getModuleProgress(sessionId: string): Promise<{
+      modules: Record<string, { answered: number; total: number; completed: boolean }>;
+      current_module: string | null;
+      completed_modules: string[];
+      remaining_modules: string[];
+    }> {
+      return apiGateway.get(`/profiling/session/${sessionId}/modules`);
+    },
+
+    /**
      * Complete profiling session
      */
     async completeSession(sessionId: string): Promise<{
@@ -191,6 +203,96 @@ export const fastapiClient = {
       description: string;
     }> {
       return apiGateway.get('/profiling/tracks');
+    },
+
+    // ========================================================================
+    // Enhanced Tier-0 Profiling Endpoints
+    // ========================================================================
+
+    /**
+     * Get enhanced profiling questions organized by module
+     */
+    async getEnhancedQuestions(): Promise<{
+      modules: Record<string, string>;
+      questions: Record<string, any[]>;
+      total_questions: number;
+    }> {
+      return apiGateway.get('/profiling/enhanced/questions');
+    },
+
+    /**
+     * Get questions for a specific module
+     */
+    async getQuestionsByModule(moduleName: string): Promise<any[]> {
+      return apiGateway.get(`/profiling/enhanced/module/${moduleName}/questions`);
+    },
+
+    /**
+     * Submit reflection responses (Module 7)
+     */
+    async submitReflection(
+      sessionId: string,
+      whyCyber: string,
+      whatAchieve: string
+    ): Promise<{
+      success: boolean;
+      message: string;
+    }> {
+      return apiGateway.post(`/profiling/enhanced/session/${sessionId}/reflection`, {
+        why_cyber: whyCyber,
+        what_achieve: whatAchieve,
+      });
+    },
+
+    /**
+     * Verify difficulty selection (Module 6)
+     */
+    async verifyDifficulty(
+      sessionId: string,
+      selectedDifficulty: string
+    ): Promise<{
+      selected_difficulty: string;
+      is_realistic: boolean;
+      confidence: string;
+      technical_exposure_score: number;
+      suggested_difficulty: string;
+      reasoning: string;
+    }> {
+      return apiGateway.post(`/profiling/enhanced/session/${sessionId}/verify-difficulty`, {
+        selected_difficulty: selectedDifficulty,
+      });
+    },
+
+    /**
+     * Complete enhanced profiling session
+     */
+    async completeEnhancedSession(sessionId: string): Promise<{
+      user_id: string;
+      session_id: string;
+      recommendations: any[];
+      primary_track: any;
+      assessment_summary: string;
+      completed_at: string;
+    }> {
+      return apiGateway.post(`/profiling/enhanced/session/${sessionId}/complete`, {});
+    },
+
+    /**
+     * Get OCH Blueprint
+     */
+    async getBlueprint(sessionId: string): Promise<any> {
+      return apiGateway.get(`/profiling/enhanced/session/${sessionId}/blueprint`);
+    },
+
+    /**
+     * Get value statement
+     */
+    async getValueStatement(sessionId: string): Promise<{
+      value_statement: string;
+      session_id: string;
+      ready_for_portfolio: boolean;
+    }> {
+      return apiGateway.get(`/profiling/enhanced/session/${sessionId}/value-statement`);
     },
   },
 };

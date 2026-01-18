@@ -14,7 +14,7 @@ import { useQueryClient } from '@tanstack/react-query'
 export default function UpgradePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, refreshUser } = useAuth()
+  const { user, reloadUser } = useAuth()
   const queryClient = useQueryClient()
   const [plan, setPlan] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -42,8 +42,8 @@ export default function UpgradePage() {
       if (response.success || response.message) {
         setSuccess(true)
         // Refresh user data to get updated subscription
-        if (refreshUser) {
-          await refreshUser()
+        if (reloadUser) {
+          await reloadUser()
         }
         // Invalidate query caches to refresh subscription data everywhere
         queryClient.invalidateQueries({ queryKey: ['user-entitlements'] })

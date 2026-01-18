@@ -92,8 +92,13 @@ async function apiGatewayRequest<T>(
   const baseUrl = getBaseUrl(path);
   const fullUrl = `${baseUrl}${path}`;
 
+  console.log('[apiGateway] Making request to:', fullUrl);
+  console.log('[apiGateway] Params:', options.params);
+
   try {
-    return await fetcher<T>(fullUrl, options);
+    const result = await fetcher<T>(fullUrl, options);
+    console.log('[apiGateway] Response received:', result);
+    return result;
   } catch (error) {
     // If unauthorized and we have a refresh token, try to refresh
     // Only attempt refresh client-side (not in SSR)
@@ -130,13 +135,22 @@ export const apiGateway = {
   async post<T>(path: string, data?: any, options?: FetchOptions): Promise<T> {
     // Handle FormData - don't stringify or set Content-Type
     const isFormData = data instanceof FormData;
-    const headers = isFormData 
+    const headers = isFormData
       ? (() => {
-          // Remove Content-Type header if present - browser will set it with boundary
-          const { 'Content-Type': _, ...restHeaders } = options?.headers || {};
-          return restHeaders;
+          // Normalize HeadersInit to a plain object and remove Content-Type
+          const raw = options?.headers as HeadersInit | undefined;
+          let base: Record<string, string> = {};
+          if (raw instanceof Headers) {
+            base = Object.fromEntries(Array.from(raw.entries()));
+          } else if (Array.isArray(raw)) {
+            base = Object.fromEntries(raw as Array<[string, string]>);
+          } else if (raw) {
+            base = { ...(raw as Record<string, string>) };
+          }
+          delete base['Content-Type'];
+          return base;
         })()
-      : { 'Content-Type': 'application/json', ...options?.headers };
+      : { 'Content-Type': 'application/json', ...(options?.headers as any) };
     
     return apiGatewayRequest<T>(path, {
       ...options,
@@ -156,8 +170,8 @@ export const apiGateway = {
       method: 'PUT',
       body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
       headers: isFormData 
-        ? { ...options?.headers }
-        : { 'Content-Type': 'application/json', ...options?.headers },
+        ? (options?.headers as any)
+        : { 'Content-Type': 'application/json', ...(options?.headers as any) },
     });
   },
 
@@ -171,8 +185,8 @@ export const apiGateway = {
       method: 'PATCH',
       body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
       headers: isFormData 
-        ? { ...options?.headers }
-        : { 'Content-Type': 'application/json', ...options?.headers },
+        ? (options?.headers as any)
+        : { 'Content-Type': 'application/json', ...(options?.headers as any) },
     });
   },
 

@@ -37,7 +37,7 @@ export function PortfolioSidebar({ onNavigate }: PortfolioSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { user } = useAuth();
-  const userId = user?.id;
+  const userId = user?.id?.toString();
 
   const { items, approvedItems, pendingReviews, healthMetrics } = usePortfolio(userId);
 
@@ -125,7 +125,7 @@ export function PortfolioSidebar({ onNavigate }: PortfolioSidebarProps) {
                   <Icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>
                   {item.badge > 0 && (
-                    <Badge variant="secondary" className="ml-auto">
+                    <Badge variant="steel" className="ml-auto">
                       {item.badge}
                     </Badge>
                   )}

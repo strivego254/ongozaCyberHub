@@ -9,6 +9,7 @@ from .views import (
     profiler_status,
     get_future_you_by_mentee,
     check_profiling_required,
+    check_tier0_completion,
     autosave_response,
     update_section_progress,
     complete_section,
@@ -20,6 +21,7 @@ from .views import (
 app_name = 'profiler'
 
 urlpatterns = [
+    path('profiler/tier0-status', check_tier0_completion, name='tier0-status'),
     path('profiler/check-required', check_profiling_required, name='check-required'),
     path('profiler/start', start_profiler, name='start'),
     path('profiler/autosave', autosave_response, name='autosave'),

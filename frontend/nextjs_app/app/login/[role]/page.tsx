@@ -7,17 +7,61 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import SSOButtons from '@/components/SSOButtons';
 import { getRedirectRoute } from '@/utils/redirect';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Shield, ArrowRight, Sparkles, Lock, Mail } from 'lucide-react';
 import type { LoginRequest } from '@/services/types';
+import { GoogleSignInButton } from './components/GoogleSignInButton';
+import { motion } from 'framer-motion';
 
 const PERSONAS = {
-  student: { name: 'Student', icon: '🎓', color: 'defender-blue', description: 'Begin your cyber defense journey' },
-  mentor: { name: 'Mentor', icon: '👨‍🏫', color: 'sahara-gold', description: 'Guide the next generation' },
-  admin: { name: 'Admin', icon: '⚡', color: 'sahara-gold', description: 'Full platform access' },
-  director: { name: 'Program Director', icon: '👔', color: 'sahara-gold', description: 'Manage programs and operations' },
-  sponsor: { name: 'Sponsor/Employer', icon: '💼', color: 'sahara-gold', description: 'Support talent development' },
-  analyst: { name: 'Analyst', icon: '📊', color: 'defender-blue', description: 'Access analytics and insights' },
-  finance: { name: 'Finance', icon: '💰', color: 'defender-blue', description: 'Manage billing and revenue operations' },
+  student: { 
+    name: 'Student', 
+    icon: '🎓', 
+    color: 'defender-blue', 
+    description: 'Begin your cyber defense journey',
+    gradient: 'from-och-defender/20 via-och-mint/10 to-och-defender/20'
+  },
+  mentor: { 
+    name: 'Mentor', 
+    icon: '👨‍🏫', 
+    color: 'sahara-gold', 
+    description: 'Guide the next generation',
+    gradient: 'from-och-gold/20 via-och-mint/10 to-och-gold/20'
+  },
+  admin: { 
+    name: 'Admin', 
+    icon: '⚡', 
+    color: 'sahara-gold', 
+    description: 'Full platform access',
+    gradient: 'from-och-gold/20 via-och-orange/10 to-och-gold/20'
+  },
+  director: { 
+    name: 'Program Director', 
+    icon: '👔', 
+    color: 'sahara-gold', 
+    description: 'Manage programs and operations',
+    gradient: 'from-och-gold/20 via-och-mint/10 to-och-gold/20'
+  },
+  sponsor: { 
+    name: 'Sponsor/Employer', 
+    icon: '💼', 
+    color: 'sahara-gold', 
+    description: 'Support talent development',
+    gradient: 'from-och-gold/20 via-och-mint/10 to-och-gold/20'
+  },
+  analyst: { 
+    name: 'Analyst', 
+    icon: '📊', 
+    color: 'defender-blue', 
+    description: 'Access analytics and insights',
+    gradient: 'from-och-defender/20 via-och-mint/10 to-och-defender/20'
+  },
+  finance: { 
+    name: 'Finance', 
+    icon: '💰', 
+    color: 'defender-blue', 
+    description: 'Manage billing and revenue operations',
+    gradient: 'from-och-defender/20 via-och-mint/10 to-och-defender/20'
+  },
 };
 
 const VALID_ROLES = Object.keys(PERSONAS);
@@ -26,15 +70,12 @@ function LoginForm() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  // Get role from URL params - this will update when URL changes
   const roleParam = params?.role as string;
   const urlRole = roleParam && VALID_ROLES.includes(roleParam) ? roleParam : 'student';
   
-  // Use state to track current role for immediate UI updates
   const [currentRole, setCurrentRole] = useState(urlRole);
   const role = currentRole;
   
-  // Update state when URL param changes
   useEffect(() => {
     if (urlRole !== currentRole) {
       setCurrentRole(urlRole);
@@ -57,7 +98,6 @@ function LoginForm() {
   const hasRedirectedRef = useRef(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Load saved email from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedEmail = localStorage.getItem('remembered_email');
@@ -75,34 +115,17 @@ function LoginForm() {
     }
   }, [role, router]);
 
-  // Redirect if already authenticated (but only if not currently logging in)
-  // IMPORTANT: Only redirect authenticated users to their dashboard, never to another login page
   useEffect(() => {
-    // Prevent multiple redirects
     if (hasRedirectedRef.current) return;
-    
-    // Don't redirect if we're in the middle of logging in or redirecting
     if (isLoggingIn || isRedirecting) return;
-    
-    // Wait for auth state to be determined
     if (isLoading) return;
     
-    // Only redirect if we're already authenticated and have a user
-    // This prevents redirect loops when user is not authenticated
-    // Allow users to stay on any login page they choose, even if authenticated
-    // They can manually log out or switch accounts if needed
     if (isAuthenticated && user) {
-      // Only auto-redirect if there's a redirect parameter pointing to a dashboard
-      // Otherwise, let users stay on the login page they chose
       const redirectTo = searchParams.get('redirect');
-      
       if (redirectTo && redirectTo.startsWith('/dashboard')) {
         hasRedirectedRef.current = true;
-        console.log('🔄 Redirecting authenticated user to requested dashboard:', redirectTo);
         router.push(redirectTo);
       }
-      // If no redirect parameter, don't auto-redirect - let user stay on chosen login page
-      // This allows users to switch accounts or log out if needed
     }
   }, [isAuthenticated, user, isLoading, isLoggingIn, isRedirecting, router, searchParams]);
 
@@ -115,17 +138,14 @@ function LoginForm() {
     setIsRedirecting(false);
 
     try {
-      // Save email to localStorage if "Remember Me" is checked
       if (rememberMe && typeof window !== 'undefined') {
         localStorage.setItem('remembered_email', formData.email);
         localStorage.setItem('remember_me', 'true');
       } else if (typeof window !== 'undefined') {
-        // Clear saved email if "Remember Me" is unchecked
         localStorage.removeItem('remembered_email');
         localStorage.removeItem('remember_me');
       }
 
-      // Perform login - this will update auth state and return user with roles
       const result = await login(formData);
       
       if (!result || !result.user) {
@@ -138,84 +158,47 @@ function LoginForm() {
         throw new Error('Authentication token not found');
       }
 
-      // Ensure token is in localStorage
       localStorage.setItem('access_token', token);
-      
-      // Cookie is already set by the API route (/api/auth/login)
-      // No need to set it manually - the browser handles it automatically
 
-      // Check if profiling is required (mandatory Tier 0 gateway)
-      // For students/mentees, ALWAYS check FastAPI profiling first
       const userRoles = result?.user?.roles || []
       const isStudent = userRoles.some((r: any) => {
         const roleName = typeof r === 'string' ? r : (r?.role || r?.name || '').toLowerCase()
         return roleName === 'student' || roleName === 'mentee'
       })
 
-      // For students, always check FastAPI profiling status (even if Django says not required)
       if (isStudent) {
         try {
           const { fastapiClient } = await import('@/services/fastapiClient')
-          console.log('🔍 Checking FastAPI profiling status for student...')
-          
-          // Ensure token is available for FastAPI requests
-          const accessToken = result.access_token || localStorage.getItem('access_token')
-          if (!accessToken) {
-            console.warn('⚠️ No access token available for FastAPI check')
-          }
-          
           const fastapiStatus = await fastapiClient.profiling.checkStatus()
-          console.log('📊 FastAPI profiling status:', fastapiStatus)
           
-            if (!fastapiStatus.completed) {
-              console.log('🚀 FastAPI profiling not completed - redirecting to AI profiler');
-              setIsRedirecting(true)
-              hasRedirectedRef.current = true
-              // Use window.location for reliable redirect during login flow
-              window.location.href = '/onboarding/ai-profiler'
-              return
-            } else {
-            console.log('✅ FastAPI profiling already completed, session_id:', fastapiStatus.session_id)
-            // Profiling completed in FastAPI - verify Django sync
-            // If not synced, sync will happen on dashboard access or can continue
-            // Continue to dashboard
-          }
-        } catch (fastapiError: any) {
-          console.error('❌ Failed to check FastAPI profiling status:', fastapiError)
-          // If FastAPI check fails, check Django status as fallback
-          if (result.profiling_required) {
-            console.warn('⚠️ FastAPI unavailable, falling back to Django profiling check')
+          if (!fastapiStatus.completed) {
             setIsRedirecting(true)
             hasRedirectedRef.current = true
             window.location.href = '/onboarding/ai-profiler'
             return
           }
-          // If Django says not required and FastAPI is down, continue to dashboard
-          // This allows access if FastAPI is temporarily unavailable
+        } catch (fastapiError: any) {
+          if ((result as any)?.profiling_required) {
+            setIsRedirecting(true)
+            hasRedirectedRef.current = true
+            window.location.href = '/onboarding/ai-profiler'
+            return
+          }
         }
-      } else if (result.profiling_required) {
-        // Non-student users use Django profiling
-        console.log('✅ Django profiling required for non-student user');
+      } else if ((result as any)?.profiling_required) {
         setIsRedirecting(true)
         hasRedirectedRef.current = true
         router.push('/profiling')
         return
       }
 
-      // Determine redirect route
       const redirectTo = searchParams.get('redirect');
-      let route: string = '/dashboard/student'; // Default fallback route
+      let route: string = '/dashboard/student';
 
-      // Wait for auth state to fully update and roles to be loaded
-      // The login function already fetches full user profile from /auth/me
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Reload user to ensure we have the latest data with roles
-      // The login function should have already updated the auth state, but we'll verify
       let updatedUser = result?.user || user;
       
-      // Try to get the latest user from auth state (which should have roles from /auth/me)
-      // Wait a bit more if user is not yet available
       let retries = 0;
       while ((!updatedUser || !updatedUser.roles || updatedUser.roles.length === 0) && retries < 5) {
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -223,38 +206,27 @@ function LoginForm() {
         retries++;
       }
       
-      console.log('Current user for redirect:', updatedUser);
-      console.log('User roles:', updatedUser?.roles);
-      
-      // Fallback: Try to get dashboard route from cookie if user roles aren't available
       let dashboardFromCookie: string | null = null;
       if (typeof document !== 'undefined') {
         const cookies = document.cookie.split(';');
         const dashboardCookie = cookies.find(c => c.trim().startsWith('och_dashboard='));
         if (dashboardCookie) {
           dashboardFromCookie = dashboardCookie.split('=')[1]?.trim() || null;
-          console.log('📦 Dashboard route from cookie:', dashboardFromCookie);
         }
       }
       
-      // If there's a specific redirect parameter, use it (but only if it's a dashboard route)
       if (redirectTo && redirectTo.startsWith('/dashboard')) {
         route = redirectTo;
-        console.log('📍 Using redirect parameter:', route);
       } else {
         if (!updatedUser || !updatedUser.roles || updatedUser.roles.length === 0) {
-          console.warn('⚠️ No user roles available, using cookie fallback');
           if (dashboardFromCookie) {
             route = dashboardFromCookie;
-            console.log('✅ Using dashboard route from cookie:', route);
           } else {
-            console.error('❌ No user available and no cookie fallback, defaulting to student dashboard');
             route = '/dashboard/student';
           }
         } else {
           const userRoles = updatedUser.roles || [];
           
-          // If logging in through director login, verify role
           if (role === 'director') {
             const isAdmin = userRoles.some((ur: any) => {
               const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
@@ -315,22 +287,16 @@ function LoginForm() {
             }
           }
 
-          // CRITICAL: Check for admin role first
           const isAdmin = userRoles.some((ur: any) => {
             const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
             return roleName?.toLowerCase().trim() === 'admin'
           })
           
           if (isAdmin) {
-            console.log('✅ Admin user detected - redirecting to /dashboard/admin')
             route = '/dashboard/admin'
           } else {
-            // Use centralized redirect utility for other roles
             route = getRedirectRoute(updatedUser);
-            console.log('✅ Login redirect route determined (non-admin):', route);
-            console.log('User roles used for redirect:', userRoles);
             
-            // Special handling for program_director - ensure it goes to director dashboard
             const isProgramDirector = userRoles.some((ur: any) => {
               const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
               const normalized = roleName?.toLowerCase().trim()
@@ -338,15 +304,9 @@ function LoginForm() {
             })
             
             if (isProgramDirector) {
-              if (route !== '/dashboard/director') {
-                console.log('✅ Program Director detected - forcing redirect to /dashboard/director (was:', route, ')')
-                route = '/dashboard/director'
-              } else {
-                console.log('✅ Program Director detected - already redirecting to /dashboard/director')
-              }
+              route = '/dashboard/director'
             }
             
-            // Special handling for finance - ensure it goes to finance dashboard
             const isFinance = userRoles.some((ur: any) => {
               const roleName = typeof ur === 'string' ? ur : (ur?.role || ur?.name || ur?.role_display_name || '')
               const normalized = roleName?.toLowerCase().trim()
@@ -354,39 +314,19 @@ function LoginForm() {
             })
             
             if (isFinance) {
-              if (route !== '/dashboard/finance') {
-                console.log('✅ Finance role detected - forcing redirect to /dashboard/finance (was:', route, ')')
-                route = '/dashboard/finance'
-              } else {
-                console.log('✅ Finance role detected - already redirecting to /dashboard/finance')
-              }
+              route = '/dashboard/finance'
             }
           }
         }
       }
 
-      // Validate route
       if (!route || !route.startsWith('/dashboard')) {
-        route = '/dashboard/student'; // Safe fallback
+        route = '/dashboard/student';
       }
 
-      console.log('✅ Login successful, redirecting to:', route);
-      
-      // Mark as redirecting and prevent useEffect from interfering
       setIsRedirecting(true);
       hasRedirectedRef.current = true;
-
-      // Additional delay to ensure auth state is fully updated and cookies are set
-      // This gives time for the HttpOnly cookies to be set by the API route
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('🚀 Redirecting to:', route);
-      
-      // Use window.location.href for a full page reload to ensure:
-      // 1. Cookies are properly set and visible to middleware
-      // 2. Middleware can properly redirect based on cookies
-      // 3. The page fully reloads with the new authentication state
-      // This is more reliable than router.replace() after login
       window.location.href = route;
 
     } catch (err: any) {
@@ -415,222 +355,311 @@ function LoginForm() {
   };
 
   const switchRole = (newRole: string) => {
-    // Don't switch if already on that role
     if (newRole === currentRole) {
       return;
     }
     
-    // Update state immediately for instant UI feedback
     setCurrentRole(newRole);
-    
-    // Preserve redirect parameter if it exists
     const redirectTo = searchParams.get('redirect');
     let newUrl = `/login/${newRole}`;
     if (redirectTo) {
       newUrl += `?redirect=${encodeURIComponent(redirectTo)}`;
     }
-    
-    // Update URL - use replace to avoid adding to history
     router.replace(newUrl);
   };
 
   return (
-    <div className="min-h-screen bg-och-midnight flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md animate-fadeIn">
+    <div className="min-h-screen bg-gradient-to-br from-och-midnight via-slate-950 to-och-midnight flex items-center justify-center px-4 py-8 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className={`absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br ${currentPersona.gradient} rounded-full blur-3xl opacity-20 animate-pulse`} />
+        <div className={`absolute bottom-0 right-1/4 w-96 h-96 bg-gradient-to-br ${currentPersona.gradient} rounded-full blur-3xl opacity-20 animate-pulse delay-1000`} />
+      </div>
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3 drop-shadow-glow">🛡️</div>
-          <h1 className="text-3xl font-bold text-white tracking-tight mb-1">
-            Ongoza CyberHub
-          </h1>
+      <div className="w-full max-w-5xl relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="grid md:grid-cols-2 gap-8 items-center"
+        >
+          {/* Left Side - Hero Section */}
+          <div className="hidden md:block space-y-8">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-6"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-och-defender to-och-mint/20 rounded-xl">
+                  <Shield className="w-8 h-8 text-och-mint" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-black text-white tracking-tight">
+                    Ongoza CyberHub
+                  </h1>
+                  <p className="text-och-steel text-sm">Elite Cybersecurity Training</p>
+                </div>
+              </div>
 
-          <div className="bg-gradient-to-r from-defender-blue/20 to-cyber-mint/20 border border-steel-grey px-4 py-2 rounded-lg inline-flex items-center gap-2">
-            <span className="text-xl">{currentPersona.icon}</span>
-            <span className="text-body-m text-steel-grey">
-              {currentPersona.name} Portal
-            </span>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-och-defender/10 to-och-mint/5 border border-och-defender/20 rounded-xl">
+                  <div className="p-2 bg-och-defender/20 rounded-lg">
+                    <Sparkles className="w-5 h-5 text-och-mint" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-semibold">AI-Powered Learning</h3>
+                    <p className="text-och-steel text-sm">Personalized pathways matched to your goals</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-och-defender/10 to-och-mint/5 border border-och-defender/20 rounded-xl">
+                  <div className="p-2 bg-och-mint/20 rounded-lg">
+                    <Lock className="w-5 h-5 text-och-mint" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-semibold">Real-World Missions</h3>
+                    <p className="text-och-steel text-sm">Hands-on experience with industry tools</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-och-defender/10 to-och-mint/5 border border-och-defender/20 rounded-xl">
+                  <div className="p-2 bg-och-gold/20 rounded-lg">
+                    <ArrowRight className="w-5 h-5 text-och-gold" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-semibold">Career Ready</h3>
+                    <p className="text-och-steel text-sm">Build your portfolio and land your dream role</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
 
-          <p className="text-body-s text-steel-grey mt-2 opacity-80">
-            {currentPersona.description}
-          </p>
-        </div>
-
-        {/* Auth Card */}
-        <Card gradient="defender" glow className="p-8 shadow-xl border border-defender-blue/40 rounded-2xl">
-
-          <h2 className="text-h2 text-white mb-6 text-center">Sign In</h2>
-
-          {/* Error */}
-          {error && (
-            <div
-              className="bg-signal-orange/25 border border-signal-orange text-white px-4 py-3 rounded-md text-sm mb-5 animate-fadeIn"
-              role="alert"
-            >
-              {error}
-            </div>
-          )}
-
-          {/* Success/Redirecting Message */}
-          {isRedirecting && !error && (
-            <div
-              className="bg-cyber-mint/25 border border-cyber-mint text-white px-4 py-3 rounded-md text-sm mb-5 animate-fadeIn"
-              role="status"
-            >
-              <div className="flex items-center gap-2">
-                <div className="animate-spin h-4 w-4 border-2 border-cyber-mint border-t-transparent rounded-full"></div>
-                <span>Login successful! Redirecting to your dashboard...</span>
+          {/* Right Side - Login Form */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="w-full"
+          >
+            <Card className="p-8 shadow-2xl border border-och-defender/30 bg-och-midnight/95 backdrop-blur-sm">
+              {/* Mobile Header */}
+              <div className="md:hidden text-center mb-6">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <div className="p-2 bg-gradient-to-br from-och-defender to-och-mint/20 rounded-lg">
+                    <Shield className="w-6 h-6 text-och-mint" />
+                  </div>
+                  <h1 className="text-2xl font-black text-white">Ongoza CyberHub</h1>
+                </div>
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r ${currentPersona.gradient} border border-och-steel/30`}>
+                  <span className="text-lg">{currentPersona.icon}</span>
+                  <span className="text-sm font-medium text-och-steel">{currentPersona.name} Portal</span>
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="email"
-                className="text-sm font-medium text-steel-grey"
-              >
-                Email Address
-              </label>
+              {/* Desktop Role Badge */}
+              <div className="hidden md:flex items-center justify-between mb-6">
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r ${currentPersona.gradient} border border-och-steel/30`}>
+                  <span className="text-lg">{currentPersona.icon}</span>
+                  <span className="text-sm font-medium text-och-steel">{currentPersona.name} Portal</span>
+                </div>
+              </div>
 
-              <input
-                id="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                className="input-field px-4 py-3 text-base rounded-md bg-och-midnight border border-steel-grey focus:border-cyber-mint focus:ring-cyber-mint/30 transition-all"
-                placeholder="defender@example.com"
-              />
-            </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Welcome Back</h2>
+              <p className="text-och-steel text-sm mb-6">Sign in to continue your cybersecurity journey</p>
 
-            {/* Password */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="password"
-                className="text-sm font-medium text-steel-grey"
-              >
-                Password
-              </label>
-
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  className="input-field px-4 py-3 pr-12 text-base rounded-md bg-och-midnight border border-steel-grey focus:border-cyber-mint focus:ring-cyber-mint/30 transition-all w-full"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-steel-grey hover:text-cyber-mint transition-colors focus:outline-none focus:ring-2 focus:ring-cyber-mint/30 rounded p-1"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+              {/* Error Message */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-5 p-4 bg-och-orange/10 border border-och-orange/30 rounded-lg"
+                  role="alert"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
+                  <p className="text-och-orange text-sm flex items-center gap-2">
+                    <span className="font-semibold">⚠️</span>
+                    {error}
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Success/Redirecting Message */}
+              {isRedirecting && !error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-5 p-4 bg-och-mint/10 border border-och-mint/30 rounded-lg"
+                  role="status"
+                >
+                  <div className="flex items-center gap-2 text-och-mint text-sm">
+                    <div className="animate-spin h-4 w-4 border-2 border-och-mint border-t-transparent rounded-full"></div>
+                    <span>Login successful! Redirecting to your dashboard...</span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Google Sign-In Button */}
+              <div className="mb-6">
+                <GoogleSignInButton role={role} />
+              </div>
+
+              {/* Divider */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-och-steel/20"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-3 bg-och-midnight text-och-steel">or continue with email</span>
+                </div>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Email */}
+                <div className="space-y-2">
+                  <label
+                    htmlFor="email"
+                    className="text-sm font-medium text-och-steel flex items-center gap-2"
+                  >
+                    <Mail className="w-4 h-4" />
+                    Email Address
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    className="w-full px-4 py-3 rounded-lg bg-och-midnight border border-och-steel/30 focus:border-och-mint focus:ring-2 focus:ring-och-mint/20 transition-all text-white placeholder-och-steel/50"
+                    placeholder="your.email@example.com"
+                  />
+                </div>
+
+                {/* Password */}
+                <div className="space-y-2">
+                  <label
+                    htmlFor="password"
+                    className="text-sm font-medium text-och-steel flex items-center gap-2"
+                  >
+                    <Lock className="w-4 h-4" />
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      className="w-full px-4 py-3 pr-12 rounded-lg bg-och-midnight border border-och-steel/30 focus:border-och-mint focus:ring-2 focus:ring-och-mint/20 transition-all text-white placeholder-och-steel/50"
+                      placeholder="Enter your password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-och-steel hover:text-och-mint transition-colors p-1"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Remember Me & Forgot Password */}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-och-steel/30 bg-och-midnight text-och-mint focus:ring-och-mint focus:ring-offset-0 focus:ring-2 cursor-pointer"
+                    />
+                    <span className="text-sm text-och-steel group-hover:text-och-mint transition-colors">
+                      Remember me
+                    </span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push('/forgot-password')}
+                    className="text-sm text-och-mint hover:text-och-mint/80 transition-colors font-medium"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={isLoading || isLoggingIn || isRedirecting}
+                  variant="defender"
+                  className="w-full py-3 text-base font-semibold rounded-lg shadow-lg hover:shadow-och-defender/20 transition-all"
+                >
+                  {isRedirecting ? (
+                    <span className="flex items-center gap-2">
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      Redirecting...
+                    </span>
+                  ) : isLoggingIn ? (
+                    <span className="flex items-center gap-2">
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      Signing in...
+                    </span>
                   ) : (
-                    <Eye className="w-5 h-5" />
+                    <span className="flex items-center justify-center gap-2">
+                      Sign In
+                      <ArrowRight className="w-4 h-4" />
+                    </span>
                   )}
-                </button>
-              </div>
-            </div>
+                </Button>
+              </form>
 
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-steel-grey bg-och-midnight text-cyber-mint focus:ring-cyber-mint focus:ring-offset-0 focus:ring-2 cursor-pointer"
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="ml-2 text-sm text-steel-grey cursor-pointer"
+              {/* Sign Up Link */}
+              <div className="mt-6 pt-6 border-t border-och-steel/20">
+                <p className="text-center text-sm text-och-steel mb-3">
+                  Don't have an account?
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full py-3 text-base rounded-lg border-och-steel/30 hover:border-och-mint hover:text-och-mint transition-all"
+                  onClick={() => router.push(`/signup/${role}`)}
                 >
-                  Remember me
-                </label>
+                  Create Account
+                </Button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => router.push('/forgot-password')}
-                className="text-sm text-cyber-mint hover:text-cyber-mint/80 transition-colors"
-              >
-                Forgot Password?
-              </button>
-            </div>
-
-            {/* CTA */}
-            <Button
-              type="submit"
-              disabled={isLoading || isLoggingIn || isRedirecting}
-              variant="defender"
-              className="w-full py-3 text-base font-semibold rounded-md"
-            >
-              {isRedirecting ? 'Redirecting...' : isLoggingIn ? 'Signing in...' : isLoading ? 'Loading...' : 'Sign In'}
-            </Button>
-          </form>
-
-          {/* SSO */}
-          <div className="mt-6">
-            <SSOButtons
-              mode="login"
-              onSuccess={() => {
-                router.replace('/dashboard')
-                router.refresh()
-              }}
-              onError={(error) => setError(error)}
-            />
-          </div>
-
-          {/* Sign Up */}
-          <div className="mt-8 pt-6 border-t border-steel-grey/50">
-            <p className="text-center text-sm text-steel-grey mb-3">
-              Don’t have an account?
-            </p>
-
-            <Button
-              variant="outline"
-              className="w-full py-3 text-base rounded-md"
-              onClick={() => router.push(`/signup/${role}`)}
-            >
-              Sign Up
-            </Button>
-          </div>
-        </Card>
-
-        {/* Role Switching */}
-        <div className="mt-6 text-center">
-          <p className="text-body-s text-steel-grey mb-3">Switch Role:</p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {Object.entries(PERSONAS).map(([key, { name, icon }]) => (
-              <button
-                key={key}
-                onClick={() => switchRole(key)}
-                className={`px-3 py-1.5 text-body-s border rounded-md transition-all ${
-                  role === key
-                    ? 'border-cyber-mint text-cyber-mint bg-cyber-mint/10'
-                    : 'border-steel-grey text-steel-grey hover:border-cyber-mint hover:text-cyber-mint'
-                }`}
-              >
-                {icon} {name}
-              </button>
-            ))}
-          </div>
-        </div>
-
+              {/* Role Switching - Compact */}
+              <div className="mt-6 pt-6 border-t border-och-steel/20">
+                <p className="text-xs text-och-steel/70 mb-3 text-center">Switch Role:</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {Object.entries(PERSONAS).map(([key, { name, icon }]) => (
+                    <button
+                      key={key}
+                      onClick={() => switchRole(key)}
+                      className={`px-3 py-1.5 text-xs border rounded-lg transition-all ${
+                        role === key
+                          ? 'border-och-mint text-och-mint bg-och-mint/10 shadow-lg shadow-och-mint/20'
+                          : 'border-och-steel/30 text-och-steel hover:border-och-mint/50 hover:text-och-mint/80 bg-och-midnight'
+                      }`}
+                    >
+                      {icon} {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );

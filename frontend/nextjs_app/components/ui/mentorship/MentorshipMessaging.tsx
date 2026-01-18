@@ -40,7 +40,7 @@ export function MentorshipMessaging() {
       if (!user?.id) return
 
       try {
-        const response = await apiGateway.get('/mentorship/assignment')
+        const response = await apiGateway.get<any>('/mentorship/assignment')
         console.log('Loaded assignment for student:', response)
         if (response?.id) {
           setAssignment({
@@ -75,12 +75,13 @@ export function MentorshipMessaging() {
       if (Array.isArray(response)) {
         messages = response
       } else if (response && typeof response === 'object' && 'messages' in response) {
-        messages = response.messages || []
-        if (response.assignment_id && response.assignment_id !== assignment.id) {
-          newAssignmentId = response.assignment_id
+        const resp = response as any
+        messages = resp.messages || []
+        if (resp.assignment_id && resp.assignment_id !== assignment.id) {
+          newAssignmentId = resp.assignment_id
           console.warn(`⚠️ Assignment ID changed from ${assignment.id} to ${newAssignmentId}. Updating...`)
           // Update assignment state with correct ID
-          setAssignment(prev => prev ? { ...prev, id: newAssignmentId! } : null)
+          setAssignment(prev => prev ? { ...prev, id: newAssignmentId as string } : null)
         }
       }
       
@@ -89,7 +90,7 @@ export function MentorshipMessaging() {
       setMessages(messages)
       
       // Count unread messages
-      const unreadMessages = data.filter(m => 
+      const unreadMessages = messages.filter(m => 
         !m.is_read && m.recipient.id === user?.id?.toString()
       )
       setUnreadCount(unreadMessages.length)
@@ -157,10 +158,10 @@ export function MentorshipMessaging() {
       
       // Check if assignment_id changed in response
       if (response && typeof response === 'object' && 'assignment_id' in response) {
-        const newAssignmentId = response.assignment_id
+        const newAssignmentId = (response as any).assignment_id
         if (newAssignmentId && newAssignmentId !== assignment.id) {
           console.warn(`⚠️ Assignment ID changed from ${assignment.id} to ${newAssignmentId} after sending message. Updating...`)
-          setAssignment(prev => prev ? { ...prev, id: newAssignmentId } : null)
+          setAssignment(prev => prev ? { ...prev, id: newAssignmentId as string } : null)
         }
       }
       

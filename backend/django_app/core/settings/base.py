@@ -11,24 +11,30 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Load environment variables from .env file
 # Priority: 1) Project root, 2) backend/django_app (legacy), 3) backend (legacy)
-PROJECT_ROOT = BASE_DIR.parent.parent  # /home/caleb/kiptoo/striveGo/och/ongozaCyberHub
+# NOTE: In Docker, environment variables are already set - don't override them
+PROJECT_ROOT = BASE_DIR.parent.parent  # /home/caleb/kiptoo/och/ongozaCyberHub
+
+# Check if running in Docker (don't override env vars if they're already set properly)
+IN_DOCKER = os.environ.get('DB_HOST') not in ['localhost', '127.0.0.1', None]
 
 # Try loading from project root first (primary location)
 root_env = PROJECT_ROOT / '.env'
-if root_env.exists():
+if root_env.exists() and not IN_DOCKER:
     load_dotenv(root_env, override=True)
     print(f"✅ Loaded .env from project root: {root_env}")
-else:
+elif not IN_DOCKER:
     # Fallback to legacy locations for backward compatibility
     env_path = BASE_DIR / '.env'
     if env_path.exists():
-        load_dotenv(env_path)
+        load_dotenv(env_path, override=True)
         print(f"⚠️ Loaded .env from legacy location: {env_path}")
     else:
         parent_env = BASE_DIR.parent / '.env'
         if parent_env.exists():
-            load_dotenv(parent_env)
+            load_dotenv(parent_env, override=True)
             print(f"⚠️ Loaded .env from legacy location: {parent_env}")
+else:
+    print(f"🐳 Running in Docker - using container environment variables")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')
@@ -61,6 +67,7 @@ INSTALLED_APPS = [
     'student_dashboard',
     'mentorship',
     'profiler',
+    'foundations',
     'coaching',
     'curriculum',
     'recipes',
@@ -179,11 +186,24 @@ REST_FRAMEWORK = {
 }
 
 # JWT Settings
+# Use JWT_SECRET_KEY from environment, fallback to SECRET_KEY for backward compatibility
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
+JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
+
+# Log JWT configuration on startup (for debugging)
+if JWT_SECRET_KEY != SECRET_KEY:
+    print(f"✅ Using JWT_SECRET_KEY from environment (length: {len(JWT_SECRET_KEY)})")
+else:
+    print(f"⚠️ JWT_SECRET_KEY not set, using SECRET_KEY (length: {len(SECRET_KEY)})")
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+    'SIGNING_KEY': JWT_SECRET_KEY,  # Use dedicated JWT secret key (rest_framework_simplejwt will use this)
+    'ALGORITHM': JWT_ALGORITHM,
+    'VERIFYING_KEY': None,  # Use SIGNING_KEY for verification too
 }
 
 # CORS Settings

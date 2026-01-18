@@ -152,11 +152,11 @@ export function StudentProgressView({
         <Card className="glass-card p-6">
           <h2 className="text-xl font-bold text-white mb-4">TalentScope Overview</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {talentscopeData.readiness_score && (
+            {talentscopeData.core_readiness_score !== undefined && (
               <div>
                 <p className="text-xs text-och-steel mb-1">Readiness Score</p>
                 <p className="text-2xl font-bold text-och-mint">
-                  {talentscopeData.readiness_score}%
+                  {talentscopeData.core_readiness_score}%
                 </p>
               </div>
             )}

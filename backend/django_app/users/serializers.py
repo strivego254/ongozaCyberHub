@@ -19,6 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
     roles = serializers.SerializerMethodField()
     consent_scopes = serializers.SerializerMethodField()
     entitlements = serializers.SerializerMethodField()
+    recommended_track = serializers.SerializerMethodField()
     
     class Meta:
         model = User
@@ -51,6 +52,14 @@ class UserSerializer(serializers.ModelSerializer):
             'preferred_learning_style',
             'career_goals',
             'cyber_exposure_level',
+            # Profiling completion tracking (Tier 0)
+            'profiling_complete',
+            'profiling_completed_at',
+            'profiling_session_id',
+            'recommended_track',
+            # Foundations completion tracking (Tier 1)
+            'foundations_complete',
+            'foundations_completed_at',
             # Mentor fields
             'is_mentor',
             'mentor_capacity_weekly',
@@ -85,6 +94,15 @@ class UserSerializer(serializers.ModelSerializer):
             obj.entitlements.filter(granted=True, expires_at__isnull=True)
             .values_list('feature', flat=True)
         )
+    
+    def get_recommended_track(self, obj):
+        """Get recommended track from StudentDashboardCache if available."""
+        try:
+            from student_dashboard.models import StudentDashboardCache
+            cache = StudentDashboardCache.objects.get(user=obj)
+            return cache.recommended_track if cache.recommended_track else None
+        except Exception:
+            return None
 
 
 class RoleSerializer(serializers.ModelSerializer):

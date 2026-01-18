@@ -1009,6 +1009,9 @@ def register_user(request):
 @permission_classes([AllowAny])
 def verify_email(request):
     """Verify user email with token or code (OTP)"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         token = request.data.get('token')
         code = request.data.get('code')
@@ -1178,8 +1181,6 @@ def verify_email(request):
             )
 
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
         logger.error(f"Email verification error: {str(e)}")
         return Response(
             {'error': 'Verification failed. Please try again.'},

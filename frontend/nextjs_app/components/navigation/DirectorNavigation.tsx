@@ -198,7 +198,7 @@ export function DirectorNavigation() {
         }
         return null
       })
-      .filter((item): item is NavItem => item !== null)
+      .filter(Boolean) as NavItem[]
   }, [searchQuery])
 
   // Separate high priority items

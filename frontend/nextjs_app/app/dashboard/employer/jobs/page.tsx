@@ -36,7 +36,14 @@ export default function JobPostingsPage() {
       setLoading(true)
       setError(null)
       const data = await marketplaceClient.getJobPostings()
-      setJobs(data || [])
+      // Handle both array and paginated response
+      if (Array.isArray(data)) {
+        setJobs(data)
+      } else if (data && 'results' in data && Array.isArray(data.results)) {
+        setJobs(data.results)
+      } else {
+        setJobs([])
+      }
     } catch (err: any) {
       console.error('Failed to load jobs:', err)
       setError(err.message || 'Failed to load job postings')

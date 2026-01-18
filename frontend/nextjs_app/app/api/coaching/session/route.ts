@@ -410,8 +410,8 @@ Output JSON:
 }
 
 async function groqCoachingPrompt(studentState: StudentState, context: string, useSecondary: boolean = false) {
-  const groqClient = useSecondary ? groqSecondary : groqPrimary;
-  if (!groqClient) throw new Error('Groq API not configured');
+  // Note: Secondary groq models removed - parameter kept for backwards compatibility
+  if (!groqPrimary) throw new Error('Groq API not configured');
 
   const prompt = `Coach student (${studentState.track_code} Circle ${studentState.circle_level}):
 
@@ -426,7 +426,7 @@ Context: ${context}
 
 Generate coaching session with priorities and actions.`;
 
-  const response = await groqClient.chatCompletion([
+  const response = await groqPrimary.chatCompletion([
     {
       role: "system",
       content: `You are OCH Coaching OS - AI Mentor for cybersecurity students.

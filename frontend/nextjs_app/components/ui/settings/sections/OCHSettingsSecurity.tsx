@@ -109,30 +109,30 @@ export function OCHSettingsSecurity() {
   const loadProfile = async () => {
     try {
       // Use /profile endpoint which returns full UserSerializer data including email_verified
-      const data = await apiGateway.get('/profile').catch(async () => {
+      const data = await apiGateway.get<any>('/profile').catch(async () => {
         // Fallback to /auth/me if /profile fails
-        return await apiGateway.get('/auth/me');
+        return await apiGateway.get<any>('/auth/me');
       });
       
       // Backend /profile returns full serializer data with email_verified
       // Backend /auth/me returns { user: {...}, roles: [...], consent_scopes: [...], entitlements: [...] }
-      const userData = data.user || data;
+      const userData = (data as any).user || data;
       
       // Determine email verification status from multiple sources
       const emailVerified = 
-        userData.email_verified || 
-        data.email_verified || 
-        (userData.account_status === 'active' && userData.is_active) ||
-        (data.account_status === 'active' && data.is_active);
+        (userData as any).email_verified || 
+        (data as any).email_verified || 
+        ((userData as any).account_status === 'active' && (userData as any).is_active) ||
+        ((data as any).account_status === 'active' && (data as any).is_active);
       
       const profileData = {
-        id: userData.id || data.id,
-        email: userData.email || data.email || user?.email || '',
-        first_name: userData.first_name || data.first_name,
-        last_name: userData.last_name || data.last_name,
-        mfa_enabled: userData.mfa_enabled || data.mfa_enabled || false,
+        id: (userData as any).id || (data as any).id,
+        email: (userData as any).email || (data as any).email || user?.email || '',
+        first_name: (userData as any).first_name || (data as any).first_name,
+        last_name: (userData as any).last_name || (data as any).last_name,
+        mfa_enabled: (userData as any).mfa_enabled || (data as any).mfa_enabled || false,
         email_verified: emailVerified,
-        account_status: userData.account_status || data.account_status,
+        account_status: (userData as any).account_status || (data as any).account_status,
         is_active: userData.is_active !== undefined ? userData.is_active : (data.is_active !== undefined ? data.is_active : true),
       };
       

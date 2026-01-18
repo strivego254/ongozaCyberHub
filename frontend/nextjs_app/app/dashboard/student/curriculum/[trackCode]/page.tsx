@@ -5,7 +5,8 @@
  */
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurriculumProgress } from '@/hooks/useCurriculumProgress';
 import { TrackShell } from '@/components/curriculum/TrackShell';
@@ -15,6 +16,7 @@ import Link from 'next/link';
 
 export default function TrackPage() {
   const params = useParams();
+  const router = useRouter();
   const trackCode = params?.trackCode as string;
   const { user, isLoading: authLoading } = useAuth();
   
@@ -29,7 +31,14 @@ export default function TrackPage() {
     error,
     enrollInTrack,
     startModule,
-  } = useCurriculumProgress(user?.id || '', { trackCode });
+  } = useCurriculumProgress(String(user?.id || ''), { trackCode });
+
+  // Redirect to Tier 2 page if this is a Tier 2 track
+  useEffect(() => {
+    if (track && track.tier === 2) {
+      router.replace(`/dashboard/student/curriculum/${trackCode}/tier2`);
+    }
+  }, [track, trackCode, router]);
 
   // Loading state
   if (authLoading || loading) {
@@ -103,7 +112,7 @@ export default function TrackPage() {
       recentActivities={recentActivities}
       onModuleSelect={handleModuleSelect}
       onEnroll={enrollInTrack}
-      userId={user.id}
+      userId={String(user.id)}
     />
   );
 }

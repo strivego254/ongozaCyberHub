@@ -11,7 +11,8 @@ import Link from 'next/link'
 export function PortfolioCard() {
   const { user } = useAuth()
   const menteeId = user?.id?.toString()
-  const { latestItem, counts, isLoading, error, addItem } = usePortfolio(menteeId)
+  const { items, healthMetrics, isLoading, error, createItem } = usePortfolio(menteeId)
+  const latestItem = Array.isArray(items) && items.length > 0 ? items[0] : null
   const [showAddModal, setShowAddModal] = useState(false)
   const [adding, setAdding] = useState(false)
   const [formData, setFormData] = useState({
@@ -29,7 +30,7 @@ export function PortfolioCard() {
     setAdding(true)
     try {
       const skillsArray = formData.skills.split(',').map(s => s.trim()).filter(Boolean)
-      await addItem({
+      await createItem({
         title: formData.title,
         description: formData.description,
         skills: skillsArray,
@@ -79,7 +80,6 @@ export function PortfolioCard() {
             variant="defender"
             size="sm"
             onClick={() => setShowAddModal(true)}
-            disabled={!!(counts && counts.remaining_slots <= 0)}
           >
             Add Item
           </Button>
@@ -90,9 +90,9 @@ export function PortfolioCard() {
           <div className="p-4 bg-och-midnight/50 rounded-lg mb-4">
             <h3 className="font-semibold text-white mb-2">{latestItem.title}</h3>
             <p className="text-sm text-och-steel mb-3">{latestItem.description}</p>
-            {latestItem.skills.length > 0 && (
+            {Array.isArray(latestItem.skills) && latestItem.skills.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
-                {latestItem.skills.map((skill, idx) => (
+                {latestItem.skills.map((skill: string, idx: number) => (
                   <Badge key={idx} variant="defender" className="text-xs">
                     {skill}
                   </Badge>
@@ -105,7 +105,7 @@ export function PortfolioCard() {
               </Link>
             )}
             <p className="text-xs text-och-steel mt-3">
-              Added {new Date(latestItem.created_at).toLocaleDateString()}
+              Added {latestItem.created_at ? new Date(latestItem.created_at).toLocaleDateString() : 'Recently'}
             </p>
           </div>
         ) : (
@@ -115,12 +115,9 @@ export function PortfolioCard() {
         )}
 
         {/* Counts */}
-        {counts && (
+        {items.length > 0 && (
           <div className="text-sm text-och-steel">
-            Items: {counts.total_items} of {counts.allowed_items} allowed
-            {counts.remaining_slots <= 0 && (
-              <Badge variant="orange" className="ml-2">Limit Reached</Badge>
-            )}
+            Total Items: {items.length}
           </div>
         )}
       </Card>

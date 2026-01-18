@@ -170,9 +170,12 @@ export default function JobPostingsPage() {
       const apps = await marketplaceClient.getJobApplications(jobId)
       console.log('Applications API response:', apps)
       // Handle both array and paginated response
-      const applicationsList = Array.isArray(apps) 
-        ? apps 
-        : (apps?.results || apps?.data || [])
+      let applicationsList: JobApplication[] = []
+      if (Array.isArray(apps)) {
+        applicationsList = apps
+      } else if (apps && 'results' in apps && Array.isArray(apps.results)) {
+        applicationsList = apps.results
+      }
       console.log('Processed applications:', applicationsList)
       setApplications(applicationsList)
     } catch (err: any) {
@@ -393,9 +396,13 @@ export default function JobPostingsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {formData.required_skills.map((skill) => (
-                    <Badge key={skill} variant="gold" className="cursor-pointer" onClick={() => removeSkill(skill)}>
+                    <div
+                      key={skill}
+                      className="bg-och-gold/20 border border-och-gold/50 text-white px-3 py-1 rounded cursor-pointer hover:bg-och-gold/30 transition-colors"
+                      onClick={() => removeSkill(skill)}
+                    >
                       {skill} ×
-                    </Badge>
+                    </div>
                   ))}
                 </div>
               </div>

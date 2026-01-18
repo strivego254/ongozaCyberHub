@@ -53,8 +53,8 @@ export function MissionDetailView({ mentorId, mission, submission, onBack }: Mis
     if (!mission?.id) return
     setLoading(true)
     try {
-      const response = await apiGateway.get(`/missions/${mission.id}`)
-      setMissionData(response)
+      const response = await apiGateway.get<any>(`/missions/${mission.id}`)
+      setMissionData(response as Mission)
     } catch (err) {
       console.error('Failed to load mission details:', err)
     } finally {

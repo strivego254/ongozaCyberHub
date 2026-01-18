@@ -89,7 +89,7 @@ export function useMissionsIntegration(
         phase: completion.phase,
         portfolio_item_id: completion.portfolioItemId,
         badges_earned: completion.badges,
-      },
+      } as any,
     }
   }, [])
 
@@ -112,7 +112,7 @@ export function useMissionsIntegration(
         phase: advancement.newPhase,
         previous_circle: advancement.previousCircle,
         previous_phase: advancement.previousPhase,
-      },
+      } as any,
     }
   }, [])
 
@@ -129,7 +129,7 @@ export function useMissionsIntegration(
         issuer: cert.issuer,
         verification_url: cert.verificationUrl,
         portfolio_item_id: cert.portfolioItemId,
-      },
+      } as any,
     }
   }, [])
 

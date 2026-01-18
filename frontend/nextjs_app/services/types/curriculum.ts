@@ -12,6 +12,7 @@ export interface CurriculumTrack {
   name: string;
   description?: string;
   level: TrackLevel;
+  tier?: number; // Academic tier (0-9). Tier 2 = Beginner Tracks
   icon?: string;
   color?: string;
   estimated_duration_weeks?: number;

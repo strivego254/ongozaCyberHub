@@ -21,7 +21,9 @@ from .serializers import (
     UserTrackProgressSerializer, UserModuleProgressSerializer,
     UserLessonProgressSerializer, UserMissionProgressSerializer,
     CurriculumActivitySerializer, LessonProgressUpdateSerializer,
-    MissionProgressUpdateSerializer, TrackEnrollmentSerializer
+    MissionProgressUpdateSerializer, TrackEnrollmentSerializer,
+    CrossTrackSubmissionSerializer, CrossTrackSubmissionCreateSerializer,
+    CrossTrackProgramProgressSerializer
 )
 
 
@@ -77,6 +79,11 @@ class CurriculumTrackViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = super().get_queryset()
+        
+        # Order by tier and code for consistent API responses
+        # This ensures all tier 2-5 tracks appear in the API list
+        if self.action == 'list':
+            queryset = queryset.order_by('tier', 'code')
         
         if self.action == 'retrieve':
             # Prefetch modules with lessons and missions
@@ -275,18 +282,23 @@ class CurriculumModuleViewSet(viewsets.ModelViewSet):
         module = self.get_object()
         user = request.user
         
-        progress = get_object_or_404(UserModuleProgress, user=user, module=module)
+        progress, created = UserModuleProgress.objects.get_or_create(
+            user=user, 
+            module=module,
+            defaults={'status': 'completed', 'completed_at': timezone.now(), 'completion_percentage': 100}
+        )
         
-        if progress.status == 'completed':
+        if not created and progress.status == 'completed':
             return Response({
                 'status': 'already_completed',
                 'progress': UserModuleProgressSerializer(progress).data
             })
         
-        progress.status = 'completed'
-        progress.completion_percentage = 100
-        progress.completed_at = timezone.now()
-        progress.save()
+        if not created:
+            progress.status = 'completed'
+            progress.completion_percentage = 100
+            progress.completed_at = timezone.now()
+            progress.save()
         
         # Update track progress
         self._update_track_progress(user, module)
@@ -618,3 +630,615 @@ class RecentActivityView(APIView):
         
         return Response(CurriculumActivitySerializer(activities, many=True).data)
 
+
+class Tier2TrackStatusView(APIView):
+    """
+    GET /curriculum/tier2/tracks/{code}/status
+    Get Tier 2 track completion status and requirements.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, code):
+        """Get Tier 2 track completion status and requirements."""
+        user = request.user
+        track = get_object_or_404(CurriculumTrack, code=code, is_active=True)
+        
+        if track.tier != 2:
+            return Response({
+                'error': 'not_tier2',
+                'message': 'This endpoint is only for Tier 2 (Beginner) tracks'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        progress, _ = UserTrackProgress.objects.get_or_create(
+            user=user,
+            track=track
+        )
+        
+        # Check completion requirements
+        is_complete, missing = progress.check_tier2_completion(require_mentor_approval=False)
+        
+        # Get track details
+        mandatory_modules = CurriculumModule.objects.filter(
+            track=track,
+            is_required=True,
+            is_active=True
+        ).order_by('order_index')
+        
+        # Get quiz count
+        required_quizzes = Lesson.objects.filter(
+            module__track=track,
+            module__is_required=True,
+            lesson_type='quiz',
+            is_required=True
+        ).count()
+        
+        # Get mini-mission count
+        mini_missions = ModuleMission.objects.filter(
+            module__track=track,
+            module__is_required=True,
+            is_required=True
+        ).count()
+        
+        return Response({
+            'track_code': track.code,
+            'track_name': track.name,
+            'completion_percentage': float(progress.completion_percentage),
+            'is_complete': is_complete,
+            'tier2_completion_requirements_met': progress.tier2_completion_requirements_met,
+            'requirements': {
+                'mandatory_modules_total': mandatory_modules.count(),
+                'mandatory_modules_completed': UserModuleProgress.objects.filter(
+                    user=user,
+                    module__in=mandatory_modules,
+                    status='completed'
+                ).count(),
+                'quizzes_total': required_quizzes,
+                'quizzes_passed': progress.tier2_quizzes_passed,
+                'mini_missions_total': mini_missions,
+                'mini_missions_completed': progress.tier2_mini_missions_completed,
+                'reflections_submitted': progress.tier2_reflections_submitted,
+                'mentor_approval': progress.tier2_mentor_approval,
+            },
+            'missing_requirements': missing,
+            'can_progress_to_tier3': is_complete,
+        })
+
+
+class Tier2SubmitQuizView(APIView):
+    """POST /curriculum/tier2/tracks/{code}/submit-quiz - Submit quiz result"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, code):
+        """Submit quiz result and update Tier 2 tracking."""
+        user = request.user
+        track = get_object_or_404(CurriculumTrack, code=code, is_active=True, tier=2)
+        progress, _ = UserTrackProgress.objects.get_or_create(user=user, track=track)
+        
+        lesson_id = request.data.get('lesson_id')
+        score = request.data.get('score')
+        answers = request.data.get('answers', {})
+        
+        if not lesson_id or score is None:
+            return Response({
+                'error': 'missing_fields',
+                'message': 'lesson_id and score are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        lesson = get_object_or_404(Lesson, id=lesson_id, lesson_type='quiz')
+        
+        # Update lesson progress
+        lesson_progress, _ = UserLessonProgress.objects.get_or_create(
+            user=user,
+            lesson=lesson
+        )
+        
+        previous_score = lesson_progress.quiz_score
+        lesson_progress.quiz_score = float(score)
+        lesson_progress.quiz_attempts += 1
+        
+        # Mark as completed if score >= 70%
+        if float(score) >= 70:
+            lesson_progress.status = 'completed'
+            lesson_progress.completed_at = timezone.now()
+            
+            # Update Tier 2 quiz count if this is a new pass
+            if previous_score is None or previous_score < 70:
+                progress.tier2_quizzes_passed += 1
+                progress.save(update_fields=['tier2_quizzes_passed'])
+        
+        lesson_progress.save()
+        
+        # Check completion
+        is_complete, missing = progress.check_tier2_completion()
+        
+        return Response({
+            'success': True,
+            'quiz_passed': float(score) >= 70,
+            'score': float(score),
+            'tier2_quizzes_passed': progress.tier2_quizzes_passed,
+            'is_complete': is_complete,
+            'missing_requirements': missing,
+        })
+
+
+class Tier2SubmitReflectionView(APIView):
+    """POST /curriculum/tier2/tracks/{code}/submit-reflection - Submit reflection"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, code):
+        """Submit reflection and update Tier 2 tracking."""
+        user = request.user
+        track = get_object_or_404(CurriculumTrack, code=code, is_active=True, tier=2)
+        progress, _ = UserTrackProgress.objects.get_or_create(user=user, track=track)
+        
+        module_id = request.data.get('module_id')
+        reflection_text = request.data.get('reflection_text')
+        
+        if not module_id or not reflection_text:
+            return Response({
+                'error': 'missing_fields',
+                'message': 'module_id and reflection_text are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        module = get_object_or_404(CurriculumModule, id=module_id, track=track)
+        
+        # Store reflection (could be in portfolio or separate model)
+        # For now, increment counter
+        progress.tier2_reflections_submitted += 1
+        progress.save(update_fields=['tier2_reflections_submitted'])
+        
+        # Check completion
+        is_complete, missing = progress.check_tier2_completion()
+        
+        return Response({
+            'success': True,
+            'reflections_submitted': progress.tier2_reflections_submitted,
+            'is_complete': is_complete,
+            'missing_requirements': missing,
+        })
+
+
+class Tier2SubmitMiniMissionView(APIView):
+    """POST /curriculum/tier2/tracks/{code}/submit-mini-mission - Submit mini-mission"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, code):
+        """Submit mini-mission and update Tier 2 tracking."""
+        user = request.user
+        track = get_object_or_404(CurriculumTrack, code=code, is_active=True, tier=2)
+        progress, _ = UserTrackProgress.objects.get_or_create(user=user, track=track)
+        
+        module_mission_id = request.data.get('module_mission_id')
+        submission_data = request.data.get('submission_data', {})
+        
+        if not module_mission_id:
+            return Response({
+                'error': 'missing_fields',
+                'message': 'module_mission_id is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        module_mission = get_object_or_404(ModuleMission, id=module_mission_id, module__track=track)
+        
+        # Update mission progress
+        mission_progress, created = UserMissionProgress.objects.get_or_create(
+            user=user,
+            module_mission=module_mission
+        )
+        
+        was_completed = mission_progress.status == 'completed'
+        mission_progress.status = 'submitted'
+        mission_progress.submitted_at = timezone.now()
+        mission_progress.save()
+        
+        # Update Tier 2 mini-mission count if this is a new completion
+        if not was_completed:
+            progress.tier2_mini_missions_completed += 1
+            progress.save(update_fields=['tier2_mini_missions_completed'])
+        
+        # Check completion
+        is_complete, missing = progress.check_tier2_completion()
+        
+        return Response({
+            'success': True,
+            'mini_missions_completed': progress.tier2_mini_missions_completed,
+            'is_complete': is_complete,
+            'missing_requirements': missing,
+        })
+
+
+class Tier2CompleteView(APIView):
+    """POST /curriculum/tier2/tracks/{code}/complete - Complete Tier 2 and unlock Tier 3"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, code):
+        """Complete Tier 2 and unlock Tier 3."""
+        user = request.user
+        track = get_object_or_404(CurriculumTrack, code=code, is_active=True, tier=2)
+        progress, _ = UserTrackProgress.objects.get_or_create(user=user, track=track)
+        
+        # Verify all requirements are met
+        is_complete, missing = progress.check_tier2_completion()
+        
+        if not is_complete:
+            return Response({
+                'error': 'requirements_not_met',
+                'message': 'All Tier 2 requirements must be met before completion',
+                'missing_requirements': missing
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Mark track as completed
+        progress.completed_at = timezone.now()
+        progress.completion_percentage = 100
+        progress.save()
+        
+        # Log activity
+        CurriculumActivity.objects.create(
+            user=user,
+            activity_type='tier2_completed',
+            track=track,
+            points_awarded=500,
+            metadata={'tier': 2, 'track': track.code}
+        )
+        
+        return Response({
+            'success': True,
+            'message': 'Tier 2 (Beginner Track) completed successfully. You can now access Tier 3 (Intermediate Tracks).',
+            'completed_at': progress.completed_at.isoformat(),
+            'tier3_unlocked': True,
+        })
+    
+    def _submit_quiz(self, request, progress):
+        """Submit quiz result and update Tier 2 tracking."""
+        lesson_id = request.data.get('lesson_id')
+        score = request.data.get('score')
+        answers = request.data.get('answers', {})
+        
+        if not lesson_id or score is None:
+            return Response({
+                'error': 'missing_fields',
+                'message': 'lesson_id and score are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        lesson = get_object_or_404(Lesson, id=lesson_id, lesson_type='quiz')
+        
+        # Update lesson progress
+        lesson_progress, _ = UserLessonProgress.objects.get_or_create(
+            user=request.user,
+            lesson=lesson
+        )
+        
+        lesson_progress.quiz_score = float(score)
+        lesson_progress.quiz_attempts += 1
+        
+        # Mark as completed if score >= 70%
+        if float(score) >= 70:
+            lesson_progress.status = 'completed'
+            lesson_progress.completed_at = timezone.now()
+            
+            # Update Tier 2 quiz count if this is a new pass
+            if lesson_progress.quiz_attempts == 1 or (lesson_progress.quiz_attempts > 1 and lesson_progress.quiz_score < 70):
+                progress.tier2_quizzes_passed += 1
+                progress.save(update_fields=['tier2_quizzes_passed'])
+        
+        lesson_progress.save()
+        
+        # Check completion
+        is_complete, missing = progress.check_tier2_completion()
+        
+        return Response({
+            'success': True,
+            'quiz_passed': float(score) >= 70,
+            'score': float(score),
+            'tier2_quizzes_passed': progress.tier2_quizzes_passed,
+            'is_complete': is_complete,
+            'missing_requirements': missing,
+        })
+    
+    def _submit_reflection(self, request, progress):
+        """Submit reflection and update Tier 2 tracking."""
+        module_id = request.data.get('module_id')
+        reflection_text = request.data.get('reflection_text')
+        
+        if not module_id or not reflection_text:
+            return Response({
+                'error': 'missing_fields',
+                'message': 'module_id and reflection_text are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        module = get_object_or_404(CurriculumModule, id=module_id)
+        
+        # Store reflection (could be in portfolio or separate model)
+        # For now, increment counter
+        progress.tier2_reflections_submitted += 1
+        progress.save(update_fields=['tier2_reflections_submitted'])
+        
+        # Check completion
+        is_complete, missing = progress.check_tier2_completion()
+        
+        return Response({
+            'success': True,
+            'reflections_submitted': progress.tier2_reflections_submitted,
+            'is_complete': is_complete,
+            'missing_requirements': missing,
+        })
+    
+    def _submit_mini_mission(self, request, progress):
+        """Submit mini-mission and update Tier 2 tracking."""
+        module_mission_id = request.data.get('module_mission_id')
+        submission_data = request.data.get('submission_data', {})
+        
+        if not module_mission_id:
+            return Response({
+                'error': 'missing_fields',
+                'message': 'module_mission_id is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        module_mission = get_object_or_404(ModuleMission, id=module_mission_id)
+        
+        # Update mission progress
+        mission_progress, created = UserMissionProgress.objects.get_or_create(
+            user=request.user,
+            module_mission=module_mission
+        )
+        
+        mission_progress.status = 'submitted'
+        mission_progress.submitted_at = timezone.now()
+        mission_progress.save()
+        
+        # Update Tier 2 mini-mission count if this is a new completion
+        if created or mission_progress.status != 'completed':
+            progress.tier2_mini_missions_completed += 1
+            progress.save(update_fields=['tier2_mini_missions_completed'])
+        
+        # Check completion
+        is_complete, missing = progress.check_tier2_completion()
+        
+        return Response({
+            'success': True,
+            'mini_missions_completed': progress.tier2_mini_missions_completed,
+            'is_complete': is_complete,
+            'missing_requirements': missing,
+        })
+    
+    def _complete_tier2(self, request, progress):
+        """Complete Tier 2 and unlock Tier 3."""
+        # Verify all requirements are met
+        is_complete, missing = progress.check_tier2_completion()
+        
+        if not is_complete:
+            return Response({
+                'error': 'requirements_not_met',
+                'message': 'All Tier 2 requirements must be met before completion',
+                'missing_requirements': missing
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Mark track as completed
+        progress.completed_at = timezone.now()
+        progress.status = 'completed'
+        progress.completion_percentage = 100
+        progress.save()
+        
+        # Log activity
+        CurriculumActivity.objects.create(
+            user=request.user,
+            activity_type='tier2_completed',
+            track=progress.track,
+            points_awarded=500,
+            metadata={'tier': 2, 'track': progress.track.code}
+        )
+        
+        return Response({
+            'success': True,
+            'message': 'Tier 2 (Beginner Track) completed successfully. You can now access Tier 3 (Intermediate Tracks).',
+            'completed_at': progress.completed_at.isoformat(),
+            'tier3_unlocked': True,
+        })
+
+
+
+# ============================================================================
+# TIER 6 - CROSS-TRACK PROGRAMS VIEWS
+# ============================================================================
+
+class CrossTrackProgramsView(APIView):
+    """
+    List all Tier 6 Cross-Track Programs.
+    GET /curriculum/cross-track/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get all cross-track programs (tier=6) with user progress."""
+        from .models import CrossTrackProgramProgress
+        
+        programs = CurriculumTrack.objects.filter(tier=6, is_active=True).order_by('name')
+        
+        result = []
+        for program in programs:
+            progress = CrossTrackProgramProgress.objects.filter(
+                user=request.user,
+                track=program
+            ).first()
+            
+            program_data = {
+                'id': str(program.id),
+                'code': program.code,
+                'name': program.name,
+                'description': program.description,
+                'icon': program.icon,
+                'color': program.color,
+                'module_count': program.module_count,
+                'lesson_count': program.lesson_count,
+                'progress': CrossTrackProgramProgressSerializer(progress).data if progress else None,
+            }
+            result.append(program_data)
+        
+        return Response({
+            'programs': result,
+            'total': len(result)
+        })
+
+
+class CrossTrackProgramDetailView(APIView):
+    """
+    Get details of a specific cross-track program.
+    GET /curriculum/cross-track/{code}/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, code):
+        """Get program details with modules, lessons, and progress."""
+        from .models import CrossTrackProgramProgress
+        
+        try:
+            program = CurriculumTrack.objects.get(code=code, tier=6, is_active=True)
+        except CurriculumTrack.DoesNotExist:
+            return Response({'error': 'Program not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get or create progress
+        progress, _ = CrossTrackProgramProgress.objects.get_or_create(
+            user=request.user,
+            track=program
+        )
+        
+        # Get modules with lessons
+        modules = program.modules.filter(is_active=True).order_by('order_index')
+        modules_data = []
+        for module in modules:
+            lessons = module.lessons.all().order_by('order_index')
+            modules_data.append({
+                'id': str(module.id),
+                'title': module.title,
+                'description': module.description,
+                'order_index': module.order_index,
+                'estimated_time_minutes': module.estimated_time_minutes,
+                'lesson_count': module.lesson_count,
+                'lessons': [
+                    {
+                        'id': str(lesson.id),
+                        'title': lesson.title,
+                        'description': lesson.description,
+                        'lesson_type': lesson.lesson_type,
+                        'content_url': lesson.content_url,
+                        'duration_minutes': lesson.duration_minutes,
+                        'order_index': lesson.order_index,
+                    }
+                    for lesson in lessons
+                ]
+            })
+        
+        return Response({
+            'program': CurriculumTrackDetailSerializer(program, context={'request': request}).data,
+            'modules': modules_data,
+            'progress': CrossTrackProgramProgressSerializer(progress).data,
+        })
+
+
+class CrossTrackSubmissionView(APIView):
+    """
+    Create or update cross-track program submissions.
+    POST /curriculum/cross-track/submit/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        """Create a new submission (reflection, scenario, document, quiz)."""
+        from .models import CrossTrackSubmission, CrossTrackProgramProgress
+        
+        serializer = CrossTrackSubmissionCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        data = serializer.validated_data
+        
+        # Get track
+        try:
+            track = CurriculumTrack.objects.get(id=data['track_id'], tier=6)
+        except CurriculumTrack.DoesNotExist:
+            return Response({'error': 'Cross-track program not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get module and lesson if provided
+        module = None
+        lesson = None
+        if data.get('module_id'):
+            try:
+                module = CurriculumModule.objects.get(id=data['module_id'], track=track)
+            except CurriculumModule.DoesNotExist:
+                pass
+        
+        if data.get('lesson_id'):
+            try:
+                lesson = Lesson.objects.get(id=data['lesson_id'], module=module) if module else None
+            except Lesson.DoesNotExist:
+                pass
+        
+        # Create submission
+        submission = CrossTrackSubmission.objects.create(
+            user=request.user,
+            track=track,
+            module=module,
+            lesson=lesson,
+            submission_type=data['submission_type'],
+            content=data.get('content', ''),
+            document_url=data.get('document_url', ''),
+            document_filename=data.get('document_filename', ''),
+            scenario_choice=data.get('scenario_choice', ''),
+            scenario_reasoning=data.get('scenario_reasoning', ''),
+            scenario_metadata=data.get('scenario_metadata', {}),
+            quiz_answers=data.get('quiz_answers', {}),
+            metadata=data.get('metadata', {}),
+            status='submitted',
+            submitted_at=timezone.now()
+        )
+        
+        # Update progress
+        progress, _ = CrossTrackProgramProgress.objects.get_or_create(
+            user=request.user,
+            track=track
+        )
+        progress.submissions_completed = CrossTrackSubmission.objects.filter(
+            user=request.user,
+            track=track,
+            status__in=['submitted', 'reviewed', 'approved']
+        ).count()
+        progress.last_activity_at = timezone.now()
+        progress.save()
+        
+        # Check completion
+        progress.check_completion()
+        
+        return Response({
+            'success': True,
+            'submission': CrossTrackSubmissionSerializer(submission).data,
+            'message': 'Submission created successfully'
+        }, status=status.HTTP_201_CREATED)
+
+
+class CrossTrackProgressView(APIView):
+    """
+    Get user's progress across all cross-track programs.
+    GET /curriculum/cross-track/progress/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get overall cross-track progress."""
+        from .models import CrossTrackProgramProgress
+        
+        all_progress = CrossTrackProgramProgress.objects.filter(
+            user=request.user
+        ).select_related('track')
+        
+        programs_completed = all_progress.filter(is_complete=True).count()
+        total_programs = CurriculumTrack.objects.filter(tier=6, is_active=True).count()
+        
+        return Response({
+            'total_programs': total_programs,
+            'programs_completed': programs_completed,
+            'completion_percentage': round((programs_completed / total_programs * 100) if total_programs > 0 else 0, 2),
+            'programs': [
+                CrossTrackProgramProgressSerializer(progress).data
+                for progress in all_progress
+            ],
+            'marketplace_ready': programs_completed == total_programs and total_programs > 0,
+        })

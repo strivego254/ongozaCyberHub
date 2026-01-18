@@ -117,8 +117,8 @@ function calculateAverageScore(items: any[]): number {
   if (items.length === 0) return 0;
 
   const allScores = items.flatMap((item) =>
-    Object.values(item.competencyScores || {})
-  );
+    Object.values(item.competencyScores || {}) as number[]
+  ) as number[];
   if (allScores.length === 0) return 0;
 
   return allScores.reduce((a, b) => a + b, 0) / allScores.length;

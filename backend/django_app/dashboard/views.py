@@ -185,7 +185,7 @@ def next_actions(request):
             'action_url': f'/dashboard/student/missions?mission={submission.mission.id}',
         })
     
-    habits = Habit.objects.filter(user=user, is_core=True)
+    habits = Habit.objects.filter(user=user, type='core')
     today_logged = HabitLog.objects.filter(
         user=user,
         log_date=timezone.now().date()
@@ -364,7 +364,7 @@ def dashboard_habits(request):
     """Get daily habit tracking status."""
     user = request.user
     
-    habits = Habit.objects.filter(user=user, is_core=True)
+    habits = Habit.objects.filter(user=user, type='core')
     today = timezone.now().date()
     today_logs = HabitLog.objects.filter(user=user, log_date=today)
     logged_habit_ids = set(today_logs.values_list('habit_id', flat=True))

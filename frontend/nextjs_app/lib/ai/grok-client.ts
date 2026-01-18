@@ -34,11 +34,12 @@ export class GrokClient {
 // Singleton instance
 let grokInstance: GrokClient | null = null;
 
-export function getGrokClient() {
+export function getGrokClient(): GrokClient | null {
   if (!grokInstance) {
     const apiKey = process.env.GROK_API_KEY;
     if (!apiKey) {
-      throw new Error('GROK_API_KEY environment variable is required');
+      console.warn('GROK_API_KEY environment variable not set - Grok client unavailable');
+      return null;
     }
     grokInstance = new GrokClient(apiKey);
   }

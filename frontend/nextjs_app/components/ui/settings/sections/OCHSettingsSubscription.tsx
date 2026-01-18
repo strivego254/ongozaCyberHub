@@ -41,16 +41,16 @@ export function OCHSettingsSubscription() {
     setError(null);
     
     try {
-      const data = await apiGateway.get('/subscription/status');
+      const data = await apiGateway.get<any>('/subscription/status');
       setSubscription({
-        tier: data.tier || 'free',
-        status: data.status || 'inactive',
-        enhanced_access_until: data.enhanced_access_until,
-        days_enhanced_left: data.days_enhanced_left,
-        next_payment: data.next_payment,
-        grace_period_until: data.grace_period_until,
-        can_upgrade: data.can_upgrade !== false,
-        features: data.features || [],
+        tier: (data as any).tier || 'free',
+        status: (data as any).status || 'inactive',
+        enhanced_access_until: (data as any).enhanced_access_until,
+        days_enhanced_left: (data as any).days_enhanced_left,
+        next_payment: (data as any).next_payment,
+        grace_period_until: (data as any).grace_period_until,
+        can_upgrade: (data as any).can_upgrade !== false,
+        features: (data as any).features || [],
       });
     } catch (err: any) {
       console.error('Failed to load subscription:', err);

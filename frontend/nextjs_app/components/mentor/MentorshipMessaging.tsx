@@ -46,22 +46,22 @@ export function MentorshipMessaging({ assignmentId, recipientName, onMessagesUpd
       const response = await mentorClient.getMessages(assignmentId)
       
       // Handle both array and object responses
-      let messages: MentorshipMessage[] = []
+      let loadedMessages: MentorshipMessage[] = []
       let newAssignmentId: string | null = null
       
       if (Array.isArray(response)) {
-        messages = response
+        loadedMessages = response
       } else if (response && typeof response === 'object' && 'messages' in response) {
-        messages = response.messages || []
+        loadedMessages = response.messages || []
         if (response.assignment_id && response.assignment_id !== assignmentId) {
           newAssignmentId = response.assignment_id
           console.warn(`⚠️ Assignment ID changed from ${assignmentId} to ${newAssignmentId}. Updating...`)
         }
       }
       
-      console.log('Loaded messages:', messages.length, 'for assignment:', assignmentId, newAssignmentId ? `(corrected to: ${newAssignmentId})` : '')
-      console.log('Messages data:', messages)
-      setMessages(messages)
+      console.log('Loaded messages:', loadedMessages.length, 'for assignment:', assignmentId, newAssignmentId ? `(corrected to: ${newAssignmentId})` : '')
+      console.log('Messages data:', loadedMessages)
+      setMessages(loadedMessages)
       
       // If assignment_id changed, notify parent to update
       if (newAssignmentId && onMessagesUpdated) {
@@ -70,7 +70,7 @@ export function MentorshipMessaging({ assignmentId, recipientName, onMessagesUpd
       }
       
       // Mark unread messages as read
-      const unreadMessages = data.filter(m => 
+      const unreadMessages = loadedMessages.filter(m => 
         !m.is_read && m.recipient.id === user?.id?.toString()
       )
       for (const msg of unreadMessages) {

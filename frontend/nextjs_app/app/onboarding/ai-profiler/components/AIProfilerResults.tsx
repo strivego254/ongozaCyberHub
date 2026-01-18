@@ -25,12 +25,53 @@ interface ProfilingResult {
   completed_at: string
 }
 
+interface OCHBlueprint {
+  track_recommendation: {
+    primary_track: {
+      key: string
+      name: string
+      description: string
+      score: number
+    }
+    secondary_track?: {
+      key: string
+      name: string
+    } | null
+  }
+  difficulty_level: {
+    selected: string
+    verified: boolean
+    confidence: string
+    suggested: string
+  }
+  suggested_starting_point: string
+  learning_strategy: {
+    optimal_path: string
+    foundations: string[]
+    strengths_to_leverage: string[]
+    growth_opportunities: string[]
+  }
+  value_statement: string
+  personalized_insights: {
+    learning_preferences: Record<string, any>
+    personality_traits: Record<string, any>
+    career_alignment: {
+      primary_track?: string
+      secondary_track?: string | null
+      career_readiness_score?: number
+      career_paths?: string[]
+    }
+  }
+  next_steps: string[]
+}
+
 interface AIProfilerResultsProps {
   result: ProfilingResult
+  blueprint?: OCHBlueprint | null
   onComplete: () => void
 }
 
-export default function AIProfilerResults({ result, onComplete }: AIProfilerResultsProps) {
+export default function AIProfilerResults({ result, blueprint, onComplete }: AIProfilerResultsProps) {
   const [showDetails, setShowDetails] = useState(false)
   const primaryRecommendation = result.recommendations[0]
   const otherRecommendations = result.recommendations.slice(1)
@@ -157,6 +198,114 @@ export default function AIProfilerResults({ result, onComplete }: AIProfilerResu
             {result.assessment_summary}
           </p>
         </motion.div>
+
+        {/* Blueprint / Deep Analysis */}
+        {blueprint && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7 }}
+            className="bg-white/5 rounded-xl p-6 mb-8"
+          >
+            <h3 className="text-white font-semibold mb-4 text-center">Your Personalized OCH Blueprint</h3>
+
+            {/* Level & Difficulty */}
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              <div className="text-center">
+                <div className="text-gray-400 text-xs uppercase mb-1">Level</div>
+                <div className="text-white font-bold text-lg">
+                  {blueprint.difficulty_level.selected.toUpperCase()}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {blueprint.difficulty_level.verified
+                    ? `Verified (${blueprint.difficulty_level.confidence} confidence)`
+                    : `Suggested level: ${blueprint.difficulty_level.suggested.toUpperCase()}`}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-gray-400 text-xs uppercase mb-1">Readiness</div>
+                <div className="text-white font-bold text-lg">
+                  {blueprint.personalized_insights.career_alignment.career_readiness_score ?? primaryRecommendation.score}%
+                </div>
+                <div className="text-xs text-gray-400 mt-1">Career readiness score</div>
+              </div>
+              <div className="text-center">
+                <div className="text-gray-400 text-xs uppercase mb-1">Starting Point</div>
+                <div className="text-white font-bold text-sm">
+                  {blueprint.suggested_starting_point}
+                </div>
+              </div>
+            </div>
+
+            {/* Track Insights */}
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <h4 className="text-white font-semibold mb-2">Track Insights</h4>
+                <ul className="text-gray-300 text-sm space-y-1">
+                  <li>
+                    <span className="text-och-orange mr-1">•</span>
+                    Primary track: {blueprint.track_recommendation.primary_track.name} ({blueprint.track_recommendation.primary_track.score}%)
+                  </li>
+                  {blueprint.track_recommendation.secondary_track && (
+                    <li>
+                      <span className="text-och-orange mr-1">•</span>
+                      Secondary track: {blueprint.track_recommendation.secondary_track.name}
+                    </li>
+                  )}
+                  {blueprint.learning_strategy.strengths_to_leverage.length > 0 && (
+                    <li>
+                      <span className="text-och-orange mr-1">•</span>
+                      Strengths to leverage: {blueprint.learning_strategy.strengths_to_leverage.join(', ')}
+                    </li>
+                  )}
+                  {blueprint.learning_strategy.growth_opportunities.length > 0 && (
+                    <li>
+                      <span className="text-och-orange mr-1">•</span>
+                      Growth opportunities: {blueprint.learning_strategy.growth_opportunities.join(', ')}
+                    </li>
+                  )}
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-white font-semibold mb-2">Future Career Path Alignment</h4>
+                <p className="text-gray-300 text-sm mb-2">
+                  {blueprint.learning_strategy.optimal_path}
+                </p>
+                {blueprint.personalized_insights.career_alignment.career_paths && (
+                  <ul className="text-gray-300 text-sm space-y-1">
+                    {blueprint.personalized_insights.career_alignment.career_paths.slice(0, 4).map((path, idx) => (
+                      <li key={idx}>
+                        <span className="text-och-orange mr-1">•</span>
+                        {path}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {/* Value Statement & Next Steps */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="text-white font-semibold mb-2">Your Value Statement</h4>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  {blueprint.value_statement}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-white font-semibold mb-2">Next Steps</h4>
+                <ul className="text-gray-300 text-sm space-y-1">
+                  {blueprint.next_steps.map((step, idx) => (
+                    <li key={idx}>
+                      <span className="text-och-orange mr-1">•</span>
+                      {step}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Other Recommendations */}
         {otherRecommendations.length > 0 && (

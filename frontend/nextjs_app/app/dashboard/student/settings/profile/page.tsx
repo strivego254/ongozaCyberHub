@@ -54,6 +54,14 @@ interface OnboardingChecklistItem {
   actionUrl?: string
 }
 
+interface Tier0Status {
+  tier0_complete: boolean
+  profiler_complete: boolean
+  profiler_completed_at?: string
+  foundations_complete: boolean
+  foundations_completed_at?: string
+}
+
 export default function ProfileSettingsPage() {
   const router = useRouter()
   const { user: authUser, reloadUser } = useAuth()
@@ -65,10 +73,12 @@ export default function ProfileSettingsPage() {
   const [universities, setUniversities] = useState<University[]>([])
   const [showUniversitySearch, setShowUniversitySearch] = useState(false)
   const [universitySearch, setUniversitySearch] = useState('')
+  const [tier0Status, setTier0Status] = useState<Tier0Status | null>(null)
 
   useEffect(() => {
     loadProfile()
     loadUniversities()
+    loadTier0Status()
   }, [])
 
   const loadProfile = async () => {
@@ -87,12 +97,21 @@ export default function ProfileSettingsPage() {
 
   const loadUniversities = async () => {
     try {
-      const response = await apiGateway.get('/community/universities/', {
+      const response = await apiGateway.get<any>('/community/universities/', {
         params: { page_size: 100 }
       })
-      setUniversities(Array.isArray(response.results) ? response.results : response)
+      setUniversities(Array.isArray(response?.results) ? response.results : Array.isArray(response) ? response : [])
     } catch (err) {
       console.error('Error loading universities:', err)
+    }
+  }
+
+  const loadTier0Status = async () => {
+    try {
+      const status = await djangoClient.profiler.checkTier0Status()
+      setTier0Status(status)
+    } catch (err) {
+      console.error('Error loading Tier 0 status:', err)
     }
   }
 
@@ -155,11 +174,13 @@ export default function ProfileSettingsPage() {
       },
       {
         id: 'tier0_profiler',
-        label: 'Tier 0 Profiler',
-        description: 'Complete aptitude and technical reasoning assessment',
-        completed: profile.role_specific_data?.student?.profiler_completed || false,
+        label: 'Tier 0 - Profiler & Foundations',
+        description: 'Complete AI profiler assessment AND foundations orientation to unlock Tier 1',
+        completed: tier0Status?.tier0_complete || false,
         required: true,
-        actionUrl: '/dashboard/student/profiler',
+        actionUrl: tier0Status?.profiler_complete 
+          ? '/dashboard/student/foundations' 
+          : '/dashboard/student/profiler',
       },
       {
         id: 'profile_completion',
@@ -326,6 +347,42 @@ export default function ProfileSettingsPage() {
                     )}
                   </div>
                   <p className="text-xs text-och-steel">{item.description}</p>
+                  
+                  {/* Show detailed breakdown for Tier 0 */}
+                  {item.id === 'tier0_profiler' && tier0Status && (
+                    <div className="mt-3 flex gap-3">
+                      <div className={clsx(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs",
+                        tier0Status.profiler_complete 
+                          ? "bg-green-500/10 border border-green-500/20" 
+                          : "bg-orange-500/10 border border-orange-500/20"
+                      )}>
+                        {tier0Status.profiler_complete ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                        ) : (
+                          <Clock className="w-3.5 h-3.5 text-orange-400" />
+                        )}
+                        <span className={tier0Status.profiler_complete ? "text-green-400" : "text-orange-400"}>
+                          AI Profiler {tier0Status.profiler_complete ? '✓' : 'Pending'}
+                        </span>
+                      </div>
+                      <div className={clsx(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs",
+                        tier0Status.foundations_complete 
+                          ? "bg-green-500/10 border border-green-500/20" 
+                          : "bg-orange-500/10 border border-orange-500/20"
+                      )}>
+                        {tier0Status.foundations_complete ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                        ) : (
+                          <Clock className="w-3.5 h-3.5 text-orange-400" />
+                        )}
+                        <span className={tier0Status.foundations_complete ? "text-green-400" : "text-orange-400"}>
+                          Foundations {tier0Status.foundations_complete ? '✓' : 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {!item.completed && item.actionUrl && (
                   <Button

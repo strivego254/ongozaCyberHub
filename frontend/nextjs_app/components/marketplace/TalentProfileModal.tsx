@@ -15,7 +15,7 @@ interface TalentProfileModalProps {
   onContact?: (profileId: string) => void
   isFavorited?: boolean
   isShortlisted?: boolean
-  actionLoading?: Record<string, boolean>
+  actionLoading?: Record<string, 'favorite' | 'shortlist' | 'contact_request' | null>
 }
 
 export function TalentProfileModal({
@@ -70,7 +70,6 @@ export function TalentProfileModal({
           </DialogTitle>
           <DialogDescription className="text-och-steel">
             {profile.primary_role || 'Cybersecurity Professional'}
-            {profile.mentee_country && ` • ${profile.mentee_country}`}
           </DialogDescription>
         </DialogHeader>
 
@@ -86,15 +85,6 @@ export function TalentProfileModal({
                 {profile.primary_role || 'Cybersecurity Professional'}
               </p>
             </div>
-            {profile.mentee_country && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="w-5 h-5 text-och-steel" />
-                  <span className="text-sm text-och-steel">Location</span>
-                </div>
-                <p className="text-white font-medium">{profile.mentee_country}</p>
-              </div>
-            )}
           </div>
 
           {/* Readiness Scores */}

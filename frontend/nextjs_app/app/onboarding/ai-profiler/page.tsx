@@ -15,6 +15,7 @@ interface ProfilingQuestion {
   id: string
   question: string
   category: string
+  module?: string
   options: Array<{
     value: string
     text: string
@@ -31,6 +32,28 @@ interface ProfilingSession {
     progress_percentage: number
     estimated_time_remaining: number
   }
+}
+
+type ModuleKey =
+  | 'identity_value'
+  | 'cyber_aptitude'
+  | 'technical_exposure'
+  | 'scenario_preference'
+  | 'work_style'
+  | 'difficulty_selection'
+
+interface ModuleProgress {
+  modules: Record<
+    string,
+    {
+      answered: number
+      total: number
+      completed: boolean
+    }
+  >
+  current_module: string | null
+  completed_modules: string[]
+  remaining_modules: string[]
 }
 
 interface ProfilingResult {
@@ -55,26 +78,76 @@ interface ProfilingResult {
   completed_at: string
 }
 
+interface OCHBlueprint {
+  track_recommendation: {
+    primary_track: {
+      key: string
+      name: string
+      description: string
+      score: number
+    }
+    secondary_track?: {
+      key: string
+      name: string
+    } | null
+  }
+  difficulty_level: {
+    selected: string
+    verified: boolean
+    confidence: string
+    suggested: string
+  }
+  suggested_starting_point: string
+  learning_strategy: {
+    optimal_path: string
+    foundations: string[]
+    strengths_to_leverage: string[]
+    growth_opportunities: string[]
+  }
+  value_statement: string
+  personalized_insights: {
+    learning_preferences: Record<string, any>
+    personality_traits: Record<string, any>
+    career_alignment: {
+      primary_track?: string
+      secondary_track?: string | null
+      career_readiness_score?: number
+      career_paths?: string[]
+    }
+  }
+  next_steps: string[]
+}
+
 export default function AIProfilerPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading, reloadUser } = useAuth()
   const [currentSection, setCurrentSection] = useState<ProfilingSection>('welcome')
   const [session, setSession] = useState<ProfilingSession | null>(null)
   const [questions, setQuestions] = useState<ProfilingQuestion[]>([])
+  const [moduleProgress, setModuleProgress] = useState<ModuleProgress | null>(null)
+  const [currentModule, setCurrentModule] = useState<ModuleKey | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [responses, setResponses] = useState<Record<string, string>>({})
   const [result, setResult] = useState<ProfilingResult | null>(null)
+  const [blueprint, setBlueprint] = useState<OCHBlueprint | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log('[AIProfiler] Auth state:', { isAuthenticated, isLoading, user: user?.email })
+    
     if (!isLoading && !isAuthenticated) {
+      console.log('[AIProfiler] Not authenticated, redirecting to login')
       router.push('/login/student')
       return
     }
 
-    if (isLoading || !isAuthenticated) return
+    if (isLoading || !isAuthenticated) {
+      console.log('[AIProfiler] Still loading or not authenticated, waiting...')
+      return
+    }
 
+    console.log('[AIProfiler] Authenticated, checking profiling status')
     // Check profiling status first
     checkProfilingStatus()
   }, [isAuthenticated, isLoading, router])
@@ -97,40 +170,61 @@ export default function AIProfilerPage() {
   const checkProfilingStatus = async () => {
     try {
       setLoading(true)
+      console.log('[AIProfiler] Checking profiling status...')
       
       // Check if profiling is already completed
       const status = await fastapiClient.profiling.checkStatus()
+      console.log('[AIProfiler] Profiling status:', status)
       
       if (status.completed) {
         // Already completed, redirect to dashboard
         console.log('✅ Profiling already completed')
-        router.push('/dashboard/student')
+        window.location.href = '/dashboard/student'
         return
       }
       
       // Check if there's an active session
       if (status.has_active_session && status.session_id) {
+        console.log('[AIProfiler] Resuming existing session:', status.session_id)
         // Resume existing session
         setSession({
           session_id: status.session_id,
           progress: status.progress
         })
-        
-        // Get questions
-        const questionsResponse = await fastapiClient.profiling.getQuestions()
-        setQuestions(questionsResponse)
-        
-        // Get progress to determine current question
-        const progress = await fastapiClient.profiling.getProgress(status.session_id)
-        setCurrentQuestionIndex(Math.min(progress.current_question - 1, questionsResponse.length - 1))
+        // Get enhanced questions grouped by module, then flatten
+        const enhanced = await fastapiClient.profiling.getEnhancedQuestions()
+        const allQuestions: ProfilingQuestion[] = Object.values(enhanced.questions)
+          .flat()
+          .map((q: any) => ({
+            id: q.id,
+            question: q.question,
+            category: q.category,
+            module: q.module,
+            options: q.options,
+          }))
+        setQuestions(allQuestions)
+
+        // Get module-level progress
+        const modProgress = await fastapiClient.profiling.getModuleProgress(status.session_id)
+        setModuleProgress(modProgress)
+        setCurrentModule((modProgress.current_module as ModuleKey) || null)
+
+        // Determine current question index based on answered count
+        const answeredCount = Object.values(modProgress.modules).reduce(
+          (sum, m: any) => sum + (m.answered || 0),
+          0
+        )
+        setCurrentQuestionIndex(Math.min(answeredCount, allQuestions.length - 1))
         
         setLoading(false)
         return
       }
       
       // Start new profiling session
+      console.log('[AIProfiler] Starting new profiling session')
       initializeProfiling()
     } catch (err: any) {
+      console.error('[AIProfiler] Error checking profiling status:', err)
       setError(err.message || 'Failed to check profiling status')
       setLoading(false)
     }
@@ -148,9 +242,23 @@ export default function AIProfilerPage() {
         progress: sessionResponse.progress
       })
 
-      // Get all questions
-      const questionsResponse = await fastapiClient.profiling.getQuestions()
-      setQuestions(questionsResponse)
+      // Get enhanced questions grouped by module, then flatten
+      const enhanced = await fastapiClient.profiling.getEnhancedQuestions()
+      const allQuestions: ProfilingQuestion[] = Object.values(enhanced.questions)
+        .flat()
+        .map((q: any) => ({
+          id: q.id,
+          question: q.question,
+          category: q.category,
+          module: q.module,
+          options: q.options,
+        }))
+      setQuestions(allQuestions)
+
+      // Initialize module progress
+      const modProgress = await fastapiClient.profiling.getModuleProgress(sessionResponse.session_id)
+      setModuleProgress(modProgress)
+      setCurrentModule((modProgress.current_module as ModuleKey) || null)
 
       setLoading(false)
     } catch (err: any) {
@@ -190,11 +298,33 @@ export default function AIProfilerPage() {
       setResponses(prev => ({ ...prev, [questionId]: answer }))
 
       // Move to next question or complete
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1)
-      } else {
-        // Complete the profiling
-        await completeProfiling()
+      const nextIndex = currentQuestionIndex + 1
+      const currentQ = questions[currentQuestionIndex]
+      const currentModuleKey = (currentQ?.module as ModuleKey) || currentModule
+
+      // Refresh module progress so we know when a module is done
+      if (session) {
+        const modProgress = await fastapiClient.profiling.getModuleProgress(session.session_id)
+        setModuleProgress(modProgress)
+
+        const moduleInfo = currentModuleKey ? modProgress.modules[currentModuleKey] : null
+        const moduleJustCompleted = moduleInfo && moduleInfo.completed
+
+        if (moduleJustCompleted && nextIndex < questions.length) {
+          // Move to the next module boundary
+          const remainingModules = modProgress.remaining_modules as ModuleKey[]
+          const nextModule = remainingModules[0] || null
+          setCurrentModule(nextModule)
+          setCurrentQuestionIndex(nextIndex)
+          return
+        }
+
+        if (nextIndex < questions.length) {
+          setCurrentQuestionIndex(nextIndex)
+        } else {
+          // All questions answered -> complete profiling
+          await completeProfiling()
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to submit answer')
@@ -207,9 +337,17 @@ export default function AIProfilerPage() {
     try {
       setLoading(true)
       
-      // Complete profiling session in FastAPI
+      // Complete profiling session in FastAPI (enhanced engine under the hood)
       const resultResponse = await fastapiClient.profiling.completeSession(session.session_id)
       setResult(resultResponse)
+
+      // Fetch OCH Blueprint for deeper analysis
+      try {
+        const bp = await fastapiClient.profiling.getBlueprint(session.session_id)
+        setBlueprint(bp)
+      } catch (bpError) {
+        console.warn('⚠️ Failed to fetch OCH Blueprint:', bpError)
+      }
       
       // Sync with Django backend to update user.profiling_complete
       try {
@@ -264,16 +402,17 @@ export default function AIProfilerPage() {
     // Small delay to ensure state is updated
     await new Promise(resolve => setTimeout(resolve, 300))
     
-    // Redirect to dashboard with track recommendation
+    // Redirect to dashboard with track recommendation (full page reload to ensure token is available)
     if (result?.primary_track) {
-      router.push(`/dashboard/student?track=${result.primary_track.key}&welcome=true`)
+      window.location.href = `/dashboard/student?track=${result.primary_track.key}&welcome=true`
     } else {
-      router.push('/dashboard/student')
+      window.location.href = '/dashboard/student'
     }
   }
 
   const currentQuestion = questions[currentQuestionIndex]
   const progress = session?.progress || {
+    session_id: session?.session_id || '',
     current_question: currentQuestionIndex + 1,
     total_questions: questions.length,
     progress_percentage: questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0,
@@ -337,6 +476,7 @@ export default function AIProfilerPage() {
       {currentSection === 'results' && result && (
         <AIProfilerResults
           result={result}
+          blueprint={blueprint}
           onComplete={handleComplete}
         />
       )}

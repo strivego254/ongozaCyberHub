@@ -37,7 +37,7 @@ export const HeroSection = memo(function HeroSection() {
     return 'mint'
   }, [subscription])
 
-  const trackName = cohortProgress?.currentModule || trackOverview?.name || 'Cyber Builders Track'
+  const trackName = cohortProgress?.currentModule || trackOverview?.trackName || 'Cyber Builders Track'
   const userName = user?.first_name || user?.email?.split('@')[0] || 'Student'
 
   return (

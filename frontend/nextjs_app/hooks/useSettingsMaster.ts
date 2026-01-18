@@ -87,7 +87,7 @@ const getUserEntitlements = async (userId: string): Promise<UserEntitlements | n
     const mappedTier = tierMapping[response.tier || 'free'] || 'free';
     
     return {
-      tier: mappedTier,
+      tier: mappedTier as any,
       subscriptionStatus: response.status === 'active' ? 'active' : 'inactive',
       mentorAccess: mappedTier !== 'free',
       portfolioExportEnabled: mappedTier !== 'free',
@@ -102,7 +102,7 @@ const getUserEntitlements = async (userId: string): Promise<UserEntitlements | n
     console.error('Error fetching user entitlements:', error);
     // Return default free tier on error
     return {
-      tier: 'free',
+      tier: 'free' as any,
       subscriptionStatus: 'inactive',
       mentorAccess: false,
       portfolioExportEnabled: false,
@@ -149,7 +149,7 @@ export function useSettingsMaster(userId?: string) {
         // Return null instead of throwing - let the component handle unauthenticated state
         return null;
       }
-      return getUserSettings(currentUserId);
+      return getUserSettings(currentUserId.toString());
     },
     enabled: !!currentUserId,
     staleTime: 30000,
@@ -169,7 +169,7 @@ export function useSettingsMaster(userId?: string) {
         // Return null instead of throwing - let the component handle unauthenticated state
         return null;
       }
-      return getUserEntitlements(currentUserId);
+      return getUserEntitlements(currentUserId.toString());
     },
     enabled: !!currentUserId,
     staleTime: 30000,
@@ -184,10 +184,10 @@ export function useSettingsMaster(userId?: string) {
       const { hasPortfolioItems, ...updateData } = updates;
       
       // Update settings
-      const result = await updateUserSettings(currentUserId, updateData, hasPortfolioItems);
+      const result = await updateUserSettings(currentUserId.toString(), updateData, hasPortfolioItems);
       
       // Trigger cross-system updates
-      await triggerSystemUpdates(currentUserId, updateData);
+      await triggerSystemUpdates(currentUserId.toString(), updateData);
       
       return result;
     },

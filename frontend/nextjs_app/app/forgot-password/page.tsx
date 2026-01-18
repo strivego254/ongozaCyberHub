@@ -34,7 +34,7 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      const response = await apiGateway.post('/auth/request-password-reset/', { email })
+      const response = await apiGateway.post<any>('/auth/request-password-reset/', { email })
       
       // Check if the response indicates an error
       if (response?.error) {

@@ -40,10 +40,10 @@ export function useMentorAssignedTracks(mentorId: string | undefined) {
       let allTracks: Track[] = []
       if (Array.isArray(tracksResponse)) {
         allTracks = tracksResponse
-      } else if (tracksResponse && typeof tracksResponse === 'object' && 'results' in tracksResponse && Array.isArray(tracksResponse.results)) {
-        allTracks = tracksResponse.results
-      } else if (tracksResponse && typeof tracksResponse === 'object' && 'data' in tracksResponse && Array.isArray(tracksResponse.data)) {
-        allTracks = tracksResponse.data
+      } else if (tracksResponse && typeof tracksResponse === 'object' && 'results' in tracksResponse && Array.isArray((tracksResponse as any).results)) {
+        allTracks = (tracksResponse as any).results
+      } else if (tracksResponse && typeof tracksResponse === 'object' && 'data' in tracksResponse && Array.isArray((tracksResponse as any).data)) {
+        allTracks = (tracksResponse as any).data
       } else {
         console.warn('[useMentorAssignedTracks] Unexpected tracks response format:', tracksResponse)
         allTracks = []

@@ -81,12 +81,12 @@ export function PortfolioItemCard({
   const TypeIcon = (typeIcons as any)[item.type] || FileText;
 
   const averageScore = item.competencyScores && Object.keys(item.competencyScores).length > 0
-    ? Object.values(item.competencyScores).reduce((a: any, b: any) => a + b, 0) /
+    ? (Object.values(item.competencyScores) as number[]).reduce((a: number, b: number) => a + b, 0) /
       Object.keys(item.competencyScores).length
     : null;
 
-  const isApproved = item.status === 'approved' || item.status === 'published';
-  const isPending = item.status === 'in_review' || item.status === 'submitted';
+  const isApproved = item.status === 'approved';
+  const isPending = item.status === 'in_review' || item.status === 'submitted' || item.status === 'pending';
   const isDraft = item.status === 'draft';
 
   const getStatusTheme = () => {

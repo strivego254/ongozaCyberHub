@@ -217,7 +217,7 @@ function extractSkillsFromRepo(repo: any): string[] {
     }
   });
 
-  return [...new Set(skills)];
+  return Array.from(new Set(skills));
 }
 
 function extractSkillsFromTHM(rooms: any[]): string[] {

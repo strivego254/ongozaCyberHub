@@ -6,10 +6,14 @@ Usage: python scripts/seed_missions.py
 import os
 import sys
 import django
+from pathlib import Path
 
-# Setup Django
-sys.path.insert(0, os.path.dirname(__file__))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ongoza_cyber_hub.settings')
+# Setup Django using the current project settings
+BASE_DIR = Path(__file__).resolve().parent
+# Ensure backend/django_app is on the path so core settings can be imported
+sys.path.insert(0, str(BASE_DIR))
+sys.path.insert(0, str(BASE_DIR.parent))
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.development')
 django.setup()
 
 from missions.models import Mission

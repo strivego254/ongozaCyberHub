@@ -71,6 +71,16 @@ export async function POST(request: NextRequest) {
 }
 
 async function grokRankRecipes(candidates: any[], contextType: string, contextData: any, trackCode: string) {
+  // Fallback if Grok not available
+  if (!grok) {
+    console.warn('Grok client not available, using fallback ranking');
+    return {
+      top_recipes: candidates.slice(0, 5).map(c => ({ ...c, ai_relevance: 0.7 })),
+      gaps: [],
+      reasons: {}
+    };
+  }
+
   try {
     const grokPrompt = `Rank these recipes for ${contextType} context:
 

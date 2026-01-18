@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CommunityPostCard } from "./CommunityPostCard"
 import { UniversityStatsBar } from "./UniversityStatsBar"
@@ -9,6 +9,7 @@ import { useCommunityFeed } from "@/hooks/useCommunityFeed"
 import { CreatePostModal } from "./CreatePostModal"
 import { CommentThread } from "./CommentThread"
 import { Search } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 interface CommunityShellProps {
   userId: string
@@ -178,8 +179,8 @@ export function CommunityShell({ userId }: CommunityShellProps) {
           </div>
         )}
 
-        {/* Search Tab */}
-        {activeTab === "search" && (
+        {/* Search Tab - Commented out for now as 'search' is not in activeTab union */}
+        {/* {activeTab === "search" && (
           <div className="mt-0">
               <div className="max-w-4xl mx-auto">
                 <div className="mb-6">
@@ -194,11 +195,11 @@ export function CommunityShell({ userId }: CommunityShellProps) {
                 </div>
               </div>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* FAB - Create Post Button */}
-      {activeTab !== "leaderboard" && activeTab !== "search" && (
+      {activeTab !== "leaderboard" && (
         <button
           onClick={() => setShowCreateModal(true)}
           className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-2xl flex items-center justify-center text-xl shadow-indigo-500/25 transition-transform hover:scale-110 z-50"
@@ -211,10 +212,22 @@ export function CommunityShell({ userId }: CommunityShellProps) {
       {/* Create Post Modal */}
       {communityId && (
         <CreatePostModal
-          open={showCreateModal}
+          isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
-          onPost={createPost}
-          communityId={communityId}
+          userId={userId}
+          permissions={{
+            canPost: true,
+            canComment: true,
+            canReact: true,
+            canModerate: false,
+            canPinEvents: false,
+            canApproveTracks: false,
+            canManageMentors: false,
+            canViewAnalytics: false,
+            canModerateAll: false,
+            canManageUniversities: false,
+            readOnlyAccess: false,
+          }}
         />
       )}
     </div>

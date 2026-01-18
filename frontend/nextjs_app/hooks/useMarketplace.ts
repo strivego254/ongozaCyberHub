@@ -64,7 +64,9 @@ export function useJobApplications() {
       setError(null)
       const response = await marketplaceClient.getMyApplications()
       // Handle both array and paginated response
-      const apps = Array.isArray(response) ? response : (response?.results || [])
+      const apps = Array.isArray(response)
+        ? response
+        : (((response as any)?.results as any[]) || [])
       setApplications(apps)
     } catch (err: any) {
       console.error('Failed to load applications:', err)

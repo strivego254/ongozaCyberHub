@@ -43,7 +43,7 @@ import { MissionCockpit } from './components/MissionCockpit';
 import { TalentScopeRadar } from './components/TalentScopeRadar';
 import { TrackControl } from './components/TrackControl';
 import { CommunityFeed } from './components/CommunityFeed';
-import { NotificationCenter } from './components/NotificationCenter';
+import { ActionCenter as NotificationCenter } from './components/ActionCenter';
 import clsx from 'clsx';
 
 export function MissionControlDashboard() {
@@ -91,7 +91,7 @@ export function MissionControlDashboard() {
                   </div>
                </div>
              ))}
-             <NotificationCenter />
+             <NotificationCenter nudge={aiCoachNudge} />
           </div>
         </header>
 

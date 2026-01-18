@@ -16,6 +16,9 @@ import type {
   RecipeFilters,
 } from './types/recipes';
 
+// Re-export for convenience
+export type { RecipeDetailResponse };
+
 /**
  * Recipe Engine Client
  */

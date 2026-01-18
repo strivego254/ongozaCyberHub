@@ -36,7 +36,7 @@ interface TrackShellProps {
   nextAction: NextAction | null;
   recentActivities: CurriculumActivity[];
   onModuleSelect: (moduleId: string) => void;
-  onEnroll: () => Promise<void>;
+  onEnroll: () => Promise<any>;
   userId: string;
 }
 
@@ -288,7 +288,7 @@ export function TrackShell({
               </div>
               <Link href="/recipes">
                 <Button 
-                  variant="secondary"
+                  variant="gold"
                   className="bg-amber-500 text-slate-900 font-black uppercase text-xs hover:bg-amber-400"
                 >
                   Browse Recipes

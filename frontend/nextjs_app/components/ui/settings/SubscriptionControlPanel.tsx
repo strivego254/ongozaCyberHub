@@ -252,7 +252,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
                 <div className="text-sm text-slate-500 mt-1">{currentTier.priceLabel}</div>
               </div>
               <Badge
-                variant={entitlements.subscriptionStatus === 'active' ? 'default' : 'secondary'}
+                variant={entitlements.subscriptionStatus === 'active' ? 'mint' : 'steel'}
                 className="bg-gradient-to-r from-indigo-500 to-purple-500"
               >
                 {entitlements.subscriptionStatus}
@@ -333,7 +333,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
                   <div className="text-sm font-medium text-slate-200 mb-2">Portfolio Capabilities</div>
                   <div className="flex flex-wrap gap-2">
                     {entitlements.portfolioCapabilities.map((cap, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs bg-indigo-500/20 text-indigo-400">
+                      <Badge key={idx} variant="steel" className="text-xs bg-indigo-500/20 text-indigo-400">
                         {cap}
                       </Badge>
                     ))}
@@ -406,7 +406,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
                     <div className="text-sm text-slate-400">{tier.price} {tier.priceLabel}</div>
                   </div>
                   {tier.current && (
-                    <Badge variant="secondary" className="bg-indigo-500/20 text-indigo-400">
+                    <Badge variant="steel" className="bg-indigo-500/20 text-indigo-400">
                       Current
                     </Badge>
                   )}
@@ -500,7 +500,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
                         <div className="flex items-center gap-2 mb-1">
                           <div className="text-sm font-medium text-slate-200">{invoice.description}</div>
                           <Badge
-                            variant={invoice.status === 'paid' ? 'default' : 'secondary'}
+                            variant={invoice.status === 'paid' ? 'mint' : 'steel'}
                             className={invoice.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : ''}
                           >
                             {invoice.status}
@@ -591,7 +591,7 @@ export function SubscriptionControlPanel({ entitlements, settings }: Subscriptio
                           <div className="text-sm font-medium text-slate-200 flex items-center gap-2">
                             {method.brand} •••• {method.last4}
                             {method.isDefault && (
-                              <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 text-[10px]">
+                              <Badge variant="steel" className="bg-emerald-500/20 text-emerald-400 text-[10px]">
                                 Default
                               </Badge>
                             )}

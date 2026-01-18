@@ -72,7 +72,7 @@ export function useMentorshipMaster() {
   // 2. Sessions
   const sessionsQuery = useQuery({
     queryKey: ['mentorship-sessions', userId],
-    queryFn: () => mentorshipClient.getUpcomingSessions(userId!),
+    queryFn: () => mentorshipClient.getUpcomingSessions(userId!.toString()),
     enabled: !!userId,
   });
 

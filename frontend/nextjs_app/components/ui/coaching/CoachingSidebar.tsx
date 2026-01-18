@@ -129,7 +129,7 @@ export function CoachingSidebar({ onNavigate, activeSection = 'overview' }: Coac
             </div>
           <div>
             <p className="text-[10px] text-och-steel uppercase tracking-widest font-black">Daily Heat</p>
-            <p className="text-sm font-black text-white">{metrics?.habits_streak || 0} Day Streak</p>
+            <p className="text-sm font-black text-white">{(metrics as any)?.habits_streak || 0} Day Streak</p>
           </div>
         </div>
         <p className="text-[9px] text-och-steel italic">"The Defender tracks consistency. Your current momentum is prime."</p>

@@ -92,7 +92,7 @@ export function PortfolioSkillsRadar({ skills }: PortfolioSkillsRadarProps) {
               <PolarGrid stroke="#334155" strokeWidth={1} />
               <PolarAngleAxis
                 dataKey="name"
-                tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900, textTransform: 'uppercase' }}
+                tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 900 } as any}
                 tickLine={{ stroke: '#334155' }}
               />
               <PolarRadiusAxis

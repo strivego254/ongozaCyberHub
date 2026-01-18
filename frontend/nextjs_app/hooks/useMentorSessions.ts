@@ -31,15 +31,16 @@ export function useMentorSessions(mentorId: string | undefined, params?: {
     setError(null)
     try {
       const data = await mentorClient.getGroupSessions(mentorId, params)
-      setSessions(data.results || data)
-      if (data.count !== undefined) {
+      const sessions = Array.isArray(data) ? data : ((data as any).results || [])
+      setSessions(sessions)
+      if ((data as any).count !== undefined) {
         setPagination({
-          count: data.count,
-          page: data.page || 1,
-          page_size: data.page_size || 10,
-          total_pages: data.total_pages || 1,
-          next: data.next || null,
-          previous: data.previous || null,
+          count: (data as any).count,
+          page: (data as any).page || 1,
+          page_size: (data as any).page_size || 10,
+          total_pages: (data as any).total_pages || 1,
+          next: (data as any).next || null,
+          previous: (data as any).previous || null,
         })
       } else {
         // Handle non-paginated response (backward compatibility)

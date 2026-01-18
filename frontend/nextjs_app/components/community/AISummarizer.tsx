@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
 import { 
   Sparkles, X, BookOpen, Loader2, Copy, Check, 
@@ -83,7 +83,7 @@ export function AISummarizer({ postId, postTitle, commentCount = 0, onClose }: A
         className="w-full max-w-2xl mx-auto max-h-[85vh] overflow-hidden"
       >
         <Card className="bg-gradient-to-br from-slate-900 via-purple-900/30 to-pink-900/30 border-slate-800/50 shadow-2xl">
-          <CardContent className="p-0">
+          <div className="p-0">
             {/* Header */}
             <div className="p-6 border-b border-slate-800/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -97,7 +97,7 @@ export function AISummarizer({ postId, postTitle, commentCount = 0, onClose }: A
                   </p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose}>
+              <Button variant="ghost" size="sm" className="p-2" onClick={onClose}>
                 <X className="w-5 h-5 text-slate-400" />
               </Button>
             </div>
@@ -271,7 +271,7 @@ export function AISummarizer({ postId, postTitle, commentCount = 0, onClose }: A
                 </div>
               </div>
             )}
-          </CardContent>
+          </div>
         </Card>
       </motion.div>
     </motion.div>

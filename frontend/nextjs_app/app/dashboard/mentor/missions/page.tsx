@@ -1,6 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState, useMemo } from 'react'
+export const dynamic = 'force-dynamic'
+
+import { Suspense, useCallback, useEffect, useState, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { MissionsPending } from '@/components/mentor/MissionsPending'
 import { MissionReviewForm } from '@/components/mentor/MissionReviewForm'
@@ -12,7 +14,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import type { MissionSubmission, CapstoneProject } from '@/services/types/mentor'
 
-export default function MissionsPage() {
+function MissionsPageInner() {
   const { user } = useAuth()
   const mentorId = user?.id?.toString()
   const router = useRouter()
@@ -433,6 +435,14 @@ export default function MissionsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function MissionsPage() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-6 xl:px-8 text-och-steel">Loading missions…</div>}>
+      <MissionsPageInner />
+    </Suspense>
   )
 }
 

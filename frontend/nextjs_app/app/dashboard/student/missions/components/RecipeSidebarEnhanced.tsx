@@ -6,6 +6,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   BookOpen, 
@@ -53,7 +54,7 @@ export function RecipeSidebarEnhanced({ recipeIds, className = '' }: RecipeSideb
     queryFn: async () => {
       // Fetch real recipes from API
       try {
-        const response = await apiGateway.get('/missions/recipes', {
+        const response: any = await apiGateway.get('/missions/recipes', {
           params: { recipe_ids: recipeIds.join(',') }
         })
         return Array.isArray(response) ? response : (response?.results || [])

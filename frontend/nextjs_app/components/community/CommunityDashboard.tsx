@@ -24,7 +24,7 @@ import { communityClient } from '@/services/communityClient';
 
 type TabType = 'university' | 'global' | 'leaderboard';
 
-interface CommunityPermissions {
+export interface CommunityPermissions {
   canPost: boolean;
   canComment: boolean;
   canReact: boolean;
@@ -180,7 +180,7 @@ export function CommunityDashboard() {
       setLoadingCohortData(true);
       try {
         // Get student profile to find cohort
-        const profileResponse = await apiGateway.get('/student/profile');
+        const profileResponse = await apiGateway.get<any>('/student/profile');
         const enrollment = profileResponse?.enrollment;
         
         if (enrollment?.cohort_id) {
@@ -332,7 +332,7 @@ export function CommunityDashboard() {
             {/* Main Content */}
             <div className="lg:col-span-2">
               <UniversityCommunityView
-                userId={user?.id}
+                userId={String(user?.id)}
                 permissions={permissions}
                 roles={roles}
               />
@@ -512,14 +512,14 @@ export function CommunityDashboard() {
           <>
             {activeTab === 'global' && (
               <GlobalFeedView
-                userId={user?.id}
+                userId={String(user?.id)}
                 permissions={permissions}
                 roles={roles}
               />
             )}
             {activeTab === 'leaderboard' && (
               <CommunityLeaderboard
-                userId={user?.id}
+                userId={String(user?.id)}
                 permissions={permissions}
                 roles={roles}
               />
@@ -533,7 +533,7 @@ export function CommunityDashboard() {
         <CreatePostModal
           isOpen={showCreatePost}
           onClose={() => setShowCreatePost(false)}
-          userId={user?.id}
+          userId={String(user?.id)}
           permissions={permissions}
         />
       )}

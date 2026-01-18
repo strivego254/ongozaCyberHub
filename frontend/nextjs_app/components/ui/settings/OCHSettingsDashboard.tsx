@@ -144,7 +144,7 @@ export function OCHSettingsDashboard() {
   const loadProfile = async () => {
     try {
       const data = await apiGateway.get('/auth/me');
-      setProfile(data);
+      setProfile(data as any);
     } catch (err) {
       console.error('Failed to load profile:', err);
     }
@@ -152,16 +152,16 @@ export function OCHSettingsDashboard() {
 
   const loadSubscription = async () => {
     try {
-      const data = await apiGateway.get('/subscription/status');
+      const data = await apiGateway.get<any>('/subscription/status');
       setSubscription({
-        tier: data.tier || 'free',
-        status: data.status || 'inactive',
-        enhanced_access_until: data.enhanced_access_until,
-        days_enhanced_left: data.days_enhanced_left,
-        next_payment: data.next_payment,
-        grace_period_until: data.grace_period_until,
-        can_upgrade: data.can_upgrade !== false,
-        features: data.features || [],
+        tier: (data as any).tier || 'free',
+        status: (data as any).status || 'inactive',
+        enhanced_access_until: (data as any).enhanced_access_until,
+        days_enhanced_left: (data as any).days_enhanced_left,
+        next_payment: (data as any).next_payment,
+        grace_period_until: (data as any).grace_period_until,
+        can_upgrade: (data as any).can_upgrade !== false,
+        features: (data as any).features || [],
       });
     } catch (err) {
       console.error('Failed to load subscription:', err);
@@ -176,12 +176,12 @@ export function OCHSettingsDashboard() {
 
   const loadProfilerStatus = async () => {
     try {
-      const data = await profilerClient.getStatus(user?.id);
+      const data = await profilerClient.getStatus(user?.id?.toString());
       setProfilerStatus({
-        completed: data.completed || false,
-        status: data.status || 'not_started',
-        sections_completed: data.sections_completed || [],
-        future_you_completed: data.future_you_completed || false,
+        completed: (data as any).completed || false,
+        status: (data as any).status || 'not_started',
+        sections_completed: (data as any).sections_completed || [],
+        future_you_completed: (data as any).future_you_completed || false,
       });
     } catch (err) {
       console.error('Failed to load profiler status:', err);
@@ -191,9 +191,9 @@ export function OCHSettingsDashboard() {
   const loadUniversity = async () => {
     try {
       // Try to get university membership
-      const memberships = await apiGateway.get('/community/university-memberships/');
-      if (memberships && memberships.length > 0) {
-        const membership = memberships[0];
+      const memberships = await apiGateway.get<any>('/community/university-memberships/');
+      if (memberships && (memberships as any[]).length > 0) {
+        const membership = (memberships as any[])[0];
         setUniversity({
           id: membership.university?.id,
           name: membership.university?.name,
@@ -209,8 +209,8 @@ export function OCHSettingsDashboard() {
   const loadActiveSessions = async () => {
     try {
       // Note: This endpoint needs to be implemented in backend
-      const sessions = await apiGateway.get('/auth/sessions/').catch(() => []);
-      setActiveSessions(sessions || []);
+      const sessions = await apiGateway.get<any>('/auth/sessions/').catch(() => []);
+      setActiveSessions((sessions as any) || []);
     } catch (err) {
       console.error('Failed to load sessions:', err);
     }
@@ -218,10 +218,10 @@ export function OCHSettingsDashboard() {
 
   const loadConsentScopes = async () => {
     try {
-      const data = await apiGateway.get('/auth/me');
+      const data = await apiGateway.get<any>('/auth/me');
       const scopes: Record<string, boolean> = {};
-      if (data.consent_scopes) {
-        data.consent_scopes.forEach((scope: string) => {
+      if ((data as any).consent_scopes) {
+        (data as any).consent_scopes.forEach((scope: string) => {
           scopes[scope] = true;
         });
       }
@@ -243,7 +243,7 @@ export function OCHSettingsDashboard() {
     setSaveStatus(null);
     
     try {
-      await djangoClient.users.updateProfile(updates);
+      await djangoClient.users.updateProfile(updates as any);
       await loadProfile();
       await reloadUser();
       setSaveStatus('success');
@@ -289,9 +289,9 @@ export function OCHSettingsDashboard() {
     try {
       setSaving(true);
       // Request SAR (Subject Access Request) for data export
-      const response = await apiGateway.post('/auth/data-export/', { format });
+      const response = await apiGateway.post<any>('/auth/data-export/', { format });
       // In production, this would trigger an async job and notify user when ready
-      alert(`Data export requested. You will be notified when it's ready. Export ID: ${response.id}`);
+      alert(`Data export requested. You will be notified when it's ready. Export ID: ${(response as any).id}`);
       setShowExportModal(false);
     } catch (err: any) {
       console.error('Error requesting data export:', err);

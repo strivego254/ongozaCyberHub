@@ -56,8 +56,9 @@ export function MissionManagementView({ mentorId }: MissionManagementViewProps) 
       if (filters.type) params.type = filters.type
       if (filters.search) params.search = filters.search
 
-      const response = await apiGateway.get(`/mentors/${mentorId}/missions`, { params })
-      setMissions(response.results || [])
+      const response = await apiGateway.get<any>(`/mentors/${mentorId}/missions`, { params })
+      const fetched = Array.isArray(response) ? response : (response?.results || [])
+      setMissions(fetched)
     } catch (err) {
       console.error('Failed to load missions:', err)
     } finally {

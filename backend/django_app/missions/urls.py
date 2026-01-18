@@ -12,6 +12,9 @@ from .views_student import (
     upload_mission_artifacts,
     save_mission_draft,
     submit_for_mentor_review,
+    get_mission_progress,
+    complete_subtask,
+    start_mission_student,
 )
 from .views_mxp import (
     mission_dashboard,
@@ -39,9 +42,12 @@ urlpatterns = [
     path('missions/status', mission_status, name='status'),
     
     # Student-facing endpoints
-    path('student/missions/funnel', get_mission_funnel, name='student-funnel'),
-    path('student/missions', list_student_missions, name='student-list'),
-    path('student/missions/<uuid:mission_id>', get_mission_detail, name='student-detail'),
+    path('student/missions/funnel/', get_mission_funnel, name='student-funnel'),
+    path('student/missions/', list_student_missions, name='student-list'),
+    path('student/missions/<uuid:mission_id>/', get_mission_detail, name='student-detail'),
+    path('student/missions/<uuid:mission_id>/start', start_mission_student, name='student-start'),
+    path('student/missions/<uuid:mission_id>/progress', get_mission_progress, name='student-progress'),
+    path('student/missions/<uuid:mission_id>/subtasks/<int:subtask_index>/complete', complete_subtask, name='student-complete-subtask'),
     path('student/missions/<uuid:mission_id>/submit', submit_mission_for_ai, name='student-submit'),
     path('student/missions/<uuid:mission_id>/draft', save_mission_draft, name='student-draft'),
     path('student/missions/submissions/<uuid:submission_id>/artifacts', upload_mission_artifacts, name='student-artifacts'),
