@@ -88,25 +88,35 @@ export function MissionDashboard({ track = 'defender', tier = 'beginner' }: Miss
         progress_percent: (m as any).progress_percent ?? 0,
       })))
       setInProgressMissions(
-        data.in_progress_missions.map((p) => ({
+        data.in_progress_missions.map((p: any) => ({
           id: p.id,
+          code: p.mission.code || '',
+          title: p.mission.title || '',
+          description: p.mission.description || '',
+          difficulty: p.mission.difficulty || 'beginner',
           mission_id: p.mission.id,
           user_id: '',
           status: p.status as any,
           current_subtask: p.current_subtask,
           subtasks_progress: {},
           progress_percentage: p.progress_percentage,
+          progress_percent: p.progress_percentage,
         }))
       )
       setCompletedMissions(
-        data.completed_missions.map((p) => ({
+        data.completed_missions.map((p: any) => ({
           id: p.id,
+          code: p.mission.code || '',
+          title: p.mission.title || '',
+          description: p.mission.description || '',
+          difficulty: p.mission.difficulty || 'beginner',
           mission_id: p.mission.id,
           user_id: '',
           status: p.final_status === 'pass' ? 'approved' : 'failed',
           current_subtask: 0,
           subtasks_progress: {},
           final_status: p.final_status as any,
+          progress_percent: 100,
         }))
       )
       setUserTier(data.user_tier as any)

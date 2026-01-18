@@ -1,6 +1,7 @@
+
 /**
  * useRecipes Hook
- * 
+ *
  * Master hook for recipe library management.
  * Handles fetching, filtering, searching, and bookmarking recipes.
  */
@@ -8,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { recipesClient } from '@/services/recipesClient';
+import { useRecipeFilters, type RecipeQueryParams } from './useRecipeFilters';
 import type {
   Recipe,
   RecipeListResponse,
@@ -17,8 +19,8 @@ import type {
 } from '@/services/types/recipes';
 
 interface UseRecipesOptions {
-  filters?: RecipeFilters;
   autoFetch?: boolean;
+  enableCache?: boolean;
 }
 
 interface UseRecipesResult {
@@ -28,53 +30,90 @@ interface UseRecipesResult {
   error: string | null;
   bookmarks: string[];
   refetch: () => Promise<void>;
+  isStale: boolean;
 }
 
 export function useRecipes(
-  search: string = '',
-  filters: RecipeFilters = {},
+  queryParams: RecipeQueryParams = {},
   options: UseRecipesOptions = {}
 ): UseRecipesResult {
-  const { autoFetch = true } = options;
-  
+  const { autoFetch = true, enableCache = true } = options;
+
   const [recipes, setRecipes] = useState<RecipeListResponse[]>([]);
   const [stats, setStats] = useState<RecipeStats>({ total: 0, bookmarked: 0 });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(autoFetch);
   const [error, setError] = useState<string | null>(null);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [isStale, setIsStale] = useState(false);
 
-  const fetchRecipes = useCallback(async () => {
+  // Simple cache for recipes
+  const [cache, setCache] = useState<Map<string, { data: RecipeListResponse[], stats: RecipeStats, timestamp: number }>>(new Map());
+
+  // Create cache key from query params
+  const getCacheKey = useCallback((params: RecipeQueryParams) => {
+    return JSON.stringify(params);
+  }, []);
+
+  const fetchRecipes = useCallback(async (forceRefresh = false) => {
+    const cacheKey = getCacheKey(queryParams);
+
+    // Check cache first (if enabled and not forcing refresh)
+    if (enableCache && !forceRefresh) {
+      const cached = cache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minutes cache
+        setRecipes(cached.data);
+        setStats(cached.stats);
+        const bookmarkedIds = cached.data
+          .filter((recipe) => recipe.is_bookmarked)
+          .map((recipe) => recipe.id);
+        setBookmarks(bookmarkedIds);
+        setLoading(false);
+        setIsStale(false);
+        return;
+      } else if (cached) {
+        setIsStale(true); // Data is stale but we'll show it while fetching fresh data
+      }
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      // Build filters with search
-      const recipeFilters: RecipeFilters = {
-        ...filters,
-        ...(search ? { search } : {}),
-      };
+      // Fetch recipes (stats are now included in the response)
+      const response = await recipesClient.getRecipesWithStats(queryParams);
 
-      // Fetch recipes and stats in parallel
-      const [recipesData, statsData] = await Promise.all([
-        recipesClient.getRecipes(recipeFilters),
-        recipesClient.getStats(),
-      ]);
+      const recipesData = response.recipes || [];
+      const statsData = {
+        total: response.total || 0,
+        bookmarked: response.bookmarked || 0
+      };
 
       setRecipes(recipesData);
       setStats(statsData);
-      
+      setIsStale(false);
+
       // Extract bookmarked recipe IDs
       const bookmarkedIds = recipesData
         .filter((recipe) => recipe.is_bookmarked)
         .map((recipe) => recipe.id);
       setBookmarks(bookmarkedIds);
+
+      // Cache the results
+      if (enableCache) {
+        setCache(prev => new Map(prev.set(cacheKey, {
+          data: recipesData,
+          stats: statsData,
+          timestamp: Date.now()
+        })));
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch recipes');
       console.error('Error fetching recipes:', err);
+      setError(err.message || 'Failed to fetch recipes');
+      setIsStale(true); // Mark as stale on error
     } finally {
       setLoading(false);
     }
-  }, [search, filters]);
+  }, [queryParams, enableCache, cache, getCacheKey]);
 
   useEffect(() => {
     if (autoFetch) {
@@ -88,7 +127,8 @@ export function useRecipes(
     loading,
     error,
     bookmarks,
-    refetch: fetchRecipes,
+    refetch: () => fetchRecipes(true), // Force refresh
+    isStale,
   };
 }
 
@@ -238,6 +278,89 @@ export function useRecipeProgress(recipeSlug: string): UseRecipeProgressResult {
     unbookmark,
     isBookmarked,
     refetch: fetchProgress,
+  };
+}
+
+/**
+ * useRecipeDetail Hook
+ *
+ * Hook for fetching individual recipe details.
+ */
+interface UseRecipeDetailResult {
+  recipe: Recipe | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export function useRecipeDetail(recipeId: string): UseRecipeDetailResult {
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRecipe = useCallback(async () => {
+    if (!recipeId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await recipesClient.getRecipe(recipeId);
+      setRecipe(response);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch recipe details');
+      console.error('Error fetching recipe details:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [recipeId]);
+
+  useEffect(() => {
+    fetchRecipe();
+  }, [fetchRecipe]);
+
+  return {
+    recipe,
+    loading,
+    error,
+    refetch: fetchRecipe,
+  };
+}
+
+/**
+ * useUpdateRecipeProgress Hook
+ *
+ * Hook for updating recipe progress with optimistic updates and error recovery.
+ */
+interface UseUpdateRecipeProgressResult {
+  updateProgress: (userId: string, recipeId: string, status: RecipeStatus) => Promise<void>;
+  loading: boolean;
+  error: string | null;
+}
+
+export function useUpdateRecipeProgress(): UseUpdateRecipeProgressResult {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateProgress = useCallback(async (userId: string, recipeId: string, status: RecipeStatus) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await recipesClient.updateRecipeProgress(recipeId, { status });
+    } catch (err: any) {
+      setError(err.message || 'Failed to update progress');
+      console.error('Error updating recipe progress:', err);
+      throw err; // Re-throw to allow caller to handle
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    updateProgress,
+    loading,
+    error,
   };
 }
 

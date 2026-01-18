@@ -45,8 +45,11 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/hooks/useAuth';
-import { CoachingNudge } from '@/components/coaching/CoachingNudge';
+import { lazy, Suspense } from 'react';
 import { fastapiClient } from '@/services/fastapiClient';
+
+// Lazy load CoachingNudge for better performance
+const CoachingNudge = lazy(() => import('@/components/coaching/CoachingNudge').then(module => ({ default: module.CoachingNudge })));
 import { apiGateway } from '@/services/apiGateway';
 import { programsClient } from '@/services/programsClient';
 import { communityClient } from '@/services/communityClient';
@@ -125,6 +128,7 @@ export function StudentDashboardHub() {
   const [profiledTrack, setProfiledTrack] = useState<string | null>(null);
   const [profilingResults, setProfilingResults] = useState<any>(null);
   const [loadingTrack, setLoadingTrack] = useState(true);
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [foundationsStatus, setFoundationsStatus] = useState<FoundationsStatus | null>(null);
   const [curriculumProgress, setCurriculumProgress] = useState<UserTrackProgress | null>(null);
   const [loadingFoundations, setLoadingFoundations] = useState(true);
@@ -198,50 +202,63 @@ export function StudentDashboardHub() {
     return colorMap[type]?.[trackKey] || colorMap[type]?.defender || '';
   };
 
-  // Fetch all dashboard data
+  // Fetch all dashboard data in parallel for better performance
   useEffect(() => {
     const fetchAllData = async () => {
       if (!user?.id) return;
 
+      setLoadingMissions(true);
+
       try {
-        // Fetch dashboard overview (readiness, gamification, subscription)
-        const dashboardData = await apiGateway.get<any>('/dashboard/overview');
-        if (dashboardData?.readiness) {
-          setReadinessScore(dashboardData.readiness.score || 0);
-        }
-        if (dashboardData?.gamification) {
-          setStreak(dashboardData.gamification.streak || 0);
-          setPoints(dashboardData.gamification.points || 0);
-          setBadges(dashboardData.gamification.badges || 0);
-          setRank(dashboardData.gamification.rank || 'Bronze');
-          setLevel(dashboardData.gamification.level || '1');
-        }
-        if (dashboardData?.subscription) {
-          setSubscriptionTier(dashboardData.subscription.tier || 'free');
-          setSubscriptionDaysLeft(dashboardData.subscription.days_left || null);
-        }
-
-        // Fetch next actions
-        try {
-          const actions = await apiGateway.get<any[]>('/dashboard/next-actions');
-          setNextActions(Array.isArray(actions) ? actions : []);
-        } catch (err) {
-          console.error('Failed to fetch next actions:', err);
-        }
-
-        // Fetch active missions
-        try {
-          const missionsResponse = await apiGateway.get<any>('/student/missions', {
+        // Make all API calls in parallel for better performance
+        const [dashboardResponse, actionsResponse, missionsResponse] = await Promise.allSettled([
+          apiGateway.get<any>('/dashboard/overview').catch(() => null),
+          apiGateway.get<any[]>('/dashboard/next-actions').catch(() => []),
+          apiGateway.get<any>('/student/missions', {
             params: { status: 'in_progress', page_size: 3 }
-          });
-          setActiveMissions(Array.isArray(missionsResponse?.results) ? missionsResponse.results : []);
-        } catch (err) {
-          console.error('Failed to fetch missions:', err);
-        } finally {
-          setLoadingMissions(false);
+          }).catch(() => ({ results: [] }))
+        ]);
+
+        // Handle dashboard overview data
+        if (dashboardResponse.status === 'fulfilled' && dashboardResponse.value) {
+          const dashboardData = dashboardResponse.value;
+          if (dashboardData?.readiness) {
+            setReadinessScore(dashboardData.readiness.score || 0);
+          }
+          if (dashboardData?.gamification) {
+            setStreak(dashboardData.gamification.streak || 0);
+            setPoints(dashboardData.gamification.points || 0);
+            setBadges(dashboardData.gamification.badges || 0);
+            setRank(dashboardData.gamification.rank || 'Bronze');
+            setLevel(dashboardData.gamification.level || '1');
+          }
+          if (dashboardData?.subscription) {
+            setSubscriptionTier(dashboardData.subscription.tier || 'free');
+            setSubscriptionDaysLeft(dashboardData.subscription.days_left || null);
+          }
         }
+
+        // Handle next actions
+        if (actionsResponse.status === 'fulfilled') {
+          const actions = actionsResponse.value;
+          setNextActions(Array.isArray(actions) ? actions : []);
+        } else {
+          console.error('Failed to fetch next actions:', actionsResponse.reason);
+        }
+
+        // Handle active missions
+        if (missionsResponse.status === 'fulfilled') {
+          const missionsData = missionsResponse.value;
+          setActiveMissions(Array.isArray(missionsData?.results) ? missionsData.results : []);
+        } else {
+          console.error('Failed to fetch missions:', missionsResponse.reason);
+        }
+
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setLoadingMissions(false);
+        setLoadingDashboard(false);
       }
     };
 
@@ -1112,7 +1129,9 @@ export function StudentDashboardHub() {
       </div>
 
       {/* AI Coaching Nudge */}
-      <CoachingNudge userId={user?.id?.toString()} autoLoad={true} />
+      <Suspense fallback={null}>
+        <CoachingNudge userId={user?.id?.toString()} autoLoad={true} />
+      </Suspense>
     </div>
   );
 }
