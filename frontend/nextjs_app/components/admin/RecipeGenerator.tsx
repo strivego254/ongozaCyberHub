@@ -34,16 +34,16 @@ export function RecipeGenerator({ missions }: RecipeGeneratorProps) {
       const mission = missions.find(m => m.id === selectedMission);
       if (!mission) return;
 
-      const response = await fetch('/api/recipes/generate', {
+      const response = await fetch('/api/v1/recipes/generate/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          context_type: 'mission',
-          context_id: mission.id,
           track_code: mission.track_code,
-          user_id: 'admin',
+          level: 'beginner', // Default level
+          skill_code: mission.track_code.toLowerCase() + '_skills',
+          goal_description: mission.instructions || `Generate a recipe for ${mission.title}`,
         }),
       });
 
@@ -51,8 +51,8 @@ export function RecipeGenerator({ missions }: RecipeGeneratorProps) {
         throw new Error(`Generation failed: ${response.status}`);
       }
 
-      const { recipes } = await response.json();
-      setGeneratedRecipes(recipes || []);
+      const recipe = await response.json();
+      setGeneratedRecipes([recipe]);
     } catch (err) {
       console.error('Recipe generation failed:', err);
       setError(err instanceof Error ? err.message : 'Unknown error occurred');

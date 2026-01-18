@@ -1,31 +1,31 @@
 /**
  * RecipeLibraryShell Component
- * 
+ *
  * Main shell component for the recipe library page.
  */
 'use client';
 
-import { useState } from 'react';
 import { RecipeGrid } from './RecipeGrid';
-import { RecipeFilters } from './RecipeFilters';
+import { RecipeFiltersBar } from './RecipeFiltersBar';
 import { SearchBar } from './SearchBar';
 import { useRecipes } from '@/hooks/useRecipes';
+import { useRecipeFilters } from '@/hooks/useRecipeFilters';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { BookOpen } from 'lucide-react';
-import type { RecipeFilters as RecipeFiltersType } from '@/services/types/recipes';
+import { BookOpen, RefreshCw, Filter, X } from 'lucide-react';
+import { useState } from 'react';
 
 export function RecipeLibraryShell() {
-  const [filters, setFilters] = useState<RecipeFiltersType>({
-    track: '',
-    difficulty: undefined,
-    max_time: undefined,
-    context: undefined,
-    sort: 'relevance',
-  });
-  const [search, setSearch] = useState('');
+  const {
+    filters,
+    updateFilter,
+    clearFilters,
+    hasActiveFilters,
+    getQueryParams,
+    debouncedSearch
+  } = useRecipeFilters();
 
-  const { recipes, stats, loading, bookmarks } = useRecipes(search, filters);
+  const { recipes, stats, loading, error, bookmarks, refetch, isStale } = useRecipes(getQueryParams());
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950">
@@ -41,17 +41,45 @@ export function RecipeLibraryShell() {
                     Recipe Library
                   </h1>
                   <p className="text-xl text-slate-300 mt-2">
-                    {stats.total} recipes {stats.bookmarked > 0 && `• ${stats.bookmarked} saved`}
+                    {loading ? 'Loading recipes...' : `${stats.total} recipes ${stats.bookmarked > 0 ? `• ${stats.bookmarked} saved` : ''}`}
                   </p>
                 </div>
               </div>
+
+              {/* Error State */}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                      <p className="text-red-400 text-sm">{error}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => refetch()}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <SearchBar value={search} onChange={setSearch} />
+            <SearchBar value={filters.search || ''} onChange={(value) => updateFilter('search', value)} />
           </div>
 
+          {/* Desktop Filters */}
           <div className="mt-6">
-            <RecipeFilters filters={filters} onFiltersChange={setFilters} stats={stats} />
+            <RecipeFiltersBar
+              filters={filters}
+              onFilterChange={updateFilter}
+              onClearFilters={clearFilters}
+              hasActiveFilters={hasActiveFilters()}
+              onDebouncedSearch={debouncedSearch}
+            />
           </div>
         </div>
       </div>

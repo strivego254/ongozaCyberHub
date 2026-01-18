@@ -24,7 +24,55 @@ export type { RecipeDetailResponse };
  */
 export const recipesClient = {
   /**
-   * Get all recipes with optional filters
+   * Get all recipes with stats and optional filters
+   */
+  async getRecipesWithStats(filters?: RecipeFilters): Promise<{ recipes: RecipeListResponse[], total: number, bookmarked?: number }> {
+    const params = new URLSearchParams();
+
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.track) params.append('track', filters.track);
+    if (filters?.difficulty) params.append('difficulty', filters.difficulty);
+    if (filters?.max_time) params.append('max_time', filters.max_time.toString());
+    if (filters?.context) params.append('context', filters.context);
+    if (filters?.sort) params.append('sort', filters.sort);
+
+    const queryString = params.toString();
+    const path = `/recipes/${queryString ? `?${queryString}` : ''}`;
+
+    const data = await apiGateway.get<any>(path);
+
+    // Handle new Next.js API response format: { recipes: [...], total: ..., page: ..., page_size: ... }
+    if (data?.recipes && Array.isArray(data.recipes)) {
+      return {
+        recipes: data.recipes,
+        total: data.total || 0,
+        bookmarked: data.bookmarked || 0
+      };
+    }
+
+    // Handle paginated response (legacy Django format)
+    if (data?.results && Array.isArray(data.results)) {
+      return {
+        recipes: data.results,
+        total: data.count || 0,
+        bookmarked: 0
+      };
+    }
+
+    // Handle direct array response
+    if (Array.isArray(data)) {
+      return {
+        recipes: data,
+        total: data.length,
+        bookmarked: 0
+      };
+    }
+
+    return { recipes: [], total: 0, bookmarked: 0 };
+  },
+
+  /**
+   * Get all recipes with optional filters (legacy method)
    */
   async getRecipes(filters?: RecipeFilters): Promise<RecipeListResponse[]> {
     const params = new URLSearchParams();
@@ -40,12 +88,17 @@ export const recipesClient = {
     const path = `/recipes/${queryString ? `?${queryString}` : ''}`;
     
     const data = await apiGateway.get<any>(path);
-    
-    // Handle paginated response
+
+    // Handle new Next.js API response format: { recipes: [...], total: ..., page: ..., page_size: ... }
+    if (data?.recipes && Array.isArray(data.recipes)) {
+      return data.recipes;
+    }
+
+    // Handle paginated response (legacy Django format)
     if (data?.results && Array.isArray(data.results)) {
       return data.results;
     }
-    
+
     // Handle direct array response
     if (Array.isArray(data)) {
       return data;

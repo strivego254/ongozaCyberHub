@@ -37,7 +37,8 @@ module.exports = {
     watch: false,
     max_memory_restart: '1G',
     env: {
-      PYTHONPATH: backendDir
+      PYTHONPATH: backendDir,
+      DJANGO_SETTINGS_MODULE: 'core.settings.sqlite_settings'
     },
     error_file: path.join(homeDir, '.pm2', 'logs', 'ongoza-django-error.log'),
     out_file: path.join(homeDir, '.pm2', 'logs', 'ongoza-django-out.log'),

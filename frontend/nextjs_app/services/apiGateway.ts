@@ -126,7 +126,9 @@ export const apiGateway = {
    * GET request
    */
   async get<T>(path: string, options?: FetchOptions): Promise<T> {
-    return apiGatewayRequest<T>(path, { ...options, method: 'GET' });
+    // For recipes endpoints, don't require authentication (free samples available)
+    const skipAuth = path.startsWith('/recipes');
+    return apiGatewayRequest<T>(path, { ...options, method: 'GET', skipAuth });
   },
 
   /**

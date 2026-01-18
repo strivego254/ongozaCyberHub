@@ -12,16 +12,54 @@ class RecipeListSerializer(serializers.ModelSerializer):
     user_status = serializers.SerializerMethodField()
     user_rating = serializers.SerializerMethodField()
     context_labels = serializers.SerializerMethodField()
-    
+
+    # Transform fields to match Next.js expectations
+    track_code = serializers.SerializerMethodField()
+    skill_code = serializers.SerializerMethodField()
+    level = serializers.SerializerMethodField()
+    source_type = serializers.SerializerMethodField()
+    description = serializers.CharField(source='summary')  # Map summary to description
+    expected_duration_minutes = serializers.IntegerField(source='estimated_minutes')
+    prerequisites = serializers.SerializerMethodField()
+    tools_and_environment = serializers.SerializerMethodField()
+    inputs = serializers.SerializerMethodField()
+    steps = serializers.SerializerMethodField()
+    tags = serializers.SerializerMethodField()
+    validation_checks = serializers.SerializerMethodField()
+    avg_rating = serializers.SerializerMethodField()
+
     class Meta:
         model = Recipe
         fields = [
-            'id', 'title', 'slug', 'summary', 'difficulty', 'estimated_minutes',
-            'track_codes', 'skill_codes', 'tools_used', 'thumbnail_url',
+            'id', 'title', 'slug', 'description', 'difficulty', 'expected_duration_minutes',
+            'track_code', 'skill_code', 'level', 'source_type',
+            'prerequisites', 'tools_and_environment', 'inputs', 'steps',
+            'tags', 'validation_checks', 'thumbnail_url',
             'usage_count', 'avg_rating', 'mentor_curated',
             'is_bookmarked', 'user_status', 'user_rating', 'context_labels'
         ]
         read_only_fields = ['id', 'slug', 'usage_count', 'avg_rating']
+
+    def get_track_code(self, obj):
+        """Return primary track code from track_codes array."""
+        return obj.track_codes[0] if obj.track_codes else 'defender'
+
+    def get_skill_code(self, obj):
+        """Return primary skill code from skill_codes array."""
+        return obj.skill_codes[0] if obj.skill_codes else 'general'
+
+    def get_level(self, obj):
+        """Map difficulty to level enum."""
+        difficulty_map = {
+            'beginner': 'beginner',
+            'intermediate': 'intermediate',
+            'advanced': 'advanced'
+        }
+        return difficulty_map.get(obj.difficulty, 'beginner')
+
+    def get_source_type(self, obj):
+        """Map source_type or default to manual."""
+        return getattr(obj, 'source_type', 'manual')
     
     def get_is_bookmarked(self, obj):
         request = self.context.get('request')
@@ -74,25 +112,128 @@ class RecipeListSerializer(serializers.ModelSerializer):
         
         return labels[:2]  # Return max 2 labels
 
+    def get_tags(self, obj):
+        """Return tags from skill_codes and tools_used."""
+        tags = []
+        if obj.skill_codes:
+            tags.extend(obj.skill_codes)
+        if obj.tools_used:
+            tags.extend(obj.tools_used)
+        return tags
+
+    def get_validation_checks(self, obj):
+        """Transform validation_steps to validation_checks format."""
+        if obj.validation_steps and isinstance(obj.validation_steps, dict):
+            # Convert old format to new format
+            checks = []
+            for key, value in obj.validation_steps.items():
+                if isinstance(value, str):
+                    checks.append({
+                        'question': value,
+                        'expected_answer': '',
+                        'check_type': 'text_input',
+                        'options': []
+                    })
+            return checks
+        return []
+
+    def get_prerequisites(self, obj):
+        """Return prerequisites from the model."""
+        return obj.prerequisites or []
+
+    def get_tools_and_environment(self, obj):
+        """Return tools and environment info."""
+        return obj.tools_used or []
+
+    def get_inputs(self, obj):
+        """Return inputs required for the recipe."""
+        return obj.inputs or []
+
+    def get_steps(self, obj):
+        """Return recipe steps."""
+        if obj.content and isinstance(obj.content, dict) and 'steps' in obj.content:
+            return obj.content['steps']
+        return []
+
+    def get_avg_rating(self, obj):
+        """Return avg_rating as a float."""
+        return float(obj.avg_rating) if obj.avg_rating else 0.0
+
 
 class RecipeDetailSerializer(serializers.ModelSerializer):
     """Serializer for recipe detail views."""
     is_bookmarked = serializers.SerializerMethodField()
     user_progress = serializers.SerializerMethodField()
     related_recipes = serializers.SerializerMethodField()
-    
+
+    # Transform fields to match Next.js expectations
+    track_code = serializers.SerializerMethodField()
+    skill_code = serializers.SerializerMethodField()
+    level = serializers.SerializerMethodField()
+    source_type = serializers.SerializerMethodField()
+    description = serializers.CharField(source='summary')  # Map summary to description
+    expected_duration_minutes = serializers.IntegerField(source='estimated_minutes')
+    tags = serializers.SerializerMethodField()
+    validation_checks = serializers.SerializerMethodField()
+
     class Meta:
         model = Recipe
         fields = [
-            'id', 'title', 'slug', 'summary', 'description', 'difficulty',
-            'estimated_minutes', 'track_codes', 'skill_codes', 'tools_used',
+            'id', 'title', 'slug', 'description', 'difficulty', 'expected_duration_minutes',
+            'track_code', 'skill_code', 'level', 'source_type',
             'prerequisites', 'tools_and_environment', 'inputs', 'steps',
-            'validation_checks', 'thumbnail_url',
+            'tags', 'validation_checks', 'thumbnail_url',
             'usage_count', 'avg_rating', 'mentor_curated', 'created_by',
-            'created_at', 'updated_at',
+            'created_at', 'updated_at', 'version', 'is_active',
             'is_bookmarked', 'user_progress', 'related_recipes'
         ]
         read_only_fields = ['id', 'slug', 'usage_count', 'avg_rating', 'created_at', 'updated_at']
+
+    def get_track_code(self, obj):
+        """Return primary track code from track_codes array."""
+        return obj.track_codes[0] if obj.track_codes else 'defender'
+
+    def get_skill_code(self, obj):
+        """Return primary skill code from skill_codes array."""
+        return obj.skill_codes[0] if obj.skill_codes else 'general'
+
+    def get_level(self, obj):
+        """Map difficulty to level enum."""
+        difficulty_map = {
+            'beginner': 'beginner',
+            'intermediate': 'intermediate',
+            'advanced': 'advanced'
+        }
+        return difficulty_map.get(obj.difficulty, 'beginner')
+
+    def get_source_type(self, obj):
+        """Map source_type or default to manual."""
+        return getattr(obj, 'source_type', 'manual')
+
+    def get_tags(self, obj):
+        """Return tags from skill_codes and tools_used."""
+        tags = []
+        if obj.skill_codes:
+            tags.extend(obj.skill_codes)
+        if obj.tools_used:
+            tags.extend(obj.tools_used)
+        return tags
+
+    def get_validation_checks(self, obj):
+        """Transform validation_steps to validation_checks format."""
+        if obj.validation_steps and isinstance(obj.validation_steps, dict):
+            # Convert old format to new format
+            checks = []
+            for key, value in obj.validation_steps.items():
+                if isinstance(value, str):
+                    checks.append({
+                        'question': value,
+                        'expected_answer': '',
+                        'check_type': 'text_input',
+                        'options': []
+                    })
+            return checks
+        return []
     
     def get_is_bookmarked(self, obj):
         request = self.context.get('request')

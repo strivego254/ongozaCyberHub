@@ -65,16 +65,13 @@ export async function POST(request: NextRequest) {
             normalized_recipe_id: createdRecipe.id,
           });
 
-            successful++;
-            results.push({
-              job_id: job.id,
-              status: 'success',
-              recipe_id: createdRecipe.id,
-              recipe_title: createdRecipe.title,
-            });
-          } else {
-            throw new Error(`Failed to create recipe: ${recipeResponse.status}`);
-          }
+          successful++;
+          results.push({
+            job_id: job.id,
+            status: 'success',
+            recipe_id: createdRecipe.id,
+            recipe_title: createdRecipe.title,
+          });
         } else {
           // Update job as failed
           await djangoClient.recipes.updateLLMJob(job.id, {

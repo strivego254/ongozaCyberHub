@@ -13,7 +13,8 @@ from .views import (
     UserRecipeProgressView,
     RecipeSourceViewSet,
     RecipeSourceIngestView,
-    LLMNormalizeRecipesView
+    LLMNormalizeRecipesView,
+    RecipeGenerateView
 )
 
 router = DefaultRouter()
@@ -30,6 +31,7 @@ urlpatterns = [
     path('users/<uuid:user_id>/recipes/<uuid:recipe_id>/progress/', UserRecipeProgressView.as_view(), name='user-recipe-progress'),
     path('recipe-sources/<uuid:source_id>/ingest/', RecipeSourceIngestView.as_view(), name='recipe-source-ingest'),
     path('llm/normalize-recipes/run-once/', LLMNormalizeRecipesView.as_view(), name='llm-normalize-recipes'),
+    path('generate/', RecipeGenerateView.as_view(), name='recipe-generate'),
 ]
 
 

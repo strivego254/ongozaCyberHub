@@ -97,7 +97,8 @@ class Recipe(models.Model):
     
     thumbnail_url = models.URLField(blank=True, max_length=500)
     mentor_curated = models.BooleanField(default=False, db_index=True)
-    
+    is_free_sample = models.BooleanField(default=False, db_index=True, help_text='Free tier access')
+
     # Stats
     usage_count = models.IntegerField(default=0, db_index=True)
     avg_rating = models.DecimalField(
@@ -126,6 +127,7 @@ class Recipe(models.Model):
             models.Index(fields=['slug']),
             models.Index(fields=['is_active', 'usage_count']),
             models.Index(fields=['difficulty', 'is_active']),
+            models.Index(fields=['is_free_sample'], name='idx_recipes_free'),
             GinIndex(fields=['track_codes']),
             GinIndex(fields=['skill_codes']),
             GinIndex(fields=['tools_used']),
@@ -141,9 +143,9 @@ class UserRecipeProgress(models.Model):
     User progress tracking for recipes.
     """
     STATUS_CHOICES = [
-        ('started', 'Started'),
+        ('not_started', 'Not Started'),
+        ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
-        ('bookmarked', 'Bookmarked'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

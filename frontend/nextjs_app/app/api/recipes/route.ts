@@ -35,8 +35,17 @@ export async function GET(request: NextRequest) {
     // Call Django API via djangoClient
     const data = await djangoClient.recipes.listRecipes(validatedParams);
 
+    // Transform Django paginated response to Next.js expected format
+    const transformedData = {
+      recipes: data.results || data,
+      total: data.count || (data.results ? data.results.length : 0),
+      page: 1, // Django pagination starts at 1
+      page_size: data.results ? data.results.length : 0
+    };
+
+
     // Validate response against schema
-    const validatedResponse = RecipeListResponseSchema.parse(data);
+    const validatedResponse = RecipeListResponseSchema.parse(transformedData);
 
     return NextResponse.json(validatedResponse);
   } catch (error) {
