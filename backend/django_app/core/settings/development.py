@@ -5,7 +5,10 @@ from .base import *
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'testserver']
+# Allow override via environment; fall back to dev defaults
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else [
+    'localhost', '127.0.0.1', '0.0.0.0', 'testserver', 'nginx', 'django'
+]
 
 # Frontend URL for development
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
@@ -17,7 +20,9 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_DOMAIN = None  # Allow localhost/127.0.0.1
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False
-CSRF_TRUSTED_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000']
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if os.environ.get('CSRF_TRUSTED_ORIGINS') else [
+    'http://localhost:3000', 'http://127.0.0.1:3000'
+]
 
 # Development-specific settings
 INSTALLED_APPS = INSTALLED_APPS + [
