@@ -77,7 +77,11 @@ export function CoachingNudge({ userId, autoLoad = true, onActionClick }: Coachi
 
   useEffect(() => {
     if (autoLoad && (userId || user?.id)) {
-      getCoaching();
+      // Delay coaching load by 2 seconds to prioritize main content
+      const timer = setTimeout(() => {
+        getCoaching();
+      }, 2000);
+      return () => clearTimeout(timer);
     }
   }, [userId, user?.id, autoLoad]);
 

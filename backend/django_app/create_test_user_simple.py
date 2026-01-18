@@ -19,8 +19,8 @@ User = get_user_model()
 
 def create_test_user():
     """Create a test student user."""
-    email = 'student@test.com'
-    password = 'testpass123'
+    email = 'ongozacyberhub@gmail.com'
+    password = 'Ongoza@#1'
     
     # Get or create student role
     role, _ = Role.objects.get_or_create(name='student')
