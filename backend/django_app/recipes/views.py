@@ -6,15 +6,16 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Prefetch, Q, Subquery, OuterRef, Avg
 from django.utils import timezone
 from django.utils.text import slugify
 
-from .models import Recipe, UserRecipeProgress, RecipeContextLink, UserRecipeBookmark
+from .models import Recipe, UserRecipeProgress, RecipeContextLink, UserRecipeBookmark, RecipeSource, RecipeLLMJob
 from .serializers import (
     RecipeListSerializer, RecipeDetailSerializer,
     UserRecipeProgressSerializer, RecipeContextLinkSerializer,
-    RecipeBookmarkSerializer, RecipeProgressUpdateSerializer
+    RecipeBookmarkSerializer, RecipeProgressUpdateSerializer,
+    RecipeSourceSerializer
 )
 
 
@@ -224,16 +225,160 @@ class BookmarkedRecipesView(APIView):
 class RecipeStatsView(APIView):
     """View for recipe library statistics."""
     permission_classes = [permissions.AllowAny]
-    
+
     def get(self, request):
         total = Recipe.objects.filter(is_active=True).count()
         user = request.user
-        
+
         bookmarked = 0
         if user.is_authenticated:
             bookmarked = UserRecipeBookmark.objects.filter(user=user).count()
-        
+
         return Response({
             'total': total,
             'bookmarked': bookmarked
         })
+
+
+class UserRecipesView(APIView):
+    """View for user's recipe progress."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, user_id):
+        # Check if user can access this data
+        if str(request.user.id) != user_id:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Get recipes with user progress
+        recipes_with_progress = Recipe.objects.filter(
+            is_active=True,
+            user_progress__user=request.user
+        ).select_related('created_by').prefetch_related(
+            'user_progress',
+            Prefetch('context_links', queryset=RecipeContextLink.objects.select_related('recipe'))
+        ).annotate(
+            user_status=Subquery(
+                UserRecipeProgress.objects.filter(
+                    user=request.user,
+                    recipe=OuterRef('pk')
+                ).values('status')[:1]
+            ),
+            user_rating=Subquery(
+                UserRecipeProgress.objects.filter(
+                    user=request.user,
+                    recipe=OuterRef('pk')
+                ).values('rating')[:1]
+            )
+        )
+
+        serializer = RecipeListSerializer(recipes_with_progress, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+class UserRecipeProgressView(APIView):
+    """View for updating user recipe progress."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, user_id, recipe_id):
+        # Check if user can access this data
+        if str(request.user.id) != user_id:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            recipe = Recipe.objects.get(id=recipe_id, is_active=True)
+        except Recipe.DoesNotExist:
+            return Response({'error': 'Recipe not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get or create progress record
+        progress, created = UserRecipeProgress.objects.get_or_create(
+            user=request.user,
+            recipe=recipe
+        )
+
+        # Update progress
+        serializer = RecipeProgressUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            old_status = progress.status
+            new_status = serializer.validated_data.get('status', progress.status)
+
+            progress.status = new_status
+            if new_status == 'completed' and old_status != 'completed':
+                progress.completed_at = timezone.now()
+                # Update recipe stats
+                recipe.usage_count += 1
+                recipe.save(update_fields=['usage_count'])
+
+            if 'rating' in serializer.validated_data:
+                progress.rating = serializer.validated_data['rating']
+                # Update recipe avg_rating
+                avg_rating = UserRecipeProgress.objects.filter(
+                    recipe=recipe,
+                    rating__isnull=False
+                ).aggregate(Avg('rating'))['rating__avg']
+                if avg_rating:
+                    recipe.avg_rating = round(avg_rating, 2)
+                    recipe.save(update_fields=['avg_rating'])
+
+            if 'notes' in serializer.validated_data:
+                progress.notes = serializer.validated_data['notes']
+
+            if 'time_spent_minutes' in serializer.validated_data:
+                progress.time_spent_minutes = serializer.validated_data['time_spent_minutes']
+
+            progress.save()
+
+            # Emit skill signal (placeholder - integrate with TalentScope)
+            # emitSkillSignalFromRecipeCompletion(request.user.id, recipe, new_status)
+
+            response_serializer = UserRecipeProgressSerializer(progress)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RecipeSourceViewSet(viewsets.ModelViewSet):
+    """ViewSet for recipe sources."""
+    queryset = RecipeSource.objects.all()
+    serializer_class = RecipeSourceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        # Only admin/system can create sources
+        if not request.user.is_staff:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().create(request, *args, **kwargs)
+
+
+class RecipeSourceIngestView(APIView):
+    """View for triggering recipe source ingestion."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, source_id):
+        # Only admin/system can trigger ingestion
+        if not request.user.is_staff:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            source = RecipeSource.objects.get(id=source_id)
+        except RecipeSource.DoesNotExist:
+            return Response({'error': 'Source not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Placeholder - implement actual ingestion logic
+        # This would create RecipeLLMJob records based on source config
+
+        return Response({'message': 'Ingestion started', 'source_id': source_id})
+
+
+class LLMNormalizeRecipesView(APIView):
+    """View for triggering LLM normalization worker."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        # Only admin/system can trigger LLM jobs
+        if not request.user.is_staff:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Placeholder - implement LLM worker logic
+        # This would pick pending RecipeLLMJob records and process them
+
+        return Response({'message': 'LLM normalization worker triggered'})

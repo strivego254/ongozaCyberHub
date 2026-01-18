@@ -3,7 +3,7 @@ Recipe Engine serializers - API responses for recipes and user progress.
 """
 from rest_framework import serializers
 from django.db.models import Count, Avg, Q
-from .models import Recipe, UserRecipeProgress, RecipeContextLink, UserRecipeBookmark
+from .models import Recipe, UserRecipeProgress, RecipeContextLink, UserRecipeBookmark, RecipeSource
 
 
 class RecipeListSerializer(serializers.ModelSerializer):
@@ -86,7 +86,8 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'slug', 'summary', 'description', 'difficulty',
             'estimated_minutes', 'track_codes', 'skill_codes', 'tools_used',
-            'prerequisites', 'content', 'validation_steps', 'thumbnail_url',
+            'prerequisites', 'tools_and_environment', 'inputs', 'steps',
+            'validation_checks', 'thumbnail_url',
             'usage_count', 'avg_rating', 'mentor_curated', 'created_by',
             'created_at', 'updated_at',
             'is_bookmarked', 'user_progress', 'related_recipes'
@@ -193,5 +194,15 @@ class RecipeProgressUpdateSerializer(serializers.Serializer):
         required=False,
         allow_null=True
     )
+
+
+class RecipeSourceSerializer(serializers.ModelSerializer):
+    """Serializer for recipe sources."""
+    class Meta:
+        model = RecipeSource
+        fields = [
+            'id', 'name', 'type', 'config', 'active', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
 
 

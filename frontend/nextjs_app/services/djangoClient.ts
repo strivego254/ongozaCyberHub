@@ -370,6 +370,103 @@ export const djangoClient = {
   },
 
   /**
+   * Recipe Engine endpoints
+   */
+  recipes: {
+    /**
+     * List recipes
+     */
+    async listRecipes(params?: {
+      track_code?: string;
+      skill_code?: string;
+      level?: string;
+      difficulty?: string;
+      search?: string;
+      limit?: number;
+      offset?: number;
+    }): Promise<any> {
+      return apiGateway.get('/recipes', { params });
+    },
+
+    /**
+     * Get recipe by ID
+     */
+    async getRecipe(id: string): Promise<any> {
+      return apiGateway.get(`/recipes/${id}`);
+    },
+
+    /**
+     * Get user's recipe progress
+     */
+    async getUserRecipes(userId: string): Promise<any> {
+      return apiGateway.get(`/users/${userId}/recipes`);
+    },
+
+    /**
+     * Get user recipe progress
+     */
+    async getRecipeProgress(userId: string, recipeId: string): Promise<any> {
+      return apiGateway.get(`/users/${userId}/recipes/${recipeId}/progress`);
+    },
+
+    /**
+     * Update user recipe progress
+     */
+    async updateRecipeProgress(userId: string, recipeId: string, data: any): Promise<any> {
+      return apiGateway.post(`/users/${userId}/recipes/${recipeId}/progress`, data);
+    },
+
+    /**
+     * List recipe sources
+     */
+    async listRecipeSources(): Promise<any> {
+      return apiGateway.get('/recipe-sources');
+    },
+
+    /**
+     * Create recipe source
+     */
+    async createRecipeSource(data: any): Promise<any> {
+      return apiGateway.post('/recipe-sources', data);
+    },
+
+    /**
+     * Trigger recipe source ingestion
+     */
+    async ingestRecipeSource(sourceId: string): Promise<any> {
+      return apiGateway.post(`/recipe-sources/${sourceId}/ingest`);
+    },
+
+    /**
+     * Generate recipe via LLM
+     */
+    async generateRecipe(data: any): Promise<any> {
+      return apiGateway.post('/recipes/generate', data);
+    },
+
+    /**
+     * Get pending LLM jobs
+     */
+    async getPendingLLMJobs(): Promise<any> {
+      return apiGateway.get('/recipe-llm-jobs', { params: { status: 'pending', limit: 10 } });
+    },
+
+    /**
+     * Update LLM job status
+     */
+    async updateLLMJob(jobId: string, data: any): Promise<any> {
+      return apiGateway.patch(`/recipe-llm-jobs/${jobId}`, data);
+    },
+
+    /**
+     * Run LLM normalization worker
+     */
+    async runLLMNormalization(): Promise<any> {
+      return apiGateway.post('/llm/normalize-recipes/run-once');
+    },
+  },
+
+  /**
    * API Key endpoints
    */
   apiKeys: {
