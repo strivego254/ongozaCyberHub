@@ -11,14 +11,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Load environment variables from .env file
 # Priority: 1) Project root, 2) backend/django_app (legacy), 3) backend (legacy)
+# NOTE: In Docker, environment variables are already set - don't override them
 PROJECT_ROOT = BASE_DIR.parent.parent  # /home/caleb/kiptoo/och/ongozaCyberHub
+
+# Check if running in Docker (don't override env vars if they're already set properly)
+IN_DOCKER = os.environ.get('DB_HOST') not in ['localhost', '127.0.0.1', None]
 
 # Try loading from project root first (primary location)
 root_env = PROJECT_ROOT / '.env'
-if root_env.exists():
+if root_env.exists() and not IN_DOCKER:
     load_dotenv(root_env, override=True)
     print(f"✅ Loaded .env from project root: {root_env}")
-else:
+elif not IN_DOCKER:
     # Fallback to legacy locations for backward compatibility
     env_path = BASE_DIR / '.env'
     if env_path.exists():
@@ -29,6 +33,8 @@ else:
         if parent_env.exists():
             load_dotenv(parent_env, override=True)
             print(f"⚠️ Loaded .env from legacy location: {parent_env}")
+else:
+    print(f"🐳 Running in Docker - using container environment variables")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')

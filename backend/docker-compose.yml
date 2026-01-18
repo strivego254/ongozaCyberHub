@@ -65,16 +65,17 @@ services:
       dockerfile: backend/docker/django.Dockerfile
     container_name: ongozacyberhub_django
     environment:
+      # Force Docker service names (override any .env file values)
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-change-me-in-production}
       DB_NAME: ongozacyberhub
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_HOST: postgres-relational
-      DB_PORT: 5432
+      DB_PORT: "5432"
       FASTAPI_BASE_URL: http://fastapi:8001
-      # Redis configuration (use service name in Docker, localhost for local dev)
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
+      # Redis configuration (use service name in Docker)
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
     ports:
       - "8000:8000"
     volumes:
