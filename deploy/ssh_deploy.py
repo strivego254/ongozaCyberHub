@@ -7,8 +7,12 @@ host = "159.65.76.180"
 user = "root"
 password = "Ongoza@#1CyberHub"
 commands = [
-    "cd ~ && rm -rf ongozacyberhub && git clone https://github.com/strivego254/ongozacyberhub.git",
-    "cd ~/ongozacyberhub && chmod +x deploy/deploy.sh && ./deploy/deploy.sh"
+    "cd ~/ongozacyberhub && git pull origin main",
+    "cd ~/ongozacyberhub/frontend/nextjs_app && npm install",
+    "cd ~/ongozacyberhub/backend/django_app && pip3 install -r requirements.txt --break-system-packages",
+    "cd ~/ongozacyberhub/frontend/nextjs_app && npm run build",
+    "cd ~/ongozacyberhub && pm2 restart ongoza-nextjs && pm2 restart ongoza-django",
+    "pm2 status"
 ]
 
 try:
