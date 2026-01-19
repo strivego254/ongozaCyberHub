@@ -53,7 +53,7 @@ export function useRecipeFilters(initialFilters: Partial<RecipeFilterState> = {}
     if (filters.search) params.set('search', filters.search);
 
     const queryString = params.toString();
-    const newUrl = queryString ? `/recipes?${queryString}` : '/recipes';
+    const newUrl = queryString ? `/students/coaching-os/recipes?${queryString}` : '/students/coaching-os/recipes';
 
     // Only update URL if it's different to avoid unnecessary navigation
     if (window.location.pathname + window.location.search !== newUrl) {

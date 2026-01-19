@@ -165,7 +165,7 @@ export function MissionRecipesSidebar({
                       variant="ghost"
                       size="sm"
                       className="w-full text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-                      onClick={() => window.open('/recipes', '_blank')}
+                      onClick={() => window.open('/students/coaching-os/recipes', '_blank')}
                     >
                       View All Recipes
                     </Button>

@@ -99,7 +99,7 @@ export function RecipeCard({
                 </div>
               </div>
             )}
-        <Link href={`/recipes/${recipe.slug}`} className="block flex-1">
+        <Link href={`/students/coaching-os/recipes/${recipe.slug}`} className="block flex-1">
           {/* THUMBNAIL */}
           {recipe.thumbnail_url && (
             <div className="h-32 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 relative overflow-hidden">
@@ -207,7 +207,7 @@ export function RecipeCard({
         <div className="px-6 pb-6 pt-0 bg-slate-900/50 backdrop-blur-sm border-t border-slate-800/50 mt-auto">
           <div className="flex gap-2 mt-4">
             {/* Primary Action */}
-            <Link href={`/recipes/${recipe.slug}`} className="flex-1">
+            <Link href={`/students/coaching-os/recipes/${recipe.slug}`} className="flex-1">
               <Button
                 size="sm"
                 variant={isLocked ? "outline" : "defender"}

@@ -84,7 +84,7 @@ export function ModuleRecipesSection({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => window.open('/recipes', '_blank')}
+            onClick={() => window.open('/students/coaching-os/recipes', '_blank')}
             className="text-emerald-400 hover:text-emerald-300"
           >
             <ExternalLink className="w-4 h-4 mr-2" />

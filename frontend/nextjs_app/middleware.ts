@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const protectedRoutes = ['/dashboard'];
+const protectedRoutes = ['/dashboard', '/students'];
 const authRoutes = ['/login', '/signup'];
 
 function getLoginRouteForPath(pathname: string) {
@@ -18,6 +18,8 @@ function getLoginRouteForPath(pathname: string) {
   if (pathname.startsWith('/dashboard/analyst') || pathname.startsWith('/dashboard/analytics')) return '/login/analyst'
   if (pathname.startsWith('/dashboard/employer') || pathname.startsWith('/dashboard/marketplace')) return '/login/employer'
   if (pathname.startsWith('/dashboard/finance')) return '/login/finance'
+  // Student routes (including coaching OS)
+  if (pathname.startsWith('/students/')) return '/login/student'
   return '/login/student'
 }
 
@@ -83,6 +85,12 @@ function dashboardForRole(role: string | null): string {
 
 function canAccess(pathname: string, roles: string[]): boolean {
   if (roles.includes('admin')) return true
+
+  // Handle student coaching OS routes - only students and mentees can access
+  if (pathname.startsWith('/students/')) {
+    return roles.includes('student') || roles.includes('mentee')
+  }
+
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     if (pathname.startsWith('/dashboard/director')) return roles.includes('program_director')
     if (pathname.startsWith('/dashboard/admin')) return roles.includes('admin')

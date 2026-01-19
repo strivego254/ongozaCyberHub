@@ -286,7 +286,7 @@ export function TrackShell({
                   Bridge technical gaps with micro-skill boosters. Focused, step-by-step guides contextually available for your current track tasks.
                 </p>
               </div>
-              <Link href="/recipes">
+              <Link href="/students/coaching-os/recipes">
                 <Button 
                   variant="gold"
                   className="bg-amber-500 text-slate-900 font-black uppercase text-xs hover:bg-amber-400"

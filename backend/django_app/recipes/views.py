@@ -31,7 +31,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     - POST /recipes/{slug}/bookmark/ - Bookmark/unbookmark recipe
     """
     queryset = Recipe.objects.filter(is_active=True)
-    permission_classes = [permissions.AllowAny]  # Allow browsing without auth
+    permission_classes = [permissions.IsAuthenticated]  # Require authentication
     lookup_field = 'slug'
     
     def get_serializer_class(self):
@@ -46,10 +46,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             import json
 
             with connection.cursor() as cursor:
-                # Check if user is authenticated (handle auth failures gracefully)
-                user = getattr(request, 'user', None)
-                is_authenticated = user and getattr(user, 'is_authenticated', False)
-                is_free_user = not is_authenticated or not getattr(user, 'is_staff', False)
+                # Check if user is free user (simplified - students can access recipes)
+                user = request.user
+                is_free_user = not user.is_authenticated or not hasattr(user, 'is_staff') or not user.is_staff
 
                 if is_free_user:
                     cursor.execute("""
@@ -192,10 +191,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             from django.db import connection
             import json
 
-            # Check if user is authenticated (handle auth failures gracefully)
-            user = getattr(request, 'user', None)
-            is_authenticated = user and getattr(user, 'is_authenticated', False)
-            is_free_user = not is_authenticated or not getattr(user, 'is_staff', False)
+            # Check if user is authenticated and if they're free user
+            user = request.user
+            is_free_user = not user.is_authenticated or not hasattr(user, 'is_staff') or not user.is_staff
 
             with connection.cursor() as cursor:
                 if is_free_user:
@@ -337,6 +335,72 @@ class RecipeViewSet(viewsets.ModelViewSet):
         
         serializer = RecipeBookmarkSerializer(bookmark)
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
+    def bulk_import(self, request):
+        """Bulk import recipes from JSON data (for seeding)."""
+        recipes_data = request.data
+        if not isinstance(recipes_data, list):
+            recipes_data = [recipes_data]
+
+        created_recipes = []
+        for recipe_data in recipes_data:
+            try:
+                # Transform Next.js format to Django format
+                django_recipe_data = {
+                    'title': recipe_data['title'],
+                    'summary': recipe_data['description'][:200],  # Truncate for summary
+                    'description': recipe_data['description'],
+                    'difficulty': recipe_data['level'],  # Map level to difficulty
+                    'estimated_minutes': recipe_data['expected_duration_minutes'],
+                    'track_codes': [recipe_data['track_code']],
+                    'skill_codes': [recipe_data['skill_code']],
+                    'level': recipe_data['level'],
+                    'source_type': recipe_data['source_type'],
+                    'prerequisites': recipe_data.get('prerequisites', []),
+                    'tools_used': recipe_data.get('tools_and_environment', []),
+                    'inputs': recipe_data.get('inputs', []),
+                    'steps': recipe_data.get('steps', []),
+                    'validation_checks': recipe_data.get('validation_checks', []),
+                    'tags': recipe_data.get('tags', []),
+                    'is_free_sample': recipe_data.get('is_free_sample', False),
+                    'is_active': True,
+                }
+
+                # Generate slug if not provided
+                if 'slug' not in recipe_data:
+                    import re
+                    base_slug = f"{recipe_data['track_code']}-{recipe_data['level']}-{recipe_data['skill_code']}".lower()
+                    base_slug = re.sub(r'[^a-z0-9\-]+', '-', base_slug)
+                    django_recipe_data['slug'] = self._ensure_unique_slug(base_slug)
+                else:
+                    django_recipe_data['slug'] = recipe_data['slug']
+
+                recipe = Recipe.objects.create(**django_recipe_data)
+                created_recipes.append({
+                    'id': recipe.id,
+                    'slug': recipe.slug,
+                    'title': recipe.title,
+                    'track_code': recipe.track_codes[0] if recipe.track_codes else None,
+                    'level': recipe.level
+                })
+
+            except Exception as e:
+                return Response({'error': f'Failed to create recipe: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            'message': f'Successfully imported {len(created_recipes)} recipes',
+            'recipes': created_recipes
+        }, status=status.HTTP_201_CREATED)
+
+    def _ensure_unique_slug(self, base_slug):
+        """Ensure slug uniqueness."""
+        slug = base_slug
+        counter = 1
+        while Recipe.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        return slug
 
 
 class UserRecipeProgressViewSet(viewsets.ReadOnlyModelViewSet):

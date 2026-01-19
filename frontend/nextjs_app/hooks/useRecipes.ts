@@ -202,6 +202,18 @@ export function useRecipeProgress(recipeSlug: string): UseRecipeProgressResult {
     fetchProgress();
   }, [fetchProgress]);
 
+  const startRecipe = useCallback(async () => {
+    try {
+      await recipesClient.updateProgress(recipeSlug, {
+        status: 'in_progress'
+      });
+      await fetchProgress();
+    } catch (err: any) {
+      setError(err.message || 'Failed to start recipe');
+      throw err;
+    }
+  }, [recipeSlug, fetchProgress]);
+
   const markComplete = useCallback(async (rating?: number, notes?: string) => {
     try {
       await recipesClient.updateProgress(recipeSlug, {
@@ -270,6 +282,7 @@ export function useRecipeProgress(recipeSlug: string): UseRecipeProgressResult {
     progress,
     loading,
     error,
+    startRecipe,
     markComplete,
     updateRating,
     updateNotes,

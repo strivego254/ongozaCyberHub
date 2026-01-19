@@ -11,7 +11,7 @@ import { RecipeContentRenderer } from './RecipeContentRenderer';
 import { RecipeActions } from './RecipeActions';
 import { RelatedRecipes } from './RelatedRecipes';
 import { Badge } from '@/components/ui/Badge';
-import { Clock, Star, Target, ArrowLeft, CheckCircle2, BookOpen, ExternalLink } from 'lucide-react';
+import { Clock, Star, Target, ArrowLeft, CheckCircle2, BookOpen, ExternalLink, Play, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import Link from 'next/link';
@@ -46,6 +46,39 @@ export function RecipeDetailShell({ recipe }: RecipeDetailShellProps) {
   const [contextLinks, setContextLinks] = useState<RecipeContextLink[]>([]);
   const [showMobileActions, setShowMobileActions] = useState(false);
 
+  const getStatusIcon = (status?: string) => {
+    switch (status) {
+      case 'completed':
+        return <Check className="w-4 h-4" />;
+      case 'in_progress':
+        return <Play className="w-4 h-4" />;
+      default:
+        return <Target className="w-4 h-4" />;
+    }
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400';
+      case 'in_progress':
+        return 'bg-blue-500/20 border-blue-500/30 text-blue-400';
+      default:
+        return 'bg-slate-500/20 border-slate-500/30 text-slate-400';
+    }
+  };
+
+  const getStatusText = (status?: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Completed';
+      case 'in_progress':
+        return 'In Progress';
+      default:
+        return 'Not Started';
+    }
+  };
+
   useEffect(() => {
     async function fetchContextLinks() {
       try {
@@ -77,7 +110,7 @@ export function RecipeDetailShell({ recipe }: RecipeDetailShellProps) {
       {/* HEADER */}
       <div className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-indigo-900/50">
         <div className="container mx-auto px-6 py-8 max-w-4xl">
-          <Link href="/recipes">
+          <Link href="/students/coaching-os/recipes">
             <Button variant="ghost" size="sm" className="mb-6">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Library
@@ -124,6 +157,45 @@ export function RecipeDetailShell({ recipe }: RecipeDetailShellProps) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* PROGRESS STATUS */}
+      <div className="container mx-auto px-6 max-w-4xl">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-8"
+        >
+          <Card className={`border ${getStatusColor(recipe.user_progress?.status)}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(recipe.user_progress?.status)}
+                  <div>
+                    <h3 className="font-semibold text-slate-200">
+                      Recipe Status: {getStatusText(recipe.user_progress?.status)}
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      {recipe.user_progress?.status === 'completed'
+                        ? 'Great work! You\'ve completed this recipe.'
+                        : recipe.user_progress?.status === 'in_progress'
+                        ? 'You\'re actively working on this recipe.'
+                        : 'Ready to start? Click "Start Recipe" to begin learning.'
+                      }
+                    </p>
+                  </div>
+                </div>
+                {recipe.user_progress?.status === 'completed' && (
+                  <Badge variant="mint" className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Completed
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       <div className="container mx-auto px-6 pb-24 max-w-4xl">

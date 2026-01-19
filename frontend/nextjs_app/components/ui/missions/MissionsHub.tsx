@@ -230,7 +230,7 @@ export function MissionsHub() {
 
           {/* RECIPE ENGINE QUICK ACCESS */}
           <div 
-            onClick={() => router.push('/recipes')}
+            onClick={() => router.push('/students/coaching-os/recipes')}
             className="mt-4 p-5 rounded-2xl bg-och-steel/5 border border-och-steel/10 flex items-center justify-between group cursor-pointer hover:border-och-mint/30 transition-all"
           >
             <div className="flex items-center gap-3">

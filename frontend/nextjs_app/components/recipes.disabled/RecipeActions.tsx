@@ -61,7 +61,7 @@ export function RecipeActions({ recipe, compact = false }: RecipeActionsProps) {
           variant={progress?.status === 'completed' ? 'mint' : 'defender'}
         >
           <CheckCircle2 className="w-4 h-4 mr-2" />
-          {progress?.status === 'completed' ? 'Completed' : 'Mark Complete'}
+          {progress?.status === 'completed' ? '✓ Completed' : 'Mark Complete'}
         </Button>
         <Button
           onClick={handleBookmark}
@@ -110,7 +110,7 @@ export function RecipeActions({ recipe, compact = false }: RecipeActionsProps) {
             size="lg"
           >
             <CheckCircle2 className="w-5 h-5 mr-2" />
-            {progress?.status === 'completed' ? 'Completed' : 'Mark Complete'}
+            {progress?.status === 'completed' ? '✓ Recipe Completed' : 'Mark Recipe as Complete'}
           </Button>
           <Button
             onClick={handleBookmark}

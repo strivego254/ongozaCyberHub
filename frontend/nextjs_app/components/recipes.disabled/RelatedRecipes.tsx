@@ -45,7 +45,7 @@ export function RelatedRecipes({ recipeSlug }: RelatedRecipesProps) {
       <h3 className="text-xl font-bold text-slate-200 mb-4">Related Recipes</h3>
       <div className="space-y-4">
         {relatedRecipes.slice(0, 3).map((recipe) => (
-          <Link key={recipe.id} href={`/recipes/${recipe.slug}`}>
+          <Link key={recipe.id} href={`/students/coaching-os/recipes/${recipe.slug}`}>
             <div className="p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800/70 transition-colors cursor-pointer">
               <h4 className="font-semibold text-slate-200 mb-2">{recipe.title}</h4>
               <p className="text-sm text-slate-400 line-clamp-2">{recipe.summary}</p>
