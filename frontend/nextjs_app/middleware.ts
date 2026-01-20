@@ -6,7 +6,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const protectedRoutes = ['/dashboard', '/students'];
+const protectedRoutes = ['/dashboard'];
+const openRoutes = ['/dashboard/student/coaching', '/dashboard/student/coaching/recipes'];
 const authRoutes = ['/login', '/signup'];
 
 function getLoginRouteForPath(pathname: string) {
@@ -119,14 +120,15 @@ export function middleware(request: NextRequest) {
 
   // Check if route is protected
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  const isOpenRoute = openRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
   const loginPath = getLoginRouteForPath(pathname);
 
   // Check if this is a specific login route (e.g., /login/mentor, /login/director, /login/finance)
   const isSpecificLoginRoute = pathname.match(/^\/login\/(mentor|director|admin|student|sponsor|analyst|employer|finance)$/);
 
-  // Redirect to login if accessing protected route without token
-  if (isProtectedRoute && !hasToken) {
+  // Redirect to login if accessing protected route without token (but not open routes)
+  if (isProtectedRoute && !isOpenRoute && !hasToken) {
     const loginUrl = new URL(loginPath, request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);

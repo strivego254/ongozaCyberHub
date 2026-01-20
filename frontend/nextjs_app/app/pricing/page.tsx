@@ -46,44 +46,44 @@ export default function PricingPage() {
   }
 
   const pricingPlans = [
-    { 
-      duration: '1 Month', 
-      total: '$7', 
-      monthly: '$7', 
+    {
+      duration: '1 Month',
+      total: 'KSh 980',
+      monthly: 'KSh 980',
       discount: 'Base',
       savings: null,
       popular: false
     },
-    { 
-      duration: '3 Months', 
-      total: '$19', 
-      monthly: '~$6.33', 
+    {
+      duration: '3 Months',
+      total: 'KSh 2,660',
+      monthly: '~KSh 887',
       discount: 'Small discount',
-      savings: '$2',
+      savings: 'KSh 280',
       popular: false
     },
-    { 
-      duration: '6 Months', 
-      total: '$36', 
-      monthly: '$6', 
+    {
+      duration: '6 Months',
+      total: 'KSh 5,040',
+      monthly: 'KSh 840',
       discount: 'Medium discount',
-      savings: '$6',
+      savings: 'KSh 840',
       popular: false
     },
-    { 
-      duration: '9 Months', 
-      total: '$52', 
-      monthly: '~$5.78', 
+    {
+      duration: '9 Months',
+      total: 'KSh 7,280',
+      monthly: '~KSh 809',
       discount: 'Larger discount',
-      savings: '$11',
+      savings: 'KSh 1,540',
       popular: false
     },
-    { 
-      duration: '12 Months', 
-      total: '$68', 
-      monthly: '~$5.66', 
+    {
+      duration: '12 Months',
+      total: 'KSh 9,520',
+      monthly: '~KSh 793',
       discount: 'Annual plan, renewable',
-      savings: '$16',
+      savings: 'KSh 2,240',
       popular: true
     }
   ]
@@ -113,7 +113,7 @@ export default function PricingPage() {
     },
     {
       question: 'Are there student discounts?',
-      answer: 'Our pricing is already optimized for students. The annual plan offers the best value at just $5.66/month, saving you 19% compared to monthly billing.'
+      answer: 'Our pricing is already optimized for students. The annual plan offers the best value at just KSh 793/month, saving you 19% compared to monthly billing.'
     },
     {
       question: 'What payment methods do you accept?',
@@ -131,7 +131,7 @@ export default function PricingPage() {
           <div className="text-center mb-16">
             <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">Start Your Journey Today</h1>
             <p className="text-xl text-och-steel mb-6">
-              Start with a <span className="text-och-mint font-bold">14-day free trial</span>, continue from just <span className="text-och-mint font-bold">$5.66/month</span>
+              Start with a <span className="text-och-mint font-bold">14-day free trial</span>, continue from just <span className="text-och-mint font-bold">KSh 793/month</span>
             </p>
             <p className="text-och-steel max-w-3xl mx-auto">
               All subscriptions include full access to Community, SMP, and Certificates. 

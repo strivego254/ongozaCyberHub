@@ -5,7 +5,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { RecipeDetailShell } from '@/components/recipes/RecipeDetailShell';
+import { RecipeDetailShell } from '@/components/recipes.disabled/RecipeDetailShell';
 import { recipesClient, type RecipeDetailResponse } from '@/services/recipesClient';
 import { useState, useEffect } from 'react';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
@@ -75,7 +75,7 @@ export default function StudentRecipeDetailPage() {
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Recipe Not Found</h2>
           <p className="text-slate-400 mb-6">{error || `The recipe "${slug}" could not be loaded.`}</p>
-          <Link href="/students/coaching-os/recipes">
+          <Link href="/dashboard/student/coaching/recipes">
             <Button className="bg-gradient-to-r from-indigo-500 to-purple-600">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Library

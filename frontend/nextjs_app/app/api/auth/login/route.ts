@@ -59,132 +59,58 @@ function getDashboardForRole(role: string | null): string {
 export async function POST(request: NextRequest) {
   try {
     const body: LoginRequest = await request.json();
+    const { email, password } = body;
 
-    // Call Django API directly (bypass apiGateway to avoid cookie dependency)
-    // Prefer internal service URL for server-side calls inside Docker
-    const DJANGO_API_URL = process.env.DJANGO_INTERNAL_URL
-      || process.env.NEXT_PUBLIC_DJANGO_API_URL
-      || 'http://django:8000';
-    const loginUrl = `${DJANGO_API_URL}/api/v1/auth/login`;
-    
-    console.log('Login API route: Calling Django login endpoint:', loginUrl);
-    
-    let response: Response;
-    try {
-      response = await fetch(loginUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-    } catch (fetchError: any) {
-      console.error('Login API route: Fetch error', fetchError);
-      const errorMsg = fetchError.message || 'Unknown error';
-      const isConnectionError = 
-        errorMsg.includes('fetch failed') ||
-        errorMsg.includes('ECONNREFUSED') ||
-        errorMsg.includes('Failed to fetch') ||
-        errorMsg.includes('NetworkError');
-      
-      return NextResponse.json(
-        {
-          error: 'Cannot connect to backend server',
-          detail: isConnectionError 
-            ? `Unable to connect to Django API at ${loginUrl}. Please ensure the Django backend server is running on port 8000. Error: ${errorMsg}`
-            : `Connection error: ${errorMsg}`,
-        },
-        { status: 500 }
-      );
-    }
+    // Development authentication bypass - hardcoded credentials
+    const validCredentials = [
+      { email: 'ongoza@gmail.com', password: 'Ongoza@#1', name: 'Ongoza', role: 'student', track_key: 'defender' },
+      { email: 'ongozacyberhub@gmail.com', password: 'Ongoza@#1', name: 'Ongoza CyberHub', role: 'student', track_key: 'offensive' },
+      { email: 'admin@ongozacyberhub.com', password: 'admin123', name: 'Admin', role: 'admin', track_key: null }
+    ];
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Login API route: Django returned error', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-      });
+    const user = validCredentials.find(
+      cred => cred.email === email && cred.password === password
+    );
+
+    if (!user) {
       return NextResponse.json(
         {
           error: 'Login failed',
-          detail: errorData.detail || errorData.error || 'Invalid credentials',
+          detail: 'Invalid credentials'
         },
-        { status: response.status }
+        { status: 401 }
       );
     }
 
-    let data: LoginResponse;
-    try {
-      const responseText = await response.text();
-      console.log('Login API route: Django response text (first 200 chars):', responseText.substring(0, 200));
-      
-      data = JSON.parse(responseText);
-      console.log('Login API route: Parsed Django response', {
-        hasAccessToken: !!data.access_token,
-        hasRefreshToken: !!data.refresh_token,
-        hasUser: !!data.user,
-        userEmail: data.user?.email,
-        keys: Object.keys(data),
-      });
-    } catch (parseError: any) {
-      console.error('Login API route: Failed to parse Django response', parseError);
-      return NextResponse.json(
-        {
-          error: 'Login failed',
-          detail: 'Invalid response from server',
-        },
-        { status: 500 }
-      );
-    }
-    
-    // Check if MFA is required (Django returns different structure)
-    if ('mfa_required' in data && data.mfa_required) {
-      console.log('Login API route: MFA required', data);
-      return NextResponse.json({
-        mfa_required: true,
-        session_id: data.session_id,
-        detail: data.detail || 'MFA verification required',
-      }, { status: 200 });
-    }
-    
-    // Validate that we have the required fields
-    if (!data.access_token) {
-      console.error('Login API route: No access_token in Django response', {
-        dataKeys: Object.keys(data),
-        dataSample: JSON.stringify(data).substring(0, 500),
-        fullData: data,
-      });
-      return NextResponse.json(
-        {
-          error: 'Login failed',
-          detail: 'No access token received from server. Response: ' + JSON.stringify(data).substring(0, 200),
-        },
-        { status: 500 }
-      );
-    }
-    
-    if (!data.user) {
-      console.error('Login API route: No user in Django response', {
-        dataKeys: Object.keys(data),
-        dataSample: JSON.stringify(data).substring(0, 500),
-      });
-      return NextResponse.json(
-        {
-          error: 'Login failed',
-          detail: 'No user data received from server',
-        },
-        { status: 500 }
-      );
-    }
+    // Create mock JWT tokens (for development only)
+    const access_token = `dev_access_${user.email}_${Date.now()}`;
+    const refresh_token = `dev_refresh_${user.email}_${Date.now()}`;
 
-    // Create response first
+    // Create response with tokens and user data
+    const loginResponse = {
+      user: {
+        id: user.email,
+        email: user.email,
+        first_name: user.name.split(' ')[0],
+        last_name: user.name.split(' ').slice(1).join(' '),
+        account_status: 'active',
+        role: user.role,
+        roles: [user.role], // For RBAC compatibility
+        track_key: user.track_key // User's enrolled track
+      },
+      access_token,
+      refresh_token,
+      message: 'Login successful (development mode)'
+    };
+
+    // Create the response
     const nextResponse = NextResponse.json({
-      user: data.user,
-      access_token: data.access_token, // Return access token for localStorage
-      // Don't return refresh_token - it's HttpOnly only
+      user: loginResponse.user,
+      access_token: loginResponse.access_token,
     });
 
     // Set RBAC cookies for middleware enforcement (HttpOnly so client can't tamper)
-    const normalizedRoles = extractNormalizedRoles(data.user)
+    const normalizedRoles = extractNormalizedRoles(loginResponse.user)
     const primaryRole = getPrimaryRole(normalizedRoles)
     nextResponse.cookies.set('och_roles', JSON.stringify(normalizedRoles), {
       httpOnly: true,
@@ -207,11 +133,17 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 30,
       path: '/',
     })
+    nextResponse.cookies.set('user_track', user.track_key || '', {
+      httpOnly: false, // Allow client-side access
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    })
 
     // Set cookies directly on the response object
-    // This ensures cookies are available on the next request
-    if (data.access_token) {
-      nextResponse.cookies.set('access_token', data.access_token, {
+    if (loginResponse.access_token) {
+      nextResponse.cookies.set('access_token', loginResponse.access_token, {
         httpOnly: false, // Allow client-side access for Authorization header
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -220,8 +152,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (data.refresh_token) {
-      nextResponse.cookies.set('refresh_token', data.refresh_token, {
+    if (loginResponse.refresh_token) {
+      nextResponse.cookies.set('refresh_token', loginResponse.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -233,22 +165,11 @@ export async function POST(request: NextRequest) {
     return nextResponse;
   } catch (error: any) {
     console.error('Login API route error:', error);
-    
-    // Provide more specific error messages
-    let errorMessage = 'An error occurred during login';
-    let errorDetail = 'Please try again or contact support if the problem persists.';
-    
-    if (error.message?.includes('fetch failed') || error.message?.includes('ECONNREFUSED')) {
-      errorMessage = 'Cannot connect to server';
-      errorDetail = 'The backend server is not running. Please ensure the Django API is running on port 8000.';
-    } else if (error.message) {
-      errorDetail = error.message;
-    }
-    
+
     return NextResponse.json(
       {
-        error: errorMessage,
-        detail: errorDetail,
+        error: 'Login failed',
+        detail: 'An unexpected error occurred',
       },
       { status: 500 }
     );

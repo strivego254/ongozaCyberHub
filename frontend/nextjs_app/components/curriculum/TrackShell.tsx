@@ -148,7 +148,7 @@ export function TrackShell({
                       size="lg" 
                       className="h-12 lg:h-14 border-2 border-indigo-500/50 shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:bg-indigo-500/10 text-indigo-300 font-bold w-full sm:min-w-[180px] lg:min-w-[200px]"
                     >
-                      🔓 Upgrade ($7/mo)
+                      🔓 Upgrade (KSh 793/mo)
                     </Button>
                   )}
                 </>
@@ -286,7 +286,7 @@ export function TrackShell({
                   Bridge technical gaps with micro-skill boosters. Focused, step-by-step guides contextually available for your current track tasks.
                 </p>
               </div>
-              <Link href="/students/coaching-os/recipes">
+              <Link href="/dashboard/student/coaching/recipes">
                 <Button 
                   variant="gold"
                   className="bg-amber-500 text-slate-900 font-black uppercase text-xs hover:bg-amber-400"

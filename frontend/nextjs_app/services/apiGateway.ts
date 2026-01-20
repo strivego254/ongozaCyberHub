@@ -28,7 +28,18 @@ function getBaseUrl(path: string): string {
     '/ai/',
     '/profiling',  // FastAPI profiling endpoints
   ];
-  
+
+  // Recipes routes - serve from local Next.js API
+  if (path.startsWith('/recipes')) {
+    // Check if we're in browser environment
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/api`;
+    }
+    // For SSR, get the port from environment or assume default
+    const port = process.env.PORT || '3000';
+    return `http://localhost:${port}/api`;
+  }
+
   // Check if path already includes /api/v1
   if (path.startsWith('/api/v1/')) {
     return DJANGO_API_URL;

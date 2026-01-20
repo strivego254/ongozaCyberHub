@@ -41,7 +41,7 @@ function getDifficultyColor(difficulty: string) {
 
 export function RecipePill({ recipe, compact = false }: RecipePillProps) {
   return (
-    <Link href={`/students/coaching-os/recipes/${recipe.slug || recipe.id}`}>
+    <Link href={`/dashboard/student/coaching/recipes/${recipe.slug || recipe.id}`}>
       <div className={clsx(
         "group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-800/50 backdrop-blur-sm transition-all duration-200 hover:bg-slate-800/80 hover:border-slate-600/50 hover:shadow-lg hover:shadow-slate-900/20",
         compact ? "p-3" : "p-4"

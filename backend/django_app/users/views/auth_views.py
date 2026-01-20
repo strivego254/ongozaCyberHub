@@ -222,6 +222,69 @@ class SignupView(APIView):
             )
 
 
+class SimpleLoginView(APIView):
+    """
+    POST /api/v1/auth/login/simple
+    Simplified login for development/testing.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        email = data['email']
+        password = data.get('password')
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'Invalid credentials'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # Check account status
+        if user.account_status != 'active':
+            return Response(
+                {'detail': f'Account is {user.account_status}'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if not user.is_active:
+            return Response(
+                {'detail': 'Account is inactive'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Simple password check
+        if password and user.check_password(password):
+            # Create JWT tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+
+            return Response({
+                'user': {
+                    'id': str(user.id),
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'account_status': user.account_status,
+                },
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'message': 'Login successful'
+            })
+        else:
+            return Response(
+                {'detail': 'Invalid credentials'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+
 class LoginView(APIView):
     """
     POST /api/v1/auth/login

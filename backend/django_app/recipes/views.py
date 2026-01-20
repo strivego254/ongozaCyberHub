@@ -22,17 +22,25 @@ from .serializers import (
 class RecipeViewSet(viewsets.ModelViewSet):
     """
     ViewSet for recipes.
-    
+
     Endpoints:
-    - GET /recipes/ - List all active recipes (with search/filter)
-    - GET /recipes/{slug}/ - Get recipe details
-    - GET /recipes/{slug}/related/ - Get related recipes
-    - POST /recipes/{slug}/progress/ - Update user progress
-    - POST /recipes/{slug}/bookmark/ - Bookmark/unbookmark recipe
+    - GET /recipes/ - List all active recipes (with search/filter) - PUBLIC
+    - GET /recipes/{slug}/ - Get recipe details - PUBLIC
+    - GET /recipes/{slug}/related/ - Get related recipes - PUBLIC
+    - POST /recipes/{slug}/progress/ - Update user progress - REQUIRES AUTH
+    - POST /recipes/{slug}/bookmark/ - Bookmark/unbookmark recipe - REQUIRES AUTH
     """
     queryset = Recipe.objects.filter(is_active=True)
-    permission_classes = [permissions.IsAuthenticated]  # Require authentication
     lookup_field = 'slug'
+
+    def get_permissions(self):
+        """
+        Allow public access to GET methods (list, retrieve, related)
+        Require authentication for POST/PUT/DELETE methods
+        """
+        if self.request.method in ['GET']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -115,17 +123,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
 
-        # FREE USER RESTRICTIONS
-        # Free users ONLY see free samples OR their enrolled track
-        user = self.request.user
-        is_free_user = not user.is_authenticated or (hasattr(user, 'subscription_tier') and user.subscription_tier == 'free')
-
-        if is_free_user:
-            # Get user's enrolled track (default to defender for free users)
-            enrolled_track = getattr(user, 'primary_track_code', 'defender') if user.is_authenticated else 'defender'
-            queryset = queryset.filter(
-                Q(is_free_sample=True) | Q(track_codes__contains=[enrolled_track])
-            )
+        # REMOVED: Free user restrictions - all recipes are now accessible to everyone
 
         # Search
         search = self.request.query_params.get('search', None)
@@ -191,31 +189,19 @@ class RecipeViewSet(viewsets.ModelViewSet):
             from django.db import connection
             import json
 
-            # Check if user is authenticated and if they're free user
+            # REMOVED: Free user restrictions - all recipes are now accessible to everyone
             user = request.user
-            is_free_user = not user.is_authenticated or not hasattr(user, 'is_staff') or not user.is_staff
 
             with connection.cursor() as cursor:
-                if is_free_user:
-                    # Free users can only see free samples
-                    cursor.execute("""
-                        SELECT id, title, slug, summary, description, difficulty,
-                               estimated_minutes, track_codes, skill_codes, source_type,
-                               prerequisites, tools_and_environment, inputs,
-                               steps, validation_checks, is_free_sample
-                        FROM recipes_recipe
-                        WHERE slug = %s AND is_active = 1 AND is_free_sample = 1
-                    """, [slug])
-                else:
-                    # Authenticated users can see all recipes
-                    cursor.execute("""
-                        SELECT id, title, slug, summary, description, difficulty,
-                               estimated_minutes, track_codes, skill_codes, source_type,
-                               prerequisites, tools_and_environment, inputs,
-                               steps, validation_checks, is_free_sample
-                        FROM recipes_recipe
-                        WHERE slug = %s AND is_active = 1
-                    """, [slug])
+                # All users can see all recipes
+                cursor.execute("""
+                    SELECT id, title, slug, summary, description, difficulty,
+                           estimated_minutes, track_codes, skill_codes, source_type,
+                           prerequisites, tools_and_environment, inputs,
+                           steps, validation_checks, is_free_sample
+                    FROM recipes_recipe
+                    WHERE slug = %s AND is_active = 1
+                """, [slug])
 
                 row = cursor.fetchone()
 

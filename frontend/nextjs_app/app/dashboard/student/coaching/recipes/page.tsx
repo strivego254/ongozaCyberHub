@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { RecipeLibraryShell } from '@/components/recipes/RecipeLibraryShell';
+import { RecipeLibraryShell } from '@/components/recipes.disabled/RecipeLibraryShell';
 
 export default function StudentRecipesPage() {
   return <RecipeLibraryShell />;

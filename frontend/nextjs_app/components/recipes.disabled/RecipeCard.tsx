@@ -6,6 +6,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/Card';
@@ -17,7 +18,10 @@ import type { RecipeListResponse } from '@/services/types/recipes';
 import clsx from 'clsx';
 
 interface RecipeCardProps {
-  recipe: RecipeListResponse;
+  recipe: RecipeListResponse & {
+    is_user_track?: boolean;
+    track_access?: 'full' | 'preview';
+  };
   isBookmarked?: boolean;
   onBookmark?: (recipeId: string) => void;
   onStart?: (recipeId: string) => void;
@@ -78,28 +82,43 @@ export function RecipeCard({
   showProgress = true,
   isLocked = false
 }: RecipeCardProps) {
+  const router = useRouter();
   const { canAccessRecipe, getEntitlementMessage } = useRecipeEntitlements();
   const hasAccess = canAccessRecipe(recipe);
   const entitlementMessage = getEntitlementMessage(recipe);
   const colors = getDifficultyColor(recipe.difficulty);
 
+  // Check track-based access
+  const isUserTrack = recipe.is_user_track ?? true;
+  const trackAccess = recipe.track_access ?? 'full';
+  const isTrackLocked = !isUserTrack && trackAccess === 'preview';
+
   return (
     <motion.div whileHover={{ scale: hasAccess ? 1.02 : 1.0 }} className="group h-full">
-          <Card className={clsx(
-            "group relative h-full bg-gradient-to-br from-slate-900/70 via-indigo-900/20 to-purple-900/20 border border-slate-800/50 transition-all duration-500 overflow-hidden flex flex-col",
-            hasAccess ? "hover:border-indigo-500/70 hover:shadow-2xl hover:shadow-indigo-500/25 hover:bg-indigo-500/5" : "opacity-75"
-          )}>
+          <Card
+            className={clsx(
+              "group relative h-full bg-gradient-to-br from-slate-900/70 via-indigo-900/20 to-purple-900/20 border border-slate-800/50 transition-all duration-500 overflow-hidden flex flex-col cursor-pointer",
+              hasAccess ? "hover:border-indigo-500/70 hover:shadow-2xl hover:shadow-indigo-500/25 hover:bg-indigo-500/5" : "opacity-75"
+            )}
+            onClick={() => hasAccess && router.push(`/dashboard/student/coaching/recipes/${recipe.slug}`)}
+          >
             {/* Lock Overlay for Inaccessible Recipes */}
             {!hasAccess && (
               <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 flex items-center justify-center">
                 <div className="text-center p-4">
                   <Lock className="w-8 h-8 text-amber-400 mx-auto mb-2" />
-                  <p className="text-amber-300 text-sm font-medium">Premium Recipe</p>
+                  <p className="text-amber-300 text-sm font-medium">
+                    {isTrackLocked ? 'Different Track' : 'Premium Recipe'}
+                  </p>
                   <p className="text-amber-400/80 text-xs mt-1 max-w-xs">{entitlementMessage}</p>
+                  {isTrackLocked && (
+                    <p className="text-amber-400/60 text-xs mt-2">
+                      Switch to {recipe.track_code} track for full access
+                    </p>
+                  )}
                 </div>
               </div>
             )}
-        <Link href={`/students/coaching-os/recipes/${recipe.slug}`} className="block flex-1">
           {/* THUMBNAIL */}
           {recipe.thumbnail_url && (
             <div className="h-32 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 relative overflow-hidden">
@@ -201,18 +220,16 @@ export function RecipeCard({
               </div>
             </div>
           </div>
-        </Link>
 
         {/* FOOTER - Enhanced Actions */}
         <div className="px-6 pb-6 pt-0 bg-slate-900/50 backdrop-blur-sm border-t border-slate-800/50 mt-auto">
           <div className="flex gap-2 mt-4">
             {/* Primary Action */}
-            <Link href={`/students/coaching-os/recipes/${recipe.slug}`} className="flex-1">
               <Button
                 size="sm"
-                variant={isLocked ? "outline" : "defender"}
-                className="w-full h-10 font-semibold"
-                disabled={isLocked}
+                variant={hasAccess ? "defender" : "outline"}
+                className="w-full h-10 font-semibold flex-1"
+                onClick={() => router.push(`/dashboard/student/coaching/recipes/${recipe.slug}`)}
               >
                 {isLocked ? (
                   <>
@@ -236,7 +253,6 @@ export function RecipeCard({
                   </>
                 )}
               </Button>
-            </Link>
 
             {/* Secondary Actions - Show on hover */}
             <AnimatePresence>

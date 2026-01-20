@@ -215,7 +215,7 @@ function LoginForm() {
         }
       }
       
-      if (redirectTo && redirectTo.startsWith('/dashboard')) {
+      if (redirectTo && (redirectTo.startsWith('/dashboard') || redirectTo.startsWith('/students/'))) {
         route = redirectTo;
       } else {
         if (!updatedUser || !updatedUser.roles || updatedUser.roles.length === 0) {
@@ -320,7 +320,7 @@ function LoginForm() {
         }
       }
 
-      if (!route || !route.startsWith('/dashboard')) {
+      if (!route || (!route.startsWith('/dashboard') && !route.startsWith('/students/'))) {
         route = '/dashboard/student';
       }
 

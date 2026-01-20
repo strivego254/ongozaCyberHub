@@ -11,7 +11,7 @@ import { RecipeContentRenderer } from './RecipeContentRenderer';
 import { RecipeActions } from './RecipeActions';
 import { RelatedRecipes } from './RelatedRecipes';
 import { Badge } from '@/components/ui/Badge';
-import { Clock, Star, Target, ArrowLeft, CheckCircle2, BookOpen, ExternalLink, Play, Check } from 'lucide-react';
+import { Clock, Star, Target, ArrowLeft, CheckCircle2, BookOpen, ExternalLink, Play, Check, Info } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import Link from 'next/link';
@@ -110,7 +110,7 @@ export function RecipeDetailShell({ recipe }: RecipeDetailShellProps) {
       {/* HEADER */}
       <div className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-indigo-900/50">
         <div className="container mx-auto px-6 py-8 max-w-4xl">
-          <Link href="/students/coaching-os/recipes">
+          <Link href="/dashboard/student/coaching/recipes">
             <Button variant="ghost" size="sm" className="mb-6">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Library
@@ -122,7 +122,7 @@ export function RecipeDetailShell({ recipe }: RecipeDetailShellProps) {
               <div className="flex items-center gap-4 mb-6">
                 <div className={`w-4 h-4 rounded-full ${getDifficultyColor(recipe.difficulty)} bg-current`} />
                 <div className="flex items-center gap-2">
-                  {recipe.track_codes.map((track: string) => (
+                  {(recipe.track_codes || [recipe.track_code]).filter(Boolean).map((track: string) => (
                     <Badge key={track} variant="outline" className="bg-indigo-500/20 border-indigo-500/30">
                       {track}
                     </Badge>
@@ -137,7 +137,7 @@ export function RecipeDetailShell({ recipe }: RecipeDetailShellProps) {
               <div className="flex flex-wrap items-center gap-6 text-lg text-slate-300">
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-slate-400" />
-                  <span>{recipe.estimated_minutes} minutes</span>
+                  <span>{recipe.expected_duration_minutes} minutes</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Star className="w-5 h-5 text-amber-400" />
@@ -232,25 +232,72 @@ export function RecipeDetailShell({ recipe }: RecipeDetailShellProps) {
               </Card>
             )}
 
+            {/* Tools and Environment */}
+            {recipe.tools_and_environment && recipe.tools_and_environment.length > 0 && (
+              <Card className="bg-slate-900/50 border-slate-800/50 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <CheckCircle2 className="w-5 h-5 text-blue-400" />
+                  <h2 className="text-2xl font-bold text-slate-200">Tools & Environment</h2>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {recipe.tools_and_environment.map((tool, idx) => (
+                    <Badge key={idx} variant="outline" className="bg-blue-500/20 border-blue-500/30 text-blue-300">
+                      {tool}
+                    </Badge>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Required Inputs */}
+            {recipe.inputs && recipe.inputs.length > 0 && (
+              <Card className="bg-slate-900/50 border-slate-800/50 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Info className="w-5 h-5 text-amber-400" />
+                  <h2 className="text-2xl font-bold text-slate-200">Required Inputs</h2>
+                </div>
+                <ul className="space-y-2">
+                  {recipe.inputs.map((input, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-slate-300">
+                      <Info className="w-4 h-4 text-amber-400 mt-1 flex-shrink-0" />
+                      <span>{input}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+
             {/* Step-by-step instructions */}
-            <RecipeContentRenderer content={recipe.content} />
+            <RecipeContentRenderer content={{
+              sections: [
+                {
+                  type: 'steps',
+                  title: 'Step-by-Step Instructions',
+                  steps: (recipe.steps || []).map(step => ({
+                    step: step.step_number,
+                    title: step.instruction,
+                    explanation: step.expected_outcome,
+                    code: step.evidence_hint ? `💡 Evidence Hint: ${step.evidence_hint}` : undefined
+                  }))
+                }
+              ]
+            }} />
 
             {/* Validation section */}
-            {recipe.validation_steps && Object.keys(recipe.validation_steps).length > 0 && (
+            {recipe.validation_checks && recipe.validation_checks.length > 0 && (
               <Card className="bg-slate-900/50 border-slate-800/50 p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <CheckCircle2 className="w-5 h-5 text-green-400" />
                   <h2 className="text-2xl font-bold text-slate-200">How to know you're done</h2>
                 </div>
                 <div className="space-y-3">
-                  {Object.entries(recipe.validation_steps).map(([key, value]) => (
-                    <div key={key} className="flex items-start gap-3">
+                  {recipe.validation_checks.map((check, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
                         <CheckCircle2 className="w-4 h-4 text-green-400" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-slate-200 mb-1">{key}</h3>
-                        <p className="text-slate-300">{value}</p>
+                        <p className="text-slate-300">{check}</p>
                       </div>
                     </div>
                   ))}

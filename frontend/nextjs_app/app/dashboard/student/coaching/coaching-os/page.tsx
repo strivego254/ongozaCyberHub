@@ -4,8 +4,7 @@
  */
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import {
   BookOpen,
@@ -15,20 +14,17 @@ import {
   ChevronRight,
   Shield,
   Code,
-  Search,
   TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function StudentCoachingOSPage() {
-  const router = useRouter();
-
   const modules = [
     {
       title: 'Recipe Library',
       description: 'Interactive cybersecurity hands-on labs and step-by-step guides',
       icon: BookOpen,
-      href: '/students/coaching-os/recipes',
+      href: '/dashboard/student/coaching/recipes',
       color: 'from-emerald-500 to-teal-600',
       bgColor: 'from-emerald-500/10 to-teal-600/10'
     },
@@ -98,11 +94,80 @@ export default function StudentCoachingOSPage() {
           </p>
         </div>
 
+        {/* MAIN FEATURED SECTION */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          {/* LEFT: Recipe Library Feature Card */}
+          <div className="lg:col-span-2">
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-emerald-500/10 to-teal-600/10 border-slate-700/50 hover:border-emerald-500/50 transition-all duration-300 h-full">
+              <div className="pb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center">
+                    <BookOpen className="w-8 h-8 text-white" />
+                  </div>
+                  <ChevronRight className="w-6 h-6 text-slate-400 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+                </div>
+                <h3 className="text-3xl text-white mb-2">Interactive Recipe Library</h3>
+                <p className="text-slate-400 text-lg">
+                  Master cybersecurity skills with hands-on labs, step-by-step guides, and practical exercises.
+                  Access 60+ recipes across all difficulty levels and specializations.
+                </p>
+              </div>
+              <div className="pt-0">
+                <div className="flex gap-3">
+                  <Link href="/dashboard/student/coaching/recipes" className="flex-1">
+                    <Button
+                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all text-lg py-3"
+                    >
+                      <BookOpen className="w-5 h-5 mr-2" />
+                      Explore Recipes
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* RIGHT: Quick Recipe Access */}
+          <div className="lg:col-span-1">
+            <Card className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700/50 h-full">
+              <div className="pb-4">
+                <h4 className="text-xl text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-emerald-400" />
+                  Quick Access
+                </h4>
+                <p className="text-slate-400">
+                  Jump into hands-on learning
+                </p>
+              </div>
+              <div className="space-y-4">
+                <Link href="/dashboard/student/coaching/recipes">
+                  <Button
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition-all"
+                    size="lg"
+                  >
+                    <BookOpen className="w-5 h-5 mr-2" />
+                    Recipe Engine
+                  </Button>
+                </Link>
+
+                <div className="text-center py-4">
+                  <p className="text-sm text-slate-500 mb-2">Popular Categories</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1 bg-slate-800/50 text-slate-300 text-xs rounded-full">Defender</span>
+                    <span className="px-3 py-1 bg-slate-800/50 text-slate-300 text-xs rounded-full">Offensive</span>
+                    <span className="px-3 py-1 bg-slate-800/50 text-slate-300 text-xs rounded-full">GRC</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
         {/* STATS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {stats.map((stat, index) => (
             <Card key={index} className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700/50">
-              <CardContent className="p-6">
+              <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-2xl font-bold text-white">{stat.value}</p>
@@ -110,28 +175,28 @@ export default function StudentCoachingOSPage() {
                   </div>
                   <stat.icon className="w-8 h-8 text-indigo-400" />
                 </div>
-              </CardContent>
+              </div>
             </Card>
           ))}
         </div>
 
-        {/* MODULES GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {modules.map((module, index) => (
+        {/* OTHER MODULES GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {modules.slice(1).map((module, index) => (
             <Card key={index} className={`group relative overflow-hidden bg-gradient-to-br ${module.bgColor} border-slate-700/50 hover:border-slate-600/70 transition-all duration-300`}>
-              <CardHeader className="pb-4">
+              <div className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className={`w-12 h-12 bg-gradient-to-r ${module.color} rounded-xl flex items-center justify-center mb-4`}>
                     <module.icon className="w-6 h-6 text-white" />
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
                 </div>
-                <CardTitle className="text-xl text-white">{module.title}</CardTitle>
-                <CardDescription className="text-slate-400">
+                <h4 className="text-xl text-white">{module.title}</h4>
+                <p className="text-slate-400">
                   {module.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 <Link href={module.href}>
                   <Button
                     className={`w-full bg-gradient-to-r ${module.color} hover:opacity-90 transition-opacity`}
@@ -139,58 +204,58 @@ export default function StudentCoachingOSPage() {
                     Access {module.title}
                   </Button>
                 </Link>
-              </CardContent>
+              </div>
             </Card>
           ))}
         </div>
 
         {/* QUICK ACTIONS */}
         <div className="mt-12">
-          <h3 className="text-xl font-bold text-white mb-6">Quick Actions</h3>
+          <h3 className="text-xl font-bold text-white mb-6">Additional Resources</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="bg-slate-900/50 border-slate-700/50 hover:bg-slate-800/50 transition-colors">
-              <CardContent className="p-6">
-                <Search className="w-8 h-8 text-indigo-400 mb-4" />
-                <h4 className="text-lg font-semibold text-white mb-2">Find Recipes</h4>
+              <div className="p-6">
+                <Target className="w-8 h-8 text-blue-400 mb-4" />
+                <h4 className="text-lg font-semibold text-white mb-2">Mission Challenges</h4>
                 <p className="text-slate-400 text-sm mb-4">
-                  Search for specific cybersecurity techniques and labs
-                </p>
-                <Link href="/students/coaching-os/recipes">
-                  <Button variant="outline" size="sm" className="w-full">
-                    Browse Recipes
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-slate-900/50 border-slate-700/50 hover:bg-slate-800/50 transition-colors">
-              <CardContent className="p-6">
-                <Target className="w-8 h-8 text-emerald-400 mb-4" />
-                <h4 className="text-lg font-semibold text-white mb-2">Active Missions</h4>
-                <p className="text-slate-400 text-sm mb-4">
-                  Continue working on your current cybersecurity challenges
+                  Tackle real-world cybersecurity scenarios and challenges
                 </p>
                 <Link href="/dashboard/student/missions">
                   <Button variant="outline" size="sm" className="w-full">
-                    View Missions
+                    Start Missions
                   </Button>
                 </Link>
-              </CardContent>
+              </div>
             </Card>
 
             <Card className="bg-slate-900/50 border-slate-700/50 hover:bg-slate-800/50 transition-colors">
-              <CardContent className="p-6">
-                <Users className="w-8 h-8 text-purple-400 mb-4" />
-                <h4 className="text-lg font-semibold text-white mb-2">Schedule Coaching</h4>
+              <div className="p-6">
+                <Shield className="w-8 h-8 text-purple-400 mb-4" />
+                <h4 className="text-lg font-semibold text-white mb-2">Learning Paths</h4>
                 <p className="text-slate-400 text-sm mb-4">
-                  Book a session with your cybersecurity mentor
+                  Follow structured curricula for comprehensive skill development
+                </p>
+                <Link href="/dashboard/student/curriculum">
+                  <Button variant="outline" size="sm" className="w-full">
+                    View Curriculum
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+
+            <Card className="bg-slate-900/50 border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+              <div className="p-6">
+                <Users className="w-8 h-8 text-orange-400 mb-4" />
+                <h4 className="text-lg font-semibold text-white mb-2">Mentor Sessions</h4>
+                <p className="text-slate-400 text-sm mb-4">
+                  Get personalized guidance from expert cybersecurity mentors
                 </p>
                 <Link href="/dashboard/student/coaching">
                   <Button variant="outline" size="sm" className="w-full">
                     Book Session
                   </Button>
                 </Link>
-              </CardContent>
+              </div>
             </Card>
           </div>
         </div>

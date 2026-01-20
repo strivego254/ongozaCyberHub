@@ -7,6 +7,7 @@ from .views import UserViewSet, register_user, verify_email, request_password_re
 from .views.auth_views import (
     SignupView,
     LoginView,
+    SimpleLoginView,
     MagicLinkView,
     MFAEnrollView,
     MFAVerifyView,
@@ -46,6 +47,7 @@ urlpatterns = [
     path('auth/signup/', SignupView.as_view(), name='signup-slash'),
     path('auth/login', LoginView.as_view(), name='login'),
     path('auth/login/', LoginView.as_view(), name='login-slash'),
+    path('auth/login/simple', SimpleLoginView.as_view(), name='simple-login'),
     path('auth/login/magic-link', MagicLinkView.as_view(), name='magic-link'),
     path('auth/login/magic-link/', MagicLinkView.as_view(), name='magic-link-slash'),
     path('auth/mfa/enroll', MFAEnrollView.as_view(), name='mfa-enroll'),
