@@ -40,6 +40,12 @@ interface MissionStore {
   setMissionProgress: (missionId: string, progress: number) => void
   updateSubtaskProgress: (subtaskNumber: number, progress: { completed: boolean; evidence: string[]; notes: string }) => void
 
+  // Feedback management
+  aiFeedback: any | null
+  mentorFeedback: any | null
+  setAIFeedback: (feedback: any | null) => void
+  setMentorFeedback: (feedback: any | null) => void
+
   // UI state
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
