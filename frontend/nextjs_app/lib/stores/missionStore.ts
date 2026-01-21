@@ -126,6 +126,12 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       },
     })),
 
+  // Feedback management
+  aiFeedback: null,
+  mentorFeedback: null,
+  setAIFeedback: (feedback) => set({ aiFeedback: feedback }),
+  setMentorFeedback: (feedback) => set({ mentorFeedback: feedback }),
+
   // UI state
   isLoading: false,
   setIsLoading: (loading) => set({ isLoading: loading }),
@@ -154,7 +160,8 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     completedMissions: [],
     missionProgress: {},
     subtasksProgress: {},
-    missionProgress: {},
+    aiFeedback: null,
+    mentorFeedback: null,
     isLoading: false,
     error: null,
     userTier: 'free',
