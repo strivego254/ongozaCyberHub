@@ -26,7 +26,7 @@ export function useMissionProgress() {
         // Restore progress if newer than current
         if (parsed.timestamp > lastSavedRef.current) {
           Object.entries(parsed.progress).forEach(([key, value]: [string, any]) => {
-            updateSubtaskProgress(key, value)
+            updateSubtaskProgress(Number(key), value)
           })
         }
       }
