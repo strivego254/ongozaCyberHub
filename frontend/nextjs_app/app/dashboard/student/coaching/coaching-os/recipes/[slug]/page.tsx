@@ -5,7 +5,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { RecipeDetailShell } from '@/components/recipes.disabled/RecipeDetailShell';
+import { RecipeDetailShell } from '@/components/recipes/RecipeDetailShell';
 import { recipesClient, type RecipeDetailResponse } from '@/services/recipesClient';
 import { useState, useEffect } from 'react';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
