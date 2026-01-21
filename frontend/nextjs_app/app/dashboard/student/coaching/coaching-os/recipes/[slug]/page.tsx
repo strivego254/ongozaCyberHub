@@ -34,6 +34,16 @@ export default function StudentRecipeDetailPage() {
       try {
         const data = await recipesClient.getRecipe(slug);
         setRecipe(data);
+
+        // Auto-start the recipe if it's not already started
+        if (data && (!data.user_progress || data.user_progress.status === 'not_started')) {
+          try {
+            await startRecipe();
+          } catch (startError) {
+            console.warn('Failed to auto-start recipe:', startError);
+            // Don't fail the page load if auto-start fails
+          }
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to load recipe');
         console.error('Error fetching recipe:', err);
