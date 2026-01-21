@@ -255,7 +255,7 @@ export function SubtaskViewEnhanced({ missionId }: SubtaskViewEnhancedProps) {
 
           <div className="space-y-6 flex flex-col">
             {/* TACTICAL BRANCHING (Advanced/Mastery Only) */}
-            {['advanced', 'mastery', 'capstone'].includes(currentSubtaskData.difficulty || '') && (
+            {true && (
               <div className="p-6 rounded-2xl bg-och-defender/5 border border-och-defender/20 mb-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Target className="w-4 h-4 text-och-defender" />
