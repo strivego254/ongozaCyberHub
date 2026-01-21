@@ -153,6 +153,7 @@ interface UseRecipeProgressResult {
   updateNotes: (notes: string) => Promise<void>;
   updateTimeSpent: (minutes: number) => Promise<void>;
   bookmark: () => Promise<void>;
+  startRecipe: () => Promise<void>;
   unbookmark: () => Promise<void>;
   isBookmarked: boolean;
   refetch: () => Promise<void>;

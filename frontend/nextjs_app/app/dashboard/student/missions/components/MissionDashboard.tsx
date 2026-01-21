@@ -189,14 +189,13 @@ export function MissionDashboard({ track = 'defender', tier = 'beginner' }: Miss
             <Badge variant="orange">{inProgressMissions.length} active</Badge>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {inProgressMissions.map((progress) => {
-              const mission = data?.in_progress_missions.find((p) => p.id === progress.id)?.mission
+            {data?.in_progress_missions.map((progressItem) => {
+              const mission = progressItem.mission
               if (!mission) return null
               return (
                 <MissionCard
-                  key={progress.id}
+                  key={progressItem.id}
                   mission={mission}
-                  progress={progress}
                   showProgress
                 />
               )
@@ -220,7 +219,6 @@ export function MissionDashboard({ track = 'defender', tier = 'beginner' }: Miss
                 <MissionCard
                   key={progress.id}
                   mission={mission}
-                  progress={progress}
                   showCompleted
                 />
               )

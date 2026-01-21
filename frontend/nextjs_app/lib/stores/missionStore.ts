@@ -1,14 +1,16 @@
 import { create } from 'zustand'
-import type { Mission, Subtask } from '@/app/dashboard/student/missions/types'
+import type { Mission, Subtask, MissionProgress } from '@/app/dashboard/student/missions/types'
 
 interface MissionStore {
   // Current mission state
   currentMission: Mission | null
+  currentProgress: MissionProgress | null
   setCurrentMission: (mission: Mission | null) => void
+  setCurrentProgress: (progress: MissionProgress | null) => void
 
   // Current subtask state
-  currentSubtask: Subtask | null
-  setCurrentSubtask: (subtask: Subtask | null) => void
+  currentSubtask: number
+  setCurrentSubtask: (subtask: number) => void
 
   // Subtasks management
   subtasks: Subtask[]
@@ -34,7 +36,9 @@ interface MissionStore {
 
   // Mission progress
   missionProgress: Record<string, number>
+  subtasksProgress: Record<number, { completed: boolean; evidence: string[]; notes: string }>
   setMissionProgress: (missionId: string, progress: number) => void
+  updateSubtaskProgress: (subtaskNumber: number, progress: { completed: boolean; evidence: string[]; notes: string }) => void
 
   // UI state
   isLoading: boolean
@@ -56,10 +60,12 @@ interface MissionStore {
 export const useMissionStore = create<MissionStore>((set, get) => ({
   // Current mission state
   currentMission: null,
+  currentProgress: null,
   setCurrentMission: (mission) => set({ currentMission: mission }),
+  setCurrentProgress: (progress) => set({ currentProgress: progress }),
 
   // Current subtask state
-  currentSubtask: null,
+  currentSubtask: 1,
   setCurrentSubtask: (subtask) => set({ currentSubtask: subtask }),
 
   // Subtasks management
@@ -102,9 +108,17 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
 
   // Mission progress
   missionProgress: {},
+  subtasksProgress: {},
   setMissionProgress: (missionId, progress) => set((state) => ({
     missionProgress: { ...state.missionProgress, [missionId]: progress }
   })),
+  updateSubtaskProgress: (subtaskNumber, progress) =>
+    set((state) => ({
+      subtasksProgress: {
+        ...state.subtasksProgress,
+        [subtaskNumber]: progress,
+      },
+    })),
 
   // UI state
   isLoading: false,
@@ -121,16 +135,19 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   // Actions
   clearCurrentMission: () => set({
     currentMission: null,
-    currentSubtask: null,
+    currentSubtask: 1,
     subtasks: []
   }),
   resetStore: () => set({
     currentMission: null,
-    currentSubtask: null,
+    currentProgress: null,
+    currentSubtask: 1,
     subtasks: [],
     availableMissions: [],
     inProgressMissions: [],
     completedMissions: [],
+    missionProgress: {},
+    subtasksProgress: {},
     missionProgress: {},
     isLoading: false,
     error: null,

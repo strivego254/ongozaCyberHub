@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid response format', details: error.errors },
+        { error: 'Invalid response format', details: error.issues },
         { status: 500 }
       );
     }
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request format', details: error.errors },
+        { error: 'Invalid request format', details: error.issues },
         { status: 400 }
       );
     }

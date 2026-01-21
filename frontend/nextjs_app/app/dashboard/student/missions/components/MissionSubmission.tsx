@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { apiGateway } from '@/services/apiGateway'
-import { useMissionStore } from '@/lib/stores/missionStore'
+import { useMissionStore } from '../lib/store/missionStore'
 
 interface MissionSubmissionProps {
   progressId: string

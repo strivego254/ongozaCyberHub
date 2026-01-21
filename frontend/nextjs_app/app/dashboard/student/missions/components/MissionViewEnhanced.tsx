@@ -65,9 +65,9 @@ export function MissionViewEnhanced({ missionId }: MissionViewEnhancedProps) {
       } else {
         // Create mock subtasks if none exist for demo/compatibility
         setSubtasks([
-          { id: 0, title: 'Tactical Reconnaissance', description: 'Analyze the sector for anomalies and persistent threats.', mission: parseInt(missionId) },
-          { id: 1, title: 'Terminal Deployment', description: 'Configure the secure environment for payload analysis.', mission: parseInt(missionId) },
-          { id: 2, title: 'Final Intelligence Commit', description: 'Synthesize findings and upload evidence to the command hub.', mission: parseInt(missionId) }
+          { id: 0, title: 'Tactical Reconnaissance', description: 'Analyze the sector for anomalies and persistent threats.' },
+          { id: 1, title: 'Terminal Deployment', description: 'Configure the secure environment for payload analysis.' },
+          { id: 2, title: 'Final Intelligence Commit', description: 'Synthesize findings and upload evidence to the command hub.' }
         ])
       }
       setTimeRemaining((missionData.estimated_time_minutes || 60) * 60)

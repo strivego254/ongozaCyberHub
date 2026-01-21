@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
       // Show all recipes from user's track, plus 2 from each other track
       const limitedOtherRecipes = [];
-      const tracks = [...new Set(otherTrackRecipes.map(r => r.track_code))];
+      const tracks = Array.from(new Set(otherTrackRecipes.map(r => r.track_code)));
 
       for (const otherTrack of tracks) {
         const trackRecipes = otherTrackRecipes.filter(r => r.track_code === otherTrack);
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Sort by creation date (newest first)
-    filteredRecipes.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    filteredRecipes.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
     // Apply limit
     const limitedRecipes = filteredRecipes.slice(0, limit);
