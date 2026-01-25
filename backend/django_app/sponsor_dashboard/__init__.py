@@ -1,4 +1,0 @@
-"""
-Sponsor Dashboard app.
-"""
-

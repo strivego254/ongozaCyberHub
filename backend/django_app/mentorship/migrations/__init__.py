@@ -1,4 +1,0 @@
-"""
-Mentorship app migrations.
-"""
-
